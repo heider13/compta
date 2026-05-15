@@ -6,6 +6,12 @@ const BASE = process.env.INPI_BASE_URL || 'https://guichet-unique-demo.inpi.fr';
 let cachedToken = null;
 let cachedTokenExpiry = 0;
 
+const DEFAULT_HEADERS = {
+  'User-Agent': 'Mozilla/5.0 (compatible; ComptaApp/0.1; +https://compta-navy.vercel.app)',
+  'Accept': 'application/json, application/ld+json, */*',
+  'Accept-Language': 'fr-FR,fr;q=0.9',
+};
+
 async function login() {
   const username = process.env.INPI_USERNAME;
   const password = process.env.INPI_PASSWORD;
@@ -15,7 +21,7 @@ async function login() {
 
   const res = await fetch(`${BASE}/api/user/login/sso`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { ...DEFAULT_HEADERS, 'Content-Type': 'application/json' },
     body: JSON.stringify({ username, password }),
   });
 
@@ -50,6 +56,7 @@ async function request(path, { method = 'GET', body, query, headers = {} } = {})
   const res = await fetch(url, {
     method,
     headers: {
+      ...DEFAULT_HEADERS,
       Authorization: `Bearer ${token}`,
       ...(body ? { 'Content-Type': 'application/json' } : {}),
       ...headers,
@@ -64,6 +71,7 @@ async function request(path, { method = 'GET', body, query, headers = {} } = {})
     const retry = await fetch(url, {
       method,
       headers: {
+        ...DEFAULT_HEADERS,
         Authorization: `Bearer ${retryToken}`,
         ...(body ? { 'Content-Type': 'application/json' } : {}),
         ...headers,
