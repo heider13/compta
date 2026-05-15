@@ -1,10 +1,13 @@
 // Wrapper minimal autour de l'API Guichet Unique INPI.
 // Utilise un compte mandataire partagé (creds dans les env vars).
 
-const BASE = process.env.INPI_BASE_URL || 'https://guichet-unique-demo.inpi.fr';
+const BASE = process.env.INPI_BASE_URL || 'https://guichet-unique.inpi.fr';
 
-let cachedToken = null;
-let cachedTokenExpiry = 0;
+// Deux modes d'auth INPI :
+//   - "API only" : token JWT renvoyé dans le body → Authorization: Bearer
+//   - utilisateur interface : Set-Cookie: BEARER=<jwt> → Cookie: BEARER=<jwt>
+let cachedAuth = null;           // { kind: 'bearer' | 'cookie', value: string }
+let cachedAuthExpiry = 0;
 
 const DEFAULT_HEADERS = {
   'User-Agent': 'Mozilla/5.0 (compatible; ComptaApp/0.1; +https://compta-navy.vercel.app)',
@@ -29,21 +32,36 @@ async function login() {
     const txt = await res.text();
     throw new Error(`INPI login ${res.status}: ${txt.slice(0, 300)}`);
   }
-  const data = await res.json();
-  if (!data.token) throw new Error('INPI login: token manquant dans la réponse');
-  return data.token;
+  const data = await res.json().catch(() => ({}));
+
+  if (data && data.token) {
+    return { kind: 'bearer', value: data.token };
+  }
+
+  const setCookie = res.headers.get('set-cookie') || '';
+  const m = setCookie.match(/BEARER=([^;]+)/i);
+  if (m) {
+    return { kind: 'cookie', value: m[1] };
+  }
+
+  throw new Error(`INPI login: ni token JSON ni cookie BEARER (body keys: ${Object.keys(data || {}).join(',') || 'none'})`);
 }
 
-async function getToken() {
+async function getAuth() {
   const now = Date.now();
-  if (cachedToken && now < cachedTokenExpiry) return cachedToken;
-  cachedToken = await login();
-  cachedTokenExpiry = now + 50 * 60 * 1000;
-  return cachedToken;
+  if (cachedAuth && now < cachedAuthExpiry) return cachedAuth;
+  cachedAuth = await login();
+  cachedAuthExpiry = now + 50 * 60 * 1000;
+  return cachedAuth;
+}
+
+function applyAuth(auth, headers = {}) {
+  if (auth.kind === 'bearer') return { ...headers, Authorization: `Bearer ${auth.value}` };
+  return { ...headers, Cookie: `BEARER=${auth.value}` };
 }
 
 async function request(path, { method = 'GET', body, query, headers = {} } = {}) {
-  const token = await getToken();
+  const auth = await getAuth();
   const url = new URL(path.startsWith('http') ? path : `${BASE}${path}`);
   if (query) {
     for (const [k, v] of Object.entries(query)) {
@@ -53,29 +71,25 @@ async function request(path, { method = 'GET', body, query, headers = {} } = {})
     }
   }
 
+  const buildHeaders = (a) => applyAuth(a, {
+    ...DEFAULT_HEADERS,
+    ...(body ? { 'Content-Type': 'application/json' } : {}),
+    ...headers,
+  });
+
   const res = await fetch(url, {
     method,
-    headers: {
-      ...DEFAULT_HEADERS,
-      Authorization: `Bearer ${token}`,
-      ...(body ? { 'Content-Type': 'application/json' } : {}),
-      ...headers,
-    },
+    headers: buildHeaders(auth),
     body: body ? JSON.stringify(body) : undefined,
   });
 
   if (res.status === 401) {
-    cachedToken = null;
-    cachedTokenExpiry = 0;
-    const retryToken = await getToken();
+    cachedAuth = null;
+    cachedAuthExpiry = 0;
+    const retryAuth = await getAuth();
     const retry = await fetch(url, {
       method,
-      headers: {
-        ...DEFAULT_HEADERS,
-        Authorization: `Bearer ${retryToken}`,
-        ...(body ? { 'Content-Type': 'application/json' } : {}),
-        ...headers,
-      },
+      headers: buildHeaders(retryAuth),
       body: body ? JSON.stringify(body) : undefined,
     });
     return parseResponse(retry);

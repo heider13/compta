@@ -4,13 +4,13 @@
 
 const { requireUser } = require('../../_lib/auth');
 
-const BASE = process.env.INPI_BASE_URL || 'https://guichet-unique-demo.inpi.fr';
+const BASE = process.env.INPI_BASE_URL || 'https://guichet-unique.inpi.fr';
 
-let token = null;
-let tokenExpiry = 0;
+let auth = null;
+let authExpiry = 0;
 
-async function getToken() {
-  if (token && Date.now() < tokenExpiry) return token;
+async function getAuth() {
+  if (auth && Date.now() < authExpiry) return auth;
   const r = await fetch(`${BASE}/api/user/login/sso`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -20,10 +20,16 @@ async function getToken() {
     }),
   });
   if (!r.ok) throw new Error(`INPI login ${r.status}`);
-  const d = await r.json();
-  token = d.token;
-  tokenExpiry = Date.now() + 50 * 60 * 1000;
-  return token;
+  const d = await r.json().catch(() => ({}));
+  if (d && d.token) {
+    auth = { kind: 'bearer', value: d.token };
+  } else {
+    const m = (r.headers.get('set-cookie') || '').match(/BEARER=([^;]+)/i);
+    if (!m) throw new Error('INPI login: no token nor cookie');
+    auth = { kind: 'cookie', value: m[1] };
+  }
+  authExpiry = Date.now() + 50 * 60 * 1000;
+  return auth;
 }
 
 module.exports = async (req, res) => {
@@ -38,10 +44,11 @@ module.exports = async (req, res) => {
   if (!id) return res.status(400).json({ error: 'missing_id' });
 
   try {
-    const t = await getToken();
-    const r = await fetch(`${BASE}/api/formalities/${id}/synthesis`, {
-      headers: { Authorization: `Bearer ${t}` },
-    });
+    const a = await getAuth();
+    const authHeaders = a.kind === 'bearer'
+      ? { Authorization: `Bearer ${a.value}` }
+      : { Cookie: `BEARER=${a.value}` };
+    const r = await fetch(`${BASE}/api/formalities/${id}/synthesis`, { headers: authHeaders });
     if (r.status === 404) return res.status(404).json({ error: 'synthesis_not_found' });
     if (!r.ok) {
       const txt = await r.text();
