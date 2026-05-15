@@ -1,0 +1,9 @@
+{
+  "name": "compta",
+  "version": "0.1.0",
+  "private": true,
+  "engines": { "node": "20.x" },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.45.0"
+  }
+}
