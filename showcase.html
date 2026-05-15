@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Compta — Showcase</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700&family=Geist+Mono:wght@400;500&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+
+  <style>
+    html, body { margin: 0; padding: 0; height: 100%; overflow: hidden; }
+    .sc-frame {
+      width: 100%; height: 100%;
+      border: none;
+      background: white;
+      display: block;
+    }
+    /* mobile iframe should render at mobile width */
+    .mobile-wrap {
+      width: 100%; height: 100%;
+      overflow: hidden;
+      border-radius: 38px;
+    }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+  <script type="text/babel" src="design-canvas.jsx"></script>
+  <script type="text/babel" src="ios-frame.jsx"></script>
+  <script type="text/babel">
+    /* eslint-disable */
+
+    const LpDesktop = () => (
+      <iframe className="sc-frame" src="index.html" title="Landing desktop" />
+    );
+
+    const AppFrame = ({ route = 'dashboard', d, query }) => {
+      let src = 'app.html';
+      const params = [];
+      if (route) params.push(`route=${route}`);
+      if (d) params.push(`d=${d}`);
+      if (query) params.push(query);
+      if (params.length) src += '?' + params.join('&');
+      return <iframe className="sc-frame" src={src} title={route} />;
+    };
+
+    const MobileFrame = ({ src, title }) => (
+      <IOSDevice width={390} height={780} dark={false}>
+        <iframe
+          src={src}
+          title={title}
+          style={{
+            width: '100%', height: '100%', border: 'none',
+            background: 'white',
+            display: 'block',
+          }}
+        />
+      </IOSDevice>
+    );
+
+    function Showcase() {
+      return (
+        <DesignCanvas>
+          <DCSection id="lp" title="Landing page" subtitle="Présentation publique · acquisition">
+            <DCArtboard id="lp-desktop" label="Desktop · 1440 × 900" width={1440} height={900}>
+              <LpDesktop />
+            </DCArtboard>
+            <DCArtboard id="lp-mobile" label="Mobile · iPhone" width={420} height={820}>
+              <MobileFrame src="index.html" title="LP mobile" />
+            </DCArtboard>
+          </DCSection>
+
+          <DCSection id="app-desktop" title="App · Desktop" subtitle="Espace auto-entrepreneur post-login">
+            <DCArtboard id="dash" label="Tableau de bord" width={1280} height={820}>
+              <AppFrame route="dashboard" />
+            </DCArtboard>
+            <DCArtboard id="dossiers" label="Mes dossiers" width={1280} height={820}>
+              <AppFrame route="dossiers" />
+            </DCArtboard>
+            <DCArtboard id="dossier-detail" label="Détail dossier · Régularisation" width={1280} height={920}>
+              <AppFrame route="dossier-detail" d="CMP-48184" />
+            </DCArtboard>
+            <DCArtboard id="dossier-valid" label="Détail dossier · Validé" width={1280} height={920}>
+              <AppFrame route="dossier-detail" d="CMP-48202" />
+            </DCArtboard>
+            <DCArtboard id="nouveau" label="Nouveau dossier · Choix" width={1280} height={820}>
+              <AppFrame route="nouveau" />
+            </DCArtboard>
+            <DCArtboard id="declarations" label="Déclarations CA" width={1280} height={820}>
+              <AppFrame route="declarations" />
+            </DCArtboard>
+            <DCArtboard id="documents" label="Documents" width={1280} height={820}>
+              <AppFrame route="documents" />
+            </DCArtboard>
+            <DCArtboard id="notifs" label="Notifications" width={1280} height={820}>
+              <AppFrame route="notifications" />
+            </DCArtboard>
+            <DCArtboard id="profil" label="Profil" width={1280} height={820}>
+              <AppFrame route="profil" />
+            </DCArtboard>
+            <DCArtboard id="parametres" label="Paramètres" width={1280} height={820}>
+              <AppFrame route="parametres" />
+            </DCArtboard>
+          </DCSection>
+
+          <DCSection id="app-mobile" title="App · Mobile" subtitle="Même app, vue iPhone (sidebar → bottom nav)">
+            <DCArtboard id="m-dash" label="Dashboard mobile" width={420} height={820}>
+              <MobileFrame src="app.html?route=dashboard" title="Dashboard mobile" />
+            </DCArtboard>
+            <DCArtboard id="m-dossiers" label="Dossiers mobile" width={420} height={820}>
+              <MobileFrame src="app.html?route=dossiers" title="Dossiers mobile" />
+            </DCArtboard>
+            <DCArtboard id="m-detail" label="Détail dossier mobile" width={420} height={820}>
+              <MobileFrame src="app.html?route=dossier-detail&d=CMP-48184" title="Detail mobile" />
+            </DCArtboard>
+            <DCArtboard id="m-nouveau" label="Nouveau dossier mobile" width={420} height={820}>
+              <MobileFrame src="app.html?route=nouveau" title="Nouveau mobile" />
+            </DCArtboard>
+            <DCArtboard id="m-notifs" label="Notifications mobile" width={420} height={820}>
+              <MobileFrame src="app.html?route=notifications" title="Notifs mobile" />
+            </DCArtboard>
+            <DCArtboard id="m-profil" label="Profil mobile" width={420} height={820}>
+              <MobileFrame src="app.html?route=profil" title="Profil mobile" />
+            </DCArtboard>
+          </DCSection>
+        </DesignCanvas>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<Showcase />);
+  </script>
+</body>
+</html>
