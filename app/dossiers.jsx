@@ -14,9 +14,13 @@ const DossiersList = ({ setRoute, setActiveDossier }) => {
     let cancelled = false;
     (async () => {
       try {
-        const items = await window.ComptaAPI.fetchFormalites({ itemsPerPage: 100 });
-        if (!cancelled && items.length > 0) {
-          setAllRows(items);
+        const [local, inpi] = await Promise.all([
+          window.ComptaAPI.fetchLocalDossiers().catch(() => []),
+          window.ComptaAPI.fetchFormalites({ itemsPerPage: 100 }).catch(() => []),
+        ]);
+        const merged = [...local, ...inpi];
+        if (!cancelled && merged.length > 0) {
+          setAllRows(merged);
           setApiError(null);
         }
       } catch (e) {

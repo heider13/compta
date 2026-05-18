@@ -183,6 +183,271 @@ app.post(
   }),
 );
 
+app.post(
+  '/api/admin/dossiers/:id/validate',
+  requireUser,
+  requireAdmin,
+  asyncRoute(async (req, res) => {
+    const { sendToInpi = false } = req.body || {};
+    const { data: dossier, error: dErr } = await supabaseAdmin
+      .from('dossiers')
+      .select('*')
+      .eq('id', req.params.id)
+      .single();
+    if (dErr) return res.status(404).json({ error: 'not_found' });
+    if (dossier.statut !== 'AWAITING_VALIDATION') {
+      return res.status(409).json({ error: 'wrong_status', current: dossier.statut });
+    }
+
+    let inpiResult = null;
+    let inpiError = null;
+    let nextStatus = 'VALIDATED_INTERNAL';
+
+    if (sendToInpi && dossier.inpi_content) {
+      try {
+        const payload = {
+          companyName: dossier.client_name,
+          referenceMandataire: dossier.reference,
+          nomDossier: dossier.client_name,
+          typeFormalite: dossier.type_formalite === 'CREATION' ? 'C' : dossier.type_formalite === 'MODIFICATION' ? 'M' : 'R',
+          typePersonne: 'P',
+          diffusionINSEE: 'O',
+          indicateurEntreeSortieRegistre: true,
+          content: dossier.inpi_content,
+        };
+        inpiResult = await inpi.createFormality(payload);
+        nextStatus = 'RECEIVED';
+      } catch (e) {
+        inpiError = String(e.message);
+        nextStatus = 'VALIDATED_INTERNAL';
+      }
+    }
+
+    const update = { statut: nextStatus };
+    if (inpiResult?.id) update.inpi_reference = String(inpiResult.id);
+
+    const { data: updated, error: uErr } = await supabaseAdmin
+      .from('dossiers')
+      .update(update)
+      .eq('id', req.params.id)
+      .select()
+      .single();
+    if (uErr) return res.status(500).json({ error: 'db_error', detail: uErr.message });
+
+    res.json({ dossier: updated, inpi: inpiResult, inpiError });
+  }),
+);
+
+// ─── Client endpoints ──────────────────────────────────────
+app.get(
+  '/api/dossiers',
+  requireUser,
+  asyncRoute(async (req, res) => {
+    const q = supabaseAdmin
+      .from('dossiers')
+      .select('*')
+      .order('updated_at', { ascending: false });
+    const filtered = req.profile.role === 'admin' ? q : q.eq('user_id', req.user.id);
+    const { data, error } = await filtered;
+    if (error) return res.status(500).json({ error: 'db_error', detail: error.message });
+    res.json({ items: data || [] });
+  }),
+);
+
+app.post(
+  '/api/dossiers',
+  requireUser,
+  asyncRoute(async (req, res) => {
+    const { client_name, type_formalite, inpi_content } = req.body || {};
+    if (!client_name || !type_formalite) {
+      return res.status(400).json({ error: 'missing_fields', required: ['client_name', 'type_formalite'] });
+    }
+    if (!['CREATION', 'MODIFICATION', 'RADIATION'].includes(type_formalite)) {
+      return res.status(400).json({ error: 'invalid_type_formalite' });
+    }
+    const ref = `CMP-${Date.now().toString(36).toUpperCase()}`;
+    const { data, error } = await supabaseAdmin
+      .from('dossiers')
+      .insert({
+        user_id: req.user.id,
+        reference: ref,
+        client_name,
+        type_formalite,
+        statut: 'DRAFT',
+        ...(inpi_content ? { inpi_content } : {}),
+      })
+      .select()
+      .single();
+    if (error) return res.status(500).json({ error: 'db_error', detail: error.message });
+    res.status(201).json({ dossier: data });
+  }),
+);
+
+app.get(
+  '/api/dossiers/:id',
+  requireUser,
+  asyncRoute(async (req, res) => {
+    const { data: dossier, error } = await supabaseAdmin
+      .from('dossiers')
+      .select('*')
+      .eq('id', req.params.id)
+      .single();
+    if (error) return res.status(404).json({ error: 'not_found' });
+    if (req.profile.role !== 'admin' && dossier.user_id !== req.user.id) {
+      return res.status(403).json({ error: 'forbidden' });
+    }
+    const { data: obs } = await supabaseAdmin
+      .from('dossier_observations')
+      .select('*')
+      .eq('dossier_id', req.params.id)
+      .order('created_at', { ascending: true });
+    const { data: docs } = await supabaseAdmin
+      .from('dossier_documents')
+      .select('*')
+      .eq('dossier_id', req.params.id)
+      .order('created_at', { ascending: true });
+    res.json({ dossier, observations: obs || [], documents: docs || [] });
+  }),
+);
+
+app.put(
+  '/api/dossiers/:id',
+  requireUser,
+  asyncRoute(async (req, res) => {
+    const { data: dossier, error } = await supabaseAdmin
+      .from('dossiers')
+      .select('*')
+      .eq('id', req.params.id)
+      .single();
+    if (error) return res.status(404).json({ error: 'not_found' });
+    if (dossier.user_id !== req.user.id) return res.status(403).json({ error: 'forbidden' });
+    if (!['DRAFT', 'INTERNAL_AMENDMENT_PENDING'].includes(dossier.statut)) {
+      return res.status(409).json({ error: 'not_editable', current: dossier.statut });
+    }
+    const allowed = ['client_name', 'type_formalite', 'naf_code', 'nature', 'siren', 'inpi_content'];
+    const patch = {};
+    for (const k of allowed) if (k in (req.body || {})) patch[k] = req.body[k];
+    const { data: updated, error: uErr } = await supabaseAdmin
+      .from('dossiers')
+      .update(patch)
+      .eq('id', req.params.id)
+      .select()
+      .single();
+    if (uErr) return res.status(500).json({ error: 'db_error', detail: uErr.message });
+    res.json({ dossier: updated });
+  }),
+);
+
+app.post(
+  '/api/dossiers/:id/submit',
+  requireUser,
+  asyncRoute(async (req, res) => {
+    const { data: dossier, error } = await supabaseAdmin
+      .from('dossiers')
+      .select('*')
+      .eq('id', req.params.id)
+      .single();
+    if (error) return res.status(404).json({ error: 'not_found' });
+    if (dossier.user_id !== req.user.id) return res.status(403).json({ error: 'forbidden' });
+    if (!['DRAFT', 'INTERNAL_AMENDMENT_PENDING'].includes(dossier.statut)) {
+      return res.status(409).json({ error: 'not_submittable', current: dossier.statut });
+    }
+    const { data: updated, error: uErr } = await supabaseAdmin
+      .from('dossiers')
+      .update({ statut: 'AWAITING_VALIDATION' })
+      .eq('id', req.params.id)
+      .select()
+      .single();
+    if (uErr) return res.status(500).json({ error: 'db_error', detail: uErr.message });
+    res.json({ dossier: updated });
+  }),
+);
+
+app.post(
+  '/api/dossiers/:id/observations',
+  requireUser,
+  asyncRoute(async (req, res) => {
+    const { message } = req.body || {};
+    if (!message?.trim()) return res.status(400).json({ error: 'empty_message' });
+    const { data: dossier } = await supabaseAdmin
+      .from('dossiers')
+      .select('user_id')
+      .eq('id', req.params.id)
+      .single();
+    if (!dossier) return res.status(404).json({ error: 'not_found' });
+    const isOwn = dossier.user_id === req.user.id;
+    if (!isOwn && req.profile.role !== 'admin') return res.status(403).json({ error: 'forbidden' });
+    const { data, error } = await supabaseAdmin
+      .from('dossier_observations')
+      .insert({
+        dossier_id: req.params.id,
+        author_id: req.user.id,
+        author_role: req.profile.role,
+        message: message.trim(),
+      })
+      .select()
+      .single();
+    if (error) return res.status(500).json({ error: 'db_error', detail: error.message });
+    res.status(201).json(data);
+  }),
+);
+
+app.post(
+  '/api/dossiers/:id/documents',
+  requireUser,
+  asyncRoute(async (req, res) => {
+    const { name, storage_path, size_bytes, mime_type } = req.body || {};
+    if (!name || !storage_path) return res.status(400).json({ error: 'missing_fields' });
+    const { data: dossier } = await supabaseAdmin
+      .from('dossiers')
+      .select('user_id')
+      .eq('id', req.params.id)
+      .single();
+    if (!dossier) return res.status(404).json({ error: 'not_found' });
+    if (dossier.user_id !== req.user.id && req.profile.role !== 'admin') {
+      return res.status(403).json({ error: 'forbidden' });
+    }
+    const { data, error } = await supabaseAdmin
+      .from('dossier_documents')
+      .insert({
+        dossier_id: req.params.id,
+        name,
+        file_path: storage_path,
+        size_bytes: size_bytes || null,
+        mime_type: mime_type || null,
+        status: 'TRANSMIS',
+      })
+      .select()
+      .single();
+    if (error) return res.status(500).json({ error: 'db_error', detail: error.message });
+    res.status(201).json(data);
+  }),
+);
+
+app.delete(
+  '/api/dossiers/:id/documents/:docId',
+  requireUser,
+  asyncRoute(async (req, res) => {
+    const { data: doc } = await supabaseAdmin
+      .from('dossier_documents')
+      .select('*, dossier:dossiers!inner(user_id, statut)')
+      .eq('id', req.params.docId)
+      .single();
+    if (!doc) return res.status(404).json({ error: 'not_found' });
+    if (doc.dossier.user_id !== req.user.id && req.profile.role !== 'admin') {
+      return res.status(403).json({ error: 'forbidden' });
+    }
+    if (!['DRAFT', 'INTERNAL_AMENDMENT_PENDING'].includes(doc.dossier.statut)) {
+      return res.status(409).json({ error: 'not_deletable' });
+    }
+    if (doc.file_path) {
+      await supabaseAdmin.storage.from('dossier-docs').remove([doc.file_path]);
+    }
+    await supabaseAdmin.from('dossier_documents').delete().eq('id', req.params.docId);
+    res.status(204).end();
+  }),
+);
+
 
 app.get(
   '/api/inpi-status',

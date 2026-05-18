@@ -71,7 +71,9 @@ function App() {
     switch (route) {
       case 'dashboard':       return <AppDashboard user={ME} setRoute={setRoute} setActiveDossier={setActiveDossier} />;
       case 'dossiers':        return <DossiersList setRoute={setRoute} setActiveDossier={setActiveDossier} />;
-      case 'dossier-detail':  return <DossierDetail dossier={activeDossier || SEED_DOSSIERS[0]} setRoute={setRoute} />;
+      case 'dossier-detail':  return (activeDossier?.source === 'local')
+        ? <DossierLocalDetail dossier={activeDossier} setRoute={setRoute} />
+        : <DossierDetail dossier={activeDossier || SEED_DOSSIERS[0]} setRoute={setRoute} />;
       case 'nouveau':         return <Nouveau setRoute={setRoute} setActiveDossier={setActiveDossier} />;
       case 'declarations':    return <Declarations />;
       case 'documents':       return <Documents />;

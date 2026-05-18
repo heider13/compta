@@ -115,6 +115,24 @@
     </div>
   </div>
 
+  <style>
+    .modal-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,.4); display: none; align-items: center; justify-content: center; z-index: 1000; padding: 20px; }
+    .modal-backdrop.show { display: flex; }
+    .modal { background: white; border-radius: 16px; width: 100%; max-width: 720px; max-height: 90vh; overflow: auto; padding: 28px; }
+    .modal h2 { margin: 0 0 4px; font-size: 20px; }
+    .modal .close { float: right; background: none; border: none; cursor: pointer; font-size: 22px; color: var(--ink-500); }
+    .obs-bubble { padding: 12px; border-radius: 10px; margin-bottom: 8px; }
+    .obs-admin { background: #FEF3C7; border-left: 3px solid #F59E0B; }
+    .obs-client { background: var(--ink-50); border-left: 3px solid var(--accent); }
+  </style>
+
+  <div class="modal-backdrop" id="modal">
+    <div class="modal">
+      <button class="close" onclick="closeModal()">×</button>
+      <div id="modalBody">Loading…</div>
+    </div>
+  </div>
+
   <script>
     const TYPE_LABEL = { CREATION: 'Création AE', MODIFICATION: 'Modification', RADIATION: 'Radiation' };
     const STATUS_LABEL = {
@@ -122,6 +140,7 @@
       AWAITING_VALIDATION: { label: 'À valider', cls: 'pill-awaiting' },
       INTERNAL_AMENDMENT_PENDING: { label: 'En correction', cls: 'pill-amendment' },
       VALIDATED_INTERNAL: { label: 'Validé', cls: 'pill-validated' },
+      RECEIVED: { label: 'Reçu INPI', cls: 'pill-validated' },
     };
 
     function formatDate(iso) {
@@ -132,7 +151,7 @@
     function renderRow(d) {
       const status = STATUS_LABEL[d.statut] || { label: d.statut, cls: 'pill-draft' };
       const author = d.profiles ? `${d.profiles.first_name || ''} ${d.profiles.last_name || ''}`.trim() : '';
-      return `<div class="row" data-id="${d.id}">
+      return `<div class="row" data-id="${d.id}" onclick="openDossier('${d.id}')">
         <span class="ref">${d.reference || d.id.slice(0, 8)}</span>
         <div>
           <div class="name">${d.client_name || '(sans nom)'}</div>
@@ -142,6 +161,139 @@
         <span class="when">${formatDate(d.updated_at || d.created_at)}</span>
         <span class="status-pill ${status.cls}">${status.label}</span>
       </div>`;
+    }
+
+    let currentDossier = null;
+
+    async function getJwt() {
+      const { data } = await window.supabaseClient.auth.getSession();
+      return data.session?.access_token;
+    }
+
+    async function apiFetch(path, opts = {}) {
+      const jwt = await getJwt();
+      const r = await fetch(`${ADMIN_API_BASE}${path}`, {
+        ...opts,
+        headers: { ...(opts.headers || {}), Authorization: `Bearer ${jwt}` },
+      });
+      if (!r.ok) throw new Error(`API ${r.status}: ${await r.text()}`);
+      return r.json();
+    }
+
+    function escapeHtml(s) {
+      return String(s || '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    }
+
+    async function openDossier(id) {
+      currentDossier = id;
+      document.getElementById('modal').classList.add('show');
+      document.getElementById('modalBody').innerHTML = '<p>Chargement…</p>';
+      try {
+        const { dossier, observations = [], documents = [] } = await apiFetch(`/api/admin/dossiers/${id}`);
+        const author = dossier.profiles ? `${dossier.profiles.first_name || ''} ${dossier.profiles.last_name || ''}`.trim() : '';
+        const status = STATUS_LABEL[dossier.statut] || { label: dossier.statut, cls: 'pill-draft' };
+        const canValidate = dossier.statut === 'AWAITING_VALIDATION';
+
+        const obsHtml = observations.length
+          ? observations.map(o => `
+            <div class="obs-bubble ${o.author_role === 'admin' ? 'obs-admin' : 'obs-client'}">
+              <div style="font-size: 11px; color: var(--ink-500); margin-bottom: 4px; display: flex; justify-content: space-between;">
+                <strong>${o.author_role === 'admin' ? 'Toi (admin)' : escapeHtml(author || 'Client')}</strong>
+                <span class="mono">${formatDate(o.created_at)}</span>
+              </div>
+              <div style="font-size: 13px; white-space: pre-wrap;">${escapeHtml(o.message)}</div>
+            </div>`).join('')
+          : '<p style="color: var(--ink-500); font-size: 13px;">Aucune observation.</p>';
+
+        const docsHtml = documents.length
+          ? documents.map(doc => `
+            <div style="display: flex; gap: 10px; align-items: center; padding: 8px 12px; border: 1px solid var(--ink-150); border-radius: 8px; margin-bottom: 6px;">
+              <div style="flex: 1;">
+                <div style="font-size: 13px; font-weight: 500;">${escapeHtml(doc.name)}</div>
+                <div style="font-size: 11px; color: var(--ink-500);">${doc.size_bytes ? (doc.size_bytes/1024).toFixed(0) + ' Ko' : ''}</div>
+              </div>
+              <button class="btn btn-ghost btn-sm" onclick="downloadDoc('${doc.file_path}')">Voir</button>
+            </div>`).join('')
+          : '<p style="color: var(--ink-500); font-size: 13px;">Aucune pièce jointe.</p>';
+
+        document.getElementById('modalBody').innerHTML = `
+          <h2>${escapeHtml(dossier.client_name)}</h2>
+          <div style="font-size: 13px; color: var(--ink-500); margin-bottom: 4px;">
+            <span class="mono">${escapeHtml(dossier.reference)}</span> · ${TYPE_LABEL[dossier.type_formalite] || dossier.type_formalite}
+            · Soumis par ${escapeHtml(author)}
+          </div>
+          <div style="margin-bottom: 18px;"><span class="status-pill ${status.cls}">${status.label}</span></div>
+
+          <h3 style="font-size: 14px; margin: 18px 0 8px;">Métadonnées</h3>
+          <pre style="background: var(--ink-50); padding: 12px; border-radius: 8px; font-size: 11px; overflow: auto; max-height: 200px;">${escapeHtml(JSON.stringify(dossier.inpi_content, null, 2))}</pre>
+
+          <h3 style="font-size: 14px; margin: 18px 0 8px;">Pièces jointes</h3>
+          ${docsHtml}
+
+          <h3 style="font-size: 14px; margin: 18px 0 8px;">Observations</h3>
+          ${obsHtml}
+
+          <textarea id="obsInput" placeholder="Message pour le client…" rows="3" style="width: 100%; padding: 10px; border: 1px solid var(--ink-200); border-radius: 8px; font-family: inherit; font-size: 13px; margin-top: 8px;"></textarea>
+
+          <div style="display: flex; gap: 10px; margin-top: 14px; justify-content: flex-end; flex-wrap: wrap;">
+            <button class="btn btn-ghost btn-sm" onclick="addObs()">Ajouter observation</button>
+            ${dossier.statut === 'AWAITING_VALIDATION' ? `
+              <button class="btn btn-ghost btn-sm" style="border: 1px solid #F59E0B; color: #92400E;" onclick="requestAmendment()">Demander correction</button>
+              <button class="btn btn-accent btn-sm" onclick="validate(false)">Valider (sans INPI)</button>
+              <button class="btn btn-accent btn-sm" onclick="validate(true)" style="background: var(--accent-ink);">Valider + envoyer INPI</button>
+            ` : ''}
+          </div>
+        `;
+      } catch (e) {
+        document.getElementById('modalBody').innerHTML = `<p style="color: #b42318;">Erreur : ${e.message}</p>`;
+      }
+    }
+
+    function closeModal() { document.getElementById('modal').classList.remove('show'); currentDossier = null; }
+
+    async function downloadDoc(path) {
+      const { data, error } = await window.supabaseClient.storage.from('dossier-docs').createSignedUrl(path, 300);
+      if (error) return alert('Erreur : ' + error.message);
+      window.open(data.signedUrl, '_blank');
+    }
+
+    async function addObs() {
+      const msg = document.getElementById('obsInput').value.trim();
+      if (!msg) return;
+      try {
+        await apiFetch(`/api/dossiers/${currentDossier}/observations`, {
+          method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ message: msg }),
+        });
+        await openDossier(currentDossier);
+      } catch (e) { alert('Erreur : ' + e.message); }
+    }
+
+    async function requestAmendment() {
+      const msg = document.getElementById('obsInput').value.trim();
+      if (!msg) return alert('Écris un message expliquant ce qui doit être corrigé.');
+      if (!confirm('Renvoyer ce dossier au client pour correction ?')) return;
+      try {
+        await apiFetch(`/api/admin/dossiers/${currentDossier}/request-amendment`, {
+          method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ message: msg }),
+        });
+        closeModal();
+        await load();
+      } catch (e) { alert('Erreur : ' + e.message); }
+    }
+
+    async function validate(sendToInpi) {
+      const verb = sendToInpi ? 'valider ET envoyer à l\'INPI maintenant' : 'valider en interne (sans envoi INPI)';
+      if (!confirm(`Confirmer : ${verb} ?`)) return;
+      try {
+        const r = await apiFetch(`/api/admin/dossiers/${currentDossier}/validate`, {
+          method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ sendToInpi }),
+        });
+        if (r.inpiError) alert('Validé en interne. INPI a refusé : ' + r.inpiError);
+        else if (r.inpi) alert('Envoyé à INPI ! ID : ' + r.inpi.id);
+        else alert('Validé en interne.');
+        closeModal();
+        await load();
+      } catch (e) { alert('Erreur : ' + e.message); }
     }
 
     async function load() {
