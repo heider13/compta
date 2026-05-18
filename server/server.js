@@ -88,23 +88,28 @@ app.get(
 );
 
 // ─── Admin endpoints ───────────────────────────────────────
+async function attachProfiles(dossiers) {
+  if (!dossiers.length) return dossiers;
+  const userIds = [...new Set(dossiers.map((d) => d.user_id))];
+  const { data: profiles } = await supabaseAdmin
+    .from('profiles')
+    .select('id, first_name, last_name')
+    .in('id', userIds);
+  const byId = Object.fromEntries((profiles || []).map((p) => [p.id, p]));
+  return dossiers.map((d) => ({ ...d, profiles: byId[d.user_id] || null }));
+}
+
 app.get(
   '/api/admin/dossiers',
   requireUser,
   requireAdmin,
   asyncRoute(async (req, res) => {
     const { status } = req.query;
-    let q = supabaseAdmin
-      .from('dossiers')
-      .select('*, profiles!dossiers_user_id_fkey(first_name, last_name)')
-      .order('updated_at', { ascending: false });
-    if (status) {
-      const arr = Array.isArray(status) ? status : [status];
-      q = q.in('statut', arr);
-    }
+    let q = supabaseAdmin.from('dossiers').select('*').order('updated_at', { ascending: false });
+    if (status) q = q.in('statut', Array.isArray(status) ? status : [status]);
     const { data, error } = await q;
     if (error) return res.status(500).json({ error: 'db_error', detail: error.message });
-    res.json({ items: data });
+    res.json({ items: await attachProfiles(data || []) });
   }),
 );
 
@@ -115,16 +120,17 @@ app.get(
   asyncRoute(async (req, res) => {
     const { data, error } = await supabaseAdmin
       .from('dossiers')
-      .select('*, profiles!dossiers_user_id_fkey(first_name, last_name)')
+      .select('*')
       .eq('id', req.params.id)
       .single();
     if (error) return res.status(404).json({ error: 'not_found' });
+    const [withProfile] = await attachProfiles([data]);
     const { data: obs } = await supabaseAdmin
       .from('dossier_observations')
       .select('*')
       .eq('dossier_id', req.params.id)
       .order('created_at', { ascending: true });
-    res.json({ dossier: data, observations: obs || [] });
+    res.json({ dossier: withProfile, observations: obs || [] });
   }),
 );
 
