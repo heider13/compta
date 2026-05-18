@@ -5,9 +5,9 @@ After=network.target
 [Service]
 Type=simple
 User=ubuntu
-WorkingDirectory=/opt/compta-proxy
+WorkingDirectory=/opt/compta-proxy/server
 EnvironmentFile=/etc/compta-proxy.env
-ExecStart=/usr/bin/node /opt/compta-proxy/server.js
+ExecStart=/usr/bin/node /opt/compta-proxy/server/server.js
 Restart=always
 RestartSec=3
 StandardOutput=append:/var/log/compta-proxy.log
