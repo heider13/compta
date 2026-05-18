@@ -1,20 +1,43 @@
 /* eslint-disable */
 // Dossiers list + Dossier detail (with timeline)
 
-const FILTERS = [
-  { id: 'all', label: 'Tous', count: SEED_DOSSIERS.length },
-  { id: 'active', label: 'En cours', count: SEED_DOSSIERS.filter(d => !['VALIDATED', 'REJECTED'].includes(d.statut)).length },
-  { id: 'action', label: 'Action requise', count: SEED_DOSSIERS.filter(d => ['SIGNATURE_PENDING', 'AMENDMENT_PENDING', 'PAYMENT_PENDING'].includes(d.statut)).length },
-  { id: 'done', label: 'Validés', count: SEED_DOSSIERS.filter(d => d.statut === 'VALIDATED').length },
-];
+const ACTION_STATUSES = ['SIGNATURE_PENDING', 'AMENDMENT_PENDING', 'PAYMENT_PENDING', 'AMENDMENT_SIGNATURE_PENDING', 'AMENDMENT_PAYMENT_PENDING'];
 
 const DossiersList = ({ setRoute, setActiveDossier }) => {
   const [filter, setFilter] = React.useState('all');
   const [query, setQuery] = React.useState('');
+  const [allRows, setAllRows] = React.useState(SEED_DOSSIERS);
+  const [loading, setLoading] = React.useState(true);
+  const [apiError, setApiError] = React.useState(null);
 
-  let rows = SEED_DOSSIERS;
+  React.useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const items = await window.ComptaAPI.fetchFormalites({ itemsPerPage: 100 });
+        if (!cancelled && items.length > 0) {
+          setAllRows(items);
+          setApiError(null);
+        }
+      } catch (e) {
+        if (!cancelled) setApiError(e.message);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
+  const FILTERS = React.useMemo(() => ([
+    { id: 'all',    label: 'Tous',            count: allRows.length },
+    { id: 'active', label: 'En cours',        count: allRows.filter(d => !['VALIDATED', 'REJECTED'].includes(d.statut)).length },
+    { id: 'action', label: 'Action requise',  count: allRows.filter(d => ACTION_STATUSES.includes(d.statut)).length },
+    { id: 'done',   label: 'Validés',         count: allRows.filter(d => d.statut === 'VALIDATED').length },
+  ]), [allRows]);
+
+  let rows = allRows;
   if (filter === 'active') rows = rows.filter(d => !['VALIDATED', 'REJECTED'].includes(d.statut));
-  if (filter === 'action') rows = rows.filter(d => ['SIGNATURE_PENDING', 'AMENDMENT_PENDING', 'PAYMENT_PENDING'].includes(d.statut));
+  if (filter === 'action') rows = rows.filter(d => ACTION_STATUSES.includes(d.statut));
   if (filter === 'done') rows = rows.filter(d => d.statut === 'VALIDATED');
   if (query) rows = rows.filter(d => (d.client + d.id + d.type).toLowerCase().includes(query.toLowerCase()));
 
@@ -23,7 +46,10 @@ const DossiersList = ({ setRoute, setActiveDossier }) => {
       <div className="page-head">
         <div>
           <h1>Mes dossiers</h1>
-          <p>{SEED_DOSSIERS.length} dossiers · {FILTERS.find(f => f.id === 'action').count} en attente d'action</p>
+          <p>
+            {loading ? 'Chargement…' : `${allRows.length} dossiers · ${FILTERS.find(f => f.id === 'action').count} en attente d'action`}
+            {apiError && <span style={{ color: '#b42318', marginLeft: 8, fontSize: 12 }}>· données de démo (API: {apiError})</span>}
+          </p>
         </div>
         <button className="btn btn-accent" onClick={() => setRoute('nouveau')}>
           <I.Plus size={16} /> Nouveau dossier
