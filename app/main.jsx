@@ -25,14 +25,11 @@ function writeQuery(next) {
   history.pushState(null, '', qs ? `?${qs}` : window.location.pathname);
 }
 
-const ME = {
-  firstName: 'Jean',
-  lastName: 'Dupont',
-  name: 'Jean Dupont',
-  email: 'jean.dupont@compta.fr',
-  initials: 'JD',
-  plan: 'Plan Tranquillité',
-};
+function initialsFrom(first, last, email) {
+  const f = (first || '').trim(), l = (last || '').trim();
+  if (f || l) return ((f[0] || '') + (l[0] || '')).toUpperCase() || '??';
+  return (email || '??').slice(0, 2).toUpperCase();
+}
 
 function App() {
   const [route, setRouteState] = React.useState(readQuery().route);
@@ -40,6 +37,33 @@ function App() {
     const id = readQuery().dossierId;
     return id ? SEED_DOSSIERS.find(d => d.id === id) : null;
   });
+  const [me, setMe] = React.useState(null);
+
+  // Charge le profil du user connecté (et redirige admin vers admin.html)
+  React.useEffect(() => {
+    (async () => {
+      try {
+        const profile = await window.ComptaAPI.apiFetch('/api/me');
+        if (profile.role === 'admin') {
+          window.location.replace('admin.html');
+          return;
+        }
+        const first = profile.first_name || '';
+        const last = profile.last_name || '';
+        setMe({
+          firstName: first,
+          lastName: last,
+          name: ((first + ' ' + last).trim()) || profile.email,
+          email: profile.email,
+          initials: initialsFrom(first, last, profile.email),
+          plan: 'Auto-entrepreneur',
+          role: profile.role,
+        });
+      } catch (e) {
+        window.location.replace('auth/login.html');
+      }
+    })();
+  }, []);
 
   // Sync on URL change (back/forward)
   React.useEffect(() => {
@@ -67,9 +91,17 @@ function App() {
   // Highlight `dossiers` in sidebar when on dossier-detail
   const sidebarRoute = route === 'dossier-detail' ? 'dossiers' : route;
 
+  if (!me) {
+    return (
+      <div style={{ display: 'grid', placeItems: 'center', height: '100vh', color: 'var(--ink-500)', fontSize: 14 }}>
+        Chargement…
+      </div>
+    );
+  }
+
   const renderPage = () => {
     switch (route) {
-      case 'dashboard':       return <AppDashboard user={ME} setRoute={setRoute} setActiveDossier={setActiveDossier} />;
+      case 'dashboard':       return <AppDashboard user={me} setRoute={setRoute} setActiveDossier={setActiveDossier} />;
       case 'dossiers':        return <DossiersList setRoute={setRoute} setActiveDossier={setActiveDossier} />;
       case 'dossier-detail':  return (activeDossier?.source === 'local')
         ? <DossierLocalDetail dossier={activeDossier} setRoute={setRoute} />
@@ -78,17 +110,17 @@ function App() {
       case 'declarations':    return <Declarations />;
       case 'documents':       return <Documents />;
       case 'notifications':   return <Notifications />;
-      case 'profil':          return <Profil user={ME} />;
+      case 'profil':          return <Profil user={me} />;
       case 'parametres':      return <Parametres />;
-      default:                return <AppDashboard user={ME} setRoute={setRoute} setActiveDossier={setActiveDossier} />;
+      default:                return <AppDashboard user={me} setRoute={setRoute} setActiveDossier={setActiveDossier} />;
     }
   };
 
   return (
     <div className="app-shell">
-      <Sidebar route={sidebarRoute} setRoute={setRoute} user={ME} />
+      <Sidebar route={sidebarRoute} setRoute={setRoute} user={me} />
       <div className="app-main">
-        <Topbar route={route} user={ME} />
+        <Topbar route={route} user={me} />
         {renderPage()}
         <BottomNav route={sidebarRoute} setRoute={setRoute} />
       </div>
