@@ -53,6 +53,22 @@ const Sidebar = ({ route, setRoute, user }) => (
         <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--ink-900)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{user.name}</div>
         <div style={{ fontSize: 11, color: 'var(--ink-500)' }}>{user.plan}</div>
       </div>
+      <button
+        title="Déconnexion"
+        onClick={async () => {
+          if (window.supabaseClient) await window.supabaseClient.auth.signOut();
+          window.location.href = 'auth/login.html';
+        }}
+        style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 6, borderRadius: 6, color: 'var(--ink-500)', display: 'grid', placeItems: 'center' }}
+        onMouseEnter={e => { e.currentTarget.style.background = 'var(--ink-100)'; e.currentTarget.style.color = '#b42318'; }}
+        onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--ink-500)'; }}
+      >
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+          <polyline points="16 17 21 12 16 7" />
+          <line x1="21" y1="12" x2="9" y2="12" />
+        </svg>
+      </button>
     </div>
   </aside>
 );
