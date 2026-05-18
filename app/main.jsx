@@ -44,7 +44,10 @@ function App() {
     (async () => {
       try {
         const profile = await window.ComptaAPI.apiFetch('/api/me');
-        if (profile.role === 'admin') {
+        const sp = new URLSearchParams(window.location.search);
+        // Admin landing direct sur l'app sans paramètre → on l'envoie sur le dashboard admin
+        // (gardable via ?as=client si admin veut voir l'espace client)
+        if (profile.role === 'admin' && sp.get('as') !== 'client') {
           window.location.replace('admin.html');
           return;
         }
@@ -102,7 +105,7 @@ function App() {
   const renderPage = () => {
     switch (route) {
       case 'dashboard':       return <AppDashboard user={me} setRoute={setRoute} setActiveDossier={setActiveDossier} />;
-      case 'dossiers':        return <DossiersList setRoute={setRoute} setActiveDossier={setActiveDossier} />;
+      case 'dossiers':        return <DossiersList setRoute={setRoute} setActiveDossier={setActiveDossier} userRole={me.role} />;
       case 'dossier-detail':  return (activeDossier?.source === 'local')
         ? <DossierLocalDetail dossier={activeDossier} setRoute={setRoute} />
         : <DossierDetail dossier={activeDossier || SEED_DOSSIERS[0]} setRoute={setRoute} />;

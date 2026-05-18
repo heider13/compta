@@ -3,10 +3,10 @@
 
 const ACTION_STATUSES = ['SIGNATURE_PENDING', 'AMENDMENT_PENDING', 'PAYMENT_PENDING', 'AMENDMENT_SIGNATURE_PENDING', 'AMENDMENT_PAYMENT_PENDING'];
 
-const DossiersList = ({ setRoute, setActiveDossier }) => {
+const DossiersList = ({ setRoute, setActiveDossier, userRole }) => {
   const [filter, setFilter] = React.useState('all');
   const [query, setQuery] = React.useState('');
-  const [allRows, setAllRows] = React.useState(SEED_DOSSIERS);
+  const [allRows, setAllRows] = React.useState([]);
   const [loading, setLoading] = React.useState(true);
   const [apiError, setApiError] = React.useState(null);
 
@@ -14,12 +14,14 @@ const DossiersList = ({ setRoute, setActiveDossier }) => {
     let cancelled = false;
     (async () => {
       try {
-        const [local, inpi] = await Promise.all([
-          window.ComptaAPI.fetchLocalDossiers().catch(() => []),
-          window.ComptaAPI.fetchFormalites({ itemsPerPage: 100 }).catch(() => []),
-        ]);
+        // Client : seulement ses dossiers locaux (DB).
+        // Admin : dossiers locaux + formalités INPI globales du compte mandataire.
+        const local = await window.ComptaAPI.fetchLocalDossiers().catch(() => []);
+        const inpi = userRole === 'admin'
+          ? await window.ComptaAPI.fetchFormalites({ itemsPerPage: 100 }).catch(() => [])
+          : [];
         const merged = [...local, ...inpi];
-        if (!cancelled && merged.length > 0) {
+        if (!cancelled) {
           setAllRows(merged);
           setApiError(null);
         }
@@ -30,7 +32,7 @@ const DossiersList = ({ setRoute, setActiveDossier }) => {
       }
     })();
     return () => { cancelled = true; };
-  }, []);
+  }, [userRole]);
 
   const FILTERS = React.useMemo(() => ([
     { id: 'all',    label: 'Tous',            count: allRows.length },
@@ -92,7 +94,11 @@ const DossiersList = ({ setRoute, setActiveDossier }) => {
         {rows.length === 0 ? (
           <div style={{ padding: 64, textAlign: 'center', color: 'var(--ink-500)' }}>
             <I.Search size={32} style={{ opacity: 0.4, marginBottom: 12 }} />
-            <div style={{ fontSize: 14 }}>Aucun dossier ne correspond à votre recherche.</div>
+            <div style={{ fontSize: 14 }}>
+              {allRows.length === 0
+                ? "Vous n'avez pas encore de dossier. Cliquez sur \"Nouveau dossier\" pour commencer."
+                : 'Aucun dossier ne correspond à votre recherche.'}
+            </div>
           </div>
         ) : rows.map(d => (
           <div key={d.id}
