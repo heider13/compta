@@ -133,9 +133,10 @@
     window.addEventListener('load', () => {
       document.getElementById('signupForm').addEventListener('submit', async (e) => {
         e.preventDefault();
-        const { data, error } = await window.supabaseClient.auth.signUp({
-          email: document.getElementById('email').value,
-          password: document.getElementById('password').value,
+        const email = document.getElementById('email').value;
+        const password = document.getElementById('password').value;
+        const { data: signUpData, error: signUpErr } = await window.supabaseClient.auth.signUp({
+          email, password,
           options: {
             data: {
               first_name: document.getElementById('firstName').value,
@@ -143,19 +144,26 @@
             },
           },
         });
-        if (error) return showMsg(error.message, true);
-        if (data.session) {
-          try {
-            const r = await fetch('https://vps-84ac2579.vps.ovh.net/api/me', {
-              headers: { Authorization: `Bearer ${data.session.access_token}` },
-            });
-            const me = r.ok ? await r.json() : { role: 'client' };
-            window.location.href = me.role === 'admin' ? '../admin.html' : '../app.html';
-          } catch {
-            window.location.href = '../app.html';
+        if (signUpErr) return showMsg(signUpErr.message, true);
+
+        // Connecte tout de suite pour avoir une session
+        let session = signUpData.session;
+        if (!session) {
+          const { data: signInData, error: signInErr } = await window.supabaseClient.auth.signInWithPassword({ email, password });
+          if (signInErr) {
+            return showMsg('Compte créé. Vérifie ta boîte mail pour confirmer ton adresse.', false);
           }
-        } else {
-          showMsg('Compte créé. Vérifie ta boîte mail pour confirmer ton adresse.', false);
+          session = signInData.session;
+        }
+
+        try {
+          const r = await fetch('https://vps-84ac2579.vps.ovh.net/api/me', {
+            headers: { Authorization: `Bearer ${session.access_token}` },
+          });
+          const me = r.ok ? await r.json() : { role: 'client' };
+          window.location.href = me.role === 'admin' ? '../admin.html' : '../app.html';
+        } catch {
+          window.location.href = '../app.html';
         }
       });
 
