@@ -1,0 +1,17 @@
+[Unit]
+Description=Compta INPI Proxy
+After=network.target
+
+[Service]
+Type=simple
+User=ubuntu
+WorkingDirectory=/opt/compta-proxy
+EnvironmentFile=/etc/compta-proxy.env
+ExecStart=/usr/bin/node /opt/compta-proxy/server.js
+Restart=always
+RestartSec=3
+StandardOutput=append:/var/log/compta-proxy.log
+StandardError=append:/var/log/compta-proxy.log
+
+[Install]
+WantedBy=multi-user.target
