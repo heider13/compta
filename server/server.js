@@ -36,6 +36,17 @@ async function requireUser(req, res, next) {
   const { data, error } = await supabaseAdmin.auth.getUser(token);
   if (error || !data?.user) return res.status(401).json({ error: 'invalid_token' });
   req.user = data.user;
+  const { data: profile } = await supabaseAdmin
+    .from('profiles')
+    .select('role, first_name, last_name')
+    .eq('id', data.user.id)
+    .single();
+  req.profile = profile || { role: 'client', first_name: null, last_name: null };
+  next();
+}
+
+function requireAdmin(req, res, next) {
+  if (req.profile?.role !== 'admin') return res.status(403).json({ error: 'admin_required' });
   next();
 }
 
@@ -61,6 +72,111 @@ function asyncRoute(fn) {
 }
 
 app.get('/health', (req, res) => res.json({ ok: true, ts: Date.now() }));
+
+app.get(
+  '/api/me',
+  requireUser,
+  (req, res) => {
+    res.json({
+      id: req.user.id,
+      email: req.user.email,
+      role: req.profile.role,
+      first_name: req.profile.first_name,
+      last_name: req.profile.last_name,
+    });
+  },
+);
+
+// ─── Admin endpoints ───────────────────────────────────────
+app.get(
+  '/api/admin/dossiers',
+  requireUser,
+  requireAdmin,
+  asyncRoute(async (req, res) => {
+    const { status } = req.query;
+    let q = supabaseAdmin
+      .from('dossiers')
+      .select('*, profiles!dossiers_user_id_fkey(first_name, last_name)')
+      .order('updated_at', { ascending: false });
+    if (status) {
+      const arr = Array.isArray(status) ? status : [status];
+      q = q.in('statut', arr);
+    }
+    const { data, error } = await q;
+    if (error) return res.status(500).json({ error: 'db_error', detail: error.message });
+    res.json({ items: data });
+  }),
+);
+
+app.get(
+  '/api/admin/dossiers/:id',
+  requireUser,
+  requireAdmin,
+  asyncRoute(async (req, res) => {
+    const { data, error } = await supabaseAdmin
+      .from('dossiers')
+      .select('*, profiles!dossiers_user_id_fkey(first_name, last_name)')
+      .eq('id', req.params.id)
+      .single();
+    if (error) return res.status(404).json({ error: 'not_found' });
+    const { data: obs } = await supabaseAdmin
+      .from('dossier_observations')
+      .select('*')
+      .eq('dossier_id', req.params.id)
+      .order('created_at', { ascending: true });
+    res.json({ dossier: data, observations: obs || [] });
+  }),
+);
+
+app.post(
+  '/api/admin/dossiers/:id/observations',
+  requireUser,
+  requireAdmin,
+  asyncRoute(async (req, res) => {
+    const { message } = req.body || {};
+    if (!message?.trim()) return res.status(400).json({ error: 'empty_message' });
+    const { data, error } = await supabaseAdmin
+      .from('dossier_observations')
+      .insert({
+        dossier_id: req.params.id,
+        author_id: req.user.id,
+        author_role: 'admin',
+        message: message.trim(),
+      })
+      .select()
+      .single();
+    if (error) return res.status(500).json({ error: 'db_error', detail: error.message });
+    res.status(201).json(data);
+  }),
+);
+
+app.post(
+  '/api/admin/dossiers/:id/request-amendment',
+  requireUser,
+  requireAdmin,
+  asyncRoute(async (req, res) => {
+    const { message } = req.body || {};
+    if (!message?.trim()) return res.status(400).json({ error: 'empty_message' });
+    const { error: obsErr } = await supabaseAdmin
+      .from('dossier_observations')
+      .insert({
+        dossier_id: req.params.id,
+        author_id: req.user.id,
+        author_role: 'admin',
+        message: message.trim(),
+      });
+    if (obsErr) return res.status(500).json({ error: 'db_error', detail: obsErr.message });
+    const { data, error } = await supabaseAdmin
+      .from('dossiers')
+      .update({ statut: 'INTERNAL_AMENDMENT_PENDING' })
+      .eq('id', req.params.id)
+      .select()
+      .single();
+    if (error) return res.status(500).json({ error: 'db_error', detail: error.message });
+    res.json({ dossier: data });
+  }),
+);
+
 
 app.get(
   '/api/inpi-status',
