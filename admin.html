@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Compta · Espace admin</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700&family=Geist+Mono:wght@400;500&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="app-styles.css">
+
+  <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+  <script src="supabase-client.js"></script>
+  <script>
+    const ADMIN_API_BASE = 'https://vps-84ac2579.vps.ovh.net';
+    (async () => {
+      const { data } = await window.supabaseClient.auth.getSession();
+      if (!data.session) { window.location.replace('auth/login.html'); return; }
+      const r = await fetch(`${ADMIN_API_BASE}/api/me`, { headers: { Authorization: `Bearer ${data.session.access_token}` } });
+      if (!r.ok) { window.location.replace('auth/login.html'); return; }
+      const me = await r.json();
+      if (me.role !== 'admin') { window.location.replace('app.html'); return; }
+      window.__ME__ = me;
+    })();
+  </script>
+
+  <style>
+    body { background: var(--ink-50); margin: 0; font-family: 'Geist', system-ui, sans-serif; color: var(--ink-900); }
+    .admin-top {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 16px 32px; background: white; border-bottom: 1px solid var(--ink-150);
+    }
+    .admin-top .logo { display: flex; align-items: center; gap: 10px; font-weight: 600; font-size: 18px; }
+    .admin-top .logo-mark { width: 28px; height: 28px; background: var(--accent); color: white; display: grid; place-items: center; border-radius: 8px; }
+    .admin-badge { background: #FEF3C7; color: #92400E; padding: 4px 10px; border-radius: 999px; font-size: 11px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; }
+    .admin-content { max-width: 1200px; margin: 0 auto; padding: 32px; }
+    .admin-card { background: white; border: 1px solid var(--ink-150); border-radius: 14px; padding: 24px; margin-bottom: 20px; }
+    .admin-card h2 { margin: 0 0 4px; font-size: 18px; }
+    .admin-card .sub { color: var(--ink-500); font-size: 13px; margin-bottom: 16px; }
+    .empty { padding: 48px 16px; text-align: center; color: var(--ink-500); border: 1px dashed var(--ink-200); border-radius: 12px; }
+    .row { display: grid; grid-template-columns: 110px 1.5fr 1fr 1fr 140px; gap: 12px; align-items: center; padding: 12px 14px; border-radius: 8px; }
+    .row:hover { background: var(--ink-50); cursor: pointer; }
+    .row + .row { border-top: 1px solid var(--ink-100); }
+    .row .ref { font-family: 'Geist Mono', monospace; font-size: 12px; color: var(--ink-500); }
+    .row .name { font-weight: 500; }
+    .row .type { font-size: 13px; color: var(--ink-700); }
+    .row .when { font-family: 'Geist Mono', monospace; font-size: 12px; color: var(--ink-500); }
+    .status-pill { display: inline-block; padding: 3px 10px; border-radius: 999px; font-size: 11px; font-weight: 500; }
+    .pill-awaiting { background: #DBEAFE; color: #1E40AF; }
+    .pill-amendment { background: #FED7AA; color: #9A3412; }
+    .pill-draft { background: var(--ink-100); color: var(--ink-700); }
+    .pill-validated { background: #BBF7D0; color: #166534; }
+    .quick-links { display: flex; gap: 12px; }
+    .quick-links a {
+      flex: 1; padding: 18px 20px;
+      background: white; border: 1px solid var(--ink-150); border-radius: 12px;
+      text-decoration: none; color: var(--ink-900);
+      transition: all .15s ease;
+    }
+    .quick-links a:hover { border-color: var(--accent); box-shadow: 0 4px 12px rgba(0,0,0,.04); }
+    .quick-links .label { font-size: 11px; color: var(--ink-500); text-transform: uppercase; letter-spacing: 0.05em; }
+    .quick-links .v { font-size: 22px; font-weight: 600; margin-top: 4px; }
+  </style>
+</head>
+<body>
+  <div class="admin-top">
+    <div class="logo">
+      <span class="logo-mark">C</span>
+      <span>compta</span>
+      <span class="admin-badge">Admin</span>
+    </div>
+    <div style="display: flex; gap: 12px; align-items: center;">
+      <a href="app.html" style="font-size: 13px; color: var(--ink-600); text-decoration: none;">Vue client →</a>
+      <button id="logoutBtn" class="btn btn-ghost btn-sm">Déconnexion</button>
+    </div>
+  </div>
+
+  <div class="admin-content">
+    <h1 style="margin: 0 0 8px; font-size: 26px;">Espace admin</h1>
+    <p style="color: var(--ink-500); margin-bottom: 28px;">Bienvenue <span id="adminName">…</span>. Voici les dossiers nécessitant ton intervention.</p>
+
+    <div class="quick-links" style="margin-bottom: 24px;">
+      <a href="#queue">
+        <div class="label">À valider</div>
+        <div class="v" id="kpiAwaiting">…</div>
+      </a>
+      <a href="#queue">
+        <div class="label">En correction</div>
+        <div class="v" id="kpiAmendment">…</div>
+      </a>
+      <a href="#all">
+        <div class="label">Total dossiers</div>
+        <div class="v" id="kpiTotal">…</div>
+      </a>
+    </div>
+
+    <div class="admin-card" id="queue">
+      <h2>Dossiers en attente de validation</h2>
+      <div class="sub">Soumis par tes clients, en attente de ton OK avant envoi à l'INPI.</div>
+      <div id="awaitingList"><div class="empty">Chargement…</div></div>
+    </div>
+
+    <div class="admin-card">
+      <h2>Dossiers en correction</h2>
+      <div class="sub">Tu as demandé une rectification au client. Ils sont en attente de réponse.</div>
+      <div id="amendmentList"><div class="empty">Chargement…</div></div>
+    </div>
+
+    <div class="admin-card">
+      <h2>Formalités INPI déposées</h2>
+      <div class="sub">Toutes les formalités de ton compte mandataire INPI (lecture seule).</div>
+      <p style="margin: 0;"><a href="app.html" style="color: var(--accent-ink); font-weight: 500;">→ Voir les 66 formalités INPI</a></p>
+    </div>
+  </div>
+
+  <script>
+    const TYPE_LABEL = { CREATION: 'Création AE', MODIFICATION: 'Modification', RADIATION: 'Radiation' };
+    const STATUS_LABEL = {
+      DRAFT: { label: 'Brouillon', cls: 'pill-draft' },
+      AWAITING_VALIDATION: { label: 'À valider', cls: 'pill-awaiting' },
+      INTERNAL_AMENDMENT_PENDING: { label: 'En correction', cls: 'pill-amendment' },
+      VALIDATED_INTERNAL: { label: 'Validé', cls: 'pill-validated' },
+    };
+
+    function formatDate(iso) {
+      if (!iso) return '';
+      return new Date(iso).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
+    }
+
+    function renderRow(d) {
+      const status = STATUS_LABEL[d.statut] || { label: d.statut, cls: 'pill-draft' };
+      const author = d.profiles ? `${d.profiles.first_name || ''} ${d.profiles.last_name || ''}`.trim() : '';
+      return `<div class="row" data-id="${d.id}">
+        <span class="ref">${d.reference || d.id.slice(0, 8)}</span>
+        <div>
+          <div class="name">${d.client_name || '(sans nom)'}</div>
+          <div style="font-size: 11px; color: var(--ink-500); margin-top: 2px;">par ${author || 'client inconnu'}</div>
+        </div>
+        <span class="type">${TYPE_LABEL[d.type_formalite] || d.type_formalite}</span>
+        <span class="when">${formatDate(d.updated_at || d.created_at)}</span>
+        <span class="status-pill ${status.cls}">${status.label}</span>
+      </div>`;
+    }
+
+    async function load() {
+      while (!window.__ME__) await new Promise(r => setTimeout(r, 80));
+      const me = window.__ME__;
+      document.getElementById('adminName').textContent = me.first_name || me.email;
+
+      const { data: { session } } = await window.supabaseClient.auth.getSession();
+      const token = session.access_token;
+
+      const res = await fetch(`${ADMIN_API_BASE}/api/admin/dossiers`, { headers: { Authorization: `Bearer ${token}` } });
+      const { items = [] } = res.ok ? await res.json() : { items: [] };
+
+      const awaiting = items.filter(i => i.statut === 'AWAITING_VALIDATION');
+      const amendment = items.filter(i => i.statut === 'INTERNAL_AMENDMENT_PENDING');
+
+      document.getElementById('kpiAwaiting').textContent = awaiting.length;
+      document.getElementById('kpiAmendment').textContent = amendment.length;
+      document.getElementById('kpiTotal').textContent = items.length;
+
+      document.getElementById('awaitingList').innerHTML = awaiting.length
+        ? awaiting.map(renderRow).join('')
+        : '<div class="empty">Aucun dossier à valider. Les soumissions des clients apparaîtront ici.</div>';
+      document.getElementById('amendmentList').innerHTML = amendment.length
+        ? amendment.map(renderRow).join('')
+        : '<div class="empty">Aucun dossier en correction.</div>';
+    }
+
+    load().catch(e => console.error('load err', e));
+
+    document.getElementById('logoutBtn').addEventListener('click', async () => {
+      await window.supabaseClient.auth.signOut();
+      window.location.href = 'auth/login.html';
+    });
+  </script>
+</body>
+</html>

@@ -145,7 +145,15 @@
         });
         if (error) return showMsg(error.message, true);
         if (data.session) {
-          window.location.href = '../app.html';
+          try {
+            const r = await fetch('https://vps-84ac2579.vps.ovh.net/api/me', {
+              headers: { Authorization: `Bearer ${data.session.access_token}` },
+            });
+            const me = r.ok ? await r.json() : { role: 'client' };
+            window.location.href = me.role === 'admin' ? '../admin.html' : '../app.html';
+          } catch {
+            window.location.href = '../app.html';
+          }
         } else {
           showMsg('Compte créé. Vérifie ta boîte mail pour confirmer ton adresse.', false);
         }

@@ -111,14 +111,28 @@
     }
 
     window.addEventListener('load', () => {
+      const API_BASE = 'https://vps-84ac2579.vps.ovh.net';
+
+      async function redirectByRole(accessToken) {
+        try {
+          const r = await fetch(`${API_BASE}/api/me`, { headers: { Authorization: `Bearer ${accessToken}` } });
+          if (r.ok) {
+            const me = await r.json();
+            window.location.href = me.role === 'admin' ? '../admin.html' : '../app.html';
+            return;
+          }
+        } catch {}
+        window.location.href = '../app.html';
+      }
+
       document.getElementById('loginForm').addEventListener('submit', async (e) => {
         e.preventDefault();
-        const { error } = await window.supabaseClient.auth.signInWithPassword({
+        const { data, error } = await window.supabaseClient.auth.signInWithPassword({
           email: document.getElementById('email').value,
           password: document.getElementById('password').value,
         });
         if (error) return showError(error.message);
-        window.location.href = '../app.html';
+        await redirectByRole(data.session.access_token);
       });
 
       document.getElementById('googleBtn').addEventListener('click', async () => {
