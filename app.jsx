@@ -87,7 +87,6 @@ function App() {
 
       <ApiIntegration />
 
-      <Testimonials />
       <ComparatifDIY />
 
       {/* Calculateur + Dashboard */}

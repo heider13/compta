@@ -412,8 +412,63 @@ p { margin: 0; color: var(--ink-600); }
 .accent-text { color: var(--accent-ink); }
 .accent-border { border-color: var(--accent); }
 
-/* Scroll smooth */
+/* Scroll smooth & snap below fixed nav */
 html { scroll-behavior: smooth; }
+section[id] { scroll-margin-top: 80px; }
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+}
+.nav-link { transition: background 0.1s ease, color 0.1s ease; }
+
+/* ---------- Hero price band ---------- */
+.hero-price-band {
+  display: flex; gap: 12px; justify-content: center; flex-wrap: wrap;
+  margin: 36px auto 0; max-width: 720px;
+}
+.price-chip {
+  position: relative;
+  display: flex; align-items: baseline; gap: 8px;
+  padding: 14px 20px;
+  background: white;
+  border: 1px solid var(--ink-150);
+  border-radius: 14px;
+  text-decoration: none;
+  transition: transform 0.12s ease, box-shadow 0.12s ease, border-color 0.12s ease;
+  cursor: pointer;
+  min-width: 180px;
+}
+.price-chip:hover {
+  transform: translateY(-2px);
+  border-color: var(--accent);
+  box-shadow: 0 6px 20px rgba(91, 54, 214, 0.12);
+}
+.price-chip .lbl {
+  font-size: 12px; color: var(--ink-500);
+  text-transform: uppercase; letter-spacing: 0.06em; font-weight: 500;
+}
+.price-chip .val {
+  font-size: 22px; font-weight: 600; color: var(--ink-900); letter-spacing: -0.02em;
+  margin-left: auto;
+}
+.price-chip .suf { font-size: 12px; color: var(--ink-500); }
+.price-chip.highlighted {
+  background: linear-gradient(180deg, var(--violet-50), white);
+  border-color: var(--accent);
+  box-shadow: 0 4px 16px rgba(91, 54, 214, 0.10);
+}
+.price-chip.highlighted .val { color: var(--accent-ink); }
+.price-chip .badge {
+  position: absolute; top: -10px; left: 50%; transform: translateX(-50%);
+  background: var(--accent); color: white;
+  font-size: 10px; font-weight: 600; letter-spacing: 0.04em;
+  padding: 3px 10px; border-radius: 999px; text-transform: uppercase;
+  white-space: nowrap;
+}
+@media (max-width: 700px) {
+  .hero-price-band { gap: 10px; }
+  .price-chip { min-width: 140px; padding: 12px 16px; }
+  .price-chip .val { font-size: 18px; }
+}
 
 /* Selection */
 ::selection { background: var(--accent-soft); color: var(--accent-ink); }

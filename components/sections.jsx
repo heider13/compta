@@ -300,10 +300,10 @@ const Pricing = () => {
                 <span style={{ fontSize: 40, fontWeight: 600, letterSpacing: '-0.03em', color: 'var(--ink-900)' }}>{p.price}</span>
                 <span style={{ fontSize: 14, color: 'var(--ink-500)' }}>{p.priceSuffix}</span>
               </div>
-              <button className={`btn ${p.tone === 'accent' ? 'btn-accent' : 'btn-ghost'}`} style={{ width: '100%', marginBottom: 24 }}>
+              <a href="auth/signup.html" className={`btn ${p.tone === 'accent' ? 'btn-accent' : 'btn-ghost'}`} style={{ width: '100%', marginBottom: 24, justifyContent: 'center' }}>
                 {p.cta}
                 <I.Arrow size={16} />
-              </button>
+              </a>
               <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'grid', gap: 10 }}>
                 {p.features.map(f => (
                   <li key={f} style={{ display: 'flex', gap: 10, alignItems: 'flex-start', fontSize: 14, color: 'var(--ink-700)' }}>
@@ -351,7 +351,7 @@ const CTAFinal = () => (
           Plus de 12 000 entrepreneurs ont déjà créé leur AE avec Compta. Rejoignez-les en 4 minutes.
         </p>
         <div style={{ display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap', position: 'relative' }}>
-          <a href="app.html#nouveau" className="btn btn-lg" style={{ background: 'white', color: 'var(--accent-ink)', fontWeight: 500 }}>
+          <a href="auth/signup.html" className="btn btn-lg" style={{ background: 'white', color: 'var(--accent-ink)', fontWeight: 500 }}>
             Démarrer maintenant
             <I.Arrow size={18} />
           </a>
