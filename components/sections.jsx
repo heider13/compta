@@ -235,19 +235,38 @@ const ApiCodeBlock = () => {
 const Pricing = () => {
   const plans = [
     {
-      name: 'À la carte', desc: 'Vous payez à la formalité.',
-      price: '29 €', priceSuffix: ' / formalité', cta: 'Démarrer', tone: 'ghost',
-      features: ['Création AE — 49€', 'Modification — 39€', 'Radiation — 29€', 'Suivi de statut illimité', 'Notifications email + SMS'],
+      name: 'À la carte', desc: 'Pour les besoins ponctuels, sans engagement.',
+      price: '49 €', priceSuffix: ' / formalité', cta: 'Démarrer', tone: 'ghost',
+      features: [
+        'Création AE — 49 €',
+        'Modification — 39 €',
+        'Radiation — 29 €',
+        'Suivi de statut illimité',
+        'Notifications email + SMS',
+      ],
     },
     {
-      name: 'Tranquillité', desc: "Le compagnon de votre AE, toute l'année.",
-      price: '9 €', priceSuffix: ' / mois', cta: 'Essayer 30 jours', tone: 'accent', highlight: true,
-      features: ['Toutes les formalités incluses', 'Déclarations URSSAF auto', 'Alertes seuils TVA & micro', 'Coffre-fort de documents', 'Support prioritaire 7j/7'],
+      name: 'Essentiel', desc: 'Le pack complet pour piloter votre activité au quotidien.',
+      price: '19,99 €', priceSuffix: ' / mois', cta: 'Démarrer 30 jours', tone: 'accent', highlight: true,
+      features: [
+        'Facturation électronique conforme 2026',
+        'Déclarations URSSAF automatisées',
+        'Aide à la déclaration de TVA',
+        'Tableau de bord temps réel',
+        'Devis et bons de commande illimités',
+        'Fichier client centralisé',
+      ],
     },
     {
-      name: 'Pro', desc: 'Pour les experts-comptables et cabinets.',
-      price: 'Sur devis', priceSuffix: '', cta: 'Nous contacter', tone: 'ghost',
-      features: ['Multi-mandataires illimités', 'API & webhooks dédiés', 'SLA contractuel 99,9%', 'Onboarding personnalisé', 'Account manager dédié'],
+      name: 'Conseil', desc: 'Essentiel + un expert qui répond à vos questions.',
+      price: '29,99 €', priceSuffix: ' / mois', cta: 'Souscrire', tone: 'ghost',
+      features: [
+        'Tout l\'Essentiel inclus',
+        'Assistance conseil dédiée',
+        'Réponse par chat sous 2 h ouvrées',
+        'Rendez-vous expert sur demande',
+        'Optimisation fiscale et stratégique',
+      ],
     },
   ];
   return (
