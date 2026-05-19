@@ -42,6 +42,32 @@ async function requireUser(req, res, next) {
     .eq('id', data.user.id)
     .single();
   req.profile = profile || { role: 'client', first_name: null, last_name: null };
+
+  // Charge les memberships (multi-tenant)
+  const { data: memberships } = await supabaseAdmin
+    .from('memberships')
+    .select('organization_id, role')
+    .eq('user_id', data.user.id);
+  req.memberships = memberships || [];
+
+  // Org courante : header x-organization-id si fourni et user est membre, sinon la 1ère
+  const headerOrg = req.headers['x-organization-id'];
+  if (headerOrg && req.memberships.some((m) => m.organization_id === headerOrg)) {
+    req.currentOrgId = headerOrg;
+    req.currentOrgRole = req.memberships.find((m) => m.organization_id === headerOrg).role;
+  } else if (req.memberships.length > 0) {
+    req.currentOrgId = req.memberships[0].organization_id;
+    req.currentOrgRole = req.memberships[0].role;
+  } else {
+    req.currentOrgId = null;
+    req.currentOrgRole = null;
+  }
+
+  next();
+}
+
+function requireOrg(req, res, next) {
+  if (!req.currentOrgId) return res.status(403).json({ error: 'no_organization' });
   next();
 }
 
@@ -320,28 +346,261 @@ app.post(
   '/api/dossiers',
   requireUser,
   asyncRoute(async (req, res) => {
-    const { client_name, type_formalite, inpi_content } = req.body || {};
+    const { client_name, type_formalite, forme_juridique, client_id, inpi_content, naf_code, siren, assigned_to, priority } = req.body || {};
     if (!client_name || !type_formalite) {
       return res.status(400).json({ error: 'missing_fields', required: ['client_name', 'type_formalite'] });
     }
     if (!['CREATION', 'MODIFICATION', 'RADIATION'].includes(type_formalite)) {
       return res.status(400).json({ error: 'invalid_type_formalite' });
     }
+    const validFormes = ['AE', 'EI', 'SASU', 'SAS', 'EURL', 'SARL', 'SCI', 'SA', 'SNC', 'HOLDING', 'AUTRE'];
+    if (forme_juridique && !validFormes.includes(forme_juridique)) {
+      return res.status(400).json({ error: 'invalid_forme_juridique' });
+    }
     const ref = `CMP-${Date.now().toString(36).toUpperCase()}`;
     const { data, error } = await supabaseAdmin
       .from('dossiers')
       .insert({
         user_id: req.user.id,
+        organization_id: req.currentOrgId,
         reference: ref,
         client_name,
         type_formalite,
         statut: 'DRAFT',
+        ...(forme_juridique ? { forme_juridique } : {}),
+        ...(client_id ? { client_id } : {}),
         ...(inpi_content ? { inpi_content } : {}),
+        ...(naf_code ? { naf_code } : {}),
+        ...(siren ? { siren } : {}),
+        ...(assigned_to ? { assigned_to } : {}),
+        ...(priority ? { priority } : {}),
       })
       .select()
       .single();
     if (error) return res.status(500).json({ error: 'db_error', detail: error.message });
     res.status(201).json({ dossier: data });
+  }),
+);
+
+// ─── Cabinet / org info ────────────────────────────────────
+app.get(
+  '/api/cabinet',
+  requireUser,
+  requireOrg,
+  asyncRoute(async (req, res) => {
+    const { data, error } = await supabaseAdmin
+      .from('organizations')
+      .select('id, name, slug, siren, contact_email, plan, white_label_config, inpi_env, created_at')
+      .eq('id', req.currentOrgId)
+      .single();
+    if (error) return res.status(404).json({ error: 'not_found' });
+    res.json({ cabinet: data, role: req.currentOrgRole });
+  }),
+);
+
+app.get(
+  '/api/cabinet/members',
+  requireUser,
+  requireOrg,
+  asyncRoute(async (req, res) => {
+    const { data: members, error } = await supabaseAdmin
+      .from('memberships')
+      .select('id, user_id, role, joined_at, invited_at')
+      .eq('organization_id', req.currentOrgId)
+      .order('joined_at', { ascending: true });
+    if (error) return res.status(500).json({ error: 'db_error', detail: error.message });
+    const userIds = members.map((m) => m.user_id);
+    const { data: profiles } = await supabaseAdmin
+      .from('profiles')
+      .select('id, first_name, last_name')
+      .in('id', userIds);
+    const byId = Object.fromEntries((profiles || []).map((p) => [p.id, p]));
+    res.json({ items: members.map((m) => ({ ...m, profile: byId[m.user_id] || null })) });
+  }),
+);
+
+// ─── Clients du cabinet (CRM) ──────────────────────────────
+app.get(
+  '/api/clients',
+  requireUser,
+  requireOrg,
+  asyncRoute(async (req, res) => {
+    const { data, error } = await supabaseAdmin
+      .from('clients')
+      .select('*')
+      .eq('organization_id', req.currentOrgId)
+      .is('archived_at', null)
+      .order('created_at', { ascending: false });
+    if (error) return res.status(500).json({ error: 'db_error', detail: error.message });
+    res.json({ items: data || [] });
+  }),
+);
+
+app.post(
+  '/api/clients',
+  requireUser,
+  requireOrg,
+  asyncRoute(async (req, res) => {
+    const { siren, denomination, forme_juridique, code_naf, capital_social_cents, date_immatriculation, adresse_siege, contact_email, contact_phone, contact_first_name, contact_last_name, pappers_data, source } = req.body || {};
+    if (!denomination) return res.status(400).json({ error: 'missing_fields', required: ['denomination'] });
+    const { data, error } = await supabaseAdmin
+      .from('clients')
+      .insert({
+        organization_id: req.currentOrgId,
+        siren, denomination, forme_juridique, code_naf, capital_social_cents,
+        date_immatriculation, adresse_siege, contact_email, contact_phone,
+        contact_first_name, contact_last_name, pappers_data, source: source || 'manual',
+      })
+      .select()
+      .single();
+    if (error) return res.status(500).json({ error: 'db_error', detail: error.message });
+    res.status(201).json({ client: data });
+  }),
+);
+
+app.get(
+  '/api/clients/:id',
+  requireUser,
+  requireOrg,
+  asyncRoute(async (req, res) => {
+    const { data, error } = await supabaseAdmin
+      .from('clients')
+      .select('*')
+      .eq('id', req.params.id)
+      .eq('organization_id', req.currentOrgId)
+      .single();
+    if (error) return res.status(404).json({ error: 'not_found' });
+    const { data: dossiers } = await supabaseAdmin
+      .from('dossiers')
+      .select('id, reference, type_formalite, forme_juridique, statut, created_at')
+      .eq('client_id', req.params.id)
+      .order('created_at', { ascending: false });
+    res.json({ client: data, dossiers: dossiers || [] });
+  }),
+);
+
+app.put(
+  '/api/clients/:id',
+  requireUser,
+  requireOrg,
+  asyncRoute(async (req, res) => {
+    const allowed = ['siren', 'denomination', 'forme_juridique', 'code_naf', 'capital_social_cents', 'date_immatriculation', 'adresse_siege', 'contact_email', 'contact_phone', 'contact_first_name', 'contact_last_name', 'metadata'];
+    const patch = {};
+    for (const k of allowed) if (k in (req.body || {})) patch[k] = req.body[k];
+    const { data, error } = await supabaseAdmin
+      .from('clients')
+      .update(patch)
+      .eq('id', req.params.id)
+      .eq('organization_id', req.currentOrgId)
+      .select()
+      .single();
+    if (error) return res.status(500).json({ error: 'db_error', detail: error.message });
+    res.json({ client: data });
+  }),
+);
+
+app.delete(
+  '/api/clients/:id',
+  requireUser,
+  requireOrg,
+  asyncRoute(async (req, res) => {
+    const { error } = await supabaseAdmin
+      .from('clients')
+      .update({ archived_at: new Date().toISOString() })
+      .eq('id', req.params.id)
+      .eq('organization_id', req.currentOrgId);
+    if (error) return res.status(500).json({ error: 'db_error', detail: error.message });
+    res.status(204).end();
+  }),
+);
+
+// ─── Tâches dossier ────────────────────────────────────────
+app.get(
+  '/api/dossiers/:id/tasks',
+  requireUser,
+  requireOrg,
+  asyncRoute(async (req, res) => {
+    const { data, error } = await supabaseAdmin
+      .from('dossier_tasks')
+      .select('*')
+      .eq('dossier_id', req.params.id)
+      .order('done', { ascending: true })
+      .order('due_date', { ascending: true, nullsLast: true });
+    if (error) return res.status(500).json({ error: 'db_error', detail: error.message });
+    res.json({ items: data || [] });
+  }),
+);
+
+app.post(
+  '/api/dossiers/:id/tasks',
+  requireUser,
+  requireOrg,
+  asyncRoute(async (req, res) => {
+    const { title, description, assigned_to, due_date } = req.body || {};
+    if (!title?.trim()) return res.status(400).json({ error: 'missing_title' });
+    const { data, error } = await supabaseAdmin
+      .from('dossier_tasks')
+      .insert({
+        dossier_id: req.params.id,
+        organization_id: req.currentOrgId,
+        title: title.trim(),
+        description, assigned_to, due_date,
+        created_by: req.user.id,
+      })
+      .select()
+      .single();
+    if (error) return res.status(500).json({ error: 'db_error', detail: error.message });
+    res.status(201).json({ task: data });
+  }),
+);
+
+app.put(
+  '/api/tasks/:id',
+  requireUser,
+  requireOrg,
+  asyncRoute(async (req, res) => {
+    const allowed = ['title', 'description', 'assigned_to', 'due_date', 'done'];
+    const patch = {};
+    for (const k of allowed) if (k in (req.body || {})) patch[k] = req.body[k];
+    if (patch.done === true) patch.done_at = new Date().toISOString();
+    const { data, error } = await supabaseAdmin
+      .from('dossier_tasks')
+      .update(patch)
+      .eq('id', req.params.id)
+      .eq('organization_id', req.currentOrgId)
+      .select()
+      .single();
+    if (error) return res.status(500).json({ error: 'db_error', detail: error.message });
+    res.json({ task: data });
+  }),
+);
+
+// ─── Notifications ─────────────────────────────────────────
+app.get(
+  '/api/notifications',
+  requireUser,
+  asyncRoute(async (req, res) => {
+    const { data, error } = await supabaseAdmin
+      .from('notifications')
+      .select('*')
+      .eq('user_id', req.user.id)
+      .order('created_at', { ascending: false })
+      .limit(50);
+    if (error) return res.status(500).json({ error: 'db_error', detail: error.message });
+    res.json({ items: data || [] });
+  }),
+);
+
+app.post(
+  '/api/notifications/:id/read',
+  requireUser,
+  asyncRoute(async (req, res) => {
+    await supabaseAdmin
+      .from('notifications')
+      .update({ read_at: new Date().toISOString() })
+      .eq('id', req.params.id)
+      .eq('user_id', req.user.id);
+    res.status(204).end();
   }),
 );
 
