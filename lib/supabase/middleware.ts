@@ -2,12 +2,18 @@ import { createServerClient } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
 
 export async function updateSession(request: NextRequest) {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const key = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
+
+  // Pas d'env Supabase configurée -> on laisse passer sans toucher aux cookies.
+  if (!url || !key) {
+    return NextResponse.next({ request });
+  }
+
   let supabaseResponse = NextResponse.next({ request });
 
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!,
-    {
+  try {
+    const supabase = createServerClient(url, key, {
       cookies: {
         getAll() {
           return request.cookies.getAll();
@@ -22,11 +28,12 @@ export async function updateSession(request: NextRequest) {
           );
         },
       },
-    },
-  );
-
-  // Important : refresh la session pour SSR
-  await supabase.auth.getUser();
+    });
+    // Refresh la session pour SSR (best-effort, n'échoue pas la requête si KO)
+    await supabase.auth.getUser();
+  } catch (e) {
+    console.error('[middleware] supabase session refresh failed', e);
+  }
 
   return supabaseResponse;
 }
