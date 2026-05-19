@@ -50,9 +50,17 @@ const initContent = () => ({
   },
 });
 
-const WizardCreation = ({ setRoute, dossierId: initialDossierId, onCreated }) => {
+const WizardCreation = ({ setRoute, dossierId: initialDossierId, onCreated, demoMode = false }) => {
   const [step, setStep] = React.useState(0);
-  const [content, setContent] = React.useState(initContent());
+  const [content, setContent] = React.useState(() => {
+    if (demoMode) {
+      try {
+        const saved = localStorage.getItem('compta_demo_wizard_creation');
+        if (saved) return JSON.parse(saved);
+      } catch {}
+    }
+    return initContent();
+  });
   const [dossierId, setDossierId] = React.useState(initialDossierId || null);
   const [reference, setReference] = React.useState(null);
   const [documents, setDocuments] = React.useState([]);
@@ -60,9 +68,9 @@ const WizardCreation = ({ setRoute, dossierId: initialDossierId, onCreated }) =>
   const [submitting, setSubmitting] = React.useState(false);
   const [error, setError] = React.useState(null);
 
-  // Reprise d'un brouillon
+  // Reprise d'un brouillon (mode authentifié uniquement)
   React.useEffect(() => {
-    if (!initialDossierId) return;
+    if (demoMode || !initialDossierId) return;
     (async () => {
       try {
         const { dossier, documents: docs } = await window.ComptaAPI.fetchDossierDetail(initialDossierId);
@@ -71,7 +79,7 @@ const WizardCreation = ({ setRoute, dossierId: initialDossierId, onCreated }) =>
         setDocuments(docs || []);
       } catch (e) { console.error(e); }
     })();
-  }, [initialDossierId]);
+  }, [initialDossierId, demoMode]);
 
   const id = content.personnePhysique.ppRubriqueIdentiteEntreprise.identificationPersonnePhysique;
   const ident = content.personnePhysique.ppRubriqueIdentiteEntreprise.identificationPersonnePhysique;
@@ -107,13 +115,14 @@ const WizardCreation = ({ setRoute, dossierId: initialDossierId, onCreated }) =>
   const saveDraft = async () => {
     setSaving(true); setError(null);
     try {
-      // Si la copie établissement = domicile, on copie l'adresse
       let payload = content;
       if (etab.adresseIdentiqueDomicile) {
         payload = { ...content, personnePhysique: { ...content.personnePhysique,
           ppRubriqueEtablissement: { etablissementPrincipal: { ...etab, adresse: { ...ident.blocAdresse.adresse } } } } };
       }
-      if (!dossierId) {
+      if (demoMode) {
+        try { localStorage.setItem('compta_demo_wizard_creation', JSON.stringify(payload)); } catch {}
+      } else if (!dossierId) {
         const cn = computedClientName() || 'Nouveau dossier';
         const r = await window.ComptaAPI.apiFetch('/api/dossiers', {
           method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -134,6 +143,11 @@ const WizardCreation = ({ setRoute, dossierId: initialDossierId, onCreated }) =>
   const prev = () => setStep(s => Math.max(0, s - 1));
 
   const submit = async () => {
+    if (demoMode) {
+      try { localStorage.setItem('compta_demo_wizard_creation', JSON.stringify(content)); } catch {}
+      window.location.href = 'auth/signup.html';
+      return;
+    }
     if (!dossierId) return setError('Sauvegarde requise avant soumission');
     setSubmitting(true); setError(null);
     try {
@@ -185,7 +199,7 @@ const WizardCreation = ({ setRoute, dossierId: initialDossierId, onCreated }) =>
             <FieldText label="Commune *" value={ident.blocAdresse.adresse.commune} onChange={v => setIdentAdresse({ commune: v })} />
           </Row>
           <FieldText label="Code INSEE commune (optionnel)" value={ident.blocAdresse.adresse.codeInseeCommune} onChange={v => setIdentAdresse({ codeInseeCommune: v })} mono maxLength={5} />
-          <DocumentUploadList dossierId={dossierId} documents={documents} setDocuments={setDocuments} required={[
+          <DocumentUploadList dossierId={dossierId} documents={documents} setDocuments={setDocuments} demoMode={demoMode} required={[
             { typeDocument: 'PJ_01', label: "Pièce d'identité (CNI, passeport)" },
             { typeDocument: 'PJ_02', label: "Justificatif de domicile (< 3 mois)" },
             { typeDocument: 'PJ_03', label: "Déclaration sur l'honneur de non-condamnation" },
@@ -277,7 +291,8 @@ const WizardCreation = ({ setRoute, dossierId: initialDossierId, onCreated }) =>
         </Section>
       )}
 
-      <Nav step={step} max={STEPS_CREA.length - 1} onPrev={prev} onNext={next} onSubmit={submit} saving={saving} submitting={submitting} />
+      <Nav step={step} max={STEPS_CREA.length - 1} onPrev={prev} onNext={next} onSubmit={submit} saving={saving} submitting={submitting}
+        submitLabel={demoMode ? 'Créer un compte pour soumettre →' : 'Soumettre pour validation'} />
     </div>
   );
 };
@@ -379,9 +394,26 @@ const Nav = ({ step, max, onPrev, onNext, onSubmit, saving, submitting }) => (
   </div>
 );
 
-const DocumentUploadList = ({ dossierId, documents, setDocuments, required }) => {
+const DocumentUploadList = ({ dossierId, documents, setDocuments, required, demoMode = false }) => {
   const [uploading, setUploading] = React.useState(null);
   const fileInputs = React.useRef({});
+
+  if (demoMode) {
+    return (
+      <div style={{ display: 'grid', gap: 10, marginTop: 8 }}>
+        {required.map(req => (
+          <div key={req.typeDocument} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: 12, border: '1px dashed var(--ink-200)', borderRadius: 8, background: 'var(--ink-50)' }}>
+            <I.Doc size={18} style={{ color: 'var(--ink-400)' }} />
+            <div style={{ flex: 1 }}>
+              <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--ink-700)' }}>{req.label}</div>
+              <div style={{ fontSize: 11, color: 'var(--ink-500)' }}>Upload disponible après inscription</div>
+            </div>
+            <span className="pill" style={{ fontSize: 10, background: 'var(--ink-100)', color: 'var(--ink-600)' }}>DÉMO</span>
+          </div>
+        ))}
+      </div>
+    );
+  }
 
   const onPick = async (typeDocument, label, file) => {
     if (!dossierId) return alert('Le dossier sera créé à l\'étape suivante. Pour télé-verser maintenant, sauvegarde d\'abord (Suivant).');

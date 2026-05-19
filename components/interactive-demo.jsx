@@ -85,20 +85,40 @@ const DemoStageDashboard = () => (
   </div>
 );
 
-// ── Stage : Simulateur (carte large, fond clair) ──
+// ── Stage : Simulateur (= le même wizard que dans l'espace client, en mode démo) ──
 const DemoStageSimulateur = () => (
   <div className="demo-frame demo-frame-light">
-    <div style={{ padding: 24 }}>
-      <Simulateur />
+    <div style={{ padding: 28 }}>
+      {window.WizardCreation
+        ? <window.WizardCreation demoMode={true} />
+        : <p style={{ padding: 32, color: 'var(--ink-500)' }}>Chargement du simulateur…</p>}
     </div>
   </div>
 );
 
-// ── Stage : Calculateur (carte) ──
+// ── Stage : Calculateur officiel URSSAF (mon-entreprise.urssaf.fr) ──
 const DemoStageCalculateur = () => (
-  <div className="demo-frame demo-frame-light">
-    <div style={{ padding: 8 }}>
-      <Calculateur />
+  <div className="demo-frame">
+    <iframe
+      title="Simulateur auto-entrepreneur URSSAF"
+      src="https://mon-entreprise.urssaf.fr/d%C3%A9veloppeur/iframe?simulateur=auto-entrepreneur"
+      style={{
+        width: '100%', height: 720, border: 'none', display: 'block',
+        background: 'white',
+      }}
+      loading="lazy"
+      referrerPolicy="no-referrer-when-downgrade"
+      allow="clipboard-write"
+    />
+    <div style={{
+      padding: '12px 18px',
+      borderTop: '1px solid var(--ink-150)',
+      background: 'var(--ink-50)',
+      fontSize: 12, color: 'var(--ink-500)',
+      display: 'flex', alignItems: 'center', gap: 8,
+    }}>
+      <I.Shield size={14} />
+      Calculateur officiel URSSAF · mon-entreprise.urssaf.fr · données à jour des dernières barèmes
     </div>
   </div>
 );
