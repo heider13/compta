@@ -32,6 +32,7 @@ function App() {
       <Hero accent={t.accent} />
       <LogosStrip />
       <HowItWorks />
+      <DocumentsRequis />
 
       {/* Simulateur */}
       <section id="simulateur" className="section" style={{ background: 'var(--ink-50)' }}>
@@ -85,6 +86,9 @@ function App() {
       </section>
 
       <ApiIntegration />
+
+      <Testimonials />
+      <ComparatifDIY />
 
       {/* Calculateur + Dashboard */}
       <section className="section" style={{ background: 'var(--ink-50)' }}>
