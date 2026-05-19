@@ -96,32 +96,39 @@ const DemoStageSimulateur = () => (
   </div>
 );
 
-// ── Stage : Calculateur officiel URSSAF (mon-entreprise.urssaf.fr) ──
-const DemoStageCalculateur = () => (
-  <div className="demo-frame">
-    <iframe
-      title="Simulateur auto-entrepreneur URSSAF"
-      src="https://mon-entreprise.urssaf.fr/d%C3%A9veloppeur/iframe?simulateur=auto-entrepreneur"
-      style={{
-        width: '100%', height: 720, border: 'none', display: 'block',
-        background: 'white',
-      }}
-      loading="lazy"
-      referrerPolicy="no-referrer-when-downgrade"
-      allow="clipboard-write"
-    />
-    <div style={{
-      padding: '12px 18px',
-      borderTop: '1px solid var(--ink-150)',
-      background: 'var(--ink-50)',
-      fontSize: 12, color: 'var(--ink-500)',
-      display: 'flex', alignItems: 'center', gap: 8,
-    }}>
-      <I.Shield size={14} />
-      Calculateur officiel URSSAF · mon-entreprise.urssaf.fr · données à jour des dernières barèmes
+// ── Stage : Calculateur officiel URSSAF (intégration script mon-entreprise) ──
+const DemoStageCalculateur = () => {
+  const ref = React.useRef(null);
+
+  React.useEffect(() => {
+    const host = ref.current;
+    if (!host) return;
+    host.innerHTML = '';
+    const s = document.createElement('script');
+    s.setAttribute('data-module', 'simulateur-autoentrepreneur');
+    s.setAttribute('data-couleur', '#7d29e5');
+    s.src = 'https://mon-entreprise.urssaf.fr/simulateur-iframe-integration.js';
+    s.async = true;
+    host.appendChild(s);
+    return () => { if (host) host.innerHTML = ''; };
+  }, []);
+
+  return (
+    <div className="demo-frame">
+      <div ref={ref} style={{ minHeight: 760, padding: '8px 8px 0' }} />
+      <div style={{
+        padding: '12px 18px',
+        borderTop: '1px solid var(--ink-150)',
+        background: 'var(--ink-50)',
+        fontSize: 12, color: 'var(--ink-500)',
+        display: 'flex', alignItems: 'center', gap: 8,
+      }}>
+        <I.Shield size={14} />
+        Calculateur officiel URSSAF · mon-entreprise.urssaf.fr · barèmes à jour
+      </div>
     </div>
-  </div>
-);
+  );
+};
 
 const BrowserChrome = ({ url }) => (
   <div style={{
