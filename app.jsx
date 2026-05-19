@@ -31,6 +31,11 @@ function App() {
       <Nav />
       <Hero accent={t.accent} />
       <LogosStrip />
+
+      {/* Bloc valeur placé juste après le hero : ce que l'on fait + combien ça coûte */}
+      <Formalites />
+      <Pricing />
+
       <HowItWorks />
       <DocumentsRequis />
 
@@ -47,8 +52,6 @@ function App() {
           </div>
         </div>
       </section>
-
-      <Formalites />
 
       {/* Tracker */}
       <section id="suivi" className="section">
@@ -115,8 +118,6 @@ function App() {
           </div>
         </div>
       </section>
-
-      <Pricing />
 
       {/* FAQ */}
       <section id="faq" className="section">

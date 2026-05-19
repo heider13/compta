@@ -270,16 +270,17 @@ const Pricing = () => {
     },
   ];
   return (
-    <section id="tarifs" className="section">
-      <div className="container">
+    <section id="tarifs" className="section section-tarifs">
+      <div className="tarifs-bg" aria-hidden="true" />
+      <div className="container" style={{ position: 'relative' }}>
         <div className="sec-head">
           <span className="eyebrow"><span className="dot" />Tarifs</span>
           <h2>Simple, comme nos formulaires.</h2>
           <p className="lead">Pas d'engagement. Pas de frais cachés. Vous payez ce que vous utilisez.</p>
         </div>
-        <div className="grid-3">
+        <div className="grid-3 pricing-grid">
           {plans.map(p => (
-            <div key={p.name} className={p.highlight ? 'card-elev' : 'card'} style={{
+            <div key={p.name} className={`pricing-card ${p.highlight ? 'highlighted card-elev' : 'card'}`} style={{
               padding: 28,
               border: p.highlight ? '2px solid var(--accent)' : undefined,
               position: 'relative',

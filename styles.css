@@ -420,7 +420,56 @@ section[id] { scroll-margin-top: 80px; }
 }
 .nav-link { transition: background 0.1s ease, color 0.1s ease; }
 
-/* ---------- Hero price band ---------- */
+/* ---------- Pricing section ---------- */
+.section-tarifs {
+  position: relative;
+  overflow: hidden;
+  background: linear-gradient(180deg, #FAFAFC 0%, white 100%);
+}
+.tarifs-bg {
+  position: absolute; inset: 0; pointer-events: none;
+  background:
+    radial-gradient(ellipse 700px 320px at 50% 0%, rgba(91, 54, 214, 0.10), transparent 70%),
+    radial-gradient(ellipse 500px 240px at 80% 100%, rgba(91, 54, 214, 0.06), transparent 60%);
+}
+.pricing-grid { gap: 24px; position: relative; }
+.pricing-card {
+  transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+  display: flex; flex-direction: column;
+}
+.pricing-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 12px 28px rgba(20, 20, 30, 0.08);
+  border-color: var(--ink-200);
+}
+.pricing-card.highlighted {
+  transform: scale(1.03);
+  box-shadow: 0 16px 40px rgba(91, 54, 214, 0.18);
+}
+.pricing-card.highlighted:hover {
+  transform: scale(1.03) translateY(-3px);
+  box-shadow: 0 20px 48px rgba(91, 54, 214, 0.22);
+}
+@media (max-width: 900px) {
+  .pricing-card.highlighted { transform: none; }
+  .pricing-card.highlighted:hover { transform: translateY(-3px); }
+}
+
+/* ---------- Formalités section (sortie du gris classique vers blanc avec accent) ---------- */
+#formalites {
+  background: white !important;
+  border-bottom: 1px solid var(--ink-100);
+}
+#formalites .card {
+  transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+}
+#formalites .card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 12px 28px rgba(20, 20, 30, 0.08);
+  border-color: var(--accent);
+}
+
+/* ---------- Hero price band (legacy, plus utilisé mais conservé) ---------- */
 .hero-price-band {
   display: flex; gap: 12px; justify-content: center; flex-wrap: wrap;
   margin: 36px auto 0; max-width: 720px;

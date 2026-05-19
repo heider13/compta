@@ -91,24 +91,6 @@ const Hero = ({ accent }) => (
           Voir les tarifs
         </a>
       </div>
-      <div className="hero-price-band">
-        <a href="auth/signup.html" className="price-chip">
-          <span className="lbl">Création AE</span>
-          <span className="val">49 €</span>
-          <span className="suf">/ formalité</span>
-        </a>
-        <a href="auth/signup.html" className="price-chip highlighted">
-          <span className="lbl">Essentiel</span>
-          <span className="val">19,99 €</span>
-          <span className="suf">/ mois</span>
-          <span className="badge">Le + choisi</span>
-        </a>
-        <a href="auth/signup.html" className="price-chip">
-          <span className="lbl">Conseil</span>
-          <span className="val">29,99 €</span>
-          <span className="suf">/ mois</span>
-        </a>
-      </div>
       <div className="hero-trust">
         <span><I.Shield size={16} /> Données chiffrées</span>
         <span><I.Bolt size={16} /> Dépôt en 24h</span>
