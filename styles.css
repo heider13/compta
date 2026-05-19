@@ -420,6 +420,70 @@ section[id] { scroll-margin-top: 80px; }
 }
 .nav-link { transition: background 0.1s ease, color 0.1s ease; }
 
+/* ---------- Interactive demo (Dashboard / Simulateur / Calculateur) ---------- */
+.section-demo {
+  position: relative;
+  overflow: hidden;
+  background: linear-gradient(180deg, white 0%, var(--ink-50) 100%);
+}
+.demo-bg {
+  position: absolute; inset: 0; pointer-events: none;
+  background:
+    radial-gradient(ellipse 600px 280px at 15% 10%, rgba(91, 54, 214, 0.06), transparent 70%),
+    radial-gradient(ellipse 600px 280px at 85% 90%, rgba(91, 54, 214, 0.08), transparent 70%);
+}
+.demo-tabs {
+  display: inline-flex; gap: 4px;
+  background: white;
+  padding: 6px;
+  border: 1px solid var(--ink-150);
+  border-radius: 14px;
+  margin: 0 auto 24px;
+  box-shadow: 0 4px 16px rgba(20, 20, 30, 0.04);
+}
+.demo-tab {
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 10px 18px;
+  border: none; background: transparent; cursor: pointer;
+  font-size: 14px; font-weight: 500; color: var(--ink-600);
+  border-radius: 10px;
+  transition: background 0.12s ease, color 0.12s ease;
+  font-family: inherit;
+}
+.demo-tab:hover:not(.active) { background: var(--ink-50); color: var(--ink-900); }
+.demo-tab.active {
+  background: var(--accent);
+  color: white;
+  box-shadow: 0 4px 12px rgba(91, 54, 214, 0.25);
+}
+.section-demo .container { display: grid; }
+.section-demo .demo-tabs { justify-self: center; }
+.demo-stage {
+  margin-top: 8px;
+}
+.demo-frame {
+  background: white;
+  border: 1px solid var(--ink-150);
+  border-radius: 20px;
+  overflow: hidden;
+  box-shadow: 0 20px 60px rgba(20, 20, 30, 0.10);
+  max-width: 1080px;
+  margin: 0 auto;
+}
+.demo-frame-light { padding: 0; }
+.demo-meta {
+  display: flex; gap: 16px; align-items: center; flex-wrap: wrap;
+  max-width: 1080px; margin: 20px auto 0;
+  font-size: 12px; color: var(--ink-500);
+  padding: 0 4px;
+}
+.demo-meta > span { display: inline-flex; align-items: center; gap: 6px; }
+@media (max-width: 700px) {
+  .demo-tab span { display: none; }
+  .demo-tab { padding: 10px 14px; }
+  .demo-meta { font-size: 11px; }
+}
+
 /* ---------- Pricing section ---------- */
 .section-tarifs {
   position: relative;

@@ -39,19 +39,8 @@ function App() {
       <HowItWorks />
       <DocumentsRequis />
 
-      {/* Simulateur */}
-      <section id="simulateur" className="section" style={{ background: 'var(--ink-50)' }}>
-        <div className="container">
-          <div className="sec-head">
-            <span className="eyebrow"><span className="dot" />Simulateur interactif</span>
-            <h2>Commencez votre déclaration.<br/>Pas de compte requis.</h2>
-            <p className="lead">Cinq étapes guidées, tout est sauvegardé localement. Vous reprenez quand vous voulez.</p>
-          </div>
-          <div style={{ maxWidth: 880, margin: '0 auto' }}>
-            <Simulateur />
-          </div>
-        </div>
-      </section>
+      {/* Démo interactive unifiée : Tableau de bord + Simulateur + Calculateur */}
+      <InteractiveDemo />
 
       {/* Tracker */}
       <section id="suivi" className="section">
@@ -91,33 +80,6 @@ function App() {
       <ApiIntegration />
 
       <ComparatifDIY />
-
-      {/* Calculateur + Dashboard */}
-      <section className="section" style={{ background: 'var(--ink-50)' }}>
-        <div className="container">
-          <div className="sec-head">
-            <span className="eyebrow"><span className="dot" />Outils & démo</span>
-            <h2>Un tableau de bord pensé pour les auto-entrepreneurs.</h2>
-            <p className="lead">Calculez vos charges, gardez l'œil sur le seuil micro, suivez tous vos dossiers — au même endroit.</p>
-          </div>
-          <div style={{ display: 'grid', gap: 24 }}>
-            <Calculateur />
-            <div className="card-elev" style={{ overflow: 'hidden' }}>
-              <div style={{
-                display: 'flex', alignItems: 'center', gap: 8,
-                padding: '12px 16px', borderBottom: '1px solid var(--ink-150)',
-                background: 'var(--ink-50)'
-              }}>
-                <span style={{ width: 10, height: 10, borderRadius: '50%', background: '#FF5F57' }} />
-                <span style={{ width: 10, height: 10, borderRadius: '50%', background: '#FFBD2E' }} />
-                <span style={{ width: 10, height: 10, borderRadius: '50%', background: '#28C940' }} />
-                <span style={{ marginLeft: 8, fontSize: 12, color: 'var(--ink-500)' }} className="mono">app.compta.fr</span>
-              </div>
-              <Dashboard />
-            </div>
-          </div>
-        </div>
-      </section>
 
       {/* FAQ */}
       <section id="faq" className="section">

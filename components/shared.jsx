@@ -27,9 +27,9 @@ const Nav = () => {
         <Logo />
         <div className="nav-links">
           <a href="#formalites" className="nav-link">Formalités</a>
-          <a href="#simulateur" className="nav-link">Simulateur</a>
-          <a href="#suivi" className="nav-link">Suivi dossier</a>
           <a href="#tarifs" className="nav-link">Tarifs</a>
+          <a href="#demo" className="nav-link">Démo</a>
+          <a href="#suivi" className="nav-link">Suivi dossier</a>
           <a href="#faq" className="nav-link">FAQ</a>
         </div>
         <div className="nav-cta">
@@ -146,9 +146,9 @@ const Footer = () => (
         <div>
           <h4>Produit</h4>
           <a href="#formalites">Formalités</a>
-          <a href="#simulateur">Simulateur</a>
-          <a href="#suivi">Suivi dossier</a>
           <a href="#tarifs">Tarifs</a>
+          <a href="#demo">Démo interactive</a>
+          <a href="#suivi">Suivi dossier</a>
         </div>
         <div>
           <h4>Ressources</h4>
