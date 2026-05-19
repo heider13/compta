@@ -13,321 +13,52 @@
 
   <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
   <script src="supabase-client.js"></script>
-  <script>
-    const ADMIN_API_BASE = 'https://vps-84ac2579.vps.ovh.net';
-    (async () => {
-      const { data } = await window.supabaseClient.auth.getSession();
-      if (!data.session) { window.location.replace('auth/login.html'); return; }
-      const r = await fetch(`${ADMIN_API_BASE}/api/me`, { headers: { Authorization: `Bearer ${data.session.access_token}` } });
-      if (!r.ok) { window.location.replace('auth/login.html'); return; }
-      const me = await r.json();
-      if (me.role !== 'admin') { window.location.replace('app.html'); return; }
-      window.__ME__ = me;
-    })();
-  </script>
+
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" crossorigin="anonymous"></script>
 
   <style>
-    body { background: var(--ink-50); margin: 0; font-family: 'Geist', system-ui, sans-serif; color: var(--ink-900); }
-    .admin-top {
-      display: flex; align-items: center; justify-content: space-between;
-      padding: 16px 32px; background: white; border-bottom: 1px solid var(--ink-150);
-    }
-    .admin-top .logo { display: flex; align-items: center; gap: 10px; font-weight: 600; font-size: 18px; }
-    .admin-top .logo-mark { width: 28px; height: 28px; background: var(--accent); color: white; display: grid; place-items: center; border-radius: 8px; }
-    .admin-badge { background: #FEF3C7; color: #92400E; padding: 4px 10px; border-radius: 999px; font-size: 11px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; }
-    .admin-content { max-width: 1200px; margin: 0 auto; padding: 32px; }
-    .admin-card { background: white; border: 1px solid var(--ink-150); border-radius: 14px; padding: 24px; margin-bottom: 20px; }
-    .admin-card h2 { margin: 0 0 4px; font-size: 18px; }
-    .admin-card .sub { color: var(--ink-500); font-size: 13px; margin-bottom: 16px; }
-    .empty { padding: 48px 16px; text-align: center; color: var(--ink-500); border: 1px dashed var(--ink-200); border-radius: 12px; }
-    .row { display: grid; grid-template-columns: 110px 1.5fr 1fr 1fr 140px; gap: 12px; align-items: center; padding: 12px 14px; border-radius: 8px; }
-    .row:hover { background: var(--ink-50); cursor: pointer; }
-    .row + .row { border-top: 1px solid var(--ink-100); }
-    .row .ref { font-family: 'Geist Mono', monospace; font-size: 12px; color: var(--ink-500); }
-    .row .name { font-weight: 500; }
-    .row .type { font-size: 13px; color: var(--ink-700); }
-    .row .when { font-family: 'Geist Mono', monospace; font-size: 12px; color: var(--ink-500); }
-    .status-pill { display: inline-block; padding: 3px 10px; border-radius: 999px; font-size: 11px; font-weight: 500; }
-    .pill-awaiting { background: #DBEAFE; color: #1E40AF; }
-    .pill-amendment { background: #FED7AA; color: #9A3412; }
-    .pill-draft { background: var(--ink-100); color: var(--ink-700); }
-    .pill-validated { background: #BBF7D0; color: #166534; }
-    .quick-links { display: flex; gap: 12px; }
-    .quick-links a {
-      flex: 1; padding: 18px 20px;
-      background: white; border: 1px solid var(--ink-150); border-radius: 12px;
-      text-decoration: none; color: var(--ink-900);
-      transition: all .15s ease;
-    }
-    .quick-links a:hover { border-color: var(--accent); box-shadow: 0 4px 12px rgba(0,0,0,.04); }
-    .quick-links .label { font-size: 11px; color: var(--ink-500); text-transform: uppercase; letter-spacing: 0.05em; }
-    .quick-links .v { font-size: 22px; font-weight: 600; margin-top: 4px; }
+    /* Sidebar admin theme override */
+    .app-sidebar { background: #1A1A1F !important; color: white !important; }
+    .app-sidebar .sidebar-section { color: rgba(255,255,255,0.4) !important; }
+    .app-sidebar .sidebar-link { color: rgba(255,255,255,0.7) !important; }
+    .app-sidebar .sidebar-link:hover { background: rgba(255,255,255,0.05) !important; color: white !important; }
+    .app-sidebar .sidebar-link.active { background: rgba(255,255,255,0.1) !important; color: white !important; }
+    .app-sidebar .logo { color: white !important; }
   </style>
 </head>
 <body>
-  <div class="admin-top">
-    <div class="logo">
-      <span class="logo-mark">C</span>
-      <span>compta</span>
-      <span class="admin-badge">Admin</span>
-    </div>
-    <div style="display: flex; gap: 12px; align-items: center;">
-      <a href="app.html?as=client" style="font-size: 13px; color: var(--ink-600); text-decoration: none;">Vue client →</a>
-      <button id="logoutBtn" class="btn btn-ghost btn-sm">Déconnexion</button>
-    </div>
+  <div id="root">
+    <div style="display: grid; place-items: center; height: 100vh; color: #6B7280; font-family: system-ui, sans-serif;">Chargement…</div>
   </div>
-
-  <div class="admin-content">
-    <h1 style="margin: 0 0 8px; font-size: 26px;">Espace admin</h1>
-    <p style="color: var(--ink-500); margin-bottom: 28px;">Bienvenue <span id="adminName">…</span>. Voici les dossiers nécessitant ton intervention.</p>
-
-    <div class="quick-links" style="margin-bottom: 24px;">
-      <a href="#queue">
-        <div class="label">À valider</div>
-        <div class="v" id="kpiAwaiting">…</div>
-      </a>
-      <a href="#queue">
-        <div class="label">En correction</div>
-        <div class="v" id="kpiAmendment">…</div>
-      </a>
-      <a href="#all">
-        <div class="label">Total dossiers</div>
-        <div class="v" id="kpiTotal">…</div>
-      </a>
-    </div>
-
-    <div class="admin-card" id="queue">
-      <h2>Dossiers en attente de validation</h2>
-      <div class="sub">Soumis par tes clients, en attente de ton OK avant envoi à l'INPI.</div>
-      <div id="awaitingList"><div class="empty">Chargement…</div></div>
-    </div>
-
-    <div class="admin-card">
-      <h2>Dossiers en correction</h2>
-      <div class="sub">Tu as demandé une rectification au client. Ils sont en attente de réponse.</div>
-      <div id="amendmentList"><div class="empty">Chargement…</div></div>
-    </div>
-
-    <div class="admin-card">
-      <h2>Formalités INPI déposées</h2>
-      <div class="sub">Toutes les formalités de ton compte mandataire INPI (lecture seule).</div>
-      <p style="margin: 0;"><a href="app.html?as=client&route=dossiers" style="color: var(--accent-ink); font-weight: 500;">→ Voir les 66 formalités INPI</a></p>
-    </div>
-  </div>
-
-  <style>
-    .modal-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,.4); display: none; align-items: center; justify-content: center; z-index: 1000; padding: 20px; }
-    .modal-backdrop.show { display: flex; }
-    .modal { background: white; border-radius: 16px; width: 100%; max-width: 720px; max-height: 90vh; overflow: auto; padding: 28px; }
-    .modal h2 { margin: 0 0 4px; font-size: 20px; }
-    .modal .close { float: right; background: none; border: none; cursor: pointer; font-size: 22px; color: var(--ink-500); }
-    .obs-bubble { padding: 12px; border-radius: 10px; margin-bottom: 8px; }
-    .obs-admin { background: #FEF3C7; border-left: 3px solid #F59E0B; }
-    .obs-client { background: var(--ink-50); border-left: 3px solid var(--accent); }
-  </style>
-
-  <div class="modal-backdrop" id="modal">
-    <div class="modal">
-      <button class="close" onclick="closeModal()">×</button>
-      <div id="modalBody">Loading…</div>
-    </div>
-  </div>
-
-  <script>
-    const TYPE_LABEL = { CREATION: 'Création AE', MODIFICATION: 'Modification', RADIATION: 'Radiation' };
-    const STATUS_LABEL = {
-      DRAFT: { label: 'Brouillon', cls: 'pill-draft' },
-      AWAITING_VALIDATION: { label: 'À valider', cls: 'pill-awaiting' },
-      INTERNAL_AMENDMENT_PENDING: { label: 'En correction', cls: 'pill-amendment' },
-      VALIDATED_INTERNAL: { label: 'Validé', cls: 'pill-validated' },
-      RECEIVED: { label: 'Reçu INPI', cls: 'pill-validated' },
+  <script type="text/babel" src="components/icons.jsx"></script>
+  <script type="text/babel" src="app/shared.jsx"></script>
+  <script type="text/babel" src="admin/shell.jsx"></script>
+  <script type="text/babel" src="admin/pages.jsx"></script>
+  <script type="text/babel" src="admin/dossier-detail.jsx"></script>
+  <script type="text/babel">
+    // Expose helpers utilisés par dossier-detail
+    window.fmtDate = (iso) => new Date(iso).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric' });
+    window.StatusPill = ({ statut }) => {
+      const map = {
+        DRAFT: { label: 'Brouillon', cls: 'gray' },
+        AWAITING_VALIDATION: { label: 'À valider', cls: 'blue' },
+        INTERNAL_AMENDMENT_PENDING: { label: 'En correction', cls: 'orange' },
+        VALIDATED_INTERNAL: { label: 'Validé interne', cls: 'green' },
+        RECEIVED: { label: 'Reçu INPI', cls: 'blue' },
+        VALIDATED: { label: 'Validé INPI', cls: 'green' },
+        REJECTED: { label: 'Rejeté INPI', cls: 'red' },
+      };
+      const s = map[statut] || { label: statut, cls: 'gray' };
+      return <span className={`pill ${s.cls}`} style={{ fontSize: 12 }}><span className="dot"></span>{s.label}</span>;
     };
 
-    function formatDate(iso) {
-      if (!iso) return '';
-      return new Date(iso).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
+    function mount() {
+      if (!window.AdminApp) return setTimeout(mount, 50);
+      ReactDOM.createRoot(document.getElementById('root')).render(<window.AdminApp />);
     }
-
-    function renderRow(d) {
-      const status = STATUS_LABEL[d.statut] || { label: d.statut, cls: 'pill-draft' };
-      const author = d.profiles ? `${d.profiles.first_name || ''} ${d.profiles.last_name || ''}`.trim() : '';
-      return `<div class="row" data-id="${d.id}" onclick="openDossier('${d.id}')">
-        <span class="ref">${d.reference || d.id.slice(0, 8)}</span>
-        <div>
-          <div class="name">${d.client_name || '(sans nom)'}</div>
-          <div style="font-size: 11px; color: var(--ink-500); margin-top: 2px;">par ${author || 'client inconnu'}</div>
-        </div>
-        <span class="type">${TYPE_LABEL[d.type_formalite] || d.type_formalite}</span>
-        <span class="when">${formatDate(d.updated_at || d.created_at)}</span>
-        <span class="status-pill ${status.cls}">${status.label}</span>
-      </div>`;
-    }
-
-    let currentDossier = null;
-
-    async function getJwt() {
-      const { data } = await window.supabaseClient.auth.getSession();
-      return data.session?.access_token;
-    }
-
-    async function apiFetch(path, opts = {}) {
-      const jwt = await getJwt();
-      const r = await fetch(`${ADMIN_API_BASE}${path}`, {
-        ...opts,
-        headers: { ...(opts.headers || {}), Authorization: `Bearer ${jwt}` },
-      });
-      if (!r.ok) throw new Error(`API ${r.status}: ${await r.text()}`);
-      return r.json();
-    }
-
-    function escapeHtml(s) {
-      return String(s || '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-    }
-
-    async function openDossier(id) {
-      currentDossier = id;
-      document.getElementById('modal').classList.add('show');
-      document.getElementById('modalBody').innerHTML = '<p>Chargement…</p>';
-      try {
-        const { dossier, observations = [], documents = [] } = await apiFetch(`/api/admin/dossiers/${id}`);
-        const author = dossier.profiles ? `${dossier.profiles.first_name || ''} ${dossier.profiles.last_name || ''}`.trim() : '';
-        const status = STATUS_LABEL[dossier.statut] || { label: dossier.statut, cls: 'pill-draft' };
-        const canValidate = dossier.statut === 'AWAITING_VALIDATION';
-
-        const obsHtml = observations.length
-          ? observations.map(o => `
-            <div class="obs-bubble ${o.author_role === 'admin' ? 'obs-admin' : 'obs-client'}">
-              <div style="font-size: 11px; color: var(--ink-500); margin-bottom: 4px; display: flex; justify-content: space-between;">
-                <strong>${o.author_role === 'admin' ? 'Toi (admin)' : escapeHtml(author || 'Client')}</strong>
-                <span class="mono">${formatDate(o.created_at)}</span>
-              </div>
-              <div style="font-size: 13px; white-space: pre-wrap;">${escapeHtml(o.message)}</div>
-            </div>`).join('')
-          : '<p style="color: var(--ink-500); font-size: 13px;">Aucune observation.</p>';
-
-        const docsHtml = documents.length
-          ? documents.map(doc => `
-            <div style="display: flex; gap: 10px; align-items: center; padding: 8px 12px; border: 1px solid var(--ink-150); border-radius: 8px; margin-bottom: 6px;">
-              <div style="flex: 1;">
-                <div style="font-size: 13px; font-weight: 500;">${escapeHtml(doc.name)}</div>
-                <div style="font-size: 11px; color: var(--ink-500);">${doc.size_bytes ? (doc.size_bytes/1024).toFixed(0) + ' Ko' : ''}</div>
-              </div>
-              <button class="btn btn-ghost btn-sm" onclick="downloadDoc('${doc.file_path}')">Voir</button>
-            </div>`).join('')
-          : '<p style="color: var(--ink-500); font-size: 13px;">Aucune pièce jointe.</p>';
-
-        document.getElementById('modalBody').innerHTML = `
-          <h2>${escapeHtml(dossier.client_name)}</h2>
-          <div style="font-size: 13px; color: var(--ink-500); margin-bottom: 4px;">
-            <span class="mono">${escapeHtml(dossier.reference)}</span> · ${TYPE_LABEL[dossier.type_formalite] || dossier.type_formalite}
-            · Soumis par ${escapeHtml(author)}
-          </div>
-          <div style="margin-bottom: 18px;"><span class="status-pill ${status.cls}">${status.label}</span></div>
-
-          <h3 style="font-size: 14px; margin: 18px 0 8px;">Métadonnées</h3>
-          <pre style="background: var(--ink-50); padding: 12px; border-radius: 8px; font-size: 11px; overflow: auto; max-height: 200px;">${escapeHtml(JSON.stringify(dossier.inpi_content, null, 2))}</pre>
-
-          <h3 style="font-size: 14px; margin: 18px 0 8px;">Pièces jointes</h3>
-          ${docsHtml}
-
-          <h3 style="font-size: 14px; margin: 18px 0 8px;">Observations</h3>
-          ${obsHtml}
-
-          <textarea id="obsInput" placeholder="Message pour le client…" rows="3" style="width: 100%; padding: 10px; border: 1px solid var(--ink-200); border-radius: 8px; font-family: inherit; font-size: 13px; margin-top: 8px;"></textarea>
-
-          <div style="display: flex; gap: 10px; margin-top: 14px; justify-content: flex-end; flex-wrap: wrap;">
-            <button class="btn btn-ghost btn-sm" onclick="addObs()">Ajouter observation</button>
-            ${dossier.statut === 'AWAITING_VALIDATION' ? `
-              <button class="btn btn-ghost btn-sm" style="border: 1px solid #F59E0B; color: #92400E;" onclick="requestAmendment()">Demander correction</button>
-              <button class="btn btn-accent btn-sm" onclick="validate(false)">Valider (sans INPI)</button>
-              <button class="btn btn-accent btn-sm" onclick="validate(true)" style="background: var(--accent-ink);">Valider + envoyer INPI</button>
-            ` : ''}
-          </div>
-        `;
-      } catch (e) {
-        document.getElementById('modalBody').innerHTML = `<p style="color: #b42318;">Erreur : ${e.message}</p>`;
-      }
-    }
-
-    function closeModal() { document.getElementById('modal').classList.remove('show'); currentDossier = null; }
-
-    async function downloadDoc(path) {
-      const { data, error } = await window.supabaseClient.storage.from('dossier-docs').createSignedUrl(path, 300);
-      if (error) return alert('Erreur : ' + error.message);
-      window.open(data.signedUrl, '_blank');
-    }
-
-    async function addObs() {
-      const msg = document.getElementById('obsInput').value.trim();
-      if (!msg) return;
-      try {
-        await apiFetch(`/api/dossiers/${currentDossier}/observations`, {
-          method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ message: msg }),
-        });
-        await openDossier(currentDossier);
-      } catch (e) { alert('Erreur : ' + e.message); }
-    }
-
-    async function requestAmendment() {
-      const msg = document.getElementById('obsInput').value.trim();
-      if (!msg) return alert('Écris un message expliquant ce qui doit être corrigé.');
-      if (!confirm('Renvoyer ce dossier au client pour correction ?')) return;
-      try {
-        await apiFetch(`/api/admin/dossiers/${currentDossier}/request-amendment`, {
-          method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ message: msg }),
-        });
-        closeModal();
-        await load();
-      } catch (e) { alert('Erreur : ' + e.message); }
-    }
-
-    async function validate(sendToInpi) {
-      const verb = sendToInpi ? 'valider ET envoyer à l\'INPI maintenant' : 'valider en interne (sans envoi INPI)';
-      if (!confirm(`Confirmer : ${verb} ?`)) return;
-      try {
-        const r = await apiFetch(`/api/admin/dossiers/${currentDossier}/validate`, {
-          method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ sendToInpi }),
-        });
-        if (r.inpiError) alert('Validé en interne. INPI a refusé : ' + r.inpiError);
-        else if (r.inpi) alert('Envoyé à INPI ! ID : ' + r.inpi.id);
-        else alert('Validé en interne.');
-        closeModal();
-        await load();
-      } catch (e) { alert('Erreur : ' + e.message); }
-    }
-
-    async function load() {
-      while (!window.__ME__) await new Promise(r => setTimeout(r, 80));
-      const me = window.__ME__;
-      document.getElementById('adminName').textContent = me.first_name || me.email;
-
-      const { data: { session } } = await window.supabaseClient.auth.getSession();
-      const token = session.access_token;
-
-      const res = await fetch(`${ADMIN_API_BASE}/api/admin/dossiers`, { headers: { Authorization: `Bearer ${token}` } });
-      const { items = [] } = res.ok ? await res.json() : { items: [] };
-
-      const awaiting = items.filter(i => i.statut === 'AWAITING_VALIDATION');
-      const amendment = items.filter(i => i.statut === 'INTERNAL_AMENDMENT_PENDING');
-
-      document.getElementById('kpiAwaiting').textContent = awaiting.length;
-      document.getElementById('kpiAmendment').textContent = amendment.length;
-      document.getElementById('kpiTotal').textContent = items.length;
-
-      document.getElementById('awaitingList').innerHTML = awaiting.length
-        ? awaiting.map(renderRow).join('')
-        : '<div class="empty">Aucun dossier à valider. Les soumissions des clients apparaîtront ici.</div>';
-      document.getElementById('amendmentList').innerHTML = amendment.length
-        ? amendment.map(renderRow).join('')
-        : '<div class="empty">Aucun dossier en correction.</div>';
-    }
-
-    load().catch(e => console.error('load err', e));
-
-    document.getElementById('logoutBtn').addEventListener('click', async () => {
-      await window.supabaseClient.auth.signOut();
-      window.location.href = 'auth/login.html';
-    });
+    mount();
   </script>
 </body>
 </html>

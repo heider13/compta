@@ -88,6 +88,68 @@ app.get(
 );
 
 // ─── Admin endpoints ───────────────────────────────────────
+app.get(
+  '/api/admin/stats',
+  requireUser,
+  requireAdmin,
+  asyncRoute(async (req, res) => {
+    const { data: dossiers } = await supabaseAdmin.from('dossiers').select('statut, type_formalite, created_at, user_id');
+    const { data: clients } = await supabaseAdmin.from('profiles').select('id, role').eq('role', 'client');
+    const byStatut = {};
+    const byType = {};
+    let last30 = 0;
+    const cutoff = Date.now() - 30 * 24 * 3600 * 1000;
+    for (const d of dossiers || []) {
+      byStatut[d.statut] = (byStatut[d.statut] || 0) + 1;
+      byType[d.type_formalite] = (byType[d.type_formalite] || 0) + 1;
+      if (new Date(d.created_at).getTime() > cutoff) last30++;
+    }
+    res.json({
+      totalDossiers: (dossiers || []).length,
+      totalClients: (clients || []).length,
+      byStatut,
+      byType,
+      newLast30Days: last30,
+    });
+  }),
+);
+
+app.get(
+  '/api/admin/clients',
+  requireUser,
+  requireAdmin,
+  asyncRoute(async (req, res) => {
+    const { data: clients, error } = await supabaseAdmin
+      .from('profiles')
+      .select('id, first_name, last_name, created_at')
+      .eq('role', 'client')
+      .order('created_at', { ascending: false });
+    if (error) return res.status(500).json({ error: 'db_error', detail: error.message });
+
+    const { data: users } = await supabaseAdmin.auth.admin.listUsers({ perPage: 500 });
+    const emailById = Object.fromEntries((users?.users || []).map((u) => [u.id, u.email]));
+
+    const { data: dossiers } = await supabaseAdmin
+      .from('dossiers')
+      .select('user_id, statut');
+    const countsByUser = {};
+    for (const d of dossiers || []) {
+      countsByUser[d.user_id] = countsByUser[d.user_id] || { total: 0, active: 0, validated: 0 };
+      countsByUser[d.user_id].total++;
+      if (['DRAFT', 'AWAITING_VALIDATION', 'INTERNAL_AMENDMENT_PENDING', 'VALIDATED_INTERNAL'].includes(d.statut)) countsByUser[d.user_id].active++;
+      if (['VALIDATED', 'VALIDATED_INTERNAL'].includes(d.statut)) countsByUser[d.user_id].validated++;
+    }
+
+    res.json({
+      items: (clients || []).map((c) => ({
+        ...c,
+        email: emailById[c.id] || null,
+        dossier_counts: countsByUser[c.id] || { total: 0, active: 0, validated: 0 },
+      })),
+    });
+  }),
+);
+
 async function attachProfiles(dossiers) {
   if (!dossiers.length) return dossiers;
   const userIds = [...new Set(dossiers.map((d) => d.user_id))];
