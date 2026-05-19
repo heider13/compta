@@ -223,36 +223,69 @@ const AdminQueue = ({ setRoute }) => {
   );
 };
 
-// ─── ALL DOSSIERS ──────────────────────────────────────────────
+// ─── ALL DOSSIERS (local + INPI fusionnés) ───────────────────
+const TYPE_FROM_INPI = { C: 'CREATION', M: 'MODIFICATION', R: 'RADIATION' };
+
+function mapInpiToRow(f) {
+  return {
+    id: 'inpi-' + f.id,
+    inpiId: f.id,
+    reference: f.liasseNumber || `INPI-${f.id}`,
+    client_name: f.companyName,
+    type_formalite: TYPE_FROM_INPI[f.typeFormalite] || f.typeFormalite,
+    statut: f.status,
+    created_at: f.statusDate,
+    updated_at: f.statusDate,
+    source: 'inpi',
+    profiles: null,
+  };
+}
+
 const AdminAllDossiers = ({ setRoute }) => {
-  const [items, setItems] = React.useState([]);
+  const [local, setLocal] = React.useState([]);
+  const [inpi, setInpi] = React.useState([]);
   const [loading, setLoading] = React.useState(true);
+  const [error, setError] = React.useState(null);
   const [filter, setFilter] = React.useState('all');
+  const [sourceFilter, setSourceFilter] = React.useState('all');
   const [query, setQuery] = React.useState('');
 
   React.useEffect(() => {
     (async () => {
       try {
-        const d = await window.adminFetch('/api/admin/dossiers');
-        setItems(d.items || []);
-      } catch (e) { console.error(e); }
+        const [localRes, inpiRes] = await Promise.all([
+          window.adminFetch('/api/admin/dossiers').catch(() => ({ items: [] })),
+          window.adminFetch('/api/formalites?itemsPerPage=200').catch(() => ({ items: [] })),
+        ]);
+        setLocal((localRes.items || []).map(d => ({ ...d, source: 'local' })));
+        setInpi((inpiRes.items || []).map(mapInpiToRow));
+      } catch (e) { setError(e.message); }
       finally { setLoading(false); }
     })();
   }, []);
 
   if (loading) return <div className="app-content"><p>Chargement…</p></div>;
 
+  // Fusionne et trie par date (récent d'abord)
+  const all = [...local, ...inpi].sort((a, b) => {
+    const da = new Date(a.updated_at || a.created_at || 0).getTime();
+    const db = new Date(b.updated_at || b.created_at || 0).getTime();
+    return db - da;
+  });
+
   const filters = [
-    { id: 'all',       label: 'Tous',          count: items.length },
-    { id: 'active',    label: 'En cours',      count: items.filter(d => ADMIN_STATUS[d.statut]?.group === 'En cours' || ADMIN_STATUS[d.statut]?.group === 'Action requise').length },
-    { id: 'awaiting',  label: 'À valider',     count: items.filter(d => d.statut === 'AWAITING_VALIDATION').length },
-    { id: 'inpi',      label: "À l'INPI",      count: items.filter(d => ADMIN_STATUS[d.statut]?.group === "À l'INPI").length },
-    { id: 'done',      label: 'Validés',       count: items.filter(d => d.statut === 'VALIDATED').length },
+    { id: 'all',       label: 'Tous',          count: all.length },
+    { id: 'active',    label: 'En cours',      count: all.filter(d => ['En cours', 'Action requise'].includes(ADMIN_STATUS[d.statut]?.group)).length },
+    { id: 'awaiting',  label: 'À valider',     count: all.filter(d => d.statut === 'AWAITING_VALIDATION').length },
+    { id: 'inpi-side', label: "À l'INPI",      count: all.filter(d => ADMIN_STATUS[d.statut]?.group === "À l'INPI").length },
+    { id: 'done',      label: 'Validés',       count: all.filter(d => d.statut === 'VALIDATED').length },
   ];
-  let rows = items;
+
+  let rows = all;
+  if (sourceFilter !== 'all') rows = rows.filter(d => d.source === sourceFilter);
   if (filter === 'active') rows = rows.filter(d => ['En cours', 'Action requise'].includes(ADMIN_STATUS[d.statut]?.group));
   if (filter === 'awaiting') rows = rows.filter(d => d.statut === 'AWAITING_VALIDATION');
-  if (filter === 'inpi') rows = rows.filter(d => ADMIN_STATUS[d.statut]?.group === "À l'INPI");
+  if (filter === 'inpi-side') rows = rows.filter(d => ADMIN_STATUS[d.statut]?.group === "À l'INPI");
   if (filter === 'done') rows = rows.filter(d => d.statut === 'VALIDATED');
   if (query) {
     const q = query.toLowerCase();
@@ -263,10 +296,12 @@ const AdminAllDossiers = ({ setRoute }) => {
     <div className="app-content with-bg">
       <div className="page-head">
         <div>
-          <h1>Tous les dossiers</h1>
-          <p>{items.length} dossier{items.length > 1 ? 's' : ''} suivis sur la plateforme.</p>
+          <h1>Dossiers & formalités</h1>
+          <p>{all.length} entrée{all.length > 1 ? 's' : ''} au total · {local.length} sur Compta · {inpi.length} sur INPI</p>
         </div>
       </div>
+
+      {error && <div style={{ color: '#b42318', padding: 12, marginBottom: 16, fontSize: 13, background: '#FEE2E2', borderRadius: 8 }}>Erreur : {error}</div>}
 
       <div className="tabs">
         {filters.map(f => (
@@ -276,18 +311,78 @@ const AdminAllDossiers = ({ setRoute }) => {
         ))}
       </div>
 
-      <div style={{ marginBottom: 16 }}>
-        <div className="app-topbar-search" style={{ width: 360, background: 'white', border: '1px solid var(--ink-150)' }}>
+      <div style={{ display: 'flex', gap: 12, marginBottom: 16, flexWrap: 'wrap', alignItems: 'center' }}>
+        <div className="app-topbar-search" style={{ width: 320, background: 'white', border: '1px solid var(--ink-150)' }}>
           {window.I && <window.I.Search size={14} style={{ color: 'var(--ink-400)' }} />}
           <input placeholder="Rechercher par client, référence…" value={query} onChange={e => setQuery(e.target.value)} />
+        </div>
+        <div style={{ display: 'flex', gap: 6, background: 'var(--ink-100)', padding: 3, borderRadius: 8 }}>
+          {[
+            { id: 'all', label: 'Toutes sources' },
+            { id: 'local', label: 'Compta' },
+            { id: 'inpi', label: 'INPI' },
+          ].map(s => (
+            <button key={s.id} onClick={() => setSourceFilter(s.id)}
+              style={{
+                padding: '6px 12px', border: 'none', borderRadius: 6, cursor: 'pointer', fontSize: 12, fontWeight: 500,
+                background: sourceFilter === s.id ? 'white' : 'transparent',
+                color: sourceFilter === s.id ? 'var(--ink-900)' : 'var(--ink-600)',
+                boxShadow: sourceFilter === s.id ? '0 1px 2px rgba(0,0,0,0.05)' : 'none',
+              }}>
+              {s.label}
+            </button>
+          ))}
         </div>
       </div>
 
       <div className="app-card">
         {rows.length === 0
-          ? <div style={{ padding: 64, textAlign: 'center', color: 'var(--ink-500)', fontSize: 14 }}>Aucun dossier ne correspond.</div>
-          : rows.map(d => <RowCompact key={d.id} dossier={d} onClick={() => setRoute('dossiers', { id: d.id })} />)}
+          ? <div style={{ padding: 64, textAlign: 'center', color: 'var(--ink-500)', fontSize: 14 }}>Aucun résultat.</div>
+          : rows.map(d => (
+              <RowUnified key={d.id} dossier={d} onClick={() => {
+                if (d.source === 'local') setRoute('dossiers', { id: d.id });
+              }} />
+            ))}
       </div>
+    </div>
+  );
+};
+
+const SourceBadge = ({ source }) => (
+  <span style={{
+    display: 'inline-flex', alignItems: 'center', gap: 4,
+    padding: '2px 8px', borderRadius: 999, fontSize: 10, fontWeight: 600, letterSpacing: 0.04,
+    textTransform: 'uppercase',
+    background: source === 'inpi' ? '#DBEAFE' : 'var(--accent-soft)',
+    color: source === 'inpi' ? '#1E40AF' : 'var(--accent-ink)',
+  }}>
+    {source === 'inpi' ? 'INPI' : 'Compta'}
+  </span>
+);
+
+const RowUnified = ({ dossier, onClick }) => {
+  const author = dossier.profiles ? `${dossier.profiles.first_name || ''} ${dossier.profiles.last_name || ''}`.trim() : '';
+  const clickable = dossier.source === 'local';
+  return (
+    <div onClick={clickable ? onClick : null} style={{
+      display: 'grid', gridTemplateColumns: '80px 110px 1.3fr 0.9fr 110px 130px',
+      padding: '12px 18px', alignItems: 'center', gap: 12,
+      cursor: clickable ? 'pointer' : 'default',
+      borderTop: '1px solid var(--ink-100)',
+      fontSize: 13,
+      opacity: clickable ? 1 : 0.95,
+    }}
+      onMouseEnter={e => { if (clickable) e.currentTarget.style.background = 'var(--ink-50)'; }}
+      onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
+      <SourceBadge source={dossier.source} />
+      <span className="mono" style={{ color: 'var(--ink-500)', fontSize: 11 }}>{dossier.reference || (dossier.id || '').slice(0, 8)}</span>
+      <div>
+        <div style={{ fontWeight: 500 }}>{dossier.client_name}</div>
+        {author && <div style={{ fontSize: 11, color: 'var(--ink-500)' }}>par {author}</div>}
+      </div>
+      <span style={{ color: 'var(--ink-700)' }}>{TYPE_LABEL[dossier.type_formalite] || dossier.type_formalite}</span>
+      <span className="mono" style={{ color: 'var(--ink-500)', fontSize: 11 }}>{fmtDate(dossier.updated_at || dossier.created_at)}</span>
+      <StatusPill statut={dossier.statut} />
     </div>
   );
 };

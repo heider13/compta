@@ -4,12 +4,11 @@
 const ADMIN_API_BASE = 'https://vps-84ac2579.vps.ovh.net';
 
 const ADMIN_ROUTES = {
-  dashboard:    { label: 'Tableau de bord', icon: 'Grid' },
-  queue:        { label: 'À valider',       icon: 'DocEdit' },
-  dossiers:     { label: 'Tous les dossiers', icon: 'Doc' },
-  inpi:         { label: 'Formalités INPI', icon: 'Building' },
-  clients:      { label: 'Clients',         icon: 'User' },
-  parametres:   { label: 'Paramètres',      icon: 'Lock' },
+  dashboard:    { label: 'Tableau de bord',     icon: 'Grid' },
+  queue:        { label: 'À valider',           icon: 'DocEdit' },
+  dossiers:     { label: 'Dossiers & formalités', icon: 'Doc' },
+  clients:      { label: 'Clients',             icon: 'User' },
+  parametres:   { label: 'Paramètres',          icon: 'Lock' },
 };
 
 async function getJwt() {
@@ -59,9 +58,7 @@ const AdminSidebar = ({ route, setRoute, me }) => (
     ))}
 
     <div className="sidebar-section" style={{ color: 'rgba(255,255,255,0.5)' }}>Données</div>
-    {['inpi', 'clients'].map(r => (
-      <AdminNavLink key={r} id={r} route={route} setRoute={setRoute} />
-    ))}
+    <AdminNavLink id="clients" route={route} setRoute={setRoute} />
 
     <div className="sidebar-section" style={{ color: 'rgba(255,255,255,0.5)' }}>Compte</div>
     <AdminNavLink id="parametres" route={route} setRoute={setRoute} />
@@ -179,7 +176,6 @@ function renderAdminPage(route, setRoute, me, extra) {
     case 'dashboard': return <window.AdminDashboard setRoute={setRoute} me={me} />;
     case 'queue':     return <window.AdminQueue setRoute={setRoute} />;
     case 'dossiers':  return <window.AdminAllDossiers setRoute={setRoute} />;
-    case 'inpi':      return <window.AdminInpiList />;
     case 'clients':   return <window.AdminClients setRoute={setRoute} />;
     case 'parametres':return <window.AdminParametres me={me} />;
     default:          return <window.AdminDashboard setRoute={setRoute} me={me} />;
