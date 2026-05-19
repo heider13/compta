@@ -471,6 +471,17 @@ section[id] { scroll-margin-top: 80px; }
   margin: 0 auto;
 }
 .demo-frame-light { padding: 0; }
+.demo-frame-compact { max-width: 720px; }
+.demo-frame-compact > div > div[style*="max-width: 820"],
+.demo-frame-compact > div > div[style*="maxWidth: 820"] { max-width: 100% !important; }
+.demo-frame-compact .app-card { padding: 18px !important; margin-bottom: 12px !important; }
+.demo-frame-compact .app-card h3 { font-size: 15px !important; margin-bottom: 4px !important; }
+.demo-frame-compact .auth-label { font-size: 12px !important; }
+.demo-frame-compact input,
+.demo-frame-compact select,
+.demo-frame-compact textarea { font-size: 13px !important; padding: 8px 10px !important; }
+.demo-frame-compact .btn-lg { padding: 10px 18px !important; font-size: 14px !important; }
+.demo-frame-compact .btn { padding: 8px 14px !important; font-size: 13px !important; }
 .demo-meta {
   display: flex; gap: 16px; align-items: center; flex-wrap: wrap;
   max-width: 1080px; margin: 20px auto 0;
