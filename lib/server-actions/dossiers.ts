@@ -57,6 +57,7 @@ export async function archiveDossier(dossierId: string) {
 
 export async function prepareNewDossier(formData: FormData) {
   const clientId = String(formData.get('client_id') || '') || null;
+  const assignedTo = String(formData.get('assigned_to') || '') || null;
   const type = String(formData.get('type') || 'AE');
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
@@ -87,6 +88,7 @@ export async function prepareNewDossier(formData: FormData) {
       type_formalite: typeFormalite,
       forme_juridique: formeJuridique,
       statut: 'DRAFT',
+      ...(assignedTo ? { assigned_to: assignedTo } : {}),
     })
     .select()
     .single();

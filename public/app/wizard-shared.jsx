@@ -67,14 +67,63 @@ const RecapBlock = ({ label, rows }) => (
   </div>
 );
 
-const ProgressBar = ({ steps, current }) => (
-  <div style={{ display: 'flex', gap: 4, marginBottom: 20 }}>
-    {steps.map((label, i) => (
-      <div key={i} style={{ flex: 1, textAlign: 'center' }}>
-        <div style={{ height: 4, background: i <= current ? 'var(--accent)' : 'var(--ink-200)', borderRadius: 2, marginBottom: 6 }} />
-        <span style={{ fontSize: 11, color: i === current ? 'var(--accent-ink)' : 'var(--ink-500)', fontWeight: i === current ? 600 : 400 }}>{label}</span>
-      </div>
-    ))}
+// Tabs cliquables avec indicateurs de complétion (○ pour à faire, ✓ pour fait).
+// Le step courant est surligné, les steps précédents sont marqués complétés
+// et restent cliquables. Les steps futurs sont cliquables aussi (navigation libre).
+const ProgressBar = ({ steps, current, onStepClick, completedSteps }) => (
+  <div style={{
+    display: 'flex',
+    gap: 2,
+    marginBottom: 24,
+    borderBottom: '1px solid var(--ink-150)',
+    overflow: 'auto',
+  }}>
+    {steps.map((label, i) => {
+      const isActive = i === current;
+      const isCompleted = completedSteps ? completedSteps.includes(i) : i < current;
+      const isClickable = !!onStepClick;
+      return (
+        <button
+          key={i}
+          type="button"
+          onClick={isClickable ? () => onStepClick(i) : undefined}
+          disabled={!isClickable}
+          style={{
+            flex: '0 0 auto',
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 8,
+            padding: '12px 18px',
+            background: 'transparent',
+            border: 'none',
+            borderBottom: isActive ? '2px solid var(--accent)' : '2px solid transparent',
+            marginBottom: -1,
+            cursor: isClickable ? 'pointer' : 'default',
+            color: isActive ? 'var(--accent-ink)' : 'var(--ink-600)',
+            fontSize: 13,
+            fontWeight: isActive ? 600 : 500,
+            fontFamily: 'inherit',
+            whiteSpace: 'nowrap',
+            transition: 'color .12s ease, border-color .12s ease',
+          }}
+        >
+          <span style={{
+            display: 'inline-grid',
+            placeItems: 'center',
+            width: 22,
+            height: 22,
+            borderRadius: '50%',
+            background: isCompleted ? 'var(--accent)' : isActive ? 'var(--accent-soft)' : 'var(--ink-100)',
+            color: isCompleted ? 'white' : isActive ? 'var(--accent-ink)' : 'var(--ink-500)',
+            fontSize: 11,
+            fontWeight: 600,
+          }}>
+            {isCompleted ? '✓' : (i + 1)}
+          </span>
+          <span>{label}</span>
+        </button>
+      );
+    })}
   </div>
 );
 
