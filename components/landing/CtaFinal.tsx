@@ -53,7 +53,7 @@ export function CtaFinal() {
           </p>
           <div style={{ display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap', position: 'relative' }}>
             <a
-              href="/auth/signup.html"
+              href="/auth/signup"
               className="btn btn-lg"
               style={{ background: 'white', color: 'var(--accent-ink)', fontWeight: 500 }}
             >

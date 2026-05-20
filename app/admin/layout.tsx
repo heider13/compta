@@ -72,7 +72,7 @@ export default async function AdminLayout({
             </span>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <Link href="/cabinet/clients" className="btn btn-ghost btn-sm">
+            <Link href="/clients" className="btn btn-ghost btn-sm">
               Vue cabinet →
             </Link>
             <form action={signOut} style={{ margin: 0 }}>

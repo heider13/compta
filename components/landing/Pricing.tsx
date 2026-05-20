@@ -103,7 +103,7 @@ export function Pricing() {
                 <span style={{ fontSize: 14, color: 'var(--ink-500)' }}>{p.suffix}</span>
               </div>
               <a
-                href="/auth/signup.html"
+                href="/auth/signup"
                 className={`btn ${p.accent ? 'btn-accent' : 'btn-ghost'}`}
                 style={{ width: '100%', marginBottom: 24, justifyContent: 'center' }}
               >

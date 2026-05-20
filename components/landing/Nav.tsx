@@ -16,8 +16,8 @@ export function Nav() {
           <a href="/app.html" className="nav-link">Démo</a>
         </div>
         <div className="nav-cta">
-          <a href="/auth/login.html" className="btn btn-ghost btn-sm">Se connecter</a>
-          <a href="/auth/signup.html" className="btn btn-primary btn-sm">
+          <a href="/auth/login" className="btn btn-ghost btn-sm">Se connecter</a>
+          <a href="/auth/signup" className="btn btn-primary btn-sm">
             Demander une démo
             <Arrow size={16} />
           </a>

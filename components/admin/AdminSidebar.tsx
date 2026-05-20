@@ -95,7 +95,7 @@ export function AdminSidebar({
 
       <div style={{ marginTop: 'auto' }}>
         <Link
-          href="/cabinet/clients"
+          href="/clients"
           className="sidebar-link"
           style={{
             color: SIDEBAR_TEXT_MUTED,

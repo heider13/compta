@@ -21,7 +21,7 @@ export function Hero() {
           via l&apos;API officielle du Guichet Unique INPI.
         </p>
         <div className="hero-cta">
-          <a href="/auth/signup.html" className="btn btn-accent btn-lg">
+          <a href="/auth/signup" className="btn btn-accent btn-lg">
             Demander une démo
             <Arrow size={18} />
           </a>

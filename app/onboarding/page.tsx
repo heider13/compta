@@ -14,7 +14,7 @@ export default async function OnboardingPage() {
 
   // Pas connecté → page legacy de login
   if (!user) {
-    redirect('/auth/login.html');
+    redirect('/auth/login');
   }
 
   // Récupère l'org du user via memberships join organizations.
@@ -48,7 +48,7 @@ export default async function OnboardingPage() {
   if (membershipError || !membership || !membership.organizations) {
     // Cas anormal : le trigger devrait avoir créé l'org. On laisse l'utilisateur
     // retomber sur le login legacy pour resignifier l'état.
-    redirect('/auth/login.html');
+    redirect('/auth/login');
   }
 
   // Supabase typings retournent parfois un array pour la relation : on normalise.

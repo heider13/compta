@@ -29,7 +29,7 @@ export default async function CabinetLayout({
   } = await supabase.auth.getUser();
 
   if (!user) {
-    redirect('/auth/login.html');
+    redirect('/auth/login');
   }
 
   // Récupère les memberships pour identifier l'org courante
