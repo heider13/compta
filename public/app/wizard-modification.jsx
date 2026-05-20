@@ -138,7 +138,7 @@ const WizardModification = ({ setRoute, dossierId: initialDossierId, onCreated }
 
   return (
     <div style={{ maxWidth: 820 }}>
-      <W.ProgressBar steps={STEPS_MOD} current={step} />
+      <W.ProgressBar steps={STEPS_MOD} current={step} onStepClick={async (i) => { try { await saveDraft(); } catch {} setStep(i); }} />
       <W.RgsWarning />
       {error && <div style={{ color: '#b42318', padding: 12, marginBottom: 12, fontSize: 13, background: '#FEE2E2', borderRadius: 8 }}>{error}</div>}
 

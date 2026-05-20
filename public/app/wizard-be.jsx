@@ -246,7 +246,7 @@ const WizardBE = ({ setRoute, dossierId: initialDossierId, onCreated, demoMode =
       <div style={{ padding: 14, background: '#FEF3C7', borderLeft: '3px solid #F59E0B', borderRadius: 8, marginBottom: 16, fontSize: 13 }}>
         <strong>⚠ Dépôt des bénéficiaires effectifs obligatoire.</strong> Toutes les sociétés doivent déposer la liste de leurs BE au RBE (Registre des Bénéficiaires Effectifs). À mettre à jour à chaque modification de l'actionnariat (sous 30 jours).
       </div>
-      <W.ProgressBar steps={STEPS_BE} current={step} />
+      <W.ProgressBar steps={STEPS_BE} current={step} onStepClick={async (i) => { try { await saveDraft(); } catch {} setStep(i); }} />
       {error && <div style={{ color: '#b42318', padding: 12, marginBottom: 12, fontSize: 13, background: '#FEE2E2', borderRadius: 8 }}>{error}</div>}
 
       {step === 0 && (

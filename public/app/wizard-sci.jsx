@@ -182,7 +182,7 @@ const WizardSCI = ({ setRoute, dossierId: initialDossierId, onCreated, demoMode 
 
   return (
     <div style={{ maxWidth: 820 }}>
-      <W.ProgressBar steps={STEPS_SCI} current={step} />
+      <W.ProgressBar steps={STEPS_SCI} current={step} onStepClick={async (i) => { try { await saveDraft(); } catch {} setStep(i); }} />
       {error && <div style={{ color: '#b42318', padding: 12, marginBottom: 12, fontSize: 13, background: '#FEE2E2', borderRadius: 8 }}>{error}</div>}
 
       {step === 0 && (

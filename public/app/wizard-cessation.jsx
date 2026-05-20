@@ -153,30 +153,47 @@ const CField = ({ label, value, onChange, required, mono, placeholder, type, max
 );
 
 // ─── Barre de progression ─────────────────────────────────────────────
-const ProgressBar = ({ step }) => (
-  <div style={{ marginBottom: 24 }}>
-    <div style={{ display: 'flex', gap: 6, marginBottom: 12 }}>
-      {CESSATION_STEPS.map(s => (
-        <div
+const ProgressBar = ({ step, onStepClick }) => (
+  <div style={{ display: 'flex', gap: 2, marginBottom: 24, borderBottom: '1px solid var(--ink-150)', overflow: 'auto' }}>
+    {CESSATION_STEPS.map((s) => {
+      const isActive = s.id === step;
+      const isCompleted = s.id < step;
+      const clickable = !!onStepClick;
+      return (
+        <button
           key={s.id}
+          type="button"
+          onClick={clickable ? () => onStepClick(s.id) : undefined}
+          disabled={!clickable}
           style={{
-            flex: 1, height: 4, borderRadius: 2,
-            background: s.id <= step ? 'var(--accent)' : 'var(--ink-150)',
-            transition: 'background 0.2s',
+            flex: '0 0 auto',
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 8,
+            padding: '12px 18px',
+            background: 'transparent',
+            border: 'none',
+            borderBottom: isActive ? '2px solid var(--accent)' : '2px solid transparent',
+            marginBottom: -1,
+            cursor: clickable ? 'pointer' : 'default',
+            color: isActive ? 'var(--accent-ink)' : 'var(--ink-600)',
+            fontSize: 13,
+            fontWeight: isActive ? 600 : 500,
+            fontFamily: 'inherit',
+            whiteSpace: 'nowrap',
           }}
-        />
-      ))}
-    </div>
-    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: 'var(--ink-500)' }}>
-      {CESSATION_STEPS.map(s => (
-        <div key={s.id} style={{
-          fontWeight: s.id === step ? 600 : 400,
-          color: s.id === step ? 'var(--accent-ink)' : (s.id < step ? 'var(--ink-700)' : 'var(--ink-400)'),
-        }}>
-          {s.id}. {s.label}
-        </div>
-      ))}
-    </div>
+        >
+          <span style={{
+            display: 'inline-grid', placeItems: 'center',
+            width: 22, height: 22, borderRadius: '50%',
+            background: isCompleted ? 'var(--accent)' : isActive ? 'var(--accent-soft)' : 'var(--ink-100)',
+            color: isCompleted ? 'white' : isActive ? 'var(--accent-ink)' : 'var(--ink-500)',
+            fontSize: 11, fontWeight: 600,
+          }}>{isCompleted ? '✓' : s.id}</span>
+          <span>{s.label}</span>
+        </button>
+      );
+    })}
   </div>
 );
 
@@ -447,7 +464,7 @@ const WizardCessation = ({ setRoute, dossierId: initialDossierId, onCreated }) =
       </div>
 
       <div style={{ maxWidth: 760 }}>
-        <ProgressBar step={step} />
+        <ProgressBar step={step} onStepClick={async (i) => { try { await saveDraft(); } catch {} setStep(i); }} />
 
         {step === 1 && <RgsBanner />}
 
