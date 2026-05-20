@@ -16,6 +16,8 @@ interface NavItem {
   matchPrefix: string;
   exact?: boolean;
   disabled?: boolean;
+  // Petite icône textuelle/glyphe affichée à gauche du label (optionnel).
+  glyph?: string;
 }
 
 const NAV_ITEMS: NavItem[] = [
@@ -24,6 +26,7 @@ const NAV_ITEMS: NavItem[] = [
   { href: '/tasks', label: 'Tâches', matchPrefix: '/tasks' },
   { href: '/clients', label: 'Clients', matchPrefix: '/clients' },
   { href: '/stats', label: 'Statistiques', matchPrefix: '/stats', disabled: true },
+  { href: '/billing', label: 'Facturation', matchPrefix: '/billing', glyph: '€' },
 ];
 
 function isActive(item: NavItem, pathname: string): boolean {
@@ -65,7 +68,17 @@ export function CabinetSidebar({
               aria-disabled="true"
               title="Bientôt disponible"
             >
-              <span>{item.label}</span>
+              <span>
+                {item.glyph && (
+                  <span
+                    aria-hidden="true"
+                    style={{ marginRight: 8, opacity: 0.8 }}
+                  >
+                    {item.glyph}
+                  </span>
+                )}
+                {item.label}
+              </span>
               <span
                 className="badge"
                 style={{ background: 'var(--ink-300)', color: 'white' }}
@@ -82,7 +95,14 @@ export function CabinetSidebar({
             href={item.href}
             className={`sidebar-link${active ? ' active' : ''}`}
           >
-            <span>{item.label}</span>
+            <span>
+              {item.glyph && (
+                <span aria-hidden="true" style={{ marginRight: 8, opacity: 0.8 }}>
+                  {item.glyph}
+                </span>
+              )}
+              {item.label}
+            </span>
           </Link>
         );
       })}

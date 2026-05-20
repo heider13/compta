@@ -7,9 +7,16 @@ const { createClient } = require('@supabase/supabase-js');
 const inpi = require('./inpi');
 const inpiCredsRoutes = require('./routes/inpi-creds');
 const pappersRoutes = require('./routes/pappers');
+const signatureRoutes = require('./routes/signatures');
+const yousignWebhookRoutes = require('./routes/yousign-webhook');
 
 const app = express();
 app.set('trust proxy', 'loopback');
+
+// Webhook Yousign : body brut nécessaire pour vérifier la signature HMAC.
+// DOIT être monté AVANT express.json() pour court-circuiter le parsing JSON global.
+app.use('/api/yousign', express.raw({ type: '*/*', limit: '15mb' }), yousignWebhookRoutes);
+
 app.use(express.json({ limit: '15mb' }));
 
 const allowedOrigins = (process.env.CORS_ALLOWED_ORIGINS || 'https://compta-navy.vercel.app,http://localhost:3000,http://localhost:3001')
@@ -939,6 +946,7 @@ app.get(
 
 app.use('/api/cabinet/inpi-creds', requireUser, requireOrg, inpiCredsRoutes);
 app.use('/api/pappers', requireUser, requireOrg, pappersRoutes);
+app.use('/api/dossiers', requireUser, requireOrg, signatureRoutes);
 
 app.use((err, req, res, _next) => {
   console.error(`[ERR] ${req.method} ${req.path}:`, err.message);
