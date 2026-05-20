@@ -555,4 +555,24 @@ function KvRow({
     <div
       style={{
         display: 'flex',
-        justifyContent: 'spac
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        padding: '12px 22px',
+        borderBottom: last ? 'none' : '1px solid var(--ink-100)',
+        fontSize: 13,
+        gap: 12,
+      }}
+    >
+      <span style={{ color: 'var(--ink-500)' }}>{label}</span>
+      <span
+        style={{
+          color: 'var(--ink-900)',
+          fontWeight: 500,
+          textAlign: 'right',
+        }}
+      >
+        {value}
+      </span>
+    </div>
+  );
+}
