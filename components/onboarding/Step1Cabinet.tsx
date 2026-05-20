@@ -1,9 +1,17 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { Fragment, useEffect, useMemo, useRef, useState } from 'react';
 import type { OnboardingData } from '@/lib/types/onboarding';
 import { formatSiren, validateSiren } from '@/lib/validators/siren';
 import { lookupSiren, type SirenLookupResult } from '@/lib/services/siren-lookup';
+
+// Noms par défaut posés par le trigger DB `handle_new_user` qu'on peut écraser sans
+// craindre d'écraser une saisie de l'utilisateur.
+const DEFAULT_CABINET_NAMES = ['compta default', 'cabinet par défaut', 'cabinet par defaut'];
+
+function isDefaultCabinetName(name: string): boolean {
+  return DEFAULT_CABINET_NAMES.includes(name.trim().toLowerCase());
+}
 
 type Props = {
   data: OnboardingData;
@@ -82,9 +90,14 @@ export function Step1Cabinet({ data, onUpdate, onNext }: Props) {
           return;
         }
         setSirenStatus({ kind: 'verified', info: result });
-        // Préremplit le nom du cabinet si l'utilisateur n'a rien saisi (ou si on l'avait
-        // déjà rempli automatiquement) et qu'on a une raison sociale.
-        if (result.nomComplet && (!data.cabinetName.trim() || nameAutoFilled.current)) {
+        // Préremplit le nom du cabinet à partir de la raison sociale. On le fait
+        // dès que le champ est vide, qu'il porte une valeur par défaut du trigger
+        // DB, ou qu'on avait déjà rempli automatiquement (l'utilisateur peut
+        // toujours réécrire derrière).
+        const current = data.cabinetName.trim();
+        const canAutofill =
+          !current || isDefaultCabinetName(current) || nameAutoFilled.current;
+        if (result.nomComplet && canAutofill) {
           nameAutoFilled.current = true;
           onUpdate({ cabinetName: result.nomComplet });
         }
@@ -199,6 +212,9 @@ export function Step1Cabinet({ data, onUpdate, onNext }: Props) {
             <SirenStatusIcon status={sirenStatus} />
           </div>
           <SirenStatusMessage status={sirenStatus} />
+          {sirenStatus.kind === 'verified' && (
+            <CompanyInfoCard info={sirenStatus.info} />
+          )}
         </div>
 
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
@@ -361,6 +377,87 @@ function SirenStatusIcon({ status }: { status: SirenStatus }) {
   }
 }
 
+function CompanyInfoCard({ info }: { info: SirenLookupResult }) {
+  const rows: Array<{ label: string; value: string }> = [];
+  rows.push({ label: 'Raison sociale', value: info.nomComplet || '—' });
+  if (info.sigle) rows.push({ label: 'Sigle', value: info.sigle });
+  if (info.formeJuridique) rows.push({ label: 'Forme juridique', value: info.formeJuridique });
+  if (info.siege.adresseComplete)
+    rows.push({ label: 'Adresse du siège', value: info.siege.adresseComplete });
+  if (info.siege.siret) rows.push({ label: 'SIRET du siège', value: info.siege.siret });
+  if (info.dateCreation)
+    rows.push({ label: 'Immatriculée le', value: formatFrenchDate(info.dateCreation) });
+  if (info.activitePrincipale)
+    rows.push({ label: 'Activité principale', value: info.activitePrincipale });
+  if (info.trancheEffectifs)
+    rows.push({ label: 'Effectif', value: info.trancheEffectifs });
+
+  return (
+    <div
+      style={{
+        marginTop: 12,
+        border: '1px solid var(--status-green, #137333)',
+        background: 'rgba(19, 115, 51, 0.06)',
+        borderRadius: 'var(--r-md)',
+        padding: 14,
+      }}
+    >
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 8,
+          fontSize: 13,
+          fontWeight: 600,
+          color: 'var(--status-green, #137333)',
+          marginBottom: 10,
+        }}
+      >
+        <span
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            width: 18,
+            height: 18,
+            borderRadius: '50%',
+            background: 'var(--status-green, #137333)',
+            color: 'white',
+            fontSize: 11,
+            fontWeight: 700,
+          }}
+        >
+          ✓
+        </span>
+        Société identifiée au registre national
+      </div>
+      <dl
+        style={{
+          margin: 0,
+          display: 'grid',
+          gridTemplateColumns: '160px 1fr',
+          rowGap: 6,
+          columnGap: 12,
+          fontSize: 13,
+        }}
+      >
+        {rows.map((row) => (
+          <Fragment key={row.label}>
+            <dt style={{ color: 'var(--ink-500)' }}>{row.label}</dt>
+            <dd style={{ margin: 0, color: 'var(--ink-900)' }}>{row.value}</dd>
+          </Fragment>
+        ))}
+      </dl>
+    </div>
+  );
+}
+
+function formatFrenchDate(iso: string): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return iso;
+  return d.toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric' });
+}
+
 function SirenStatusMessage({ status }: { status: SirenStatus }) {
   const baseStyle: React.CSSProperties = {
     fontSize: 12,
@@ -407,8 +504,7 @@ function SirenStatusMessage({ status }: { status: SirenStatus }) {
     case 'verified':
       return (
         <span style={{ ...baseStyle, color: 'var(--status-green, #137333)' }}>
-          ✓ {status.info.nomComplet}
-          {status.info.adresse ? ` — ${status.info.adresse}` : ''}
+          ✓ Société identifiée au registre national.
         </span>
       );
     case 'lookup_error':
