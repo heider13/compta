@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/server';
 import { CabinetSidebar } from '@/components/cabinet/CabinetSidebar';
+import { TopBar } from '@/components/cabinet/TopBar';
 import { getInitials } from '@/lib/types';
 
 export const dynamic = 'force-dynamic';
@@ -13,6 +14,7 @@ interface MembershipRow {
     id: string;
     name: string;
     slug: string;
+    plan: string | null;
   } | null;
 }
 
@@ -33,7 +35,7 @@ export default async function CabinetLayout({
   // Récupère les memberships pour identifier l'org courante
   const { data: memberships } = await supabase
     .from('memberships')
-    .select('organization_id, role, organizations(id, name, slug)')
+    .select('organization_id, role, organizations(id, name, slug, plan)')
     .eq('user_id', user.id)
     .order('joined_at', { ascending: true });
 
@@ -76,15 +78,13 @@ export default async function CabinetLayout({
         userInitials={getInitials(userLabel)}
       />
       <main className="app-main">
-        <header className="app-topbar">
-          <div style={{ fontSize: 13, color: 'var(--ink-500)' }}>
-            {currentOrg.name}
-          </div>
-          <div style={{ fontSize: 13, color: 'var(--ink-600)' }}>
-            {user.email}
-          </div>
-        </header>
-        <div className="app-content">{children}</div>
+        <TopBar
+          userLabel={userLabel}
+          userEmail={user.email ?? ''}
+          userInitials={getInitials(userLabel)}
+          plan={currentOrg.plan}
+        />
+        {children}
       </main>
     </div>
   );

@@ -21,12 +21,15 @@ interface NavItem {
 }
 
 const NAV_ITEMS: NavItem[] = [
-  { href: '/', label: 'Tableau de bord', matchPrefix: '/', exact: true },
-  { href: '/dossiers', label: 'Dossiers', matchPrefix: '/dossiers' },
-  { href: '/tasks', label: 'Tâches', matchPrefix: '/tasks' },
-  { href: '/clients', label: 'Clients', matchPrefix: '/clients' },
-  { href: '/stats', label: 'Statistiques', matchPrefix: '/stats', disabled: true },
+  { href: '/', label: 'Tableau de bord', matchPrefix: '/', exact: true, glyph: '⊞' },
+  { href: '/dossiers', label: 'Formalités', matchPrefix: '/dossiers', glyph: '📄' },
+  { href: '/clients', label: 'Clients', matchPrefix: '/clients', glyph: '👥' },
+  { href: '/tasks', label: 'Tâches', matchPrefix: '/tasks', glyph: '✓' },
+  { href: '/profile', label: 'Mon compte', matchPrefix: '/profile', glyph: '👤' },
   { href: '/billing', label: 'Facturation', matchPrefix: '/billing', glyph: '€' },
+  { href: '/settings/branding', label: 'Marque blanche', matchPrefix: '/settings/branding', glyph: '🎨' },
+  { href: '/settings/api-keys', label: 'API & webhooks', matchPrefix: '/settings/api', glyph: '🔌' },
+  { href: '/stats', label: 'Statistiques', matchPrefix: '/stats', disabled: true, glyph: '📊' },
 ];
 
 function isActive(item: NavItem, pathname: string): boolean {
