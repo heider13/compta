@@ -12,11 +12,14 @@ const FORMALITY_TYPES = [
   { id: 'SCI',      category: 'Création', icon: 'Building', title: 'SCI',                     desc: "Société Civile Immobilière. Gestion d'un patrimoine immobilier.",       pieces: 5, signature: 'Simple' },
   { id: 'HOLDING',  category: 'Création', icon: 'Building', title: 'Holding',                 desc: "Société de tête (SAS, SASU ou SARL) pour prise de participation.",      pieces: 5, signature: 'Simple' },
   // ─── Modification / Cessation ───────────────────────
-  { id: 'MODIFICATION', category: 'Modification', icon: 'DocEdit', title: 'Modification',     desc: "Changement d'adresse, dirigeant, activité, capital, dénomination.",     pieces: 2, signature: 'Avancée (RGS qualifié)' },
-  { id: 'RADIATION',    category: 'Cessation',    icon: 'DocX',    title: 'Cessation / radiation', desc: "Cessation d'activité volontaire ou subie, dissolution, liquidation.", pieces: 1, signature: 'Avancée (RGS qualifié)' },
+  { id: 'MODIFICATION', category: 'Modification',  icon: 'DocEdit', title: 'Modification',          desc: "Changement d'adresse, dirigeant, activité, capital, dénomination.",     pieces: 2, signature: 'Avancée (RGS qualifié)' },
+  { id: 'RADIATION',    category: 'Cessation',     icon: 'DocX',    title: 'Cessation / radiation', desc: "Cessation d'activité volontaire ou subie, dissolution, liquidation.",   pieces: 1, signature: 'Avancée (RGS qualifié)' },
+  // ─── Conformité ────────────────────────────────────
+  { id: 'BE',           category: 'Conformité',    icon: 'Lock',    title: 'Bénéficiaires effectifs', desc: "Déclaration des personnes détenant ≥25% du capital ou des votes.",   pieces: 1, signature: 'Simple' },
+  { id: 'COMPTES',      category: 'Conformité',    icon: 'Doc',     title: 'Dépôt comptes annuels', desc: "Bilan, compte de résultat, annexe, PV d'assemblée d'approbation.",     pieces: 4, signature: 'Avancée (RGS qualifié)' },
 ];
 
-const CATEGORIES = ['Création', 'Modification', 'Cessation'];
+const CATEGORIES = ['Création', 'Modification', 'Cessation', 'Conformité'];
 
 const WIZARDS = {
   AE:           () => window.WizardCreation,
@@ -28,6 +31,8 @@ const WIZARDS = {
   HOLDING:      () => window.WizardHolding,
   MODIFICATION: () => window.WizardModification,
   RADIATION:    () => window.WizardCessation,
+  BE:           () => window.WizardBE,
+  COMPTES:      () => window.WizardComptes,
 };
 
 const Nouveau = ({ setRoute, setActiveDossier }) => {

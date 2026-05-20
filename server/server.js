@@ -5,6 +5,8 @@ const express = require('express');
 const cors = require('cors');
 const { createClient } = require('@supabase/supabase-js');
 const inpi = require('./inpi');
+const inpiCredsRoutes = require('./routes/inpi-creds');
+const pappersRoutes = require('./routes/pappers');
 
 const app = express();
 app.set('trust proxy', 'loopback');
@@ -934,6 +936,9 @@ app.get(
     res.status(200).end(Buffer.from(await r.arrayBuffer()));
   }),
 );
+
+app.use('/api/cabinet/inpi-creds', requireUser, requireOrg, inpiCredsRoutes);
+app.use('/api/pappers', requireUser, requireOrg, pappersRoutes);
 
 app.use((err, req, res, _next) => {
   console.error(`[ERR] ${req.method} ${req.path}:`, err.message);
