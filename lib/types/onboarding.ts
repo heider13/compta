@@ -1,8 +1,6 @@
 // Types pour le flow d'onboarding cabinet (B2B SaaS Compta)
 // Ces données sont collectées par le wizard et persistées dans la table `organizations`.
 
-export type InpiEnv = 'prod' | 'demo';
-
 export type InvitationRole = 'admin' | 'collaborator' | 'readonly';
 
 export type OrgPlan = 'cabinet' | 'pro' | 'enterprise';
@@ -18,13 +16,9 @@ export type OnboardingData = {
   siren: string;
   contactEmail: string;
   contactPhone: string;
-  // Étape 2 — INPI mandataire
-  inpiUsername: string;
-  inpiPassword: string;
-  inpiEnv: InpiEnv;
-  // Étape 3 — Équipe (invitations en attente, non encore envoyées)
+  // Étape 2 — Équipe (invitations en attente, non encore envoyées)
   invitations: PendingInvitation[];
-  // Étape 4 — Plan
+  // Étape 3 — Plan
   plan: OrgPlan;
 };
 

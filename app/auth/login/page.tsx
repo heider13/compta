@@ -17,11 +17,11 @@ async function signIn(formData: FormData) {
   if (userId) {
     const { data: memberships } = await supabase
       .from('memberships')
-      .select('organization_id, role, organizations(siren, inpi_username)')
+      .select('organization_id, role, organizations(siren)')
       .eq('user_id', userId)
       .limit(1);
     const m = memberships?.[0] as any;
-    if (m && (!m.organizations?.siren || !m.organizations?.inpi_username)) {
+    if (m && !m.organizations?.siren) {
       return redirect('/onboarding');
     }
   }

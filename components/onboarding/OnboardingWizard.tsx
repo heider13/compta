@@ -4,7 +4,6 @@ import { useCallback, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import type {
-  InpiEnv,
   OnboardingData,
   OrganizationForOnboarding,
   OrgPlan,
@@ -12,7 +11,6 @@ import type {
 } from '@/lib/types/onboarding';
 import { ProgressBar } from './ProgressBar';
 import { Step1Cabinet } from './Step1Cabinet';
-import { Step2Inpi } from './Step2Inpi';
 import { Step3Team } from './Step3Team';
 import { Step4Plan } from './Step4Plan';
 
@@ -21,15 +19,11 @@ type Props = {
   userId: string;
 };
 
-const STEPS = ['Cabinet', 'INPI', 'Équipe', 'Plan'];
+const STEPS = ['Cabinet', 'Équipe', 'Plan'];
 
 function normalizePlan(plan: string | null): OrgPlan {
   if (plan === 'pro' || plan === 'enterprise' || plan === 'cabinet') return plan;
   return 'cabinet';
-}
-
-function normalizeEnv(env: string | null): InpiEnv {
-  return env === 'demo' ? 'demo' : 'prod';
 }
 
 function readInvitations(whiteLabel: Record<string, unknown> | null): PendingInvitation[] {
@@ -61,9 +55,6 @@ export function OnboardingWizard({ org, userId: _userId }: Props) {
     siren: org.siren ?? '',
     contactEmail: org.contact_email ?? '',
     contactPhone: org.contact_phone ?? '',
-    inpiUsername: org.inpi_username ?? '',
-    inpiPassword: '', // jamais re-rempli depuis la DB (chiffré)
-    inpiEnv: normalizeEnv(org.inpi_env),
     invitations: readInvitations(org.white_label_config),
     plan: normalizePlan(org.plan),
   });
@@ -72,14 +63,9 @@ export function OnboardingWizard({ org, userId: _userId }: Props) {
     setData((prev) => ({ ...prev, ...patch }));
   }, []);
 
-  // Sauvegarde partielle dans `organizations`.
-  // `extra` permet de fusionner des champs JSONB calculés (ex : white_label_config).
   const persistPartial = useCallback(
-    async (
-      patch: Partial<OnboardingData>,
-      extra: Record<string, unknown> = {},
-    ): Promise<void> => {
-      const update: Record<string, unknown> = { ...extra };
+    async (patch: Partial<OnboardingData>): Promise<void> => {
+      const update: Record<string, unknown> = {};
 
       if (patch.cabinetName !== undefined) update.name = patch.cabinetName.trim();
       if (patch.siren !== undefined) update.siren = patch.siren.replace(/\s+/g, '');
@@ -87,15 +73,6 @@ export function OnboardingWizard({ org, userId: _userId }: Props) {
         update.contact_email = patch.contactEmail.trim() || null;
       if (patch.contactPhone !== undefined)
         update.contact_phone = patch.contactPhone.trim() || null;
-      if (patch.inpiUsername !== undefined)
-        update.inpi_username = patch.inpiUsername.trim() || null;
-      if (patch.inpiPassword !== undefined && patch.inpiPassword !== '') {
-        // TODO: chiffrer côté backend avec une clé de cabinet (KMS / pgcrypto).
-        // Backend INPI ciblé : https://vps-84ac2579.vps.ovh.net — endpoint dédié à créer.
-        // Pour le MVP on envoie en clair vers `inpi_password_encrypted`.
-        update.inpi_password_encrypted = patch.inpiPassword;
-      }
-      if (patch.inpiEnv !== undefined) update.inpi_env = patch.inpiEnv;
       if (patch.plan !== undefined) update.plan = patch.plan;
 
       const { error } = await supabase
@@ -110,10 +87,6 @@ export function OnboardingWizard({ org, userId: _userId }: Props) {
     [org.id, supabase],
   );
 
-  // Sauvegarde des invitations dans `organizations.white_label_config.pending_invitations`.
-  // (Le schéma ne dispose pas d'un `metadata jsonb` sur `organizations` — on réutilise
-  // le jsonb existant `white_label_config` qui est non-null par défaut.)
-  // TODO: à terme, table dédiée `org_invitations` + envoi email via backend.
   const persistInvitations = useCallback(
     async (invitations: PendingInvitation[]): Promise<void> => {
       const nextWhiteLabel = {
@@ -147,21 +120,11 @@ export function OnboardingWizard({ org, userId: _userId }: Props) {
   }, [data, persistPartial]);
 
   const handleStep2Next = useCallback(async () => {
-    await persistPartial({
-      inpiUsername: data.inpiUsername,
-      inpiPassword: data.inpiPassword,
-      inpiEnv: data.inpiEnv,
-    });
-    setStep(3);
-  }, [data, persistPartial]);
-
-  const handleStep3Next = useCallback(async () => {
     await persistInvitations(data.invitations);
-    setStep(4);
+    setStep(3);
   }, [data.invitations, persistInvitations]);
 
-  const handleStep4Finish = useCallback(async () => {
-    // Sauvegarde finale du plan (la sauvegarde partielle des étapes précédentes a déjà eu lieu).
+  const handleStep3Finish = useCallback(async () => {
     await persistPartial({ plan: data.plan });
     router.push('/dashboard');
     router.refresh();
@@ -202,7 +165,7 @@ export function OnboardingWizard({ org, userId: _userId }: Props) {
         />
       )}
       {step === 2 && (
-        <Step2Inpi
+        <Step3Team
           data={data}
           onUpdate={handleUpdate}
           onNext={async () => {
@@ -217,27 +180,12 @@ export function OnboardingWizard({ org, userId: _userId }: Props) {
         />
       )}
       {step === 3 && (
-        <Step3Team
-          data={data}
-          onUpdate={handleUpdate}
-          onNext={async () => {
-            try {
-              await handleStep3Next();
-            } catch (err) {
-              setGlobalError(err instanceof Error ? err.message : 'Erreur de sauvegarde.');
-              throw err;
-            }
-          }}
-          onPrev={goPrev}
-        />
-      )}
-      {step === 4 && (
         <Step4Plan
           data={data}
           onUpdate={handleUpdate}
           onNext={async () => {
             try {
-              await handleStep4Finish();
+              await handleStep3Finish();
             } catch (err) {
               setGlobalError(err instanceof Error ? err.message : 'Erreur de sauvegarde.');
               throw err;

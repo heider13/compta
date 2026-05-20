@@ -59,7 +59,8 @@ export default async function OnboardingPage() {
   const org = orgRaw as unknown as OrganizationForOnboarding;
 
   // Onboarding déjà finalisé → on évite de reposer les questions.
-  if (org.siren && org.inpi_username) {
+  // (Les identifiants INPI sont configurés plus tard, hors onboarding initial.)
+  if (org.siren) {
     redirect('/dashboard');
   }
 
