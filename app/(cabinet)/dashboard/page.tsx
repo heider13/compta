@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { createClient } from '@/lib/supabase/server';
 import { Kpi } from '@/components/cabinet/Kpi';
 import { StatusPill } from '@/components/cabinet/StatusPill';
+import { getInpiCredentialsStatus } from '@/lib/server-actions/inpi-credentials';
 import {
   formatDate,
   formatRelative,
@@ -144,9 +145,59 @@ export default async function CabinetDashboardPage() {
   const tasks = (tasksData ?? []) as unknown as TaskRow[];
 
   const greetingName = firstName ?? '';
+  const inpiStatus = await getInpiCredentialsStatus();
+  const inpiNotConfigured = !inpiStatus || !inpiStatus.configured;
 
   return (
     <>
+      {inpiNotConfigured && (
+        <div
+          style={{
+            marginBottom: 20,
+            padding: '14px 18px',
+            background: '#FFF6E5',
+            border: '1px solid #F1C75A',
+            borderRadius: 12,
+            display: 'flex',
+            alignItems: 'center',
+            gap: 14,
+            flexWrap: 'wrap',
+          }}
+        >
+          <div
+            style={{
+              width: 36,
+              height: 36,
+              display: 'grid',
+              placeItems: 'center',
+              background: '#F1C75A',
+              borderRadius: 10,
+              flexShrink: 0,
+              fontSize: 18,
+            }}
+            aria-hidden="true"
+          >
+            ⚠
+          </div>
+          <div style={{ flex: 1, minWidth: 220 }}>
+            <div style={{ fontWeight: 600, color: '#8A5400', fontSize: 14 }}>
+              Connectez votre compte INPI pour démarrer
+            </div>
+            <div style={{ fontSize: 13, color: '#6B4400', marginTop: 2 }}>
+              Vos identifiants du Guichet Unique sont nécessaires pour déposer
+              les formalités au registre.
+            </div>
+          </div>
+          <Link
+            href="/settings/inpi?next=/dashboard"
+            className="btn btn-accent btn-sm"
+            style={{ flexShrink: 0 }}
+          >
+            Configurer maintenant →
+          </Link>
+        </div>
+      )}
+
       <div className="page-head">
         <div>
           <h1>Tableau de bord</h1>

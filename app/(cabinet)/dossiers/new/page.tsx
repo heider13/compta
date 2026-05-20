@@ -1,6 +1,8 @@
 import Link from 'next/link';
+import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { prepareNewDossier } from '@/lib/server-actions/dossiers';
+import { getInpiCredentialsStatus } from '@/lib/server-actions/inpi-credentials';
 
 const FORMALITY_GROUPS = [
   { group: 'Création', items: [
@@ -21,6 +23,13 @@ const FORMALITY_GROUPS = [
 ];
 
 export default async function NewDossierPage() {
+  // Garde : impossible de lancer une formalité tant que les identifiants
+  // INPI du cabinet ne sont pas configurés (sinon le backend renverra 403).
+  const inpi = await getInpiCredentialsStatus();
+  if (!inpi || !inpi.configured) {
+    redirect('/settings/inpi?next=/dossiers/new');
+  }
+
   const supabase = await createClient();
   const { data: clients } = await supabase
     .from('clients')

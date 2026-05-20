@@ -27,6 +27,7 @@ const NAV_ITEMS: NavItem[] = [
   { href: '/tasks', label: 'Tâches', matchPrefix: '/tasks', glyph: '✓' },
   { href: '/profile', label: 'Mon compte', matchPrefix: '/profile', glyph: '👤' },
   { href: '/billing', label: 'Facturation', matchPrefix: '/billing', glyph: '€' },
+  { href: '/settings/inpi', label: 'Connexion INPI', matchPrefix: '/settings/inpi', glyph: '🔐' },
   { href: '/settings/branding', label: 'Marque blanche', matchPrefix: '/settings/branding', glyph: '🎨' },
   { href: '/settings/api-keys', label: 'API & webhooks', matchPrefix: '/settings/api', glyph: '🔌' },
   { href: '/stats', label: 'Statistiques', matchPrefix: '/stats', disabled: true, glyph: '📊' },
