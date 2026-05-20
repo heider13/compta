@@ -1,20 +1,42 @@
 /* eslint-disable */
 // Nouveau dossier — choix du type puis délégation au wizard approprié
+// Pivot B2B : supporte toutes les formes juridiques INPI
 
 const FORMALITY_TYPES = [
-  { id: 'CREATION',     icon: 'DocPlus', title: 'Créer une auto-entreprise', desc: "Immatriculation au RNE et obtention de votre Kbis.", duration: '~ 4 min', pieces: ['Pièce d\'identité', 'Justificatif de domicile (< 3 mois)', 'Déclaration de non-condamnation'], signature: 'Simple' },
-  { id: 'MODIFICATION', icon: 'DocEdit', title: 'Modifier mon entreprise',   desc: "Changement d'adresse, d'activité, de dénomination.",   duration: '~ 6 min', pieces: ['Pièce d\'identité', 'Justificatif de la modification'],                                signature: 'Avancée (RGS qualifié)' },
-  { id: 'RADIATION',    icon: 'DocX',    title: 'Radier mon entreprise',     desc: "Cessation d'activité volontaire ou subie.",            duration: '~ 3 min', pieces: ['Pièce d\'identité', 'Selon le motif'],                                                  signature: 'Avancée (RGS qualifié)' },
+  // ─── Créations ──────────────────────────────────────
+  { id: 'AE',       category: 'Création', icon: 'DocPlus', title: 'Auto-entreprise',          desc: "Immatriculation simplifiée au RNE, dispense de capital social.",        pieces: 3, signature: 'Simple' },
+  { id: 'SASU',     category: 'Création', icon: 'DocPlus', title: 'SASU',                     desc: "Société par Actions Simplifiée Unipersonnelle. 1 associé, président.",  pieces: 5, signature: 'Simple' },
+  { id: 'SAS',      category: 'Création', icon: 'DocPlus', title: 'SAS',                      desc: "Société par Actions Simplifiée. Plusieurs associés, président.",        pieces: 5, signature: 'Simple' },
+  { id: 'EURL',     category: 'Création', icon: 'DocPlus', title: 'EURL',                     desc: "Entreprise Unipersonnelle à Responsabilité Limitée. 1 associé, gérant.", pieces: 5, signature: 'Simple' },
+  { id: 'SARL',     category: 'Création', icon: 'DocPlus', title: 'SARL',                     desc: "Société À Responsabilité Limitée. 2 à 100 associés, gérant(s).",        pieces: 5, signature: 'Simple' },
+  { id: 'SCI',      category: 'Création', icon: 'Building', title: 'SCI',                     desc: "Société Civile Immobilière. Gestion d'un patrimoine immobilier.",       pieces: 5, signature: 'Simple' },
+  { id: 'HOLDING',  category: 'Création', icon: 'Building', title: 'Holding',                 desc: "Société de tête (SAS, SASU ou SARL) pour prise de participation.",      pieces: 5, signature: 'Simple' },
+  // ─── Modification / Cessation ───────────────────────
+  { id: 'MODIFICATION', category: 'Modification', icon: 'DocEdit', title: 'Modification',     desc: "Changement d'adresse, dirigeant, activité, capital, dénomination.",     pieces: 2, signature: 'Avancée (RGS qualifié)' },
+  { id: 'RADIATION',    category: 'Cessation',    icon: 'DocX',    title: 'Cessation / radiation', desc: "Cessation d'activité volontaire ou subie, dissolution, liquidation.", pieces: 1, signature: 'Avancée (RGS qualifié)' },
 ];
+
+const CATEGORIES = ['Création', 'Modification', 'Cessation'];
+
+const WIZARDS = {
+  AE:           () => window.WizardCreation,
+  SASU:         () => window.WizardSASU,
+  SAS:          () => window.WizardSAS,
+  EURL:         () => window.WizardEURL,
+  SARL:         () => window.WizardSARL,
+  SCI:          () => window.WizardSCI,
+  HOLDING:      () => window.WizardHolding,
+  MODIFICATION: () => window.WizardModification,
+  RADIATION:    () => window.WizardCessation,
+};
 
 const Nouveau = ({ setRoute, setActiveDossier }) => {
   const [choice, setChoice] = React.useState(null);
 
-  // On accepte de reprendre un brouillon via ?d=<localId>&type=<TYPE>
   React.useEffect(() => {
     const sp = new URLSearchParams(window.location.search);
     const type = sp.get('type');
-    if (['CREATION', 'MODIFICATION', 'RADIATION'].includes(type) && sp.get('d')) {
+    if (type && WIZARDS[type] && sp.get('d')) {
       setChoice(type);
     }
   }, []);
@@ -25,37 +47,43 @@ const Nouveau = ({ setRoute, setActiveDossier }) => {
         <div className="page-head">
           <div>
             <h1>Nouveau dossier</h1>
-            <p>Choisis le type de formalité. Tu pourras compléter et téléverser les pièces étape par étape.</p>
+            <p>Choisis le type de formalité. Toutes les formalités passent par le Guichet Unique INPI.</p>
           </div>
         </div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 20 }}>
-          {FORMALITY_TYPES.map(t => (
-            <button key={t.id}
-                    onClick={() => setChoice(t.id)}
-                    className="app-card"
-                    style={{ textAlign: 'left', cursor: 'pointer', padding: 24, border: '1px solid var(--ink-150)', background: 'white' }}>
-              <div className="icon-tile-lg" style={{ marginBottom: 16 }}>
-                {React.createElement(I[t.icon], { size: 24 })}
+
+        {CATEGORIES.map((cat) => {
+          const items = FORMALITY_TYPES.filter((t) => t.category === cat);
+          return (
+            <div key={cat} style={{ marginBottom: 28 }}>
+              <h3 style={{ fontSize: 13, fontWeight: 600, color: 'var(--ink-500)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 14 }}>
+                {cat}
+              </h3>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 14 }}>
+                {items.map((t) => (
+                  <button key={t.id}
+                          onClick={() => setChoice(t.id)}
+                          className="app-card"
+                          style={{ textAlign: 'left', cursor: 'pointer', padding: 20, border: '1px solid var(--ink-150)', background: 'white' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 14 }}>
+                      <div className="icon-tile-lg">
+                        {React.createElement(I[t.icon], { size: 22 })}
+                      </div>
+                      <span style={{ fontSize: 10, color: 'var(--ink-500)', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 600 }}>
+                        {t.signature.startsWith('Avancée') ? 'RGS' : 'Simple'}
+                      </span>
+                    </div>
+                    <h3 style={{ fontSize: 17, marginBottom: 6 }}>{t.title}</h3>
+                    <p style={{ fontSize: 13, color: 'var(--ink-600)', minHeight: 52, margin: 0 }}>{t.desc}</p>
+                    <div style={{ marginTop: 14, display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 12, color: 'var(--ink-500)' }}>
+                      <span>{t.pieces} pièce{t.pieces > 1 ? 's' : ''} jointe{t.pieces > 1 ? 's' : ''}</span>
+                      <span style={{ color: 'var(--accent-ink)', fontWeight: 500 }}>Commencer →</span>
+                    </div>
+                  </button>
+                ))}
               </div>
-              <h3 style={{ fontSize: 19, marginBottom: 8 }}>{t.title}</h3>
-              <p style={{ fontSize: 14, minHeight: 42, marginBottom: 16, color: 'var(--ink-600)' }}>{t.desc}</p>
-              <div style={{ display: 'grid', gap: 8, fontSize: 13, color: 'var(--ink-600)' }}>
-                <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                  <I.Clock size={14} style={{ color: 'var(--ink-400)' }} /><span>{t.duration}</span>
-                </div>
-                <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start' }}>
-                  <I.Doc size={14} style={{ color: 'var(--ink-400)', marginTop: 2 }} /><span>{t.pieces.join(' · ')}</span>
-                </div>
-                <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                  <I.Lock size={14} style={{ color: 'var(--ink-400)' }} /><span>Signature {t.signature.toLowerCase()}</span>
-                </div>
-              </div>
-              <div style={{ marginTop: 20, display: 'flex', justifyContent: 'flex-end', color: 'var(--accent-ink)', fontSize: 14, fontWeight: 500 }}>
-                Commencer <I.Arrow size={15} style={{ marginLeft: 6 }} />
-              </div>
-            </button>
-          ))}
-        </div>
+            </div>
+          );
+        })}
       </div>
     );
   }
@@ -70,9 +98,7 @@ const Nouveau = ({ setRoute, setActiveDossier }) => {
     </button>
   );
 
-  const WizardComp = choice === 'CREATION' ? window.WizardCreation
-                   : choice === 'MODIFICATION' ? window.WizardModification
-                   : window.WizardCessation;
+  const WizardComp = WIZARDS[choice] && WIZARDS[choice]();
 
   if (!WizardComp) {
     return (
