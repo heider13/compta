@@ -21,7 +21,7 @@ interface NavItem {
 }
 
 const NAV_ITEMS: NavItem[] = [
-  { href: '/', label: 'Tableau de bord', matchPrefix: '/', exact: true, glyph: '⊞' },
+  { href: '/dashboard', label: 'Tableau de bord', matchPrefix: '/dashboard', exact: true, glyph: '⊞' },
   { href: '/dossiers', label: 'Formalités', matchPrefix: '/dossiers', glyph: '📄' },
   { href: '/clients', label: 'Clients', matchPrefix: '/clients', glyph: '👥' },
   { href: '/tasks', label: 'Tâches', matchPrefix: '/tasks', glyph: '✓' },
