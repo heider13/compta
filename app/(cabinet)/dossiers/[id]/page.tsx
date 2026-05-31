@@ -5,6 +5,58 @@ import { StatusPill } from '@/components/cabinet/StatusPill';
 import { formatDate, typeFormaliteLabel, formeJuridiqueLabel } from '@/lib/utils/format';
 import { addObservation, submitToAdmin } from '@/lib/server-actions/dossiers';
 
+const VPS_BACKEND_URL =
+  process.env.NEXT_PUBLIC_VPS_BACKEND_URL ?? 'https://vps-84ac2579.vps.ovh.net';
+
+const INPI_PORTAL_PROD = 'https://procedures-bis.inpi.fr/login';
+const INPI_PORTAL_DEMO = 'https://procedures-demo.inpi.fr/login';
+
+type InpiLive = { amountCents: number | null; status: string | null } | null;
+
+async function fetchInpiLive(
+  orgId: string | null,
+  inpiRef: string | null,
+  accessToken: string | null,
+): Promise<InpiLive> {
+  if (!orgId || !inpiRef || !accessToken) return null;
+  try {
+    const res = await fetch(
+      `${VPS_BACKEND_URL}/api/formalites/${encodeURIComponent(inpiRef)}`,
+      {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          'x-organization-id': orgId,
+        },
+        cache: 'no-store',
+        // 4 s : on n'attend pas indéfiniment l'INPI sur le chargement de page.
+        signal: AbortSignal.timeout(4000),
+      },
+    );
+    if (!res.ok) return null;
+    const j = (await res.json().catch(() => ({}))) as {
+      amount?: number;
+      cart?: { total?: number };
+      status?: string;
+    };
+    const total = j?.amount ?? j?.cart?.total ?? null;
+    // INPI renvoie le montant en EUR (float). On convertit en cents pour
+    // l'affichage homogène avec le reste du code.
+    const amountCents = total != null ? Math.round(Number(total) * 100) : null;
+    return { amountCents, status: j?.status ?? null };
+  } catch {
+    return null;
+  }
+}
+
+function formatEuros(cents: number | null): string {
+  if (cents == null) return '—';
+  return new Intl.NumberFormat('fr-FR', {
+    style: 'currency',
+    currency: 'EUR',
+    maximumFractionDigits: 2,
+  }).format(cents / 100);
+}
+
 export default async function DossierDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const supabase = await createClient();
@@ -12,11 +64,28 @@ export default async function DossierDetailPage({ params }: { params: Promise<{ 
   const { data: dossier } = await supabase.from('dossiers').select('*').eq('id', id).single();
   if (!dossier) notFound();
 
-  const [{ data: observations }, { data: documents }, { data: tasks }, client] = await Promise.all([
+  // Lit env INPI du cabinet pour pointer vers le bon portail (prod/demo).
+  // En parallèle, on prépare l'access token pour l'éventuel fetch live.
+  const [{ data: sessionData }, orgInfo] = await Promise.all([
+    supabase.auth.getSession(),
+    dossier.organization_id
+      ? supabase
+          .from('organizations')
+          .select('inpi_env')
+          .eq('id', dossier.organization_id)
+          .maybeSingle()
+      : Promise.resolve({ data: null }),
+  ]);
+  const accessToken = sessionData.session?.access_token ?? null;
+  const inpiEnv = (orgInfo.data?.inpi_env ?? 'prod') === 'demo' ? 'demo' : 'prod';
+  const inpiPortalUrl = inpiEnv === 'demo' ? INPI_PORTAL_DEMO : INPI_PORTAL_PROD;
+
+  const [{ data: observations }, { data: documents }, { data: tasks }, client, inpiLive] = await Promise.all([
     supabase.from('dossier_observations').select('*').eq('dossier_id', id).order('created_at', { ascending: true }),
     supabase.from('dossier_documents').select('*').eq('dossier_id', id).order('created_at', { ascending: true }),
     supabase.from('dossier_tasks').select('*').eq('dossier_id', id).order('done', { ascending: true }),
     dossier.client_id ? (await supabase.from('clients').select('id, denomination, siren').eq('id', dossier.client_id).single()).data : null,
+    fetchInpiLive(dossier.organization_id, dossier.inpi_reference, accessToken),
   ]);
 
   const canSubmit = ['DRAFT', 'INTERNAL_AMENDMENT_PENDING'].includes(dossier.statut);
@@ -41,6 +110,59 @@ export default async function DossierDetailPage({ params }: { params: Promise<{ 
 
       <div className="detail-grid">
         <div style={{ display: 'grid', gap: 20 }}>
+          {dossier.inpi_reference && (
+            <div
+              className="app-card"
+              style={{ border: '1px solid #F1C75A', background: '#FFFBEA' }}
+            >
+              <div className="app-card-head">
+                <h3 style={{ color: '#8A5400' }}>Frais légaux INPI</h3>
+              </div>
+              <div style={{ padding: '16px 22px', display: 'grid', gap: 12 }}>
+                <div style={{ display: 'flex', alignItems: 'baseline', gap: 16, flexWrap: 'wrap' }}>
+                  <div>
+                    <div style={{ fontSize: 12, color: 'var(--ink-500)', marginBottom: 2 }}>
+                      Montant à régler sur l&apos;INPI
+                    </div>
+                    <div style={{ fontSize: 28, fontWeight: 600, color: 'var(--ink-900)' }}>
+                      {formatEuros(inpiLive?.amountCents ?? null)}
+                    </div>
+                  </div>
+                  {inpiLive?.status && (
+                    <div style={{ fontSize: 12, color: 'var(--ink-500)' }}>
+                      <div>Statut INPI</div>
+                      <div className="mono" style={{ fontSize: 13, color: 'var(--ink-900)' }}>
+                        {inpiLive.status}
+                      </div>
+                    </div>
+                  )}
+                </div>
+                <p style={{ fontSize: 13, color: '#6B4400', margin: 0, lineHeight: 1.5 }}>
+                  Le paiement des frais légaux (greffe, JAL, etc.) se fait directement sur
+                  le portail officiel INPI Guichet Unique — Compta ne perçoit pas ces frais.
+                  Connectez-vous avec les identifiants INPI du cabinet
+                  {inpiEnv === 'demo' ? ' (environnement démo)' : ''} pour régler.
+                </p>
+                <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+                  <a
+                    href={inpiPortalUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="btn btn-accent"
+                    style={{ background: '#8A5400', borderColor: '#8A5400' }}
+                  >
+                    Régler sur le portail INPI →
+                  </a>
+                  {inpiLive == null && (
+                    <span style={{ fontSize: 12, color: 'var(--ink-500)', alignSelf: 'center' }}>
+                      Montant non disponible — connexion INPI requise pour rafraîchir.
+                    </span>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
           {client && (
             <div className="app-card">
               <div className="app-card-head"><h3>Client</h3></div>
