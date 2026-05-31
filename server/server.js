@@ -106,6 +106,21 @@ function asyncRoute(fn) {
   return (req, res, next) => fn(req, res, next).catch(next);
 }
 
+// Types de formalité qui exigent une signature électronique avancée
+// (eIDAS / RGS** équivalent) avant transmission à l'INPI :
+// modification, radiation/cessation, comptes annuels, bénéficiaires effectifs.
+// La création de société accepte une signature simple côté INPI.
+const SIG_REQUIRED_TYPES = new Set(['MODIFICATION', 'RADIATION']);
+
+function requiresAdvancedSignature(typeFormalite) {
+  return SIG_REQUIRED_TYPES.has(typeFormalite);
+}
+
+function isDossierSigned(dossier) {
+  const meta = dossier?.metadata || {};
+  return meta.signature_status === 'signed' && Boolean(meta.signature_request_id);
+}
+
 app.get('/health', (req, res) => res.json({ ok: true, ts: Date.now() }));
 
 app.get(
@@ -301,6 +316,21 @@ app.post(
     let nextStatus = 'VALIDATED_INTERNAL';
 
     if (sendToInpi && dossier.inpi_content) {
+      // Garde signature : pour les types qui exigent une signature électronique
+      // avancée (eIDAS / RGS), on refuse l'envoi à l'INPI tant que le dossier
+      // n'a pas été signé via Yousign (webhook signature_request.done).
+      if (
+        requiresAdvancedSignature(dossier.type_formalite) &&
+        !isDossierSigned(dossier)
+      ) {
+        return res.status(409).json({
+          error: 'signature_required',
+          detail:
+            'Cette formalité exige une signature électronique avancée (eIDAS) avant transmission à l\'INPI.',
+          typeFormalite: dossier.type_formalite,
+          currentSignatureStatus: dossier.metadata?.signature_status || 'not_started',
+        });
+      }
       try {
         const payload = {
           companyName: dossier.client_name,
@@ -827,6 +857,19 @@ app.post(
     const body = req.body || {};
     if (!body.content || !body.companyName) {
       return res.status(400).json({ error: 'missing_fields', required: ['companyName', 'content'] });
+    }
+    // Garde signature : on refuse l'envoi direct (sans passage par le flow de
+    // validation+signature admin) pour les types qui exigent une signature
+    // électronique avancée. Le client doit créer un dossier, le faire valider
+    // puis signer via Yousign avant que l'admin pousse à l'INPI.
+    const typeCode = body.typeFormalite || 'C';
+    if (typeCode === 'M' || typeCode === 'R') {
+      return res.status(409).json({
+        error: 'signature_required',
+        detail:
+          'Les formalités de modification et de cessation exigent une signature électronique avancée. ' +
+          'Passez par le flow dossier → validation → signature Yousign.',
+      });
     }
     const payload = {
       companyName: body.companyName,
