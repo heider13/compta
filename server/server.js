@@ -312,7 +312,11 @@ app.post(
           indicateurEntreeSortieRegistre: true,
           content: dossier.inpi_content,
         };
-        inpiResult = await inpi.createFormality(payload);
+        // L'admin valide pour le compte d'un cabinet ; on utilise SES creds INPI.
+        // Si le dossier n'est pas rattaché à un cabinet (legacy), on tombe sur les
+        // creds globaux du .env via l'API legacy.
+        const client = dossier.organization_id ? inpi.forOrg(dossier.organization_id) : inpi;
+        inpiResult = await client.createFormality(payload);
         nextStatus = 'RECEIVED';
       } catch (e) {
         inpiError = String(e.message);
@@ -782,8 +786,9 @@ app.delete(
 app.get(
   '/api/inpi-status',
   requireUser,
+  requireOrg,
   asyncRoute(async (req, res) => {
-    const list = await inpi.listFormalities({ itemsPerPage: 1 });
+    const list = await inpi.forOrg(req.currentOrgId).listFormalities({ itemsPerPage: 1 });
     res.json({
       ok: true,
       env: BASE_LOOKS_PROD() ? 'prod' : 'demo',
@@ -795,9 +800,10 @@ app.get(
 app.get(
   '/api/formalites',
   requireUser,
+  requireOrg,
   asyncRoute(async (req, res) => {
     const { status, typeFormalite, siren, referenceClientMandataire, page, itemsPerPage } = req.query;
-    const result = await inpi.listFormalities({
+    const result = await inpi.forOrg(req.currentOrgId).listFormalities({
       status: status ? (Array.isArray(status) ? status : [status]) : undefined,
       typeFormalite,
       siren,
@@ -816,6 +822,7 @@ app.get(
 app.post(
   '/api/formalites',
   requireUser,
+  requireOrg,
   asyncRoute(async (req, res) => {
     const body = req.body || {};
     if (!body.content || !body.companyName) {
@@ -833,7 +840,7 @@ app.post(
       ...(body.observationSignature ? { observationSignature: body.observationSignature } : {}),
       ...(body.numNat ? { numNat: body.numNat } : {}),
     };
-    const inpiFormality = await inpi.createFormality(payload);
+    const inpiFormality = await inpi.forOrg(req.currentOrgId).createFormality(payload);
 
     const { data: dossier, error } = await supabaseAdmin
       .from('dossiers')
@@ -862,24 +869,27 @@ app.post(
 app.get(
   '/api/formalites/:id',
   requireUser,
+  requireOrg,
   asyncRoute(async (req, res) => {
-    res.json(await inpi.getFormality(req.params.id));
+    res.json(await inpi.forOrg(req.currentOrgId).getFormality(req.params.id));
   }),
 );
 
 app.put(
   '/api/formalites/:id',
   requireUser,
+  requireOrg,
   asyncRoute(async (req, res) => {
-    res.json(await inpi.updateFormality(req.params.id, req.body));
+    res.json(await inpi.forOrg(req.currentOrgId).updateFormality(req.params.id, req.body));
   }),
 );
 
 app.delete(
   '/api/formalites/:id',
   requireUser,
+  requireOrg,
   asyncRoute(async (req, res) => {
-    await inpi.deleteFormality(req.params.id);
+    await inpi.forOrg(req.currentOrgId).deleteFormality(req.params.id);
     res.status(204).end();
   }),
 );
@@ -887,23 +897,26 @@ app.delete(
 app.post(
   '/api/formalites/:id/sign',
   requireUser,
+  requireOrg,
   asyncRoute(async (req, res) => {
     const { signedAttachmentId } = req.body || {};
-    res.status(201).json(await inpi.signFormality(req.params.id, signedAttachmentId));
+    res.status(201).json(await inpi.forOrg(req.currentOrgId).signFormality(req.params.id, signedAttachmentId));
   }),
 );
 
 app.get(
   '/api/formalites/:id/attachments',
   requireUser,
+  requireOrg,
   asyncRoute(async (req, res) => {
-    res.json(await inpi.listAttachments(req.params.id));
+    res.json(await inpi.forOrg(req.currentOrgId).listAttachments(req.params.id));
   }),
 );
 
 app.post(
   '/api/formalites/:id/attachments',
   requireUser,
+  requireOrg,
   asyncRoute(async (req, res) => {
     const body = req.body || {};
     if (!body.documentBase64 || !body.nomDocument) {
@@ -912,7 +925,7 @@ app.post(
     if (body.documentBase64.length > 14_000_000) {
       return res.status(413).json({ error: 'pdf_too_large', max_size_mb: 10 });
     }
-    const data = await inpi.request(`/api/formalities/${req.params.id}/attachments`, {
+    const data = await inpi.forOrg(req.currentOrgId).request(`/api/formalities/${req.params.id}/attachments`, {
       method: 'POST',
       body: {
         nomDocument: body.nomDocument,
@@ -931,8 +944,9 @@ app.post(
 app.get(
   '/api/formalites/:id/synthesis',
   requireUser,
+  requireOrg,
   asyncRoute(async (req, res) => {
-    const r = await inpi.rawFetch(`/api/formalities/${req.params.id}/synthesis`);
+    const r = await inpi.forOrg(req.currentOrgId).rawFetch(`/api/formalities/${req.params.id}/synthesis`);
     if (r.status === 404) return res.status(404).json({ error: 'synthesis_not_found' });
     if (!r.ok) {
       const txt = await r.text();

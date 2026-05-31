@@ -4,6 +4,10 @@ import { redirect } from 'next/navigation';
 import { revalidatePath } from 'next/cache';
 import { createClient } from '@/lib/supabase/server';
 
+// URL du backend OVH qui chiffre AES-256-GCM avant écriture des creds INPI.
+const VPS_BACKEND_URL =
+  process.env.NEXT_PUBLIC_VPS_BACKEND_URL ?? 'https://vps-84ac2579.vps.ovh.net';
+
 // Statut côté serveur des identifiants INPI d'une organisation.
 // Permet aux pages serveur de décider si on autorise les démarches.
 export type InpiCredentialsStatus = {
@@ -44,9 +48,13 @@ export async function getInpiCredentialsStatus(): Promise<InpiCredentialsStatus 
   };
 }
 
-// Sauvegarde des identifiants INPI du cabinet courant.
-// TODO: chiffrement côté backend OVH (AES-256-GCM avec MASTER_ENCRYPTION_KEY)
-// avant écriture dans `inpi_password_encrypted`. Aujourd'hui : MVP en clair.
+// Sauvegarde des identifiants INPI via le backend OVH (qui chiffre AES-256-GCM
+// avant écriture). Le password ne touche jamais Supabase directement depuis
+// Next.js — il transite via une requête HTTPS authentifiée vers le proxy VPS.
+//
+// Le backend valide aussi le rôle (owner/admin) et peut tester les creds
+// (endpoint POST /test) si on veut un ping login. Ici on déclenche le test
+// systématique après la sauvegarde pour donner un feedback utilisateur fiable.
 export async function saveInpiCredentials(formData: FormData) {
   const supabase = await createClient();
   const {
@@ -62,10 +70,12 @@ export async function saveInpiCredentials(formData: FormData) {
   const env = String(formData.get('inpi_env') || 'prod') === 'demo' ? 'demo' : 'prod';
   const next = String(formData.get('next') || '/dashboard');
 
-  if (!username || !password) {
-    const params = new URLSearchParams({ e: 'missing_fields', next });
+  const fail = (errKey: string) => {
+    const params = new URLSearchParams({ e: errKey, next });
     redirect(`/settings/inpi?${params.toString()}`);
-  }
+  };
+
+  if (!username || !password) return fail('missing_fields');
 
   const { data: m, error: mErr } = await supabase
     .from('memberships')
@@ -74,31 +84,60 @@ export async function saveInpiCredentials(formData: FormData) {
     .limit(1)
     .maybeSingle();
 
-  if (mErr || !m) {
-    const params = new URLSearchParams({ e: 'no_org', next });
-    redirect(`/settings/inpi?${params.toString()}`);
-  }
+  if (mErr || !m) return fail('no_org');
 
-  // Seuls les owners/admins peuvent modifier les creds du cabinet.
-  if (m.role !== 'owner' && m.role !== 'admin') {
-    const params = new URLSearchParams({ e: 'forbidden', next });
-    redirect(`/settings/inpi?${params.toString()}`);
-  }
+  const { data: sessionData } = await supabase.auth.getSession();
+  const accessToken = sessionData.session?.access_token;
+  if (!accessToken) return fail('no_session');
 
-  const { error: updateError } = await supabase
-    .from('organizations')
-    .update({
-      inpi_username: username,
-      inpi_password_encrypted: password,
-      inpi_env: env,
-    })
-    .eq('id', m.organization_id);
-
-  if (updateError) {
-    const params = new URLSearchParams({
-      e: encodeURIComponent(updateError.message),
-      next,
+  // 1) PUT chiffré côté VPS
+  let putRes: Response;
+  try {
+    putRes = await fetch(`${VPS_BACKEND_URL}/api/cabinet/inpi-creds`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${accessToken}`,
+        'x-organization-id': m.organization_id,
+      },
+      body: JSON.stringify({ username, password, env }),
+      cache: 'no-store',
     });
+  } catch (e) {
+    return fail(
+      encodeURIComponent(
+        `vps_unreachable:${e instanceof Error ? e.message : 'unknown'}`,
+      ),
+    );
+  }
+
+  if (!putRes.ok) {
+    const body = await putRes.json().catch(() => ({}));
+    const code = (body as { error?: string }).error ?? `http_${putRes.status}`;
+    return fail(code);
+  }
+
+  // 2) Ping login INPI pour valider que les creds fonctionnent vraiment.
+  // En cas d'échec, on revient sur la page avec l'erreur — les creds ont été
+  // écrites mais on prévient l'utilisateur que l'INPI ne les accepte pas.
+  try {
+    const testRes = await fetch(`${VPS_BACKEND_URL}/api/cabinet/inpi-creds/test`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        'x-organization-id': m.organization_id,
+      },
+      cache: 'no-store',
+    });
+    const testBody = await testRes.json().catch(() => ({}));
+    if (!testRes.ok || !(testBody as { ok?: boolean }).ok) {
+      const detail = (testBody as { error?: string }).error ?? 'unknown';
+      return fail(`inpi_test_failed:${detail}`);
+    }
+  } catch {
+    // Le test n'est pas bloquant pour la sauvegarde côté DB. On affiche un
+    // warning au user mais on laisse passer.
+    const params = new URLSearchParams({ e: 'inpi_test_unreachable', next });
     redirect(`/settings/inpi?${params.toString()}`);
   }
 
