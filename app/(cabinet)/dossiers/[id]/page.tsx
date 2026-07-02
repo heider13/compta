@@ -1,5 +1,6 @@
 import Link from 'next/link';
-import { notFound } from 'next/navigation';
+import { notFound, redirect } from 'next/navigation';
+import { revalidatePath } from 'next/cache';
 import { createClient } from '@/lib/supabase/server';
 import { StatusPill } from '@/components/cabinet/StatusPill';
 import { formatDate, typeFormaliteLabel, formeJuridiqueLabel } from '@/lib/utils/format';
@@ -10,6 +11,67 @@ const VPS_BACKEND_URL =
 
 const INPI_PORTAL_PROD = 'https://procedures-bis.inpi.fr/login';
 const INPI_PORTAL_DEMO = 'https://procedures-demo.inpi.fr/login';
+
+// Formes juridiques couvertes par le générateur de statuts backend
+// (server/lib/doc-generator.js — SUPPORTED_FORMES).
+const STATUTS_FORMES = ['SASU', 'SAS', 'EURL', 'SARL', 'SCI'];
+
+// ─── Server Action : génération des statuts (.docx) via le backend VPS ───
+async function generateStatutsAction(formData: FormData) {
+  'use server';
+
+  const dossierId = String(formData.get('dossierId') ?? '');
+  if (!dossierId) return;
+
+  const supabase = await createClient();
+  const { data: sessionData } = await supabase.auth.getSession();
+  const accessToken = sessionData.session?.access_token;
+  if (!accessToken) redirect('/auth/login');
+
+  // org_id du dossier pour le header x-organization-id (multi-tenant backend)
+  const { data: dossier } = await supabase
+    .from('dossiers')
+    .select('organization_id')
+    .eq('id', dossierId)
+    .maybeSingle();
+
+  let errorCode: string | null = null;
+  try {
+    const res = await fetch(`${VPS_BACKEND_URL}/api/dossiers/${dossierId}/generate-doc`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${accessToken}`,
+        ...(dossier?.organization_id
+          ? { 'x-organization-id': dossier.organization_id }
+          : {}),
+      },
+      body: JSON.stringify({ docType: 'STATUTS' }),
+      cache: 'no-store',
+    });
+    if (!res.ok) {
+      const body = (await res.json().catch(() => ({}))) as { error?: string };
+      errorCode = body.error || `http_${res.status}`;
+    }
+  } catch {
+    errorCode = 'vps_unreachable';
+  }
+
+  if (errorCode) {
+    redirect(`/dossiers/${dossierId}?doc_error=${encodeURIComponent(errorCode)}`);
+  }
+  revalidatePath(`/dossiers/${dossierId}`);
+  redirect(`/dossiers/${dossierId}?doc=ok`);
+}
+
+const DOC_ERROR_LABELS: Record<string, string> = {
+  vps_unreachable: 'Le serveur de génération est injoignable. Réessayez dans quelques minutes.',
+  unsupported_forme: 'La génération de statuts n’est pas disponible pour cette forme juridique.',
+  unsupported_doc_type: 'Type de document non géré.',
+  not_found: 'Dossier introuvable côté serveur.',
+  forbidden: 'Vous n’avez pas les droits pour générer un document sur ce dossier.',
+  storage_upload_failed: 'Échec de l’enregistrement du document généré.',
+};
 
 type InpiLive = { amountCents: number | null; status: string | null } | null;
 
@@ -57,8 +119,15 @@ function formatEuros(cents: number | null): string {
   }).format(cents / 100);
 }
 
-export default async function DossierDetailPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function DossierDetailPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
   const { id } = await params;
+  const sp = await searchParams;
   const supabase = await createClient();
 
   const { data: dossier } = await supabase.from('dossiers').select('*').eq('id', id).single();
@@ -107,6 +176,36 @@ export default async function DossierDetailPage({ params }: { params: Promise<{ 
         </div>
         <StatusPill statut={dossier.statut} />
       </div>
+
+      {typeof sp.doc_error === 'string' && (
+        <div
+          style={{
+            marginBottom: 16,
+            padding: '10px 14px',
+            borderRadius: 10,
+            background: '#FDEAEA',
+            color: 'var(--status-red)',
+            fontSize: 13,
+          }}
+        >
+          {DOC_ERROR_LABELS[sp.doc_error] ??
+            `Échec de la génération du document (${sp.doc_error}).`}
+        </div>
+      )}
+      {sp.doc === 'ok' && (
+        <div
+          style={{
+            marginBottom: 16,
+            padding: '10px 14px',
+            borderRadius: 10,
+            background: 'rgba(19, 115, 51, 0.08)',
+            color: 'var(--status-green, #137333)',
+            fontSize: 13,
+          }}
+        >
+          ✓ Statuts générés — le document apparaît dans les pièces jointes du dossier.
+        </div>
+      )}
 
       <div className="detail-grid">
         <div style={{ display: 'grid', gap: 20 }}>
@@ -250,6 +349,19 @@ export default async function DossierDetailPage({ params }: { params: Promise<{ 
                 <Link href={`/dossiers/${id}/sign`} className="btn btn-accent btn-lg" style={{ justifyContent: 'center' }}>
                   Demander la signature
                 </Link>
+              )}
+              {STATUTS_FORMES.includes(dossier.forme_juridique) && (
+                <div>
+                  <form action={generateStatutsAction}>
+                    <input type="hidden" name="dossierId" value={id} />
+                    <button type="submit" className="btn btn-ghost btn-lg" style={{ width: '100%', justifyContent: 'center' }}>
+                      📄 Générer les statuts (.docx)
+                    </button>
+                  </form>
+                  <p style={{ fontSize: 11, color: 'var(--ink-500)', margin: '6px 0 0', textAlign: 'center' }}>
+                    Document éditable généré à partir des données du dossier.
+                  </p>
+                </div>
               )}
               <a href={`/app.html?route=nouveau&type=${dossier.forme_juridique || dossier.type_formalite}&d=${id}`} className="btn btn-ghost btn-sm" style={{ justifyContent: 'center' }}>
                 Continuer dans le wizard

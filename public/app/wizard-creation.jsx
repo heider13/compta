@@ -166,6 +166,16 @@ const WizardCreation = ({ setRoute, dossierId: initialDossierId, onCreated, demo
 
       {step === 0 && (
         <Section title="Identité du déclarant">
+          <window.WC.IdentityOcrUpload onExtracted={(f) => {
+            const patch = {};
+            if (f.nom) patch.nomNaissance = f.nom.toUpperCase();
+            if (f.prenoms?.length) patch.prenoms = f.prenoms;
+            if (f.dateNaissance) patch.dateDeNaissance = f.dateNaissance;
+            if (f.sexe) patch.sexe = f.sexe;
+            if (f.nationalite) patch.codeNationalite = f.nationalite;
+            setIdent(patch);
+            if (f.lieuNaissance) setLieuNaissance({ commune: f.lieuNaissance });
+          }} />
           <Row>
             <FieldText label="Nom de naissance *" value={ident.nomNaissance} onChange={v => setIdent({ nomNaissance: v.toUpperCase() })} />
             <FieldText label="Nom d'usage (si différent)" value={ident.nomUsage} onChange={v => setIdent({ nomUsage: v.toUpperCase() })} />

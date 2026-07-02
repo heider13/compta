@@ -279,6 +279,16 @@ const WizardEURL = ({ setRoute, dossierId: initialDossierId, onCreated, demoMode
 
       {step === 3 && (
         <W.Section title="Gérant de l'EURL" subtitle="Le gérant représente légalement la société. Souvent l'associé unique.">
+          <W.IdentityOcrUpload label="Scanner la pièce d'identité du gérant" onExtracted={(f) => {
+            const patch = {};
+            if (f.nom) patch.nomNaissance = f.nom.toUpperCase();
+            if (f.prenoms?.length) patch.prenoms = f.prenoms;
+            if (f.dateNaissance) patch.dateDeNaissance = f.dateNaissance;
+            if (f.sexe) patch.sexe = f.sexe;
+            if (f.nationalite) patch.codeNationalite = f.nationalite;
+            setGerDesc(patch);
+            if (f.lieuNaissance) setGerLieu({ commune: f.lieuNaissance });
+          }} />
           <W.Row>
             <W.FieldText label="Nom de naissance *" value={gerDesc.nomNaissance} onChange={v => setGerDesc({ nomNaissance: v.toUpperCase() })} />
             <W.FieldText label="Nom d'usage" value={gerDesc.nomUsage} onChange={v => setGerDesc({ nomUsage: v.toUpperCase() })} />
@@ -322,6 +332,14 @@ const WizardEURL = ({ setRoute, dossierId: initialDossierId, onCreated, demoMode
           <W.FieldCheckbox label="Le gérant est aussi l'associé unique" checked={!!pm.composition._gerantEstAssocie} onChange={setGerantEstAssocie} />
           {!pm.composition._gerantEstAssocie && (
             <>
+              <W.IdentityOcrUpload label="Scanner la pièce d'identité de l'associé" onExtracted={(f) => {
+                const patch = {};
+                if (f.nom) patch.nomNaissance = f.nom.toUpperCase();
+                if (f.prenoms?.length) patch.prenoms = f.prenoms;
+                if (f.dateNaissance) patch.dateDeNaissance = f.dateNaissance;
+                if (f.lieuNaissance) patch.lieuDeNaissance = { ...assoc.individu.lieuDeNaissance, commune: f.lieuNaissance };
+                setAssocieIndividu(patch);
+              }} />
               <W.Row>
                 <W.FieldText label="Nom de naissance *" value={assoc.individu.nomNaissance} onChange={v => setAssocieIndividu({ nomNaissance: v.toUpperCase() })} />
                 <W.FieldText label="Prénom *" value={(assoc.individu.prenoms || [''])[0]} onChange={v => setAssocieIndividu({ prenoms: [v] })} />

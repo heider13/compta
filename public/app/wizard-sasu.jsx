@@ -279,6 +279,16 @@ const WizardSASU = ({ setRoute, dossierId: initialDossierId, onCreated, demoMode
 
       {step === 3 && (
         <W.Section title="Président de la SASU" subtitle="Le président représente légalement la société. Peut être l'associé unique.">
+          <W.IdentityOcrUpload label="Scanner la pièce d'identité du président" onExtracted={(f) => {
+            const patch = {};
+            if (f.nom) patch.nomNaissance = f.nom.toUpperCase();
+            if (f.prenoms?.length) patch.prenoms = f.prenoms;
+            if (f.dateNaissance) patch.dateDeNaissance = f.dateNaissance;
+            if (f.sexe) patch.sexe = f.sexe;
+            if (f.nationalite) patch.codeNationalite = f.nationalite;
+            if (f.lieuNaissance) patch.lieuDeNaissance = { ...presDesc.lieuDeNaissance, commune: f.lieuNaissance };
+            setPresDesc(patch);
+          }} />
           <W.Row>
             <W.FieldText label="Nom de naissance *" value={presDesc.nomNaissance} onChange={v => setPresDesc({ nomNaissance: v.toUpperCase() })} />
             <W.FieldText label="Nom d'usage" value={presDesc.nomUsage} onChange={v => setPresDesc({ nomUsage: v.toUpperCase() })} />

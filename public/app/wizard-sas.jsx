@@ -286,6 +286,16 @@ const WizardSAS = ({ setRoute, dossierId: initialDossierId, onCreated, demoMode 
 
       {step === 3 && (
         <W.Section title="Président de la SAS" subtitle="Le président représente légalement la société.">
+          <W.IdentityOcrUpload label="Scanner la pièce d'identité du président" onExtracted={(f) => {
+            const patch = {};
+            if (f.nom) patch.nomNaissance = f.nom.toUpperCase();
+            if (f.prenoms?.length) patch.prenoms = f.prenoms;
+            if (f.dateNaissance) patch.dateDeNaissance = f.dateNaissance;
+            if (f.sexe) patch.sexe = f.sexe;
+            if (f.nationalite) patch.codeNationalite = f.nationalite;
+            setPresDesc(patch);
+            if (f.lieuNaissance) setPresLieu({ commune: f.lieuNaissance });
+          }} />
           <W.Row>
             <W.FieldText label="Nom de naissance *" value={presDesc.nomNaissance} onChange={v => setPresDesc({ nomNaissance: v.toUpperCase() })} />
             <W.FieldText label="Nom d'usage" value={presDesc.nomUsage} onChange={v => setPresDesc({ nomUsage: v.toUpperCase() })} />
@@ -342,6 +352,16 @@ const WizardSAS = ({ setRoute, dossierId: initialDossierId, onCreated, demoMode 
                     <W.FieldSelect label="Type" value={a.type} onChange={v => updateAssocie(i, { type: v })} options={[
                       { value: 'PHYSIQUE', label: 'Personne physique' }, { value: 'MORALE', label: 'Personne morale' },
                     ]} />
+                    {a.type === 'PHYSIQUE' && (
+                      <W.IdentityOcrUpload label="Scanner la pièce d'identité de l'associé" onExtracted={(f) => {
+                        const patch = {};
+                        if (f.nom) patch.nomNaissance = f.nom.toUpperCase();
+                        if (f.prenoms?.length) patch.prenoms = f.prenoms;
+                        if (f.dateNaissance) patch.dateDeNaissance = f.dateNaissance;
+                        updateAssocieIndividu(i, patch);
+                        if (f.lieuNaissance) updateAssocieLieu(i, { commune: f.lieuNaissance });
+                      }} />
+                    )}
                     <W.Row>
                       <W.FieldText label="Nom *" value={a.individu.nomNaissance} onChange={v => updateAssocieIndividu(i, { nomNaissance: v.toUpperCase() })} />
                       <W.FieldText label="Prénom *" value={(a.individu.prenoms || [''])[0]} onChange={v => updateAssocieIndividu(i, { prenoms: [v] })} />

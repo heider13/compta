@@ -189,7 +189,74 @@ const RgsWarning = () => (
   </div>
 );
 
+// ─── Scan de pièce d'identité (OCR) ────────────────────────────────────
+// Upload d'une photo de CNI / passeport → le backend extrait nom, prénoms,
+// date/lieu de naissance, sexe, nationalité (zone MRZ prioritaire) →
+// onExtracted(fields) pour préremplir le formulaire. L'image n'est PAS
+// conservée côté serveur.
+const IdentityOcrUpload = ({ onExtracted, label = 'Scanner une pièce d\'identité' }) => {
+  const inputRef = React.useRef(null);
+  const [state, setState] = React.useState({ status: 'idle', message: null });
+
+  const onPick = async (file) => {
+    if (!file) return;
+    if (file.size > 10 * 1024 * 1024) {
+      setState({ status: 'error', message: 'Image trop lourde (max 10 Mo).' });
+      return;
+    }
+    setState({ status: 'loading', message: 'Analyse du document en cours… (10-20 s)' });
+    try {
+      const base64 = await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+      const result = await window.ComptaAPI.apiFetch('/api/ocr/identity', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ imageBase64: base64 }),
+      });
+      const f = result.fields || {};
+      onExtracted(f);
+      const nomComplet = [f.prenoms?.join(' '), f.nom].filter(Boolean).join(' ');
+      setState({
+        status: 'done',
+        message: `✓ Identité extraite${nomComplet ? ` : ${nomComplet}` : ''} — vérifiez les champs préremplis.`,
+      });
+    } catch (e) {
+      const detail = e.status === 422
+        ? 'Lecture impossible. Photo nette, à plat, zone MRZ (lignes en bas du document) visible.'
+        : (e.message || 'Erreur inconnue');
+      setState({ status: 'error', message: detail });
+    }
+  };
+
+  return (
+    <div style={{ marginBottom: 16 }}>
+      <input type="file" accept="image/jpeg,image/png,image/webp" capture="environment"
+        style={{ display: 'none' }} ref={inputRef}
+        onChange={e => { onPick(e.target.files[0]); e.target.value = ''; }} />
+      <button type="button" className="btn btn-ghost"
+        onClick={() => inputRef.current?.click()}
+        disabled={state.status === 'loading'}
+        style={{ width: '100%', justifyContent: 'center', border: '1.5px dashed var(--accent)', color: 'var(--accent-ink)', padding: '14px 18px' }}>
+        {state.status === 'loading' ? '⏳ Analyse en cours…' : `📷 ${label}`}
+      </button>
+      {state.message && (
+        <div style={{
+          marginTop: 8, fontSize: 12, padding: '8px 10px', borderRadius: 6,
+          background: state.status === 'error' ? '#FEE2E2' : state.status === 'done' ? 'rgba(19,115,51,0.08)' : 'var(--ink-50)',
+          color: state.status === 'error' ? '#b42318' : state.status === 'done' ? 'var(--status-green, #137333)' : 'var(--ink-600)',
+        }}>
+          {state.message}
+        </div>
+      )}
+    </div>
+  );
+};
+
 window.WC = {
   Section, Row, FieldText, FieldTextarea, FieldDate, FieldSelect, FieldCheckbox,
-  RecapBlock, ProgressBar, Nav, DocumentUploadList, RgsWarning,
+  RecapBlock, ProgressBar, Nav, DocumentUploadList, RgsWarning, IdentityOcrUpload,
 };

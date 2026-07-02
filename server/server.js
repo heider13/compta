@@ -9,6 +9,8 @@ const inpiCredsRoutes = require('./routes/inpi-creds');
 const pappersRoutes = require('./routes/pappers');
 const signatureRoutes = require('./routes/signatures');
 const yousignWebhookRoutes = require('./routes/yousign-webhook');
+const ocrRoutes = require('./routes/ocr');
+const documentsRoutes = require('./routes/documents');
 
 const app = express();
 app.set('trust proxy', 'loopback');
@@ -1004,6 +1006,8 @@ app.get(
 app.use('/api/cabinet/inpi-creds', requireUser, requireOrg, inpiCredsRoutes);
 app.use('/api/pappers', requireUser, requireOrg, pappersRoutes);
 app.use('/api/dossiers', requireUser, requireOrg, signatureRoutes);
+app.use('/api/ocr', requireUser, requireOrg, ocrRoutes);
+app.use('/api/dossiers', requireUser, requireOrg, documentsRoutes);
 
 app.use((err, req, res, _next) => {
   console.error(`[ERR] ${req.method} ${req.path}:`, err.message);

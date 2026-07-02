@@ -242,6 +242,16 @@ const WizardSCI = ({ setRoute, dossierId: initialDossierId, onCreated, demoMode 
                   <strong style={{ fontSize: 13 }}>Gérant #{i + 1}</strong>
                   {pouvoirs.length > 1 && <button className="btn btn-ghost btn-sm" onClick={() => rmGerant(i)}>Supprimer</button>}
                 </div>
+                <W.IdentityOcrUpload label="Scanner la pièce d'identité du gérant" onExtracted={(f) => {
+                  const patch = {};
+                  if (f.nom) patch.nomNaissance = f.nom.toUpperCase();
+                  if (f.prenoms?.length) patch.prenoms = f.prenoms;
+                  if (f.dateNaissance) patch.dateDeNaissance = f.dateNaissance;
+                  if (f.sexe) patch.sexe = f.sexe;
+                  if (f.nationalite) patch.codeNationalite = f.nationalite;
+                  if (f.lieuNaissance) patch.lieuDeNaissance = f.lieuNaissance;
+                  updateGerantDesc(i, patch);
+                }} />
                 <W.Row>
                   <W.FieldText label="Nom de naissance *" value={g.descriptionPersonne.nomNaissance} onChange={v => updateGerantDesc(i, { nomNaissance: v.toUpperCase() })} />
                   <W.FieldText label="Prénom(s) *" value={(g.descriptionPersonne.prenoms || []).join(' ')} onChange={v => updateGerantDesc(i, { prenoms: v.split(/\s+/).filter(Boolean) })} />
@@ -275,6 +285,16 @@ const WizardSCI = ({ setRoute, dossierId: initialDossierId, onCreated, demoMode 
                 {associes.length > 2 && <button className="btn btn-ghost btn-sm" onClick={() => rmAssocie(i)}>Supprimer</button>}
               </div>
               <W.FieldSelect label="Type" value={a.type} onChange={v => updateAssocie(i, { type: v })} options={[{ value: 'PHYSIQUE', label: 'Personne physique' }, { value: 'MORALE', label: 'Personne morale' }]} />
+              {a.type === 'PHYSIQUE' && (
+                <W.IdentityOcrUpload label="Scanner la pièce d'identité de l'associé" onExtracted={(f) => {
+                  const patch = {};
+                  if (f.nom) patch.nomNaissance = f.nom.toUpperCase();
+                  if (f.prenoms?.length) patch.prenoms = f.prenoms;
+                  if (f.dateNaissance) patch.dateDeNaissance = f.dateNaissance;
+                  if (f.lieuNaissance) patch.lieuDeNaissance = f.lieuNaissance;
+                  updateAssocieIndividu(i, patch);
+                }} />
+              )}
               <W.Row>
                 <W.FieldText label={a.type === 'MORALE' ? 'Dénomination *' : 'Nom de naissance *'} value={a.individu.nomNaissance} onChange={v => updateAssocieIndividu(i, { nomNaissance: v.toUpperCase() })} />
                 {a.type === 'PHYSIQUE' && (
