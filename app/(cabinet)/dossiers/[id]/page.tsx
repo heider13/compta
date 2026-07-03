@@ -1,10 +1,24 @@
 import Link from 'next/link';
 import { notFound, redirect } from 'next/navigation';
 import { revalidatePath } from 'next/cache';
+import {
+  CheckCircle2,
+  ExternalLink,
+  FileText,
+  Paperclip,
+  PenLine,
+  Send,
+  SquarePen,
+} from 'lucide-react';
 import { createClient } from '@/lib/supabase/server';
-import { StatusPill } from '@/components/cabinet/StatusPill';
+import { StatusBadge } from '@/components/cabinet/StatusBadge';
 import { formatDate, typeFormaliteLabel, formeJuridiqueLabel } from '@/lib/utils/format';
 import { addObservation, submitToAdmin } from '@/lib/server-actions/dossiers';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Textarea } from '@/components/ui/textarea';
+import { Checkbox } from '@/components/ui/checkbox';
+import { cn } from '@/lib/utils';
 
 const VPS_BACKEND_URL =
   process.env.NEXT_PUBLIC_VPS_BACKEND_URL ?? 'https://vps-84ac2579.vps.ovh.net';
@@ -160,244 +174,303 @@ export default async function DossierDetailPage({
   const canSubmit = ['DRAFT', 'INTERNAL_AMENDMENT_PENDING'].includes(dossier.statut);
 
   return (
-    <div className="app-content with-bg">
-      <div style={{ fontSize: 13, color: 'var(--ink-500)', marginBottom: 12 }}>
-        <Link href="/dossiers" style={{ color: 'var(--ink-500)' }}>Dossiers</Link> · <span className="mono">{dossier.reference}</span>
-      </div>
+    <div className="mx-auto w-full max-w-7xl space-y-6 p-4 sm:p-6">
+      <nav className="flex items-center gap-1.5 text-sm text-muted-foreground">
+        <Link href="/dossiers" className="hover:text-foreground">
+          Dossiers
+        </Link>
+        <span>›</span>
+        <span className="font-mono text-xs">{dossier.reference}</span>
+      </nav>
 
-      <div className="page-head">
+      <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h1 style={{ margin: 0 }}>{dossier.client_name}</h1>
-          <p style={{ marginTop: 2 }}>
+          <h1 className="text-2xl font-semibold tracking-tight">{dossier.client_name}</h1>
+          <p className="text-sm text-muted-foreground">
             {typeFormaliteLabel(dossier.type_formalite)}
             {dossier.forme_juridique && ` · ${formeJuridiqueLabel(dossier.forme_juridique)}`}
-            {' · '}<span className="mono">{dossier.reference}</span>
+            {' · '}
+            <span className="font-mono text-xs">{dossier.reference}</span>
           </p>
         </div>
-        <StatusPill statut={dossier.statut} />
+        <StatusBadge statut={dossier.statut} />
       </div>
 
       {typeof sp.doc_error === 'string' && (
         <div
-          style={{
-            marginBottom: 16,
-            padding: '10px 14px',
-            borderRadius: 10,
-            background: '#FDEAEA',
-            color: 'var(--status-red)',
-            fontSize: 13,
-          }}
+          role="alert"
+          className="rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive"
         >
-          {DOC_ERROR_LABELS[sp.doc_error] ??
-            `Échec de la génération du document (${sp.doc_error}).`}
+          {DOC_ERROR_LABELS[sp.doc_error] ?? `Échec de la génération du document (${sp.doc_error}).`}
         </div>
       )}
       {sp.doc === 'ok' && (
-        <div
-          style={{
-            marginBottom: 16,
-            padding: '10px 14px',
-            borderRadius: 10,
-            background: 'rgba(19, 115, 51, 0.08)',
-            color: 'var(--status-green, #137333)',
-            fontSize: 13,
-          }}
-        >
-          ✓ Statuts générés — le document apparaît dans les pièces jointes du dossier.
+        <div className="flex items-center gap-2 rounded-lg border border-green-300 bg-green-50 px-4 py-3 text-sm text-green-800">
+          <CheckCircle2 className="size-4 shrink-0" />
+          Statuts générés — le document apparaît dans les pièces jointes du dossier.
         </div>
       )}
 
-      <div className="detail-grid">
-        <div style={{ display: 'grid', gap: 20 }}>
+      <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_320px]">
+        <div className="space-y-5">
           {dossier.inpi_reference && (
-            <div
-              className="app-card"
-              style={{ border: '1px solid #F1C75A', background: '#FFFBEA' }}
-            >
-              <div className="app-card-head">
-                <h3 style={{ color: '#8A5400' }}>Frais légaux INPI</h3>
-              </div>
-              <div style={{ padding: '16px 22px', display: 'grid', gap: 12 }}>
-                <div style={{ display: 'flex', alignItems: 'baseline', gap: 16, flexWrap: 'wrap' }}>
+            <Card className="border-amber-300 bg-amber-50/70">
+              <CardHeader>
+                <CardTitle className="text-amber-900">Frais légaux INPI</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="flex flex-wrap items-baseline gap-6">
                   <div>
-                    <div style={{ fontSize: 12, color: 'var(--ink-500)', marginBottom: 2 }}>
-                      Montant à régler sur l&apos;INPI
-                    </div>
-                    <div style={{ fontSize: 28, fontWeight: 600, color: 'var(--ink-900)' }}>
+                    <p className="text-xs text-amber-800/80">Montant à régler sur l&apos;INPI</p>
+                    <p className="text-3xl font-semibold tracking-tight text-amber-950">
                       {formatEuros(inpiLive?.amountCents ?? null)}
-                    </div>
+                    </p>
                   </div>
                   {inpiLive?.status && (
-                    <div style={{ fontSize: 12, color: 'var(--ink-500)' }}>
-                      <div>Statut INPI</div>
-                      <div className="mono" style={{ fontSize: 13, color: 'var(--ink-900)' }}>
-                        {inpiLive.status}
-                      </div>
+                    <div className="text-xs text-amber-800/80">
+                      <p>Statut INPI</p>
+                      <p className="font-mono text-sm text-amber-950">{inpiLive.status}</p>
                     </div>
                   )}
                 </div>
-                <p style={{ fontSize: 13, color: '#6B4400', margin: 0, lineHeight: 1.5 }}>
-                  Le paiement des frais légaux (greffe, JAL, etc.) se fait directement sur
-                  le portail officiel INPI Guichet Unique — Compta ne perçoit pas ces frais.
+                <p className="text-sm leading-relaxed text-amber-900/80">
+                  Le paiement des frais légaux (greffe, JAL, etc.) se fait directement sur le
+                  portail officiel INPI Guichet Unique — Compta ne perçoit pas ces frais.
                   Connectez-vous avec les identifiants INPI du cabinet
                   {inpiEnv === 'demo' ? ' (environnement démo)' : ''} pour régler.
                 </p>
-                <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-                  <a
-                    href={inpiPortalUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="btn btn-accent"
-                    style={{ background: '#8A5400', borderColor: '#8A5400' }}
-                  >
-                    Régler sur le portail INPI →
-                  </a>
+                <div className="flex flex-wrap items-center gap-3">
+                  <Button asChild className="bg-amber-700 text-white hover:bg-amber-800">
+                    <a href={inpiPortalUrl} target="_blank" rel="noopener noreferrer">
+                      Régler sur le portail INPI
+                      <ExternalLink className="size-4" />
+                    </a>
+                  </Button>
                   {inpiLive == null && (
-                    <span style={{ fontSize: 12, color: 'var(--ink-500)', alignSelf: 'center' }}>
+                    <span className="text-xs text-amber-800/70">
                       Montant non disponible — connexion INPI requise pour rafraîchir.
                     </span>
                   )}
                 </div>
-              </div>
-            </div>
+              </CardContent>
+            </Card>
           )}
 
           {client && (
-            <div className="app-card">
-              <div className="app-card-head"><h3>Client</h3></div>
-              <div className="app-card-pad" style={{ padding: '14px 22px' }}>
-                <Link href={`/clients/${client.id}`} style={{ fontWeight: 500, color: 'var(--accent-ink)' }}>{client.denomination}</Link>
-                {client.siren && <span className="mono" style={{ marginLeft: 12, color: 'var(--ink-500)', fontSize: 13 }}>{client.siren}</span>}
-              </div>
-            </div>
+            <Card>
+              <CardHeader>
+                <CardTitle>Client</CardTitle>
+              </CardHeader>
+              <CardContent className="flex flex-wrap items-baseline gap-3">
+                <Link
+                  href={`/clients/${client.id}`}
+                  className="font-medium text-primary hover:underline"
+                >
+                  {client.denomination}
+                </Link>
+                {client.siren && (
+                  <span className="font-mono text-xs text-muted-foreground">{client.siren}</span>
+                )}
+              </CardContent>
+            </Card>
           )}
 
-          <div className="app-card">
-            <div className="app-card-head"><h3>Pièces jointes ({documents?.length ?? 0})</h3></div>
-            <div style={{ padding: 16, display: 'grid', gap: 10 }}>
-              {(documents ?? []).length === 0 && <p style={{ color: 'var(--ink-500)', fontSize: 13, padding: 12, margin: 0 }}>Aucune pièce uploadée.</p>}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Paperclip className="size-4 text-muted-foreground" />
+                Pièces jointes ({documents?.length ?? 0})
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2.5">
+              {(documents ?? []).length === 0 && (
+                <p className="text-sm text-muted-foreground">Aucune pièce uploadée.</p>
+              )}
               {(documents ?? []).map((d) => (
-                <div key={d.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 12px', border: '1px solid var(--ink-150)', borderRadius: 8 }}>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ fontSize: 13, fontWeight: 500 }}>{d.name}</div>
-                    <div style={{ fontSize: 11, color: 'var(--ink-500)' }}>
+                <div key={d.id} className="flex items-center gap-3 rounded-lg border px-3 py-2.5">
+                  <FileText className="size-4 shrink-0 text-muted-foreground" />
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-medium">{d.name}</p>
+                    <p className="text-xs text-muted-foreground">
                       {d.size_bytes ? `${(d.size_bytes / 1024).toFixed(0)} Ko · ` : ''}
                       {d.doc_type ? `${d.doc_type} · ` : ''}
                       {formatDate(d.created_at)}
-                    </div>
+                    </p>
                   </div>
                 </div>
               ))}
-            </div>
-          </div>
+            </CardContent>
+          </Card>
 
-          <div className="app-card">
-            <div className="app-card-head"><h3>Observations ({observations?.length ?? 0})</h3></div>
-            <div style={{ padding: 18, display: 'grid', gap: 12 }}>
+          <Card>
+            <CardHeader>
+              <CardTitle>Observations ({observations?.length ?? 0})</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
               {(observations ?? []).map((o) => (
-                <div key={o.id} style={{
-                  padding: 12, borderRadius: 10,
-                  background: o.author_role === 'admin' ? '#FEF3C7' : 'var(--ink-50)',
-                  borderLeft: `3px solid ${o.author_role === 'admin' ? '#F59E0B' : 'var(--accent)'}`,
-                }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: 'var(--ink-500)', marginBottom: 4 }}>
-                    <strong>{o.author_role === 'admin' ? 'Admin' : 'Client'}</strong>
-                    <span className="mono">{formatDate(o.created_at)}</span>
+                <div
+                  key={o.id}
+                  className={cn(
+                    'rounded-lg border-l-[3px] p-3',
+                    o.author_role === 'admin'
+                      ? 'border-l-amber-500 bg-amber-50'
+                      : 'border-l-primary bg-muted/60',
+                  )}
+                >
+                  <div className="mb-1 flex items-center justify-between text-xs text-muted-foreground">
+                    <strong className="font-semibold">
+                      {o.author_role === 'admin' ? 'Admin' : 'Client'}
+                    </strong>
+                    <span className="font-mono">{formatDate(o.created_at)}</span>
                   </div>
-                  <div style={{ fontSize: 14, whiteSpace: 'pre-wrap' }}>{o.message}</div>
+                  <p className="whitespace-pre-wrap text-sm">{o.message}</p>
                 </div>
               ))}
-              <form action={addObservation}>
+              <form action={addObservation} className="space-y-2">
                 <input type="hidden" name="dossier_id" value={id} />
-                <textarea name="message" placeholder="Écrire un message…" rows={3} required
-                  style={{ width: '100%', padding: 10, border: '1px solid var(--ink-200)', borderRadius: 8, fontFamily: 'inherit', fontSize: 13, resize: 'vertical' }} />
-                <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 8 }}>
-                  <button type="submit" className="btn btn-accent btn-sm">Envoyer</button>
+                <Textarea name="message" placeholder="Écrire un message…" rows={3} required />
+                <div className="flex justify-end">
+                  <Button type="submit" size="sm">
+                    <Send className="size-3.5" />
+                    Envoyer
+                  </Button>
                 </div>
               </form>
-            </div>
-          </div>
+            </CardContent>
+          </Card>
 
-          <div className="app-card">
-            <div className="app-card-head"><h3>Tâches ({tasks?.length ?? 0})</h3></div>
-            <div style={{ padding: 16, display: 'grid', gap: 8 }}>
-              {(tasks ?? []).length === 0 && <p style={{ color: 'var(--ink-500)', fontSize: 13, margin: 0 }}>Aucune tâche.</p>}
+          <Card>
+            <CardHeader>
+              <CardTitle>Tâches ({tasks?.length ?? 0})</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-1.5">
+              {(tasks ?? []).length === 0 && (
+                <p className="text-sm text-muted-foreground">Aucune tâche.</p>
+              )}
               {(tasks ?? []).map((t) => (
-                <div key={t.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 12px', borderRadius: 8, background: t.done ? 'var(--ink-50)' : 'transparent' }}>
-                  <input type="checkbox" defaultChecked={t.done} disabled style={{ accentColor: 'var(--accent)' }} />
-                  <span style={{ fontSize: 13, flex: 1, textDecoration: t.done ? 'line-through' : 'none', color: t.done ? 'var(--ink-500)' : 'var(--ink-900)' }}>{t.title}</span>
-                  {t.due_date && <span className="mono" style={{ fontSize: 11, color: 'var(--ink-500)' }}>{formatDate(t.due_date)}</span>}
+                <div
+                  key={t.id}
+                  className={cn(
+                    'flex items-center gap-2.5 rounded-lg px-3 py-2',
+                    t.done && 'bg-muted/60',
+                  )}
+                >
+                  <Checkbox checked={t.done} disabled aria-label="Tâche" />
+                  <span
+                    className={cn(
+                      'flex-1 text-sm',
+                      t.done ? 'text-muted-foreground line-through' : 'text-foreground',
+                    )}
+                  >
+                    {t.title}
+                  </span>
+                  {t.due_date && (
+                    <span className="font-mono text-[11px] text-muted-foreground">
+                      {formatDate(t.due_date)}
+                    </span>
+                  )}
                 </div>
               ))}
-            </div>
-          </div>
+            </CardContent>
+          </Card>
         </div>
 
-        <aside style={{ display: 'grid', gap: 20 }}>
-          <div className="app-card">
-            <div className="app-card-head"><h3>Actions</h3></div>
-            <div style={{ padding: 18, display: 'grid', gap: 10 }}>
-              <Link href={`/dossiers/${id}/edit`} className="btn btn-ghost btn-lg" style={{ justifyContent: 'center' }}>Modifier</Link>
+        <aside className="space-y-5">
+          <Card>
+            <CardHeader>
+              <CardTitle>Actions</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2.5">
+              <Button asChild variant="outline" className="w-full">
+                <Link href={`/dossiers/${id}/edit`}>
+                  <SquarePen className="size-4" />
+                  Modifier
+                </Link>
+              </Button>
               {canSubmit && (
                 <form action={async () => { 'use server'; await submitToAdmin(id); }}>
-                  <button type="submit" className="btn btn-accent btn-lg" style={{ width: '100%', justifyContent: 'center' }}>
+                  <Button type="submit" className="w-full">
+                    <Send className="size-4" />
                     Soumettre pour validation
-                  </button>
+                  </Button>
                 </form>
               )}
               {dossier.statut === 'VALIDATED_INTERNAL' && (
-                <Link href={`/dossiers/${id}/sign`} className="btn btn-accent btn-lg" style={{ justifyContent: 'center' }}>
-                  Demander la signature
-                </Link>
+                <Button asChild className="w-full">
+                  <Link href={`/dossiers/${id}/sign`}>
+                    <PenLine className="size-4" />
+                    Demander la signature
+                  </Link>
+                </Button>
               )}
               {STATUTS_FORMES.includes(dossier.forme_juridique) && (
                 <div>
                   <form action={generateStatutsAction}>
                     <input type="hidden" name="dossierId" value={id} />
-                    <button type="submit" className="btn btn-ghost btn-lg" style={{ width: '100%', justifyContent: 'center' }}>
-                      📄 Générer les statuts (.docx)
-                    </button>
+                    <Button type="submit" variant="outline" className="w-full">
+                      <FileText className="size-4" />
+                      Générer les statuts (.docx)
+                    </Button>
                   </form>
-                  <p style={{ fontSize: 11, color: 'var(--ink-500)', margin: '6px 0 0', textAlign: 'center' }}>
+                  <p className="mt-1.5 text-center text-[11px] text-muted-foreground">
                     Document éditable généré à partir des données du dossier.
                   </p>
                 </div>
               )}
-              <a href={`/app.html?route=nouveau&type=${dossier.forme_juridique || dossier.type_formalite}&d=${id}`} className="btn btn-ghost btn-sm" style={{ justifyContent: 'center' }}>
-                Continuer dans le wizard
-              </a>
-            </div>
-          </div>
+              <Button asChild variant="ghost" size="sm" className="w-full text-muted-foreground">
+                <a href={`/app.html?route=nouveau&type=${dossier.forme_juridique || dossier.type_formalite}&d=${id}`}>
+                  Continuer dans le wizard
+                </a>
+              </Button>
+            </CardContent>
+          </Card>
 
-          <div className="app-card">
-            <div className="app-card-head"><h3>Informations</h3></div>
-            <div>
-              <Row label="Référence" value={<span className="mono">{dossier.reference}</span>} />
-              <Row label="Type" value={typeFormaliteLabel(dossier.type_formalite)} />
-              <Row label="Forme jur." value={formeJuridiqueLabel(dossier.forme_juridique)} />
-              {dossier.siren && <Row label="SIREN" value={<span className="mono">{dossier.siren}</span>} />}
-              <Row label="Priorité" value={dossier.priority || 'normal'} />
-              {dossier.internal_due_date && <Row label="Échéance interne" value={formatDate(dossier.internal_due_date)} />}
-              {dossier.inpi_reference && <Row label="ID INPI" value={<span className="mono">{dossier.inpi_reference}</span>} />}
-              <Row label="Créé le" value={formatDate(dossier.created_at)} />
-              <Row label="MAJ" value={formatDate(dossier.updated_at)} last />
-            </div>
-          </div>
+          <Card className="py-0">
+            <CardHeader className="pt-6">
+              <CardTitle>Informations</CardTitle>
+            </CardHeader>
+            <CardContent className="px-0 pb-2">
+              <InfoRow label="Référence" value={<span className="font-mono text-xs">{dossier.reference}</span>} />
+              <InfoRow label="Type" value={typeFormaliteLabel(dossier.type_formalite)} />
+              <InfoRow label="Forme jur." value={formeJuridiqueLabel(dossier.forme_juridique)} />
+              {dossier.siren && (
+                <InfoRow label="SIREN" value={<span className="font-mono text-xs">{dossier.siren}</span>} />
+              )}
+              <InfoRow label="Priorité" value={dossier.priority || 'normal'} />
+              {dossier.internal_due_date && (
+                <InfoRow label="Échéance interne" value={formatDate(dossier.internal_due_date)} />
+              )}
+              {dossier.inpi_reference && (
+                <InfoRow label="ID INPI" value={<span className="font-mono text-xs">{dossier.inpi_reference}</span>} />
+              )}
+              <InfoRow label="Créé le" value={formatDate(dossier.created_at)} />
+              <InfoRow label="MAJ" value={formatDate(dossier.updated_at)} last />
+            </CardContent>
+          </Card>
         </aside>
       </div>
     </div>
   );
 }
 
-function Row({ label, value, last }: { label: string; value: React.ReactNode; last?: boolean }) {
+function InfoRow({
+  label,
+  value,
+  last,
+}: {
+  label: string;
+  value: React.ReactNode;
+  last?: boolean;
+}) {
   return (
-    <div style={{
-      display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-      padding: '12px 22px', borderBottom: last ? 'none' : '1px solid var(--ink-100)',
-      fontSize: 13, gap: 12,
-    }}>
-      <span style={{ color: 'var(--ink-500)' }}>{label}</span>
-      <span style={{ color: 'var(--ink-900)', fontWeight: 500, textAlign: 'right' }}>{value}</span>
+    <div
+      className={cn(
+        'flex items-center justify-between gap-3 px-6 py-2.5 text-sm',
+        !last && 'border-b',
+      )}
+    >
+      <span className="text-muted-foreground">{label}</span>
+      <span className="text-right font-medium">{value}</span>
     </div>
   );
 }

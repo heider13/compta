@@ -3,60 +3,35 @@
 // Aucune donnée n'a été modifiée — on l'invite simplement à réessayer.
 
 import Link from 'next/link';
+import { XCircle } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
 
 export const dynamic = 'force-dynamic';
 
 export default function BillingCancelPage() {
   return (
-    <div
-      className="app-card app-card-pad"
-      style={{
-        maxWidth: 520,
-        margin: '40px auto',
-        textAlign: 'center',
-        padding: '40px 32px',
-      }}
-    >
-      <div
-        style={{
-          width: 64,
-          height: 64,
-          borderRadius: '50%',
-          background: 'var(--ink-100)',
-          color: 'var(--ink-500)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          margin: '0 auto 20px',
-          fontSize: 32,
-          fontWeight: 600,
-        }}
-        aria-hidden="true"
-      >
-        ×
-      </div>
-      <h1 style={{ fontSize: 24, marginBottom: 8 }}>Paiement annulé</h1>
-      <p
-        style={{
-          fontSize: 14,
-          color: 'var(--ink-600)',
-          marginBottom: 24,
-          maxWidth: 400,
-          marginLeft: 'auto',
-          marginRight: 'auto',
-        }}
-      >
-        Vous avez annulé le paiement avant la fin du processus. Aucun montant
-        n&apos;a été débité. Vous pouvez réessayer à tout moment.
-      </p>
-      <div style={{ display: 'flex', gap: 10, justifyContent: 'center' }}>
-        <Link href="/billing" className="btn btn-accent">
-          Retour à la facturation
-        </Link>
-        <Link href="/" className="btn btn-ghost">
-          Tableau de bord
-        </Link>
-      </div>
+    <div className="mx-auto w-full max-w-xl p-6">
+      <Card className="mt-10">
+        <CardContent className="flex flex-col items-center py-10 text-center">
+          <span className="mb-5 grid size-16 place-items-center rounded-full bg-muted text-muted-foreground">
+            <XCircle className="size-9" aria-hidden="true" />
+          </span>
+          <h1 className="text-2xl font-semibold tracking-tight">Paiement annulé</h1>
+          <p className="mt-3 max-w-sm text-sm leading-relaxed text-muted-foreground">
+            Vous avez annulé le paiement avant la fin du processus. Aucun montant
+            n&apos;a été débité. Vous pouvez réessayer à tout moment.
+          </p>
+          <div className="mt-6 flex flex-wrap justify-center gap-3">
+            <Button asChild>
+              <Link href="/billing">Retour à la facturation</Link>
+            </Button>
+            <Button variant="outline" asChild>
+              <Link href="/dashboard">Tableau de bord</Link>
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }

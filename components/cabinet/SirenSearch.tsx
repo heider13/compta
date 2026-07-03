@@ -1,11 +1,16 @@
 'use client';
 
 import { useState } from 'react';
+import { Loader2, Search } from 'lucide-react';
 import {
   formatSiren,
   type PappersResult,
   type PappersSearchResponse,
 } from '@/lib/types';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 
 interface SirenSearchProps {
   onSelect: (result: PappersResult) => void;
@@ -66,14 +71,11 @@ export function SirenSearch({ onSelect, initialValue = '' }: SirenSearchProps) {
   }
 
   return (
-    <div className="form-grid">
-      <form
-        onSubmit={handleSearch}
-        style={{ display: 'flex', gap: 8, alignItems: 'flex-end' }}
-      >
-        <div className="form-field" style={{ flex: 1 }}>
-          <label htmlFor="siren-input">SIREN</label>
-          <input
+    <div className="space-y-4">
+      <form onSubmit={handleSearch} className="flex items-end gap-2.5">
+        <div className="flex-1 space-y-1.5">
+          <Label htmlFor="siren-input">SIREN</Label>
+          <Input
             id="siren-input"
             type="text"
             inputMode="numeric"
@@ -83,55 +85,55 @@ export function SirenSearch({ onSelect, initialValue = '' }: SirenSearchProps) {
             onChange={(e) => setSiren(e.target.value)}
             maxLength={11}
           />
-          <span className="form-help">9 chiffres, espaces ignorés.</span>
+          <p className="text-xs text-muted-foreground">9 chiffres, espaces ignorés.</p>
         </div>
-        <button
+        <Button
           type="submit"
-          className="btn btn-primary"
+          className="mb-6"
           disabled={loading || siren.replace(/\D+/g, '').length !== 9}
         >
+          {loading ? (
+            <Loader2 className="size-4 animate-spin" />
+          ) : (
+            <Search className="size-4" />
+          )}
           {loading ? 'Recherche…' : 'Rechercher'}
-        </button>
+        </Button>
       </form>
 
-      {error && <div className="form-error">{error}</div>}
+      {error && (
+        <div
+          role="alert"
+          className="rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive"
+        >
+          {error}
+        </div>
+      )}
 
       {result && (
-        <div className="app-card app-card-pad" style={{ background: 'var(--ink-50)' }}>
-          <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontWeight: 600, fontSize: 15, color: 'var(--ink-900)' }}>
-                {result.nom_complet}
-              </div>
-              <div style={{ fontSize: 13, color: 'var(--ink-500)', marginTop: 4 }}>
+        <Card className="bg-muted/50">
+          <CardContent className="flex items-start gap-4 pt-5">
+            <div className="min-w-0 flex-1">
+              <p className="text-[15px] font-semibold">{result.nom_complet}</p>
+              <p className="mt-1 text-[13px] text-muted-foreground">
                 SIREN {formatSiren(result.siren)}
-                {result.libelle_nature_juridique
-                  ? ` · ${result.libelle_nature_juridique}`
-                  : ''}
-                {result.activite_principale
-                  ? ` · NAF ${result.activite_principale}`
-                  : ''}
-              </div>
+                {result.libelle_nature_juridique ? ` · ${result.libelle_nature_juridique}` : ''}
+                {result.activite_principale ? ` · NAF ${result.activite_principale}` : ''}
+              </p>
               {result.etablissement_siege?.adresse && (
-                <div style={{ fontSize: 13, color: 'var(--ink-600)', marginTop: 6 }}>
-                  {result.etablissement_siege.adresse}
-                </div>
+                <p className="mt-1.5 text-[13px]">{result.etablissement_siege.adresse}</p>
               )}
               {result.date_creation && (
-                <div style={{ fontSize: 12, color: 'var(--ink-500)', marginTop: 6 }}>
+                <p className="mt-1.5 text-xs text-muted-foreground">
                   Créée le {result.date_creation}
-                </div>
+                </p>
               )}
             </div>
-            <button
-              type="button"
-              onClick={handleSelect}
-              className="btn btn-accent btn-sm"
-            >
+            <Button type="button" size="sm" onClick={handleSelect} className="shrink-0">
               Sélectionner
-            </button>
-          </div>
-        </div>
+            </Button>
+          </CardContent>
+        </Card>
       )}
     </div>
   );

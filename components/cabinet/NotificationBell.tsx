@@ -1,7 +1,17 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { Bell } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
+import { Button } from '@/components/ui/button';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { cn } from '@/lib/utils';
 
 interface Notification {
   id: string;
@@ -15,7 +25,6 @@ interface Notification {
 
 export function NotificationBell() {
   const [items, setItems] = useState<Notification[]>([]);
-  const [open, setOpen] = useState(false);
   const supabase = createClient();
 
   async function load() {
@@ -34,6 +43,7 @@ export function NotificationBell() {
     load();
     const interval = setInterval(load, 30_000);
     return () => clearInterval(interval);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const unread = items.filter((n) => !n.read_at).length;
@@ -45,58 +55,47 @@ export function NotificationBell() {
   }
 
   return (
-    <div style={{ position: 'relative' }}>
-      <button
-        onClick={() => setOpen((o) => !o)}
-        style={{ position: 'relative', background: 'none', border: 'none', cursor: 'pointer', padding: 8, color: 'var(--ink-600)' }}
-        aria-label="Notifications"
-      >
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6">
-          <path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9" />
-          <path d="M13.73 21a2 2 0 0 1-3.46 0" />
-        </svg>
-        {unread > 0 && (
-          <span style={{ position: 'absolute', top: 4, right: 4, width: 8, height: 8, background: '#EF4444', borderRadius: '50%' }} />
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button variant="ghost" size="icon" className="relative" aria-label="Notifications">
+          <Bell className="size-4.5" />
+          {unread > 0 && (
+            <span
+              aria-hidden="true"
+              className="absolute right-1.5 top-1.5 size-2 rounded-full bg-red-500"
+            />
+          )}
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="max-h-[480px] w-[360px] overflow-auto p-0">
+        <DropdownMenuLabel className="px-4 py-3">
+          Notifications{' '}
+          {unread > 0 && <span className="text-primary">({unread})</span>}
+        </DropdownMenuLabel>
+        <DropdownMenuSeparator className="m-0" />
+        {items.length === 0 && (
+          <p className="px-4 py-8 text-center text-[13px] text-muted-foreground">
+            Pas de notification.
+          </p>
         )}
-      </button>
-
-      {open && (
-        <>
-          <div onClick={() => setOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 99 }} />
-          <div style={{
-            position: 'absolute', right: 0, top: 'calc(100% + 6px)',
-            width: 360, maxHeight: 480, overflow: 'auto',
-            background: 'white', borderRadius: 12, boxShadow: '0 12px 32px rgba(0,0,0,0.12)',
-            border: '1px solid var(--ink-150)', zIndex: 100,
-          }}>
-            <div style={{ padding: '14px 18px', borderBottom: '1px solid var(--ink-100)', fontWeight: 500 }}>
-              Notifications {unread > 0 && <span style={{ color: 'var(--accent-ink)' }}>({unread})</span>}
-            </div>
-            {items.length === 0 && (
-              <div style={{ padding: 32, textAlign: 'center', color: 'var(--ink-500)', fontSize: 13 }}>Pas de notification.</div>
+        {items.map((n) => (
+          <button
+            key={n.id}
+            type="button"
+            onClick={() => markRead(n.id, n.link)}
+            className={cn(
+              'block w-full cursor-pointer border-b border-border px-4 py-3 text-left transition-colors last:border-0 hover:bg-muted/60',
+              !n.read_at && 'bg-accent/40',
             )}
-            {items.map((n) => (
-              <button
-                key={n.id}
-                onClick={() => markRead(n.id, n.link)}
-                style={{
-                  display: 'block', width: '100%', textAlign: 'left',
-                  padding: '12px 18px', border: 'none', cursor: 'pointer',
-                  background: n.read_at ? 'transparent' : 'var(--violet-50)',
-                  borderBottom: '1px solid var(--ink-100)',
-                  fontFamily: 'inherit',
-                }}
-              >
-                <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--ink-900)', marginBottom: 2 }}>{n.title}</div>
-                {n.body && <div style={{ fontSize: 12, color: 'var(--ink-600)' }}>{n.body}</div>}
-                <div style={{ fontSize: 11, color: 'var(--ink-500)', marginTop: 4 }}>
-                  {new Date(n.created_at).toLocaleString('fr-FR')}
-                </div>
-              </button>
-            ))}
-          </div>
-        </>
-      )}
-    </div>
+          >
+            <p className="text-[13px] font-medium">{n.title}</p>
+            {n.body && <p className="mt-0.5 text-xs text-muted-foreground">{n.body}</p>}
+            <p className="mt-1 text-[11px] text-muted-foreground/70">
+              {new Date(n.created_at).toLocaleString('fr-FR')}
+            </p>
+          </button>
+        ))}
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }

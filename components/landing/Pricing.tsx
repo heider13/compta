@@ -1,4 +1,6 @@
 import { Check, Sparkle, Arrow } from '@/components/icons';
+import { cn } from '@/lib/utils';
+import { Container, SectionHead, btnCta, btnGhost } from './ui';
 
 const PLANS = [
   {
@@ -53,70 +55,64 @@ const PLANS = [
 
 export function Pricing() {
   return (
-    <section id="tarifs" className="section section-tarifs">
-      <div className="tarifs-bg" aria-hidden="true" />
-      <div className="container" style={{ position: 'relative' }}>
-        <div className="sec-head">
-          <span className="eyebrow"><span className="dot" />Tarifs cabinets</span>
-          <h2>Une plateforme par cabinet.<br />Pas de surprise.</h2>
-          <p className="lead">
-            Abonnement mensuel sans engagement. Les frais légaux INPI éventuels
-            sont refacturés au coût réel à votre client.
-          </p>
-        </div>
-        <div className="grid-3 pricing-grid">
+    <section id="tarifs" className="relative scroll-mt-20 overflow-hidden py-20 sm:py-24">
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_600px_400px_at_50%_0%,rgba(255,136,123,0.08),transparent_60%)]"
+      />
+      <Container className="relative">
+        <SectionHead
+          eyebrow="Tarifs cabinets"
+          title={
+            <>
+              Une plateforme par cabinet.
+              <br />
+              Pas de surprise.
+            </>
+          }
+          lead={
+            <>
+              Abonnement mensuel sans engagement. Les frais légaux INPI éventuels
+              sont refacturés au coût réel à votre client.
+            </>
+          }
+        />
+        <div className="grid items-stretch gap-5 lg:grid-cols-3">
           {PLANS.map((p) => (
             <div
               key={p.name}
-              className={`pricing-card ${p.accent ? 'highlighted card-elev' : 'card'}`}
-              style={{
-                padding: 28,
-                border: p.accent ? '2px solid var(--accent)' : undefined,
-                position: 'relative',
-                background: p.accent ? 'linear-gradient(180deg, var(--violet-50), white 30%)' : 'white',
-              }}
+              className={cn(
+                'relative flex flex-col rounded-2xl border bg-white p-7 transition-all duration-200',
+                p.accent
+                  ? 'border-transparent shadow-[0_24px_60px_rgba(255,136,123,0.25)] ring-2 ring-[var(--accent)] lg:scale-[1.03]'
+                  : 'border-[var(--ink-150)] hover:-translate-y-1 hover:shadow-[0_16px_40px_rgba(8,3,49,0.08)]',
+              )}
             >
               {p.accent && p.highlight && (
-                <span
-                  className="pill violet"
-                  style={{
-                    position: 'absolute',
-                    top: -12,
-                    left: '50%',
-                    transform: 'translateX(-50%)',
-                    background: 'var(--accent)',
-                    color: 'white',
-                    fontSize: 11,
-                    padding: '4px 12px',
-                  }}
-                >
+                <span className="absolute -top-3 left-1/2 inline-flex -translate-x-1/2 items-center gap-1 rounded-full bg-[var(--accent)] px-3 py-1 text-[11px] font-bold uppercase tracking-wide text-[#080331]">
                   <Sparkle size={11} />
-                  {p.highlight.toUpperCase()}
+                  {p.highlight}
                 </span>
               )}
-              <h3 style={{ fontSize: 22, marginBottom: 6 }}>{p.name}</h3>
-              <p style={{ fontSize: 14, minHeight: 40 }}>{p.desc}</p>
-              <div style={{ display: 'flex', alignItems: 'baseline', gap: 4, margin: '20px 0 24px' }}>
-                <span style={{ fontSize: 40, fontWeight: 600, letterSpacing: '-0.03em', color: 'var(--ink-900)' }}>
+              <h3 className="mb-1.5 text-[22px] tracking-tight">{p.name}</h3>
+              <p className="min-h-10 text-sm text-[var(--ink-600)]">{p.desc}</p>
+              <div className="mb-6 mt-5 flex items-baseline gap-1">
+                <span className="text-[40px] font-semibold tracking-[-0.03em] text-[var(--ink-900)]">
                   {p.price}
                 </span>
-                <span style={{ fontSize: 14, color: 'var(--ink-500)' }}>{p.suffix}</span>
+                <span className="text-sm text-[var(--ink-500)]">{p.suffix}</span>
               </div>
               <a
                 href="/auth/signup"
-                className={`btn ${p.accent ? 'btn-accent' : 'btn-ghost'}`}
-                style={{ width: '100%', marginBottom: 24, justifyContent: 'center' }}
+                className={cn(p.accent ? btnCta : btnGhost, 'mb-6 w-full')}
               >
                 {p.cta}
                 <Arrow size={16} />
               </a>
-              <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'grid', gap: 10 }}>
+              <ul className="grid gap-2.5">
                 {p.features.map((f) => (
-                  <li
-                    key={f}
-                    style={{ display: 'flex', gap: 10, alignItems: 'flex-start', fontSize: 14, color: 'var(--ink-700)' }}
-                  >
-                    <Check size={16} style={{ color: 'var(--accent)', marginTop: 3, flexShrink: 0 }} />
+                  <li key={f} className="flex items-start gap-2.5 text-sm text-[var(--ink-700)]">
+                    <Check size={16} className="mt-0.5 shrink-0" style={{ color: 'var(--accent)' }} />
                     <span>{f}</span>
                   </li>
                 ))}
@@ -124,7 +120,7 @@ export function Pricing() {
             </div>
           ))}
         </div>
-      </div>
+      </Container>
     </section>
   );
 }

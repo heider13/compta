@@ -1,4 +1,5 @@
 import { Check } from '@/components/icons';
+import { Container, SectionHead } from './ui';
 
 const TYPES = [
   {
@@ -32,27 +33,35 @@ const TYPES = [
 
 export function FormalityTypes() {
   return (
-    <section id="formalites" className="section">
-      <div className="container">
-        <div className="sec-head">
-          <span className="eyebrow"><span className="dot" />Formalités couvertes</span>
-          <h2>Toutes les formalités INPI,<br />en un seul endroit.</h2>
-          <p className="lead">
-            Compta couvre l&apos;intégralité du cycle de vie des sociétés françaises
-            disponibles via le Guichet Unique. Aucune dépendance à des outils tiers.
-          </p>
-        </div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 20 }}>
+    <section id="formalites" className="scroll-mt-20 py-20 sm:py-24">
+      <Container>
+        <SectionHead
+          eyebrow="Formalités couvertes"
+          title={
+            <>
+              Toutes les formalités INPI,
+              <br />
+              en un seul endroit.
+            </>
+          }
+          lead={
+            <>
+              Compta couvre l&apos;intégralité du cycle de vie des sociétés françaises
+              disponibles via le Guichet Unique. Aucune dépendance à des outils tiers.
+            </>
+          }
+        />
+        <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
           {TYPES.map((g) => (
-            <div key={g.group} className="card" style={{ padding: 26, background: 'white' }}>
-              <h3 style={{ fontSize: 18, marginBottom: 16 }}>{g.group}</h3>
-              <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'grid', gap: 10 }}>
+            <div
+              key={g.group}
+              className="rounded-2xl border border-[var(--ink-150)] bg-white p-6 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_16px_40px_rgba(8,3,49,0.08)]"
+            >
+              <h3 className="mb-4 text-lg font-semibold">{g.group}</h3>
+              <ul className="grid gap-2.5">
                 {g.items.map((item) => (
-                  <li
-                    key={item}
-                    style={{ display: 'flex', gap: 10, alignItems: 'flex-start', fontSize: 14, color: 'var(--ink-700)' }}
-                  >
-                    <Check size={16} style={{ color: 'var(--accent)', marginTop: 2, flexShrink: 0 }} />
+                  <li key={item} className="flex items-start gap-2.5 text-sm text-[var(--ink-700)]">
+                    <Check size={16} className="mt-0.5 shrink-0" style={{ color: 'var(--accent)' }} />
                     <span>{item}</span>
                   </li>
                 ))}
@@ -60,10 +69,10 @@ export function FormalityTypes() {
             </div>
           ))}
         </div>
-        <p style={{ textAlign: 'center', marginTop: 28, fontSize: 13, color: 'var(--ink-500)' }}>
+        <p className="mt-7 text-center text-[13px] text-[var(--ink-500)]">
           Toute formalité disponible via l&apos;API INPI Guichet Unique est intégrable. Hors associations.
         </p>
-      </div>
+      </Container>
     </section>
   );
 }

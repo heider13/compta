@@ -1,81 +1,44 @@
 import { Arrow } from '@/components/icons';
 import { FxBackground } from './FxBackground';
+import { Container, btnCta } from './ui';
 
 export function CtaFinal() {
   return (
-    <section className="section" style={{ paddingTop: 0 }}>
-      <div className="container">
-        <div
-          style={{
-            position: 'relative',
-            overflow: 'hidden',
-            background:
-              'linear-gradient(135deg, var(--violet-700) 0%, var(--violet-500) 60%, var(--violet-400) 100%)',
-            borderRadius: 28,
-            padding: '64px 48px',
-            textAlign: 'center',
-            color: 'white',
-          }}
-        >
+    <section className="pb-20 sm:pb-24">
+      <Container>
+        <div className="relative overflow-hidden rounded-[28px] bg-gradient-to-br from-[var(--violet-700)] via-[var(--violet-500)] to-[var(--violet-400)] px-6 py-14 text-center text-white sm:px-12 sm:py-16">
           <div
-            style={{
-              position: 'absolute',
-              inset: 0,
-              backgroundImage:
-                'radial-gradient(circle at 20% 20%, rgba(255,255,255,0.15), transparent 50%), radial-gradient(circle at 80% 80%, rgba(255,255,255,0.1), transparent 50%)',
-              pointerEvents: 'none',
-            }}
+            aria-hidden="true"
+            className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(255,255,255,0.15),transparent_50%),radial-gradient(circle_at_80%_80%,rgba(255,255,255,0.1),transparent_50%)]"
           />
           <FxBackground scanline={false} />
-          <span
-            className="eyebrow"
-            style={{
-              background: 'rgba(255,255,255,0.15)',
-              color: 'white',
-              border: '1px solid rgba(255,255,255,0.25)',
-              position: 'relative',
-            }}
-          >
-            <span className="dot" style={{ background: 'white' }} />
+          <span className="relative inline-flex items-center gap-2 rounded-full border border-white/25 bg-white/15 px-3.5 py-1.5 text-xs font-semibold tracking-wide text-white">
+            <span className="h-1.5 w-1.5 rounded-full bg-white" aria-hidden="true" />
             Prêt à industrialiser vos formalités ?
           </span>
-          <h2 style={{ color: 'white', fontSize: 'clamp(32px, 4vw, 56px)', marginTop: 16, marginBottom: 16, position: 'relative' }}>
-            Faites passer votre cabinet<br />à la vitesse supérieure.
+          <h2 className="relative mb-4 mt-4 text-[clamp(2rem,4vw,3.5rem)] leading-[1.1] tracking-tight text-white">
+            Faites passer votre cabinet
+            <br />
+            à la vitesse supérieure.
           </h2>
-          <p
-            style={{
-              fontSize: 18,
-              color: 'rgba(255,255,255,0.85)',
-              maxWidth: 600,
-              margin: '0 auto 32px',
-              position: 'relative',
-            }}
-          >
-            Démarrez avec 30 jours gratuits. Onboarding personnalisé, import de votre portefeuille client, formation de vos collaborateurs.
+          <p className="relative mx-auto mb-8 max-w-xl text-lg leading-relaxed text-white/85">
+            Démarrez avec 30 jours gratuits. Onboarding personnalisé, import de votre
+            portefeuille client, formation de vos collaborateurs.
           </p>
-          <div style={{ display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap', position: 'relative' }}>
-            <a
-              href="/auth/signup"
-              className="btn btn-lg"
-              style={{ background: 'white', color: 'var(--accent-ink)', fontWeight: 500 }}
-            >
+          <div className="relative flex flex-wrap items-center justify-center gap-3">
+            <a href="/auth/signup" className={btnCta}>
               Demander une démo
               <Arrow size={16} />
             </a>
             <a
               href="#tarifs"
-              className="btn btn-lg"
-              style={{
-                background: 'rgba(255,255,255,0.1)',
-                color: 'white',
-                border: '1px solid rgba(255,255,255,0.3)',
-              }}
+              className="inline-flex items-center justify-center gap-2 rounded-full border border-white/30 bg-white/10 px-6 py-3 text-[15px] font-medium text-white transition-colors duration-200 hover:bg-white/20"
             >
               Voir les tarifs
             </a>
           </div>
         </div>
-      </div>
+      </Container>
     </section>
   );
 }

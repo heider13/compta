@@ -1,8 +1,13 @@
 import Link from 'next/link';
 import { revalidatePath } from 'next/cache';
+import { Check, ClipboardList } from 'lucide-react';
 import { createClient } from '@/lib/supabase/server';
 import { formatDate } from '@/lib/utils/format';
 import { getInitials } from '@/lib/types';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Badge } from '@/components/ui/badge';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { cn } from '@/lib/utils';
 
 export const dynamic = 'force-dynamic';
 
@@ -30,7 +35,7 @@ type TaskGroupKey = 'overdue' | 'today' | 'upcoming' | 'done';
 interface TaskGroup {
   key: TaskGroupKey;
   title: string;
-  tone: 'red' | 'amber' | 'blue' | 'gray';
+  badgeClass: string;
   items: TaskRow[];
 }
 
@@ -72,10 +77,10 @@ function groupTasks(tasks: TaskRow[]): TaskGroup[] {
   }
 
   return [
-    { key: 'overdue', title: 'En retard', tone: 'red', items: overdue },
-    { key: 'today', title: "Aujourd'hui", tone: 'amber', items: todayList },
-    { key: 'upcoming', title: 'À venir', tone: 'blue', items: upcoming },
-    { key: 'done', title: 'Terminées', tone: 'gray', items: done },
+    { key: 'overdue', title: 'En retard', badgeClass: 'border-red-200 bg-red-50 text-red-700', items: overdue },
+    { key: 'today', title: "Aujourd'hui", badgeClass: 'border-amber-200 bg-amber-50 text-amber-700', items: todayList },
+    { key: 'upcoming', title: 'À venir', badgeClass: 'border-blue-200 bg-blue-50 text-blue-700', items: upcoming },
+    { key: 'done', title: 'Terminées', badgeClass: 'border-border bg-muted text-muted-foreground', items: done },
   ];
 }
 
@@ -146,197 +151,130 @@ export default async function TasksPage() {
   const activeCount = tasks.filter((t) => !t.done).length;
 
   return (
-    <>
-      <div className="page-head">
-        <div>
-          <h1>Tâches</h1>
-          <p>
-            {activeCount} {activeCount > 1 ? 'tâches actives' : 'tâche active'} sur{' '}
-            {tasks.length}
-          </p>
-        </div>
+    <div className="mx-auto w-full max-w-5xl space-y-6 p-4 sm:p-6">
+      <div>
+        <h1 className="text-2xl font-semibold tracking-tight">Tâches</h1>
+        <p className="text-sm text-muted-foreground">
+          {activeCount} {activeCount > 1 ? 'tâches actives' : 'tâche active'} sur{' '}
+          {tasks.length}
+        </p>
       </div>
 
       {error && (
-        <div className="form-error" style={{ marginBottom: 16 }}>
+        <div
+          role="alert"
+          className="rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive"
+        >
           Erreur de chargement : {error.message}
         </div>
       )}
 
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
+      <div className="space-y-5">
         {groups.map((group) => {
           if (group.items.length === 0) return null;
           return (
-            <section key={group.key} className="app-card">
-              <div className="app-card-head">
-                <h3
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 10,
-                  }}
-                >
-                  <span className={`pill ${group.tone}`}>
-                    <span className="dot" />
+            <Card key={group.key}>
+              <CardHeader className="pb-3">
+                <CardTitle className="flex items-center gap-2.5 text-base">
+                  <Badge variant="outline" className={group.badgeClass}>
                     {group.title}
-                  </span>
-                  <span
-                    style={{
-                      fontSize: 12,
-                      color: 'var(--ink-500)',
-                      fontWeight: 400,
-                    }}
-                  >
+                  </Badge>
+                  <span className="text-xs font-normal text-muted-foreground">
                     {group.items.length}
                   </span>
-                </h3>
-              </div>
-
-              <div>
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="divide-y divide-border p-0">
                 {group.items.map((t) => {
-                  const profile = t.assigned_to
-                    ? profilesMap.get(t.assigned_to)
-                    : undefined;
+                  const profile = t.assigned_to ? profilesMap.get(t.assigned_to) : undefined;
                   const who = profileDisplay(profile);
                   const dossier = t.dossiers;
                   const isOverdue = group.key === 'overdue';
                   return (
-                    <div
-                      key={t.id}
-                      style={{
-                        display: 'flex',
-                        gap: 12,
-                        alignItems: 'center',
-                        padding: '14px 22px',
-                        borderBottom: '1px solid var(--ink-100)',
-                      }}
-                    >
-                      <form action={toggleTaskAction}>
+                    <div key={t.id} className="flex items-center gap-3 px-5 py-3.5">
+                      {/* Toggle done — Server Action, bouton-case custom */}
+                      <form action={toggleTaskAction} className="shrink-0">
                         <input type="hidden" name="id" value={t.id} />
-                        <input
-                          type="hidden"
-                          name="next"
-                          value={(!t.done).toString()}
-                        />
+                        <input type="hidden" name="next" value={(!t.done).toString()} />
                         <button
                           type="submit"
-                          aria-label={
-                            t.done ? 'Rouvrir la tâche' : 'Marquer comme faite'
-                          }
-                          style={{
-                            width: 20,
-                            height: 20,
-                            borderRadius: 6,
-                            border: '1.5px solid var(--ink-300)',
-                            background: t.done ? 'var(--accent)' : 'white',
-                            cursor: 'pointer',
-                            padding: 0,
-                            display: 'grid',
-                            placeItems: 'center',
-                            color: 'white',
-                            fontSize: 13,
-                            lineHeight: 1,
-                          }}
+                          aria-label={t.done ? 'Rouvrir la tâche' : 'Marquer comme faite'}
+                          className={cn(
+                            'grid size-5 cursor-pointer place-items-center rounded-md border-[1.5px] transition-colors',
+                            t.done
+                              ? 'border-primary bg-primary text-primary-foreground'
+                              : 'border-input bg-background hover:border-primary',
+                          )}
                         >
-                          {t.done ? '✓' : ''}
+                          {t.done && <Check className="size-3.5" strokeWidth={3} />}
                         </button>
                       </form>
 
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div
-                          style={{
-                            fontSize: 14,
-                            fontWeight: 500,
-                            color: t.done ? 'var(--ink-500)' : 'var(--ink-900)',
-                            textDecoration: t.done ? 'line-through' : 'none',
-                            overflow: 'hidden',
-                            textOverflow: 'ellipsis',
-                            whiteSpace: 'nowrap',
-                          }}
+                      <div className="min-w-0 flex-1">
+                        <p
+                          className={cn(
+                            'truncate text-sm font-medium',
+                            t.done && 'text-muted-foreground line-through',
+                          )}
                         >
                           {t.title}
-                        </div>
+                        </p>
                         {dossier && (
                           <Link
                             href={`/dossiers/${dossier.id}`}
-                            style={{
-                              fontSize: 12,
-                              color: 'var(--ink-500)',
-                              display: 'inline-flex',
-                              gap: 6,
-                              marginTop: 2,
-                            }}
+                            className="mt-0.5 inline-flex gap-1.5 text-xs text-muted-foreground hover:text-foreground"
                           >
-                            <span className="mono">
-                              {dossier.reference ?? '—'}
-                            </span>
+                            <span className="font-mono">{dossier.reference ?? '—'}</span>
                             <span>· {dossier.client_name}</span>
                           </Link>
                         )}
                       </div>
 
-                      <div
-                        style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: 10,
-                        }}
-                        title={who.label}
-                      >
-                        <span className="avatar avatar-sm">{who.initials}</span>
-                      </div>
+                      <Avatar className="size-7 shrink-0" title={who.label}>
+                        <AvatarFallback className="bg-accent text-[11px] font-semibold text-accent-foreground">
+                          {who.initials}
+                        </AvatarFallback>
+                      </Avatar>
 
-                      <div style={{ minWidth: 90, textAlign: 'right' }}>
+                      <div className="w-24 shrink-0 text-right">
                         {t.due_date ? (
-                          <span
-                            className={`pill ${
+                          <Badge
+                            variant="outline"
+                            className={cn(
+                              'text-[11px]',
                               isOverdue
-                                ? 'red'
+                                ? 'border-red-200 bg-red-50 text-red-700'
                                 : group.key === 'today'
-                                  ? 'amber'
-                                  : 'gray'
-                            }`}
-                            style={{ fontSize: 11 }}
+                                  ? 'border-amber-200 bg-amber-50 text-amber-700'
+                                  : 'border-border bg-muted text-muted-foreground',
+                            )}
                           >
                             {formatDate(t.due_date)}
-                          </span>
+                          </Badge>
                         ) : (
-                          <span
-                            style={{
-                              fontSize: 12,
-                              color: 'var(--ink-400)',
-                            }}
-                          >
-                            —
-                          </span>
+                          <span className="text-xs text-muted-foreground/60">—</span>
                         )}
                       </div>
                     </div>
                   );
                 })}
-              </div>
-            </section>
+              </CardContent>
+            </Card>
           );
         })}
 
         {tasks.length === 0 && !error && (
-          <div
-            className="app-card app-card-pad"
-            style={{
-              textAlign: 'center',
-              padding: '64px 22px',
-              color: 'var(--ink-500)',
-            }}
-          >
-            <p style={{ marginBottom: 8 }}>
-              Aucune tâche pour l&apos;instant.
-            </p>
-            <p style={{ fontSize: 13 }}>
-              Les tâches sont créées depuis un dossier.
-            </p>
-          </div>
+          <Card>
+            <CardContent className="flex flex-col items-center gap-2 py-16 text-center">
+              <ClipboardList className="size-8 text-muted-foreground/50" />
+              <p className="text-sm font-medium">Aucune tâche pour l&apos;instant.</p>
+              <p className="text-sm text-muted-foreground">
+                Les tâches sont créées depuis un dossier.
+              </p>
+            </CardContent>
+          </Card>
         )}
       </div>
-    </>
+    </div>
   );
 }

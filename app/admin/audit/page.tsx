@@ -1,5 +1,18 @@
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/server';
+import { PageHeader, EmptyState, ErrorNote } from '@/components/admin/bits';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
 
 export const dynamic = 'force-dynamic';
 
@@ -20,8 +33,6 @@ interface AuditProfile {
   first_name: string | null;
   last_name: string | null;
 }
-
-const GRID = '160px 1fr 1fr 1fr 160px 100px';
 
 interface SearchParams {
   org?: string;
@@ -67,148 +78,101 @@ export default async function AdminAuditPage({
 
   return (
     <>
-      <div className="page-head">
-        <div>
-          <h1>Audit logs</h1>
-          <p>
-            {rows.length} évènement{rows.length > 1 ? 's' : ''} récent
-            {rows.length > 1 ? 's' : ''}.
-          </p>
-        </div>
-      </div>
+      <PageHeader
+        title="Audit logs"
+        subtitle={`${rows.length} évènement${rows.length > 1 ? 's' : ''} récent${rows.length > 1 ? 's' : ''}.`}
+      />
 
-      {error && (
-        <div className="form-error" style={{ marginBottom: 16 }}>
-          {error.message}
-        </div>
-      )}
+      {error && <ErrorNote message={error.message} />}
 
-      <form
-        method="get"
-        style={{
-          display: 'flex',
-          gap: 12,
-          flexWrap: 'wrap',
-          marginBottom: 16,
-          alignItems: 'flex-end',
-        }}
-      >
-        <div className="form-field" style={{ minWidth: 240 }}>
-          <label>Filtrer par organization_id</label>
-          <input name="org" defaultValue={sp.org ?? ''} placeholder="UUID" />
+      <form method="get" className="flex flex-wrap items-end gap-3">
+        <div className="min-w-60 space-y-1.5">
+          <Label htmlFor="filter-org">Filtrer par organization_id</Label>
+          <Input id="filter-org" name="org" defaultValue={sp.org ?? ''} placeholder="UUID" />
         </div>
-        <div className="form-field" style={{ minWidth: 240 }}>
-          <label>Filtrer par user_id</label>
-          <input name="user" defaultValue={sp.user ?? ''} placeholder="UUID" />
+        <div className="min-w-60 space-y-1.5">
+          <Label htmlFor="filter-user">Filtrer par user_id</Label>
+          <Input id="filter-user" name="user" defaultValue={sp.user ?? ''} placeholder="UUID" />
         </div>
-        <div style={{ display: 'flex', gap: 8 }}>
-          <button type="submit" className="btn btn-accent btn-sm">
+        <div className="flex gap-2">
+          <Button type="submit" size="sm">
             Filtrer
-          </button>
-          <Link href="/admin/audit" className="btn btn-ghost btn-sm">
-            Reset
-          </Link>
+          </Button>
+          <Button asChild variant="ghost" size="sm">
+            <Link href="/admin/audit">Reset</Link>
+          </Button>
         </div>
       </form>
 
-      <div className="app-card">
-        <div className="app-table-head" style={{ gridTemplateColumns: GRID }}>
-          <span>Quand</span>
-          <span>Utilisateur</span>
-          <span>Cabinet</span>
-          <span>Action</span>
-          <span>Resource</span>
-          <span>Détails</span>
-        </div>
-        {rows.length === 0 ? (
-          <div
-            style={{
-              padding: 48,
-              textAlign: 'center',
-              color: 'var(--ink-500)',
-              fontSize: 14,
-            }}
-          >
-            Aucun évènement d&apos;audit.
-          </div>
-        ) : (
-          rows.map((r) => {
-            const prof = r.user_id ? profileById.get(r.user_id) : undefined;
-            const fullName = [prof?.first_name, prof?.last_name]
-              .filter(Boolean)
-              .join(' ');
-            return (
-              <div
-                key={r.id}
-                className="app-table-row"
-                style={{
-                  gridTemplateColumns: GRID,
-                  fontSize: 12,
-                }}
-              >
-                <span
-                  className="mono"
-                  style={{ fontSize: 11, color: 'var(--ink-500)' }}
-                >
-                  {new Date(r.created_at).toLocaleString('fr-FR')}
-                </span>
-                <span>
-                  {fullName ? (
-                    fullName
-                  ) : r.user_id ? (
-                    <span className="mono">{r.user_id.slice(0, 8)}</span>
-                  ) : (
-                    '—'
-                  )}
-                </span>
-                <span>{r.organizations?.name ?? '—'}</span>
-                <span style={{ fontWeight: 500 }}>{r.action}</span>
-                <span style={{ color: 'var(--ink-600)' }}>
-                  {r.resource_type ?? '—'}
-                  {r.resource_id ? (
-                    <>
-                      {' '}
-                      <span className="mono" style={{ fontSize: 10 }}>
-                        {r.resource_id.slice(0, 8)}
-                      </span>
-                    </>
-                  ) : null}
-                </span>
-                <span>
-                  {r.metadata ? (
-                    <details>
-                      <summary
-                        style={{
-                          cursor: 'pointer',
-                          fontSize: 11,
-                          color: 'var(--accent-ink)',
-                        }}
-                      >
-                        Voir
-                      </summary>
-                      <pre
-                        style={{
-                          background: 'var(--ink-50)',
-                          padding: 8,
-                          fontSize: 10,
-                          borderRadius: 6,
-                          marginTop: 4,
-                          overflow: 'auto',
-                          maxWidth: 200,
-                        }}
-                      >
-                        {JSON.stringify(r.metadata, null, 2)}
-                      </pre>
-                    </details>
-                  ) : (
-                    '—'
-                  )}
-                </span>
-              </div>
-            );
-          })
-        )}
-      </div>
+      <Card>
+        <CardContent>
+          {rows.length === 0 ? (
+            <EmptyState label="Aucun évènement d'audit." />
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Quand</TableHead>
+                  <TableHead>Utilisateur</TableHead>
+                  <TableHead>Cabinet</TableHead>
+                  <TableHead>Action</TableHead>
+                  <TableHead>Resource</TableHead>
+                  <TableHead>Détails</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {rows.map((r) => {
+                  const prof = r.user_id ? profileById.get(r.user_id) : undefined;
+                  const fullName = [prof?.first_name, prof?.last_name]
+                    .filter(Boolean)
+                    .join(' ');
+                  return (
+                    <TableRow key={r.id}>
+                      <TableCell className="whitespace-nowrap font-mono text-xs text-muted-foreground">
+                        {new Date(r.created_at).toLocaleString('fr-FR')}
+                      </TableCell>
+                      <TableCell>
+                        {fullName ||
+                          (r.user_id ? (
+                            <span className="font-mono text-xs">{r.user_id.slice(0, 8)}</span>
+                          ) : (
+                            '—'
+                          ))}
+                      </TableCell>
+                      <TableCell className="text-muted-foreground">
+                        {r.organizations?.name ?? '—'}
+                      </TableCell>
+                      <TableCell className="font-medium">{r.action}</TableCell>
+                      <TableCell className="text-muted-foreground">
+                        {r.resource_type ?? '—'}
+                        {r.resource_id && (
+                          <span className="ml-1 font-mono text-[10px]">
+                            {r.resource_id.slice(0, 8)}
+                          </span>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        {r.metadata ? (
+                          <details>
+                            <summary className="cursor-pointer text-xs font-medium text-primary">
+                              Voir
+                            </summary>
+                            <pre className="mt-1 max-h-48 max-w-64 overflow-auto rounded-md bg-muted p-2 text-[10px]">
+                              {JSON.stringify(r.metadata, null, 2)}
+                            </pre>
+                          </details>
+                        ) : (
+                          '—'
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          )}
+        </CardContent>
+      </Card>
     </>
   );
 }

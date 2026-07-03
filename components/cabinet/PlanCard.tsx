@@ -7,8 +7,12 @@
 // Pour `enterprise` (pas de Stripe), on passe `mode="contact"` : le bouton
 // devient un mailto:.
 
-import { Check, Sparkle, Arrow } from '@/components/icons';
+import { ArrowRight, Check, Sparkles } from 'lucide-react';
 import { createCheckoutSessionForm } from '@/lib/server-actions/billing';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { cn } from '@/lib/utils';
 
 interface PlanCardProps {
   planId: 'cabinet' | 'pro' | 'enterprise';
@@ -43,164 +47,77 @@ export function PlanCard({
   disabled = false,
 }: PlanCardProps) {
   return (
-    <div
-      className={`pricing-card ${accent ? 'highlighted card-elev' : 'card'}`}
-      style={{
-        padding: 28,
-        border: accent ? '2px solid var(--accent)' : undefined,
-        position: 'relative',
-        background: accent
-          ? 'linear-gradient(180deg, var(--violet-50), white 30%)'
-          : 'white',
-        opacity: disabled ? 0.6 : 1,
-      }}
+    <Card
+      className={cn(
+        'relative h-full',
+        accent && 'border-primary/40 bg-gradient-to-b from-accent/40 to-card shadow-md',
+        isCurrent && 'ring-2 ring-primary',
+        disabled && 'opacity-60',
+      )}
     >
       {accent && highlight && (
-        <span
-          className="pill violet"
-          style={{
-            position: 'absolute',
-            top: -12,
-            left: '50%',
-            transform: 'translateX(-50%)',
-            background: 'var(--accent)',
-            color: 'white',
-            fontSize: 11,
-            padding: '4px 12px',
-          }}
-        >
-          <Sparkle size={11} />
+        <Badge className="absolute -top-3 left-1/2 -translate-x-1/2 gap-1 px-3">
+          <Sparkles className="size-3" />
           {highlight.toUpperCase()}
-        </span>
+        </Badge>
       )}
 
       {isCurrent && (
-        <span
-          className="pill"
-          style={{
-            position: 'absolute',
-            top: 16,
-            right: 16,
-            background: 'var(--status-green, #16a34a)',
-            color: 'white',
-            fontSize: 11,
-            padding: '3px 10px',
-          }}
-        >
+        <Badge className="absolute right-4 top-4 bg-green-600 text-white hover:bg-green-600">
           Plan actuel
-        </span>
+        </Badge>
       )}
 
-      <h3 style={{ fontSize: 22, marginBottom: 6 }}>{name}</h3>
-      <p style={{ fontSize: 14, minHeight: 40, color: 'var(--ink-600)' }}>
-        {description}
-      </p>
+      <CardHeader>
+        <CardTitle className="text-xl">{name}</CardTitle>
+        <CardDescription className="min-h-10">{description}</CardDescription>
+      </CardHeader>
 
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'baseline',
-          gap: 4,
-          margin: '20px 0 24px',
-        }}
-      >
-        <span
-          style={{
-            fontSize: 40,
-            fontWeight: 600,
-            letterSpacing: '-0.03em',
-            color: 'var(--ink-900)',
-          }}
-        >
-          {price}
-        </span>
-        {priceSuffix && (
-          <span style={{ fontSize: 14, color: 'var(--ink-500)' }}>
-            {priceSuffix}
-          </span>
-        )}
-      </div>
-
-      {mode === 'subscribe' && !isCurrent && (
-        <form action={createCheckoutSessionForm}>
-          <input type="hidden" name="plan" value={planId} />
-          <button
-            type="submit"
-            disabled={disabled}
-            className={`btn ${accent ? 'btn-accent' : 'btn-ghost'}`}
-            style={{
-              width: '100%',
-              marginBottom: 24,
-              justifyContent: 'center',
-              cursor: disabled ? 'not-allowed' : 'pointer',
-            }}
-          >
-            Souscrire
-            <Arrow size={16} />
-          </button>
-        </form>
-      )}
-
-      {mode === 'subscribe' && isCurrent && (
-        <div
-          style={{
-            width: '100%',
-            marginBottom: 24,
-            padding: '10px 16px',
-            background: 'var(--ink-50)',
-            borderRadius: 8,
-            textAlign: 'center',
-            fontSize: 13,
-            color: 'var(--ink-600)',
-          }}
-        >
-          Vous êtes sur ce plan
+      <CardContent className="flex h-full flex-col">
+        <div className="mb-6 flex items-baseline gap-1">
+          <span className="text-4xl font-semibold tracking-tight text-foreground">{price}</span>
+          {priceSuffix && <span className="text-sm text-muted-foreground">{priceSuffix}</span>}
         </div>
-      )}
 
-      {mode === 'contact' && (
-        <a
-          href={`mailto:${contactEmail}?subject=Demande%20de%20devis%20Enterprise%20-%20Compta`}
-          className={`btn ${accent ? 'btn-accent' : 'btn-ghost'}`}
-          style={{
-            width: '100%',
-            marginBottom: 24,
-            justifyContent: 'center',
-          }}
-        >
-          Nous contacter
-          <Arrow size={16} />
-        </a>
-      )}
+        {mode === 'subscribe' && !isCurrent && (
+          <form action={createCheckoutSessionForm} className="mb-6">
+            <input type="hidden" name="plan" value={planId} />
+            <Button
+              type="submit"
+              disabled={disabled}
+              variant={accent ? 'default' : 'outline'}
+              className="w-full"
+            >
+              Souscrire
+              <ArrowRight className="size-4" />
+            </Button>
+          </form>
+        )}
 
-      <ul
-        style={{
-          listStyle: 'none',
-          padding: 0,
-          margin: 0,
-          display: 'grid',
-          gap: 10,
-        }}
-      >
-        {features.map((f) => (
-          <li
-            key={f}
-            style={{
-              display: 'flex',
-              gap: 10,
-              alignItems: 'flex-start',
-              fontSize: 14,
-              color: 'var(--ink-700)',
-            }}
-          >
-            <Check
-              size={16}
-              style={{ color: 'var(--accent)', marginTop: 3, flexShrink: 0 }}
-            />
-            <span>{f}</span>
-          </li>
-        ))}
-      </ul>
-    </div>
+        {mode === 'subscribe' && isCurrent && (
+          <div className="mb-6 rounded-md bg-muted px-4 py-2.5 text-center text-sm text-muted-foreground">
+            Vous êtes sur ce plan
+          </div>
+        )}
+
+        {mode === 'contact' && (
+          <Button variant={accent ? 'default' : 'outline'} className="mb-6 w-full" asChild>
+            <a href={`mailto:${contactEmail}?subject=Demande%20de%20devis%20Enterprise%20-%20Compta`}>
+              Nous contacter
+              <ArrowRight className="size-4" />
+            </a>
+          </Button>
+        )}
+
+        <ul className="grid gap-2.5">
+          {features.map((f) => (
+            <li key={f} className="flex items-start gap-2.5 text-sm text-foreground/80">
+              <Check className="mt-0.5 size-4 shrink-0 text-primary" />
+              <span>{f}</span>
+            </li>
+          ))}
+        </ul>
+      </CardContent>
+    </Card>
   );
 }

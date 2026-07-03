@@ -1,14 +1,30 @@
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { revalidatePath } from 'next/cache';
+import { ArrowLeftRight, Bell, CreditCard, Receipt, User } from 'lucide-react';
 import { createClient } from '@/lib/supabase/server';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { cn } from '@/lib/utils';
 
+// Navigation par liens (les onglets billing/paiement/historique pointent vers
+// /billing) — pas des Tabs Radix : on garde le mécanisme href existant.
 const TABS = [
-  { id: 'profile',       label: 'Mon profil',              icon: '👤' },
-  { id: 'billing',       label: 'Mes factures',            icon: '🧾', href: '/billing' },
-  { id: 'payment',       label: 'Moyens de paiement',      icon: '💳', href: '/billing' },
-  { id: 'history',       label: 'Historique transactions', icon: '⇄',  href: '/billing' },
-  { id: 'notifications', label: 'Notifications',           icon: '🔔', soon: true },
+  { id: 'profile', label: 'Mon profil', icon: User },
+  { id: 'billing', label: 'Mes factures', icon: Receipt, href: '/billing' },
+  { id: 'payment', label: 'Moyens de paiement', icon: CreditCard, href: '/billing' },
+  { id: 'history', label: 'Historique transactions', icon: ArrowLeftRight, href: '/billing' },
+  { id: 'notifications', label: 'Notifications', icon: Bell, soon: true },
 ];
 
 async function updateProfile(formData: FormData) {
@@ -44,107 +60,126 @@ export default async function ProfilePage({ searchParams }: { searchParams: Prom
 
   const { data: profile } = await supabase.from('profiles').select('first_name, last_name').eq('id', user.id).single();
 
+  const initials = (profile?.first_name?.[0] || '?') + (profile?.last_name?.[0] || '');
+
   return (
-    <div className="app-content with-bg">
-      <div className="page-head">
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <div style={{ width: 38, height: 38, borderRadius: '50%', background: 'var(--accent-soft)', color: 'var(--accent-ink)', display: 'grid', placeItems: 'center', fontWeight: 600 }}>
-            {(profile?.first_name?.[0] || '?') + (profile?.last_name?.[0] || '')}
-          </div>
-          <h1 style={{ margin: 0 }}>Mon <span style={{ fontWeight: 400 }}>profil</span></h1>
-        </div>
+    <div className="mx-auto w-full max-w-5xl space-y-6 p-4 sm:p-6">
+      <div className="flex items-center gap-3">
+        <Avatar className="size-10">
+          <AvatarFallback className="bg-accent font-semibold text-accent-foreground">
+            {initials}
+          </AvatarFallback>
+        </Avatar>
+        <h1 className="text-2xl font-semibold tracking-tight">Mon profil</h1>
       </div>
 
-      {/* Tabs */}
-      <div style={{ display: 'flex', gap: 4, borderBottom: '1px solid var(--ink-150)', marginBottom: 28, overflowX: 'auto' }}>
+      {/* Onglets par liens — l'onglet "Mon profil" est le seul actif ici */}
+      <nav className="flex gap-1 overflow-x-auto border-b border-border">
         {TABS.map((t) => {
           const isActive = t.id === 'profile';
           const inner = (
-            <span style={{
-              padding: '12px 18px',
-              fontSize: 13,
-              fontWeight: 500,
-              color: isActive ? 'var(--accent-ink)' : 'var(--ink-600)',
-              borderBottom: isActive ? '2px solid var(--accent)' : '2px solid transparent',
-              marginBottom: -1,
-              whiteSpace: 'nowrap',
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: 8,
-              cursor: t.soon ? 'not-allowed' : 'pointer',
-              opacity: t.soon ? 0.5 : 1,
-            }}>
-              <span aria-hidden="true">{t.icon}</span>
+            <span
+              className={cn(
+                '-mb-px inline-flex items-center gap-2 whitespace-nowrap border-b-2 px-4 py-3 text-sm font-medium transition-colors',
+                isActive
+                  ? 'border-primary text-primary'
+                  : 'border-transparent text-muted-foreground',
+                t.soon ? 'cursor-not-allowed opacity-50' : 'hover:text-foreground',
+              )}
+            >
+              <t.icon className="size-4" aria-hidden="true" />
               {t.label}
-              {t.soon && <span className="pill" style={{ fontSize: 9, padding: '1px 6px', background: 'var(--ink-100)', color: 'var(--ink-600)' }}>bientôt</span>}
+              {t.soon && (
+                <Badge variant="secondary" className="px-1.5 py-0 text-[9px]">
+                  bientôt
+                </Badge>
+              )}
             </span>
           );
           if (t.soon) return <span key={t.id}>{inner}</span>;
-          if (t.href) return <Link key={t.id} href={t.href} style={{ textDecoration: 'none' }}>{inner}</Link>;
-          return <Link key={t.id} href="/profile" style={{ textDecoration: 'none' }}>{inner}</Link>;
+          return (
+            <Link key={t.id} href={t.href ?? '/profile'} className="no-underline">
+              {inner}
+            </Link>
+          );
         })}
-      </div>
+      </nav>
 
-      {sp.saved && <div style={{ background: '#D1FAE5', color: '#065F46', padding: 12, marginBottom: 16, borderRadius: 8, fontSize: 13 }}>Modifications enregistrées.</div>}
-      {sp.e && <div style={{ color: '#b42318', padding: 12, marginBottom: 16, fontSize: 13, background: '#FEE2E2', borderRadius: 8 }}>{sp.e}</div>}
+      {sp.saved && (
+        <div className="rounded-lg border border-green-300 bg-green-50 px-4 py-3 text-sm text-green-800">
+          Modifications enregistrées.
+        </div>
+      )}
+      {sp.e && (
+        <div
+          role="alert"
+          className="rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive"
+        >
+          {sp.e}
+        </div>
+      )}
 
-      {/* 2-col layout */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1.4fr 1fr', gap: 20 }} className="profile-grid">
-        {/* Profil */}
-        <form action={updateProfile} className="app-card" style={{ padding: 28 }}>
-          <h3 style={{ fontSize: 15, marginBottom: 18 }}>Informations personnelles</h3>
-          <Field label="Prénom">
-            <input name="first_name" defaultValue={profile?.first_name ?? ''} style={inputStyle} />
-          </Field>
-          <Field label="Nom">
-            <input name="last_name" defaultValue={profile?.last_name ?? ''} style={inputStyle} />
-          </Field>
-          <Field label="Adresse email">
-            <input value={user.email ?? ''} disabled style={{ ...inputStyle, background: 'var(--ink-50)', color: 'var(--ink-500)' }} />
-          </Field>
-          <button type="submit" className="btn btn-accent" style={{ marginTop: 8 }}>Mettre à jour</button>
-        </form>
+      <div className="grid gap-5 lg:grid-cols-[1.4fr_1fr]">
+        {/* Informations personnelles */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Informations personnelles</CardTitle>
+            <CardDescription>Votre identité au sein du cabinet.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <form action={updateProfile} className="space-y-4">
+              <div className="space-y-1.5">
+                <Label htmlFor="first_name">Prénom</Label>
+                <Input id="first_name" name="first_name" defaultValue={profile?.first_name ?? ''} />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="last_name">Nom</Label>
+                <Input id="last_name" name="last_name" defaultValue={profile?.last_name ?? ''} />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="email">Adresse email</Label>
+                <Input id="email" value={user.email ?? ''} disabled className="bg-muted text-muted-foreground" />
+              </div>
+              <Button type="submit">Mettre à jour</Button>
+            </form>
+          </CardContent>
+        </Card>
 
         {/* Mot de passe */}
-        <form action={updatePassword} className="app-card" style={{ padding: 28, height: 'fit-content' }}>
-          <h3 style={{ fontSize: 15, marginBottom: 18 }}>Mot de passe</h3>
-          <Field label="Nouveau mot de passe">
-            <input name="new_password" type="password" minLength={8} required style={inputStyle} placeholder="••••••••" />
-          </Field>
-          <Field label="Confirmer le nouveau mot de passe">
-            <input name="confirm_password" type="password" minLength={8} required style={inputStyle} placeholder="••••••••" />
-          </Field>
-          <button type="submit" className="btn btn-accent" style={{ marginTop: 8 }}>Mettre à jour</button>
-        </form>
+        <Card className="h-fit">
+          <CardHeader>
+            <CardTitle className="text-base">Mot de passe</CardTitle>
+            <CardDescription>8 caractères minimum.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <form action={updatePassword} className="space-y-4">
+              <div className="space-y-1.5">
+                <Label htmlFor="new_password">Nouveau mot de passe</Label>
+                <Input
+                  id="new_password"
+                  name="new_password"
+                  type="password"
+                  minLength={8}
+                  required
+                  placeholder="••••••••"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="confirm_password">Confirmer le nouveau mot de passe</Label>
+                <Input
+                  id="confirm_password"
+                  name="confirm_password"
+                  type="password"
+                  minLength={8}
+                  required
+                  placeholder="••••••••"
+                />
+              </div>
+              <Button type="submit">Mettre à jour</Button>
+            </form>
+          </CardContent>
+        </Card>
       </div>
-
-      <style>{`
-        @media (max-width: 880px) {
-          .profile-grid { grid-template-columns: 1fr !important; }
-        }
-      `}</style>
-    </div>
-  );
-}
-
-const inputStyle: React.CSSProperties = {
-  width: '100%',
-  padding: '11px 14px',
-  border: '1px solid var(--ink-200)',
-  borderRadius: 10,
-  background: 'var(--ink-50)',
-  fontSize: 14,
-  fontFamily: 'inherit',
-  marginBottom: 14,
-};
-
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <div>
-      <label className="auth-label" style={{ display: 'block', marginBottom: 6, fontSize: 12, fontWeight: 500, color: 'var(--ink-700)' }}>
-        {label}
-      </label>
-      {children}
     </div>
   );
 }

@@ -1,7 +1,19 @@
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/server';
-import { StatusPill } from '@/components/cabinet/StatusPill';
+import { StatusBadge } from '@/components/cabinet/StatusBadge';
 import { formatDateFr, FORMES_JURIDIQUES } from '@/lib/types';
+import { PageHeader, EmptyState, ErrorNote, nativeFieldClass } from '@/components/admin/bits';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
+import { Label } from '@/components/ui/label';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
 
 export const dynamic = 'force-dynamic';
 
@@ -32,8 +44,6 @@ const STATUSES = [
 ];
 
 const TYPES = ['CREATION', 'MODIFICATION', 'RADIATION'];
-
-const GRID = '100px 1.4fr 1fr 90px 1fr 120px 120px';
 
 interface SearchParams {
   statut?: string;
@@ -66,31 +76,14 @@ export default async function AdminDossiersPage({
 
   return (
     <>
-      <div className="page-head">
-        <div>
-          <h1>Tous les dossiers</h1>
-          <p>
-            {rows.length} résultat{rows.length > 1 ? 's' : ''} — tous cabinets.
-          </p>
-        </div>
-      </div>
+      <PageHeader
+        title="Tous les dossiers"
+        subtitle={`${rows.length} résultat${rows.length > 1 ? 's' : ''} — tous cabinets.`}
+      />
 
-      {error && (
-        <div className="form-error" style={{ marginBottom: 16 }}>
-          {error.message}
-        </div>
-      )}
+      {error && <ErrorNote message={error.message} />}
 
-      <form
-        method="get"
-        style={{
-          display: 'flex',
-          gap: 12,
-          flexWrap: 'wrap',
-          marginBottom: 16,
-          alignItems: 'flex-end',
-        }}
-      >
+      <form method="get" className="flex flex-wrap items-end gap-3">
         <Filter name="statut" label="Statut" current={sp.statut} options={STATUSES} />
         <Filter name="type" label="Type" current={sp.type} options={TYPES} />
         <Filter
@@ -99,78 +92,64 @@ export default async function AdminDossiersPage({
           current={sp.forme}
           options={[...FORMES_JURIDIQUES]}
         />
-        <div style={{ display: 'flex', gap: 8 }}>
-          <button type="submit" className="btn btn-accent btn-sm">
+        <div className="flex gap-2">
+          <Button type="submit" size="sm">
             Appliquer
-          </button>
-          <Link href="/admin/dossiers" className="btn btn-ghost btn-sm">
-            Réinitialiser
-          </Link>
+          </Button>
+          <Button asChild variant="ghost" size="sm">
+            <Link href="/admin/dossiers">Réinitialiser</Link>
+          </Button>
         </div>
       </form>
 
-      <div className="app-card">
-        <div
-          className="app-table-head"
-          style={{ gridTemplateColumns: GRID }}
-        >
-          <span>Référence</span>
-          <span>Client</span>
-          <span>Cabinet</span>
-          <span>Forme</span>
-          <span>Type</span>
-          <span>Créé</span>
-          <span>Statut</span>
-        </div>
-        {rows.length === 0 ? (
-          <div
-            style={{
-              padding: 48,
-              textAlign: 'center',
-              color: 'var(--ink-500)',
-              fontSize: 14,
-            }}
-          >
-            Aucun dossier ne correspond.
-          </div>
-        ) : (
-          rows.map((d) => (
-            <Link
-              key={d.id}
-              href={`/admin/dossiers/${d.id}`}
-              className="app-table-row"
-              style={{
-                gridTemplateColumns: GRID,
-                textDecoration: 'none',
-              }}
-            >
-              <span
-                className="mono"
-                style={{ fontSize: 11, color: 'var(--ink-500)' }}
-              >
-                {d.reference ?? d.id.slice(0, 8)}
-              </span>
-              <span style={{ fontWeight: 500 }}>{d.client_name}</span>
-              <span style={{ color: 'var(--ink-600)', fontSize: 13 }}>
-                {d.organizations?.name ?? '—'}
-              </span>
-              <span style={{ fontSize: 12, color: 'var(--ink-700)' }}>
-                {d.forme_juridique ?? '—'}
-              </span>
-              <span style={{ color: 'var(--ink-700)', fontSize: 13 }}>
-                {d.type_formalite}
-              </span>
-              <span
-                className="mono"
-                style={{ fontSize: 11, color: 'var(--ink-500)' }}
-              >
-                {formatDateFr(d.created_at)}
-              </span>
-              <StatusPill statut={d.statut} />
-            </Link>
-          ))
-        )}
-      </div>
+      <Card>
+        <CardContent>
+          {rows.length === 0 ? (
+            <EmptyState label="Aucun dossier ne correspond." />
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Référence</TableHead>
+                  <TableHead>Client</TableHead>
+                  <TableHead>Cabinet</TableHead>
+                  <TableHead>Forme</TableHead>
+                  <TableHead>Type</TableHead>
+                  <TableHead>Créé</TableHead>
+                  <TableHead>Statut</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {rows.map((d) => (
+                  <TableRow key={d.id}>
+                    <TableCell className="font-mono text-xs text-muted-foreground">
+                      <Link href={`/admin/dossiers/${d.id}`} className="hover:underline">
+                        {d.reference ?? d.id.slice(0, 8)}
+                      </Link>
+                    </TableCell>
+                    <TableCell className="font-medium">
+                      <Link href={`/admin/dossiers/${d.id}`} className="hover:underline">
+                        {d.client_name}
+                      </Link>
+                    </TableCell>
+                    <TableCell className="text-muted-foreground">
+                      {d.organizations?.name ?? '—'}
+                    </TableCell>
+                    <TableCell className="text-xs">{d.forme_juridique ?? '—'}</TableCell>
+                    <TableCell>{d.type_formalite}</TableCell>
+                    <TableCell className="font-mono text-xs text-muted-foreground">
+                      {formatDateFr(d.created_at)}
+                    </TableCell>
+                    <TableCell>
+                      <StatusBadge statut={d.statut} />
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+        </CardContent>
+      </Card>
     </>
   );
 }
@@ -187,9 +166,10 @@ function Filter({
   options: string[];
 }) {
   return (
-    <div className="form-field" style={{ minWidth: 180 }}>
-      <label>{label}</label>
-      <select name={name} defaultValue={current ?? ''}>
+    <div className="min-w-44 space-y-1.5">
+      <Label htmlFor={`filter-${name}`}>{label}</Label>
+      {/* Select natif : formulaire GET classique. */}
+      <select id={`filter-${name}`} name={name} defaultValue={current ?? ''} className={nativeFieldClass}>
         <option value="">— Tous —</option>
         {options.map((o) => (
           <option key={o} value={o}>

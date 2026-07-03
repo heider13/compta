@@ -1,6 +1,24 @@
+import { AlertTriangle, KeyRound, Plus } from 'lucide-react';
 import { createClient } from '@/lib/supabase/server';
 import { createApiKey, revokeApiKey } from '@/lib/server-actions/api-keys';
 import { formatDate } from '@/lib/utils/format';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
 
 export default async function ApiKeysPage({ searchParams }: { searchParams: Promise<{ token?: string; prefix?: string; e?: string }> }) {
   const sp = await searchParams;
@@ -19,48 +37,121 @@ export default async function ApiKeysPage({ searchParams }: { searchParams: Prom
   }
 
   return (
-    <div className="app-content with-bg">
-      <div className="page-head">
-        <div>
-          <h1>Clés API</h1>
-          <p>Pour intégrer Compta dans vos outils internes ou ceux de vos partenaires. Base URL : <span className="mono">https://vps-84ac2579.vps.ovh.net/v1/</span></p>
-        </div>
+    <div className="mx-auto w-full max-w-5xl space-y-6 p-4 sm:p-6">
+      <div>
+        <h1 className="text-2xl font-semibold tracking-tight">Clés API</h1>
+        <p className="text-sm text-muted-foreground">
+          Pour intégrer Compta dans vos outils internes ou ceux de vos partenaires. Base URL :{' '}
+          <code className="rounded bg-muted px-1.5 py-0.5 font-mono text-xs">
+            https://vps-84ac2579.vps.ovh.net/v1/
+          </code>
+        </p>
       </div>
 
       {sp.token && (
-        <div className="app-card" style={{ padding: 18, marginBottom: 16, background: '#FEF3C7', border: '1px solid #F59E0B' }}>
-          <h3 style={{ fontSize: 14, margin: 0, color: '#92400E' }}>⚠ Copiez votre clé maintenant — elle ne sera plus jamais affichée</h3>
-          <code style={{ display: 'block', padding: 12, marginTop: 12, background: 'white', borderRadius: 8, fontSize: 13, fontFamily: 'monospace', wordBreak: 'break-all' }}>{sp.token}</code>
+        <Card className="border-amber-300 bg-amber-50">
+          <CardContent className="space-y-3 py-4">
+            <p className="flex items-center gap-2 text-sm font-semibold text-amber-900">
+              <AlertTriangle className="size-4 shrink-0" aria-hidden="true" />
+              Copiez votre clé maintenant — elle ne sera plus jamais affichée
+            </p>
+            <code className="block break-all rounded-lg bg-white px-4 py-3 font-mono text-sm">
+              {sp.token}
+            </code>
+          </CardContent>
+        </Card>
+      )}
+
+      {sp.e && (
+        <div
+          role="alert"
+          className="rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive"
+        >
+          {sp.e}
         </div>
       )}
 
-      {sp.e && <div style={{ color: '#b42318', padding: 12, marginBottom: 16, fontSize: 13 }}>{sp.e}</div>}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Nouvelle clé</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <form action={action} className="flex flex-wrap gap-3">
+            <Input
+              name="name"
+              required
+              placeholder="Nom (ex: Intégration Zapier)"
+              className="min-w-56 flex-1"
+            />
+            <Button type="submit">
+              <Plus className="size-4" />
+              Créer
+            </Button>
+          </form>
+        </CardContent>
+      </Card>
 
-      <div className="app-card" style={{ padding: 24, marginBottom: 16 }}>
-        <h3 style={{ fontSize: 15, marginBottom: 12 }}>Nouvelle clé</h3>
-        <form action={action} style={{ display: 'flex', gap: 10 }}>
-          <input name="name" required placeholder="Nom (ex: Intégration Zapier)" style={{ flex: 1, padding: '10px 12px', border: '1px solid var(--ink-200)', borderRadius: 8, fontSize: 14, fontFamily: 'inherit' }} />
-          <button type="submit" className="btn btn-accent">Créer</button>
-        </form>
-      </div>
-
-      <div className="app-card">
-        <div className="app-card-head"><h3>Clés actives</h3></div>
-        {!keys?.length && <p style={{ padding: 24, color: 'var(--ink-500)', fontSize: 13, textAlign: 'center', margin: 0 }}>Aucune clé créée pour le moment.</p>}
-        {keys?.map((k) => (
-          <div key={k.id} style={{ display: 'grid', gridTemplateColumns: '1.4fr 1fr 1fr 1fr 80px', padding: '12px 18px', alignItems: 'center', gap: 12, borderTop: '1px solid var(--ink-100)', fontSize: 13 }}>
-            <span style={{ fontWeight: 500 }}>{k.name}</span>
-            <span className="mono" style={{ fontSize: 12, color: 'var(--ink-500)' }}>{k.prefix}…</span>
-            <span className="mono" style={{ fontSize: 11, color: 'var(--ink-500)' }}>{formatDate(k.created_at)}</span>
-            <span className="mono" style={{ fontSize: 11, color: 'var(--ink-500)' }}>{k.last_used_at ? `Utilisée ${formatDate(k.last_used_at)}` : 'Jamais utilisée'}</span>
-            {k.revoked_at ? <span className="pill red" style={{ fontSize: 10 }}>Révoquée</span> : (
-              <form action={async () => { 'use server'; await revokeApiKey(k.id); }}>
-                <button type="submit" className="btn btn-ghost btn-sm" style={{ fontSize: 11, color: '#b42318' }}>Révoquer</button>
-              </form>
-            )}
-          </div>
-        ))}
-      </div>
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-base">
+            <KeyRound className="size-4 text-muted-foreground" aria-hidden="true" />
+            Clés actives
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {!keys?.length ? (
+            <p className="py-8 text-center text-sm text-muted-foreground">
+              Aucune clé créée pour le moment.
+            </p>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Nom</TableHead>
+                  <TableHead>Préfixe</TableHead>
+                  <TableHead>Créée le</TableHead>
+                  <TableHead>Dernière utilisation</TableHead>
+                  <TableHead className="text-right">Statut</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {keys.map((k) => (
+                  <TableRow key={k.id}>
+                    <TableCell className="font-medium">{k.name}</TableCell>
+                    <TableCell className="font-mono text-xs text-muted-foreground">
+                      {k.prefix}…
+                    </TableCell>
+                    <TableCell className="text-xs text-muted-foreground">
+                      {formatDate(k.created_at)}
+                    </TableCell>
+                    <TableCell className="text-xs text-muted-foreground">
+                      {k.last_used_at ? `Utilisée ${formatDate(k.last_used_at)}` : 'Jamais utilisée'}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      {k.revoked_at ? (
+                        <Badge variant="secondary" className="bg-red-100 font-normal text-red-800">
+                          Révoquée
+                        </Badge>
+                      ) : (
+                        <form action={async () => { 'use server'; await revokeApiKey(k.id); }}>
+                          <Button
+                            type="submit"
+                            variant="ghost"
+                            size="sm"
+                            className="text-destructive hover:text-destructive"
+                          >
+                            Révoquer
+                          </Button>
+                        </form>
+                      )}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }

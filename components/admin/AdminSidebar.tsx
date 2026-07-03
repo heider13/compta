@@ -2,6 +2,30 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import {
+  ArrowUpRight,
+  Building2,
+  FolderOpen,
+  Inbox,
+  LayoutDashboard,
+  LogOut,
+  ScrollText,
+  Users,
+} from 'lucide-react';
+
+import {
+  Sidebar,
+  SidebarContent,
+  SidebarFooter,
+  SidebarGroup,
+  SidebarGroupLabel,
+  SidebarHeader,
+  SidebarMenu,
+  SidebarMenuButton,
+  SidebarMenuItem,
+} from '@/components/ui/sidebar';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Badge } from '@/components/ui/badge';
 
 interface AdminSidebarProps {
   userLabel: string;
@@ -13,15 +37,16 @@ interface NavItem {
   href: string;
   label: string;
   exact?: boolean;
+  icon: React.ComponentType<{ className?: string }>;
 }
 
 const NAV_ITEMS: NavItem[] = [
-  { href: '/admin', label: 'Tableau de bord', exact: true },
-  { href: '/admin/queue', label: 'À valider' },
-  { href: '/admin/dossiers', label: 'Tous les dossiers' },
-  { href: '/admin/cabinets', label: 'Cabinets' },
-  { href: '/admin/users', label: 'Utilisateurs' },
-  { href: '/admin/audit', label: 'Audit logs' },
+  { href: '/admin', label: 'Tableau de bord', exact: true, icon: LayoutDashboard },
+  { href: '/admin/queue', label: 'À valider', icon: Inbox },
+  { href: '/admin/dossiers', label: 'Tous les dossiers', icon: FolderOpen },
+  { href: '/admin/cabinets', label: 'Cabinets', icon: Building2 },
+  { href: '/admin/users', label: 'Utilisateurs', icon: Users },
+  { href: '/admin/audit', label: 'Audit logs', icon: ScrollText },
 ];
 
 function isActive(item: NavItem, pathname: string): boolean {
@@ -29,131 +54,74 @@ function isActive(item: NavItem, pathname: string): boolean {
   return pathname === item.href || pathname.startsWith(`${item.href}/`);
 }
 
-const SIDEBAR_BG = '#1A1A1F';
-const SIDEBAR_TEXT = 'rgba(255,255,255,0.75)';
-const SIDEBAR_TEXT_MUTED = 'rgba(255,255,255,0.45)';
-const SIDEBAR_ACTIVE_BG = 'rgba(255,255,255,0.08)';
-const SIDEBAR_ACTIVE_TEXT = '#FFFFFF';
-const SIDEBAR_BORDER = 'rgba(255,255,255,0.08)';
-
-export function AdminSidebar({
-  userLabel,
-  userInitials,
-  signOutAction,
-}: AdminSidebarProps) {
+export function AdminSidebar({ userLabel, userInitials, signOutAction }: AdminSidebarProps) {
   const pathname = usePathname() ?? '';
 
   return (
-    <aside
-      className="app-sidebar"
-      style={{
-        background: SIDEBAR_BG,
-        borderRight: `1px solid ${SIDEBAR_BORDER}`,
-        color: SIDEBAR_TEXT,
-      }}
-    >
-      <div className="logo" style={{ color: '#FFFFFF', padding: '6px 10px 22px' }}>
-        <span className="logo-mark">C</span>
-        <span>Compta</span>
-        <span
-          style={{
-            marginLeft: 'auto',
-            fontSize: 10,
-            fontWeight: 600,
-            letterSpacing: '0.08em',
-            padding: '3px 7px',
-            borderRadius: 999,
-            background: 'var(--accent)',
-            color: '#FFFFFF',
-          }}
-        >
-          ADMIN
-        </span>
-      </div>
-
-      <div className="sidebar-section" style={{ color: SIDEBAR_TEXT_MUTED }}>
-        Super admin
-      </div>
-
-      {NAV_ITEMS.map((item) => {
-        const active = isActive(item, pathname);
-        return (
-          <Link
-            key={item.href}
-            href={item.href}
-            className="sidebar-link"
-            style={{
-              color: active ? SIDEBAR_ACTIVE_TEXT : SIDEBAR_TEXT,
-              background: active ? SIDEBAR_ACTIVE_BG : 'transparent',
-              fontWeight: active ? 500 : 400,
-            }}
-          >
-            <span>{item.label}</span>
-          </Link>
-        );
-      })}
-
-      <div style={{ marginTop: 'auto' }}>
-        <Link
-          href="/clients"
-          className="sidebar-link"
-          style={{
-            color: SIDEBAR_TEXT_MUTED,
-            border: `1px solid ${SIDEBAR_BORDER}`,
-            justifyContent: 'space-between',
-            marginBottom: 8,
-          }}
-        >
-          <span>Vue cabinet</span>
-          <span aria-hidden>→</span>
-        </Link>
-
-        <div
-          className="sidebar-user"
-          style={{
-            borderTop: `1px solid ${SIDEBAR_BORDER}`,
-            color: SIDEBAR_TEXT,
-          }}
-        >
-          <div
-            className="sidebar-user-avatar"
-            style={{ background: 'rgba(255,255,255,0.1)', color: '#FFFFFF' }}
-          >
-            {userInitials}
+    <Sidebar collapsible="icon">
+      <SidebarHeader>
+        <div className="flex items-center gap-2.5 px-2 py-1.5">
+          <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-sidebar-primary font-semibold text-sidebar-primary-foreground">
+            C
           </div>
-          <div style={{ minWidth: 0, flex: 1 }}>
-            <div
-              style={{
-                fontSize: 13,
-                color: '#FFFFFF',
-                fontWeight: 500,
-                overflow: 'hidden',
-                textOverflow: 'ellipsis',
-                whiteSpace: 'nowrap',
-              }}
-            >
-              {userLabel}
-            </div>
+          <div className="flex min-w-0 items-center gap-2 group-data-[collapsible=icon]:hidden">
+            <span className="truncate text-sm font-semibold text-sidebar-foreground">Compta</span>
+            <Badge className="bg-sidebar-primary text-[10px] tracking-wider text-sidebar-primary-foreground">
+              ADMIN
+            </Badge>
+          </div>
+        </div>
+      </SidebarHeader>
+
+      <SidebarContent>
+        <SidebarGroup>
+          <SidebarGroupLabel>Super admin</SidebarGroupLabel>
+          <SidebarMenu>
+            {NAV_ITEMS.map((item) => (
+              <SidebarMenuItem key={item.href}>
+                <SidebarMenuButton asChild isActive={isActive(item, pathname)} tooltip={item.label}>
+                  <Link href={item.href}>
+                    <item.icon className="size-4" />
+                    <span>{item.label}</span>
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            ))}
+          </SidebarMenu>
+        </SidebarGroup>
+      </SidebarContent>
+
+      <SidebarFooter>
+        <SidebarMenu>
+          <SidebarMenuItem>
+            <SidebarMenuButton asChild tooltip="Vue cabinet">
+              <Link href="/clients">
+                <ArrowUpRight className="size-4" />
+                <span>Vue cabinet</span>
+              </Link>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+        </SidebarMenu>
+        <div className="flex items-center gap-2.5 rounded-lg px-2 py-1.5 group-data-[collapsible=icon]:justify-center">
+          <Avatar className="size-8">
+            <AvatarFallback className="bg-sidebar-accent text-xs font-semibold text-sidebar-accent-foreground">
+              {userInitials}
+            </AvatarFallback>
+          </Avatar>
+          <div className="grid min-w-0 flex-1 group-data-[collapsible=icon]:hidden">
+            <span className="truncate text-sm text-sidebar-foreground">{userLabel}</span>
             <form action={signOutAction}>
               <button
                 type="submit"
-                style={{
-                  background: 'transparent',
-                  border: 'none',
-                  padding: 0,
-                  margin: 0,
-                  cursor: 'pointer',
-                  fontSize: 11,
-                  color: SIDEBAR_TEXT_MUTED,
-                  textAlign: 'left',
-                }}
+                className="flex items-center gap-1 text-[11px] text-sidebar-foreground/60 hover:text-sidebar-foreground"
               >
+                <LogOut className="size-3" />
                 Se déconnecter
               </button>
             </form>
           </div>
         </div>
-      </div>
-    </aside>
+      </SidebarFooter>
+    </Sidebar>
   );
 }

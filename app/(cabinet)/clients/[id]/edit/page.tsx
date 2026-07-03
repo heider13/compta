@@ -3,6 +3,7 @@
 import { use, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { Archive, Loader2 } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import {
   FORMES_JURIDIQUES,
@@ -11,6 +12,12 @@ import {
   type Client,
   type FormeJuridique,
 } from '@/lib/types';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Separator } from '@/components/ui/separator';
+import { Textarea } from '@/components/ui/textarea';
 
 interface PageProps {
   params: Promise<{ id: string }>;
@@ -30,6 +37,10 @@ interface EditState {
   contact_last_name: string;
   note: string;
 }
+
+// Select natif stylé cohérent avec les Input shadcn (formulaire contrôlé).
+const selectClass =
+  'border-input flex h-9 w-full rounded-md border bg-transparent px-3 py-1 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50';
 
 function clientToState(c: Client): EditState {
   let adresseLibelle = '';
@@ -175,189 +186,219 @@ export default function EditClientPage({ params }: PageProps) {
 
   if (loading) {
     return (
-      <div className="app-card app-card-pad" style={{ color: 'var(--ink-500)' }}>
-        Chargement…
+      <div className="mx-auto w-full max-w-3xl p-4 sm:p-6">
+        <div className="flex items-center gap-2 rounded-xl border border-border bg-card px-6 py-10 text-sm text-muted-foreground">
+          <Loader2 className="size-4 animate-spin" />
+          Chargement…
+        </div>
       </div>
     );
   }
   if (!form) {
     return (
-      <>
-        <div className="page-head">
-          <h1>Modifier le client</h1>
-          <Link href="/clients" className="btn btn-ghost">
-            ← Retour
-          </Link>
+      <div className="mx-auto w-full max-w-3xl space-y-4 p-4 sm:p-6">
+        <div className="flex items-center justify-between">
+          <h1 className="text-2xl font-semibold tracking-tight">Modifier le client</h1>
+          <Button variant="ghost" asChild>
+            <Link href="/clients">← Retour</Link>
+          </Button>
         </div>
-        <div className="form-error">{error ?? 'Client introuvable.'}</div>
-      </>
+        <div
+          role="alert"
+          className="rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive"
+        >
+          {error ?? 'Client introuvable.'}
+        </div>
+      </div>
     );
   }
 
   return (
-    <>
-      <div className="page-head">
+    <div className="mx-auto w-full max-w-3xl space-y-6 p-4 sm:p-6">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1>Modifier le client</h1>
-          <p>{form.denomination}</p>
+          <h1 className="text-2xl font-semibold tracking-tight">Modifier le client</h1>
+          <p className="text-sm text-muted-foreground">{form.denomination}</p>
         </div>
-        <div style={{ display: 'flex', gap: 8 }}>
-          <Link href={`/clients/${id}`} className="btn btn-ghost">
-            Annuler
-          </Link>
-          <button
+        <div className="flex gap-2">
+          <Button variant="ghost" asChild>
+            <Link href={`/clients/${id}`}>Annuler</Link>
+          </Button>
+          <Button
             type="button"
+            variant="outline"
             onClick={handleArchive}
-            className="btn btn-ghost"
             disabled={archiving || submitting}
           >
+            <Archive className="size-4" />
             {archiving ? 'Archivage…' : 'Archiver'}
-          </button>
+          </Button>
         </div>
       </div>
 
-      <form
-        onSubmit={handleSubmit}
-        className="app-card app-card-pad form-grid"
-        style={{ maxWidth: 820 }}
-      >
-        <div className="form-row">
-          <div className="form-field">
-            <label>Dénomination *</label>
-            <input
-              type="text"
-              value={form.denomination}
-              onChange={(e) => update('denomination', e.target.value)}
-              required
-            />
-          </div>
-          <div className="form-field">
-            <label>SIREN</label>
-            <input
-              type="text"
-              value={form.siren}
-              onChange={(e) => update('siren', e.target.value)}
-              inputMode="numeric"
-              maxLength={11}
-            />
-          </div>
-        </div>
+      <form onSubmit={handleSubmit}>
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Informations de la société</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-1.5">
+                <Label htmlFor="denomination">
+                  Dénomination <span className="text-destructive">*</span>
+                </Label>
+                <Input
+                  id="denomination"
+                  value={form.denomination}
+                  onChange={(e) => update('denomination', e.target.value)}
+                  required
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="siren">SIREN</Label>
+                <Input
+                  id="siren"
+                  value={form.siren}
+                  onChange={(e) => update('siren', e.target.value)}
+                  inputMode="numeric"
+                  maxLength={11}
+                />
+              </div>
+            </div>
 
-        <div className="form-row">
-          <div className="form-field">
-            <label>Forme juridique</label>
-            <select
-              value={form.forme_juridique}
-              onChange={(e) =>
-                update('forme_juridique', e.target.value as FormeJuridique | '')
-              }
-            >
-              <option value="">—</option>
-              {FORMES_JURIDIQUES.map((f) => (
-                <option key={f} value={f}>
-                  {f}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div className="form-field">
-            <label>Code NAF</label>
-            <input
-              type="text"
-              value={form.code_naf}
-              onChange={(e) => update('code_naf', e.target.value)}
-            />
-          </div>
-        </div>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-1.5">
+                <Label htmlFor="forme_juridique">Forme juridique</Label>
+                <select
+                  id="forme_juridique"
+                  className={selectClass}
+                  value={form.forme_juridique}
+                  onChange={(e) =>
+                    update('forme_juridique', e.target.value as FormeJuridique | '')
+                  }
+                >
+                  <option value="">—</option>
+                  {FORMES_JURIDIQUES.map((f) => (
+                    <option key={f} value={f}>
+                      {f}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="code_naf">Code NAF</Label>
+                <Input
+                  id="code_naf"
+                  value={form.code_naf}
+                  onChange={(e) => update('code_naf', e.target.value)}
+                />
+              </div>
+            </div>
 
-        <div className="form-row">
-          <div className="form-field">
-            <label>Date d&apos;immatriculation</label>
-            <input
-              type="date"
-              value={form.date_immatriculation}
-              onChange={(e) => update('date_immatriculation', e.target.value)}
-            />
-          </div>
-          <div className="form-field">
-            <label>Capital social (€)</label>
-            <input
-              type="number"
-              value={form.capital_social}
-              onChange={(e) => update('capital_social', e.target.value)}
-              min="0"
-              step="0.01"
-            />
-          </div>
-        </div>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-1.5">
+                <Label htmlFor="date_immatriculation">Date d&apos;immatriculation</Label>
+                <Input
+                  id="date_immatriculation"
+                  type="date"
+                  value={form.date_immatriculation}
+                  onChange={(e) => update('date_immatriculation', e.target.value)}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="capital_social">Capital social (€)</Label>
+                <Input
+                  id="capital_social"
+                  type="number"
+                  value={form.capital_social}
+                  onChange={(e) => update('capital_social', e.target.value)}
+                  min="0"
+                  step="0.01"
+                />
+              </div>
+            </div>
 
-        <div className="form-field">
-          <label>Adresse du siège</label>
-          <input
-            type="text"
-            value={form.adresse_libelle}
-            onChange={(e) => update('adresse_libelle', e.target.value)}
-          />
-        </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="adresse">Adresse du siège</Label>
+              <Input
+                id="adresse"
+                value={form.adresse_libelle}
+                onChange={(e) => update('adresse_libelle', e.target.value)}
+              />
+            </div>
 
-        <h3 style={{ marginTop: 8, marginBottom: -4, fontSize: 15 }}>Contact principal</h3>
-        <div className="form-row">
-          <div className="form-field">
-            <label>Prénom</label>
-            <input
-              type="text"
-              value={form.contact_first_name}
-              onChange={(e) => update('contact_first_name', e.target.value)}
-            />
-          </div>
-          <div className="form-field">
-            <label>Nom</label>
-            <input
-              type="text"
-              value={form.contact_last_name}
-              onChange={(e) => update('contact_last_name', e.target.value)}
-            />
-          </div>
-        </div>
+            <Separator className="my-2" />
+            <h3 className="text-sm font-semibold">Contact principal</h3>
 
-        <div className="form-row">
-          <div className="form-field">
-            <label>Email</label>
-            <input
-              type="email"
-              value={form.contact_email}
-              onChange={(e) => update('contact_email', e.target.value)}
-            />
-          </div>
-          <div className="form-field">
-            <label>Téléphone</label>
-            <input
-              type="tel"
-              value={form.contact_phone}
-              onChange={(e) => update('contact_phone', e.target.value)}
-            />
-          </div>
-        </div>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-1.5">
+                <Label htmlFor="contact_first_name">Prénom</Label>
+                <Input
+                  id="contact_first_name"
+                  value={form.contact_first_name}
+                  onChange={(e) => update('contact_first_name', e.target.value)}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="contact_last_name">Nom</Label>
+                <Input
+                  id="contact_last_name"
+                  value={form.contact_last_name}
+                  onChange={(e) => update('contact_last_name', e.target.value)}
+                />
+              </div>
+            </div>
 
-        <div className="form-field">
-          <label>Note interne</label>
-          <textarea
-            value={form.note}
-            onChange={(e) => update('note', e.target.value)}
-          />
-        </div>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-1.5">
+                <Label htmlFor="contact_email">Email</Label>
+                <Input
+                  id="contact_email"
+                  type="email"
+                  value={form.contact_email}
+                  onChange={(e) => update('contact_email', e.target.value)}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="contact_phone">Téléphone</Label>
+                <Input
+                  id="contact_phone"
+                  type="tel"
+                  value={form.contact_phone}
+                  onChange={(e) => update('contact_phone', e.target.value)}
+                />
+              </div>
+            </div>
 
-        {error && <div className="form-error">{error}</div>}
+            <div className="space-y-1.5">
+              <Label htmlFor="note">Note interne</Label>
+              <Textarea
+                id="note"
+                value={form.note}
+                onChange={(e) => update('note', e.target.value)}
+              />
+            </div>
 
-        <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-          <Link href={`/clients/${id}`} className="btn btn-ghost">
-            Annuler
-          </Link>
-          <button type="submit" className="btn btn-accent" disabled={submitting}>
-            {submitting ? 'Enregistrement…' : 'Enregistrer'}
-          </button>
-        </div>
+            {error && (
+              <div
+                role="alert"
+                className="rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive"
+              >
+                {error}
+              </div>
+            )}
+
+            <div className="flex justify-end gap-2 pt-2">
+              <Button variant="ghost" asChild>
+                <Link href={`/clients/${id}`}>Annuler</Link>
+              </Button>
+              <Button type="submit" disabled={submitting}>
+                {submitting ? 'Enregistrement…' : 'Enregistrer'}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
       </form>
-    </>
+    </div>
   );
 }

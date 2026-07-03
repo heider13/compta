@@ -8,8 +8,11 @@
 // On NE met PAS à jour la DB depuis cette page (single source of truth = webhook).
 
 import Link from 'next/link';
+import { CheckCircle2 } from 'lucide-react';
 import { createClient } from '@/lib/supabase/server';
 import type { BillingPlan } from '@/lib/types/billing';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
 
 export const dynamic = 'force-dynamic';
 
@@ -57,68 +60,34 @@ export default async function BillingSuccessPage() {
   }
 
   return (
-    <div
-      className="app-card app-card-pad"
-      style={{
-        maxWidth: 560,
-        margin: '40px auto',
-        textAlign: 'center',
-        padding: '40px 32px',
-      }}
-    >
-      <div
-        style={{
-          width: 64,
-          height: 64,
-          borderRadius: '50%',
-          background: 'var(--status-green, #16a34a)',
-          color: 'white',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          margin: '0 auto 20px',
-          fontSize: 32,
-          fontWeight: 600,
-        }}
-        aria-hidden="true"
-      >
-        ✓
-      </div>
-      <h1 style={{ fontSize: 26, marginBottom: 8 }}>
-        Merci, votre abonnement est actif
-      </h1>
-      <p
-        style={{
-          fontSize: 14,
-          color: 'var(--ink-600)',
-          marginBottom: 18,
-          maxWidth: 420,
-          marginLeft: 'auto',
-          marginRight: 'auto',
-        }}
-      >
-        Le paiement a été enregistré. Votre cabinet bascule sur le plan&nbsp;
-        <strong>{planName}</strong> dès que Stripe nous confirme la transaction
-        (quelques secondes maximum).
-      </p>
-      <p
-        style={{
-          fontSize: 12,
-          color: 'var(--ink-500)',
-          marginBottom: 24,
-        }}
-      >
-        Un reçu a été envoyé à votre adresse email. La première facture
-        apparaîtra dans l&apos;onglet Facturation.
-      </p>
-      <div style={{ display: 'flex', gap: 10, justifyContent: 'center' }}>
-        <Link href="/" className="btn btn-accent">
-          Aller au tableau de bord
-        </Link>
-        <Link href="/billing" className="btn btn-ghost">
-          Voir mes factures
-        </Link>
-      </div>
+    <div className="mx-auto w-full max-w-xl p-6">
+      <Card className="mt-10">
+        <CardContent className="flex flex-col items-center py-10 text-center">
+          <span className="mb-5 grid size-16 place-items-center rounded-full bg-green-100 text-green-600">
+            <CheckCircle2 className="size-9" aria-hidden="true" />
+          </span>
+          <h1 className="text-2xl font-semibold tracking-tight">
+            Merci, votre abonnement est actif
+          </h1>
+          <p className="mt-3 max-w-md text-sm leading-relaxed text-muted-foreground">
+            Le paiement a été enregistré. Votre cabinet bascule sur le plan{' '}
+            <strong className="text-foreground">{planName}</strong> dès que Stripe nous
+            confirme la transaction (quelques secondes maximum).
+          </p>
+          <p className="mt-3 text-xs text-muted-foreground">
+            Un reçu a été envoyé à votre adresse email. La première facture apparaîtra
+            dans l&apos;onglet Facturation.
+          </p>
+          <div className="mt-6 flex flex-wrap justify-center gap-3">
+            <Button asChild>
+              <Link href="/dashboard">Aller au tableau de bord</Link>
+            </Button>
+            <Button variant="outline" asChild>
+              <Link href="/billing">Voir mes factures</Link>
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }

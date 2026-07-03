@@ -1,6 +1,19 @@
 import { createClient } from '@/lib/supabase/server';
 import { formatDateFr } from '@/lib/types';
 import { changeUserRoleForm } from '@/lib/server-actions/admin';
+import { PageHeader, EmptyState, ErrorNote, nativeFieldClass } from '@/components/admin/bits';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
+import { cn } from '@/lib/utils';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
 
 export const dynamic = 'force-dynamic';
 
@@ -11,8 +24,6 @@ interface ProfileRow {
   role: string;
   created_at: string;
 }
-
-const GRID = '1.4fr 1fr 120px 100px 130px 160px';
 
 export default async function AdminUsersPage() {
   const supabase = await createClient();
@@ -58,128 +69,84 @@ export default async function AdminUsersPage() {
 
   return (
     <>
-      <div className="page-head">
-        <div>
-          <h1>Utilisateurs</h1>
-          <p>
-            {profiles.length} utilisateur{profiles.length > 1 ? 's' : ''} sur la
-            plateforme.
-          </p>
-        </div>
-      </div>
+      <PageHeader
+        title="Utilisateurs"
+        subtitle={`${profiles.length} utilisateur${profiles.length > 1 ? 's' : ''} sur la plateforme.`}
+      />
 
-      {error && (
-        <div className="form-error" style={{ marginBottom: 16 }}>
-          {error.message}
-        </div>
-      )}
+      {error && <ErrorNote message={error.message} />}
 
       {emailById.size === 0 && (
-        <div
-          style={{
-            padding: 12,
-            marginBottom: 12,
-            background: '#FEF3C7',
-            borderRadius: 8,
-            fontSize: 12,
-            color: '#92400E',
-          }}
-        >
-          Note : les emails ne sont pas affichés car le serveur tourne sans
-          clé <code>service_role</code>. Configurez-la pour activer la
-          recherche par email.
+        <div className="rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-xs text-amber-900">
+          Note : les emails ne sont pas affichés car le serveur tourne sans clé{' '}
+          <code className="rounded bg-amber-100 px-1 font-mono">service_role</code>.
+          Configurez-la pour activer la recherche par email.
         </div>
       )}
 
-      <div className="app-card">
-        <div className="app-table-head" style={{ gridTemplateColumns: GRID }}>
-          <span>Nom</span>
-          <span>Email</span>
-          <span>Rôle actuel</span>
-          <span>Cabinets</span>
-          <span>Inscrit le</span>
-          <span>Changer le rôle</span>
-        </div>
-        {profiles.length === 0 ? (
-          <div
-            style={{
-              padding: 48,
-              textAlign: 'center',
-              color: 'var(--ink-500)',
-              fontSize: 14,
-            }}
-          >
-            Aucun utilisateur.
-          </div>
-        ) : (
-          profiles.map((p) => {
-            const fullName = [p.first_name, p.last_name]
-              .filter(Boolean)
-              .join(' ');
-            return (
-              <div
-                key={p.id}
-                className="app-table-row"
-                style={{ gridTemplateColumns: GRID }}
-              >
-                <span style={{ fontWeight: 500, fontSize: 13 }}>
-                  {fullName || (
-                    <span className="mono">{p.id.slice(0, 8)}</span>
-                  )}
-                </span>
-                <span style={{ fontSize: 13, color: 'var(--ink-600)' }}>
-                  {emailById.get(p.id) ?? '—'}
-                </span>
-                <span>
-                  <span
-                    className={`pill ${
-                      p.role === 'admin' ? 'violet' : 'gray'
-                    }`}
-                    style={{ fontSize: 11 }}
-                  >
-                    {p.role}
-                  </span>
-                </span>
-                <span className="mono" style={{ fontSize: 12 }}>
-                  {membershipCountByUser.get(p.id) ?? 0}
-                </span>
-                <span
-                  className="mono"
-                  style={{ fontSize: 11, color: 'var(--ink-500)' }}
-                >
-                  {formatDateFr(p.created_at)}
-                </span>
-                <form
-                  action={changeUserRoleForm}
-                  style={{ display: 'flex', gap: 6 }}
-                >
-                  <input type="hidden" name="userId" value={p.id} />
-                  <select
-                    name="role"
-                    defaultValue={p.role}
-                    style={{
-                      padding: '6px 8px',
-                      border: '1px solid var(--ink-200)',
-                      borderRadius: 6,
-                      fontSize: 12,
-                    }}
-                  >
-                    <option value="client">client</option>
-                    <option value="admin">admin</option>
-                  </select>
-                  <button
-                    type="submit"
-                    className="btn btn-ghost btn-sm"
-                    style={{ padding: '6px 10px', fontSize: 12 }}
-                  >
-                    OK
-                  </button>
-                </form>
-              </div>
-            );
-          })
-        )}
-      </div>
+      <Card>
+        <CardContent>
+          {profiles.length === 0 ? (
+            <EmptyState label="Aucun utilisateur." />
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Nom</TableHead>
+                  <TableHead>Email</TableHead>
+                  <TableHead>Rôle actuel</TableHead>
+                  <TableHead className="text-right">Cabinets</TableHead>
+                  <TableHead>Inscrit le</TableHead>
+                  <TableHead>Changer le rôle</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {profiles.map((p) => {
+                  const fullName = [p.first_name, p.last_name].filter(Boolean).join(' ');
+                  return (
+                    <TableRow key={p.id}>
+                      <TableCell className="font-medium">
+                        {fullName || <span className="font-mono text-xs">{p.id.slice(0, 8)}</span>}
+                      </TableCell>
+                      <TableCell className="text-muted-foreground">
+                        {emailById.get(p.id) ?? '—'}
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant={p.role === 'admin' ? 'default' : 'secondary'}>
+                          {p.role}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-right font-mono text-xs">
+                        {membershipCountByUser.get(p.id) ?? 0}
+                      </TableCell>
+                      <TableCell className="font-mono text-xs text-muted-foreground">
+                        {formatDateFr(p.created_at)}
+                      </TableCell>
+                      <TableCell>
+                        <form action={changeUserRoleForm} className="flex items-center gap-1.5">
+                          <input type="hidden" name="userId" value={p.id} />
+                          {/* Select natif : Server Action FormData. */}
+                          <select
+                            name="role"
+                            defaultValue={p.role}
+                            className={cn(nativeFieldClass, 'h-8 w-28 text-xs')}
+                          >
+                            <option value="client">client</option>
+                            <option value="admin">admin</option>
+                          </select>
+                          <Button type="submit" variant="outline" size="sm">
+                            OK
+                          </Button>
+                        </form>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          )}
+        </CardContent>
+      </Card>
     </>
   );
 }

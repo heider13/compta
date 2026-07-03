@@ -1,7 +1,19 @@
 import Link from 'next/link';
+import { ArrowRight, Building2, ClipboardCheck, FileCheck2, Wrench } from 'lucide-react';
 import { createClient } from '@/lib/supabase/server';
-import { StatusPill } from '@/components/cabinet/StatusPill';
+import { StatusBadge } from '@/components/cabinet/StatusBadge';
 import { formatDateFr } from '@/lib/types';
+import { PageHeader, EmptyState } from '@/components/admin/bits';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
 
 export const dynamic = 'force-dynamic';
 
@@ -58,170 +70,119 @@ export default async function AdminDashboardPage() {
 
   const recentRows = (recent ?? []) as unknown as RecentDossierRow[];
 
+  const kpis = [
+    {
+      label: 'Cabinets actifs',
+      value: cabinetsCount ?? 0,
+      icon: Building2,
+      href: '/admin/cabinets',
+      iconClass: 'text-primary bg-accent',
+    },
+    {
+      label: 'Dossiers à valider',
+      value: awaitingCount ?? 0,
+      icon: ClipboardCheck,
+      href: '/admin/queue',
+      iconClass: 'text-blue-600 bg-blue-50',
+    },
+    {
+      label: 'En correction',
+      value: amendmentCount ?? 0,
+      icon: Wrench,
+      href: '/admin/queue',
+      iconClass: 'text-amber-600 bg-amber-50',
+    },
+    {
+      label: 'Formalités déposées',
+      value: inpiCount ?? 0,
+      icon: FileCheck2,
+      href: '/admin/dossiers',
+      iconClass: 'text-green-600 bg-green-50',
+    },
+  ];
+
   return (
     <>
-      <div className="page-head">
-        <div>
-          <h1>Tableau de bord</h1>
-          <p>Activité globale de la plateforme — tous cabinets confondus.</p>
-        </div>
-      </div>
+      <PageHeader
+        title="Tableau de bord"
+        subtitle="Activité globale de la plateforme — tous cabinets confondus."
+      />
 
-      <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
-          gap: 16,
-          marginBottom: 24,
-        }}
-      >
-        <KpiCard
-          label="Cabinets actifs"
-          value={cabinetsCount ?? 0}
-          accent="#8B5CF6"
-          href="/admin/cabinets"
-        />
-        <KpiCard
-          label="Dossiers à valider"
-          value={awaitingCount ?? 0}
-          accent="#3B82F6"
-          href="/admin/queue"
-        />
-        <KpiCard
-          label="En correction"
-          value={amendmentCount ?? 0}
-          accent="#F59E0B"
-          href="/admin/queue"
-        />
-        <KpiCard
-          label="Total formalités déposées"
-          value={inpiCount ?? 0}
-          accent="#10B981"
-          href="/admin/dossiers"
-        />
-      </div>
-
-      <div className="app-card">
-        <div className="app-card-head">
-          <h3>Activité récente</h3>
-          <Link href="/admin/dossiers" className="btn-link" style={{ fontSize: 13 }}>
-            Voir tout →
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        {kpis.map((kpi) => (
+          <Link key={kpi.label} href={kpi.href} className="group">
+            <Card className="h-full transition-shadow group-hover:shadow-md">
+              <CardContent className="flex items-start justify-between gap-3 pt-5">
+                <div className="space-y-1">
+                  <p className="text-sm text-muted-foreground">{kpi.label}</p>
+                  <p className="text-3xl font-semibold tracking-tight">{kpi.value}</p>
+                </div>
+                <span
+                  className={`grid size-10 shrink-0 place-items-center rounded-lg ${kpi.iconClass}`}
+                >
+                  <kpi.icon className="size-5" />
+                </span>
+              </CardContent>
+            </Card>
           </Link>
-        </div>
-        <div>
-          <div
-            className="app-table-head"
-            style={{
-              gridTemplateColumns: '110px 1.4fr 1fr 0.8fr 130px 130px',
-            }}
-          >
-            <span>Référence</span>
-            <span>Client</span>
-            <span>Cabinet</span>
-            <span>Type</span>
-            <span>Mis à jour</span>
-            <span>Statut</span>
-          </div>
-          {recentRows.length === 0 ? (
-            <div
-              style={{
-                padding: 48,
-                textAlign: 'center',
-                color: 'var(--ink-500)',
-                fontSize: 14,
-              }}
-            >
-              Aucun dossier pour l&apos;instant.
-            </div>
-          ) : (
-            recentRows.map((d) => (
-              <Link
-                key={d.id}
-                href={`/admin/dossiers/${d.id}`}
-                className="app-table-row"
-                style={{
-                  gridTemplateColumns: '110px 1.4fr 1fr 0.8fr 130px 130px',
-                  textDecoration: 'none',
-                }}
-              >
-                <span
-                  className="mono"
-                  style={{ fontSize: 11, color: 'var(--ink-500)' }}
-                >
-                  {d.reference ?? d.id.slice(0, 8)}
-                </span>
-                <span style={{ fontWeight: 500 }}>{d.client_name}</span>
-                <span style={{ color: 'var(--ink-600)', fontSize: 13 }}>
-                  {d.organizations?.name ?? '—'}
-                </span>
-                <span style={{ color: 'var(--ink-700)', fontSize: 13 }}>
-                  {d.type_formalite}
-                </span>
-                <span
-                  className="mono"
-                  style={{ fontSize: 11, color: 'var(--ink-500)' }}
-                >
-                  {formatDateFr(d.updated_at ?? d.created_at)}
-                </span>
-                <StatusPill statut={d.statut} />
-              </Link>
-            ))
-          )}
-        </div>
+        ))}
       </div>
-    </>
-  );
-}
 
-function KpiCard({
-  label,
-  value,
-  accent,
-  href,
-}: {
-  label: string;
-  value: number;
-  accent: string;
-  href?: string;
-}) {
-  const body = (
-    <div
-      style={{
-        background: 'white',
-        border: '1px solid var(--ink-150)',
-        borderRadius: 12,
-        padding: 18,
-        borderLeft: `3px solid ${accent}`,
-      }}
-    >
-      <div
-        style={{
-          fontSize: 11,
-          color: 'var(--ink-500)',
-          textTransform: 'uppercase',
-          letterSpacing: '0.06em',
-          fontWeight: 500,
-          marginBottom: 4,
-        }}
-      >
-        {label}
-      </div>
-      <div
-        style={{
-          fontSize: 28,
-          fontWeight: 600,
-          color: 'var(--ink-900)',
-        }}
-      >
-        {value}
-      </div>
-    </div>
-  );
-  return href ? (
-    <Link href={href} style={{ textDecoration: 'none' }}>
-      {body}
-    </Link>
-  ) : (
-    body
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between">
+          <CardTitle>Activité récente</CardTitle>
+          <Button asChild variant="ghost" size="sm">
+            <Link href="/admin/dossiers">
+              Voir tout
+              <ArrowRight className="size-4" />
+            </Link>
+          </Button>
+        </CardHeader>
+        <CardContent>
+          {recentRows.length === 0 ? (
+            <EmptyState label="Aucun dossier pour l'instant." />
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Référence</TableHead>
+                  <TableHead>Client</TableHead>
+                  <TableHead>Cabinet</TableHead>
+                  <TableHead>Type</TableHead>
+                  <TableHead>Mis à jour</TableHead>
+                  <TableHead>Statut</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {recentRows.map((d) => (
+                  <TableRow key={d.id}>
+                    <TableCell className="font-mono text-xs text-muted-foreground">
+                      <Link href={`/admin/dossiers/${d.id}`} className="hover:underline">
+                        {d.reference ?? d.id.slice(0, 8)}
+                      </Link>
+                    </TableCell>
+                    <TableCell className="font-medium">
+                      <Link href={`/admin/dossiers/${d.id}`} className="hover:underline">
+                        {d.client_name}
+                      </Link>
+                    </TableCell>
+                    <TableCell className="text-muted-foreground">
+                      {d.organizations?.name ?? '—'}
+                    </TableCell>
+                    <TableCell>{d.type_formalite}</TableCell>
+                    <TableCell className="font-mono text-xs text-muted-foreground">
+                      {formatDateFr(d.updated_at ?? d.created_at)}
+                    </TableCell>
+                    <TableCell>
+                      <StatusBadge statut={d.statut} />
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+        </CardContent>
+      </Card>
+    </>
   );
 }

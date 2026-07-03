@@ -1,6 +1,16 @@
+import { Plus, Webhook as WebhookIcon } from 'lucide-react';
 import { createClient } from '@/lib/supabase/server';
 import { createWebhook, deleteWebhook, toggleWebhook } from '@/lib/server-actions/api-keys';
 import { formatDate } from '@/lib/utils/format';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
 
 const EVENTS = [
   'dossier.created',
@@ -30,57 +40,123 @@ export default async function WebhooksPage({ searchParams }: { searchParams: Pro
   }
 
   return (
-    <div className="app-content with-bg">
-      <div className="page-head">
-        <div>
-          <h1>Webhooks</h1>
-          <p>Recevez les événements de Compta sur vos endpoints. Signés HMAC-SHA256 via <span className="mono">X-Compta-Signature</span>.</p>
+    <div className="mx-auto w-full max-w-5xl space-y-6 p-4 sm:p-6">
+      <div>
+        <h1 className="text-2xl font-semibold tracking-tight">Webhooks</h1>
+        <p className="text-sm text-muted-foreground">
+          Recevez les événements de Compta sur vos endpoints. Signés HMAC-SHA256 via{' '}
+          <code className="rounded bg-muted px-1.5 py-0.5 font-mono text-xs">
+            X-Compta-Signature
+          </code>
+          .
+        </p>
+      </div>
+
+      {sp.e && (
+        <div
+          role="alert"
+          className="rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive"
+        >
+          {sp.e}
         </div>
-      </div>
+      )}
 
-      {sp.e && <div style={{ color: '#b42318', padding: 12, marginBottom: 16, fontSize: 13 }}>{sp.e}</div>}
-
-      <div className="app-card" style={{ padding: 24, marginBottom: 16 }}>
-        <h3 style={{ fontSize: 15, marginBottom: 12 }}>Nouveau webhook</h3>
-        <form action={action}>
-          <input name="url" type="url" required placeholder="https://votre-app.com/webhooks/compta" style={{ width: '100%', padding: '10px 12px', border: '1px solid var(--ink-200)', borderRadius: 8, fontSize: 14, fontFamily: 'inherit', marginBottom: 12 }} />
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 8, marginBottom: 14 }}>
-            {EVENTS.map((e) => (
-              <label key={e} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', border: '1px solid var(--ink-200)', borderRadius: 8, fontSize: 13, cursor: 'pointer' }}>
-                <input type="checkbox" name="events" value={e} style={{ accentColor: 'var(--accent)' }} />
-                <span className="mono">{e}</span>
-              </label>
-            ))}
-          </div>
-          <button type="submit" className="btn btn-accent">Créer</button>
-        </form>
-      </div>
-
-      <div className="app-card">
-        <div className="app-card-head"><h3>Webhooks configurés</h3></div>
-        {!webhooks?.length && <p style={{ padding: 24, color: 'var(--ink-500)', fontSize: 13, textAlign: 'center', margin: 0 }}>Aucun webhook.</p>}
-        {webhooks?.map((w) => (
-          <div key={w.id} style={{ padding: '14px 18px', borderTop: '1px solid var(--ink-100)' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-              <span className="mono" style={{ fontSize: 13, color: 'var(--ink-900)' }}>{w.url}</span>
-              <div style={{ display: 'flex', gap: 8 }}>
-                <form action={async () => { 'use server'; await toggleWebhook(w.id, !w.active); }}>
-                  <button type="submit" className="btn btn-ghost btn-sm" style={{ fontSize: 11 }}>{w.active ? 'Désactiver' : 'Activer'}</button>
-                </form>
-                <form action={async () => { 'use server'; await deleteWebhook(w.id); }}>
-                  <button type="submit" className="btn btn-ghost btn-sm" style={{ fontSize: 11, color: '#b42318' }}>Supprimer</button>
-                </form>
-              </div>
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Nouveau webhook</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <form action={action} className="space-y-4">
+            <Input
+              name="url"
+              type="url"
+              required
+              placeholder="https://votre-app.com/webhooks/compta"
+            />
+            {/* Checkboxes natives : le form est une Server Action (POST FormData). */}
+            <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+              {EVENTS.map((e) => (
+                <label
+                  key={e}
+                  className="flex cursor-pointer items-center gap-2.5 rounded-lg border px-3 py-2 text-sm transition-colors hover:bg-muted/50 has-[:checked]:border-primary/50 has-[:checked]:bg-accent/50"
+                >
+                  <input
+                    type="checkbox"
+                    name="events"
+                    value={e}
+                    className="size-4 accent-[var(--primary)]"
+                  />
+                  <span className="font-mono text-xs">{e}</span>
+                </label>
+              ))}
             </div>
-            <div style={{ fontSize: 11, color: 'var(--ink-500)' }}>
-              <span className={`pill ${w.active ? 'green' : 'gray'}`} style={{ fontSize: 10, marginRight: 8 }}>{w.active ? 'Actif' : 'Inactif'}</span>
-              {(w.events || []).join(' · ')}
-              {w.last_triggered_at && ` · Dernier : ${formatDate(w.last_triggered_at)}`}
-              {w.failure_count > 0 && ` · ${w.failure_count} échec(s)`}
+            <Button type="submit">
+              <Plus className="size-4" />
+              Créer
+            </Button>
+          </form>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-base">
+            <WebhookIcon className="size-4 text-muted-foreground" aria-hidden="true" />
+            Webhooks configurés
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {!webhooks?.length ? (
+            <p className="py-8 text-center text-sm text-muted-foreground">Aucun webhook.</p>
+          ) : (
+            <div className="divide-y">
+              {webhooks.map((w) => (
+                <div key={w.id} className="space-y-2 py-4 first:pt-0 last:pb-0">
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <span className="break-all font-mono text-sm">{w.url}</span>
+                    <div className="flex shrink-0 gap-2">
+                      <form action={async () => { 'use server'; await toggleWebhook(w.id, !w.active); }}>
+                        <Button type="submit" variant="outline" size="sm">
+                          {w.active ? 'Désactiver' : 'Activer'}
+                        </Button>
+                      </form>
+                      <form action={async () => { 'use server'; await deleteWebhook(w.id); }}>
+                        <Button
+                          type="submit"
+                          variant="ghost"
+                          size="sm"
+                          className="text-destructive hover:text-destructive"
+                        >
+                          Supprimer
+                        </Button>
+                      </form>
+                    </div>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
+                    <Badge
+                      variant="secondary"
+                      className={
+                        w.active
+                          ? 'bg-green-100 font-normal text-green-800'
+                          : 'bg-muted font-normal text-muted-foreground'
+                      }
+                    >
+                      {w.active ? 'Actif' : 'Inactif'}
+                    </Badge>
+                    <span className="font-mono">{(w.events || []).join(' · ')}</span>
+                    {w.last_triggered_at && <span>· Dernier : {formatDate(w.last_triggered_at)}</span>}
+                    {w.failure_count > 0 && (
+                      <span className="font-medium text-destructive">
+                        · {w.failure_count} échec(s)
+                      </span>
+                    )}
+                  </div>
+                </div>
+              ))}
             </div>
-          </div>
-        ))}
-      </div>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }

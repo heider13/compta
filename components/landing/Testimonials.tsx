@@ -8,6 +8,7 @@
 // carrousel remplace le bloc pilote automatiquement.
 
 import { Arrow } from '@/components/icons';
+import { Container, Eyebrow, SectionHead, btnCta } from './ui';
 
 type Testimonial = {
   quote: string;
@@ -30,67 +31,63 @@ function initials(name: string): string {
 
 export function Testimonials() {
   return (
-    <section className="section" style={{ background: 'var(--ink-50)' }}>
-      <div className="container">
-        <div className="sec-head">
-          <span className="eyebrow"><span className="dot" />Ils utilisent Compta</span>
-          <h2>Conçu avec les professionnels<br />qui déposent au quotidien.</h2>
-        </div>
+    <section className="bg-[var(--ink-50)] py-20 sm:py-24">
+      <Container>
+        <SectionHead
+          eyebrow="Ils utilisent Compta"
+          title={
+            <>
+              Conçu avec les professionnels
+              <br />
+              qui déposent au quotidien.
+            </>
+          }
+        />
 
         {TESTIMONIALS.length > 0 ? (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 20 }}>
+          <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
             {TESTIMONIALS.map((t) => (
-              <div key={t.name} className="card" style={{ padding: 26, background: 'white' }}>
-                <div style={{ fontSize: 40, lineHeight: 1, color: 'var(--accent)', fontFamily: 'Georgia, serif', marginBottom: 10 }} aria-hidden="true">
+              <div
+                key={t.name}
+                className="rounded-2xl border border-[var(--ink-150)] bg-white p-6 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_16px_40px_rgba(8,3,49,0.08)]"
+              >
+                <div
+                  aria-hidden="true"
+                  className="mb-2.5 font-serif text-[40px] leading-none text-[var(--accent)]"
+                >
                   “
                 </div>
-                <p style={{ fontSize: 15, color: 'var(--ink-800, var(--ink-900))', lineHeight: 1.65, margin: '0 0 18px' }}>
-                  {t.quote}
-                </p>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                  <div
-                    style={{
-                      width: 40, height: 40, borderRadius: '50%', flexShrink: 0,
-                      background: 'var(--violet-100, #E9E2FA)', color: 'var(--accent-ink)',
-                      display: 'grid', placeItems: 'center', fontSize: 13, fontWeight: 700,
-                    }}
-                  >
+                <p className="mb-4.5 text-[15px] leading-relaxed text-[var(--ink-900)]">{t.quote}</p>
+                <div className="flex items-center gap-3">
+                  <div className="grid size-10 shrink-0 place-items-center rounded-full bg-[var(--violet-100)] text-[13px] font-bold text-[var(--accent-ink)]">
                     {initials(t.name)}
                   </div>
                   <div>
-                    <div style={{ fontSize: 14, fontWeight: 600 }}>{t.name}</div>
-                    <div style={{ fontSize: 12.5, color: 'var(--ink-500)' }}>{t.role}</div>
+                    <div className="text-sm font-semibold">{t.name}</div>
+                    <div className="text-[12.5px] text-[var(--ink-500)]">{t.role}</div>
                   </div>
                 </div>
               </div>
             ))}
           </div>
         ) : (
-          <div
-            className="card-elev"
-            style={{
-              maxWidth: 680, margin: '0 auto', padding: '36px 40px', textAlign: 'center',
-              background: 'white', borderRadius: 20,
-            }}
-          >
-            <span className="eyebrow" style={{ margin: '0 auto 14px' }}>
-              <span className="dot" />Programme pilote
-            </span>
-            <h3 style={{ fontSize: 22, marginBottom: 10 }}>
+          <div className="mx-auto max-w-2xl rounded-[20px] border border-[var(--ink-150)] bg-white px-6 py-9 text-center shadow-[0_20px_50px_rgba(8,3,49,0.08)] sm:px-10">
+            <Eyebrow className="mb-3.5">Programme pilote</Eyebrow>
+            <h3 className="mb-2.5 text-[22px] tracking-tight">
               Les premiers cabinets testent Compta en avant-première.
             </h3>
-            <p style={{ fontSize: 15, color: 'var(--ink-600)', margin: '0 auto 22px', maxWidth: 520 }}>
+            <p className="mx-auto mb-5.5 max-w-lg text-[15px] leading-relaxed text-[var(--ink-600)]">
               Rejoignez le programme pilote : onboarding personnalisé, accès direct à
               l&apos;équipe produit, et vos retours façonnent la feuille de route.
               Places limitées.
             </p>
-            <a href="/auth/signup" className="btn btn-accent btn-lg">
+            <a href="/auth/signup" className={btnCta}>
               Rejoindre le programme pilote
               <Arrow size={16} />
             </a>
           </div>
         )}
-      </div>
+      </Container>
     </section>
   );
 }

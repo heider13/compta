@@ -3,6 +3,10 @@ import Link from 'next/link';
 import { createClient } from '@/lib/supabase/server';
 import { AdminSidebar } from '@/components/admin/AdminSidebar';
 import { getInitials } from '@/lib/types';
+import { SidebarInset, SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
+import { Separator } from '@/components/ui/separator';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 
 export const dynamic = 'force-dynamic';
 
@@ -41,49 +45,35 @@ export default async function AdminLayout({
   const userLabel = fullName || user.email || 'Admin';
 
   return (
-    <div className="app-shell">
+    <SidebarProvider>
       <AdminSidebar
         userLabel={userLabel}
         userInitials={getInitials(userLabel)}
         signOutAction={signOut}
       />
-      <main className="app-main">
-        <header
-          className="app-topbar"
-          style={{ background: '#FFFFFF', gap: 12 }}
-        >
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <span
-              style={{
-                fontSize: 11,
-                fontWeight: 600,
-                letterSpacing: '0.08em',
-                color: 'var(--accent-ink)',
-                background: 'var(--accent-soft)',
-                padding: '3px 8px',
-                borderRadius: 999,
-                textTransform: 'uppercase',
-              }}
-            >
-              Back-office
-            </span>
-            <span style={{ fontSize: 13, color: 'var(--ink-500)' }}>
-              Compta SAS · {user.email}
-            </span>
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <Link href="/clients" className="btn btn-ghost btn-sm">
-              Vue cabinet →
-            </Link>
-            <form action={signOut} style={{ margin: 0 }}>
-              <button type="submit" className="btn btn-ghost btn-sm">
+      <SidebarInset>
+        <header className="flex h-14 shrink-0 items-center gap-3 border-b bg-background px-4">
+          <SidebarTrigger className="-ml-1" />
+          <Separator orientation="vertical" className="h-5" />
+          <Badge variant="secondary" className="uppercase tracking-wider">
+            Back-office
+          </Badge>
+          <span className="hidden text-sm text-muted-foreground sm:inline">
+            Compta SAS · {user.email}
+          </span>
+          <div className="ml-auto flex items-center gap-2">
+            <Button asChild variant="ghost" size="sm">
+              <Link href="/clients">Vue cabinet →</Link>
+            </Button>
+            <form action={signOut}>
+              <Button type="submit" variant="ghost" size="sm">
                 Déconnexion
-              </button>
+              </Button>
             </form>
           </div>
         </header>
-        <div className="app-content with-bg">{children}</div>
-      </main>
-    </div>
+        <div className="mx-auto w-full max-w-7xl flex-1 space-y-6 p-4 sm:p-6">{children}</div>
+      </SidebarInset>
+    </SidebarProvider>
   );
 }

@@ -2,6 +2,10 @@
 
 import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 import { useState, useTransition } from 'react';
+import { Search, X } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
+import { cn } from '@/lib/utils';
 
 interface FilterOption {
   value: string;
@@ -49,27 +53,16 @@ export function FilterBar({ filters, searchPlaceholder = 'Rechercher…' }: Filt
   const hasActiveFilters = filters.some((f) => params.get(f.key)) || params.get('q');
 
   return (
-    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center', marginBottom: 18 }}>
-      <form onSubmit={applySearch} style={{ flex: '1 1 240px', minWidth: 200 }}>
-        <div style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: 8,
-          background: 'white',
-          border: '1px solid var(--ink-200)',
-          borderRadius: 10,
-          padding: '8px 12px',
-        }}>
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ color: 'var(--ink-400)' }} aria-hidden="true">
-            <circle cx="11" cy="11" r="8" />
-            <line x1="21" y1="21" x2="16.65" y2="16.65" />
-          </svg>
-          <input
+    <div className="flex flex-wrap items-center gap-2">
+      <form onSubmit={applySearch} className="min-w-52 flex-1 basis-60">
+        <div className="relative">
+          <Search className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
             type="search"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder={searchPlaceholder}
-            style={{ flex: 1, border: 'none', outline: 'none', fontSize: 13, fontFamily: 'inherit', background: 'transparent' }}
+            className="bg-card pl-8"
           />
         </div>
       </form>
@@ -77,47 +70,33 @@ export function FilterBar({ filters, searchPlaceholder = 'Rechercher…' }: Filt
       {filters.map((f) => {
         const current = params.get(f.key) ?? '';
         return (
+          // Select natif : navigation par query params, pas besoin de Radix.
           <select
             key={f.key}
             value={current}
             onChange={(e) => applyFilter(f.key, e.target.value)}
-            style={{
-              padding: '8px 12px',
-              border: '1px solid var(--ink-200)',
-              borderRadius: 10,
-              background: current ? 'var(--accent-soft)' : 'white',
-              color: current ? 'var(--accent-ink)' : 'var(--ink-700)',
-              fontWeight: current ? 500 : 400,
-              fontSize: 13,
-              fontFamily: 'inherit',
-              cursor: 'pointer',
-            }}
+            className={cn(
+              'h-9 cursor-pointer rounded-md border border-input px-3 text-sm shadow-xs outline-none transition-colors focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50',
+              current
+                ? 'border-primary/40 bg-accent font-medium text-accent-foreground'
+                : 'bg-card text-foreground',
+            )}
           >
             <option value="">{f.label}</option>
             {f.options.map((o) => (
-              <option key={o.value} value={o.value}>{o.label}</option>
+              <option key={o.value} value={o.value}>
+                {o.label}
+              </option>
             ))}
           </select>
         );
       })}
 
       {hasActiveFilters && (
-        <button
-          type="button"
-          onClick={resetAll}
-          style={{
-            padding: '8px 12px',
-            border: 'none',
-            background: 'transparent',
-            color: 'var(--ink-500)',
-            fontSize: 12,
-            cursor: 'pointer',
-            textDecoration: 'underline',
-            fontFamily: 'inherit',
-          }}
-        >
+        <Button type="button" variant="ghost" size="sm" onClick={resetAll} className="text-muted-foreground">
+          <X className="size-3.5" />
           Réinitialiser
-        </button>
+        </Button>
       )}
     </div>
   );

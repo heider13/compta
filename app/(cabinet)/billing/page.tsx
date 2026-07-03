@@ -10,18 +10,34 @@
 // Stripe est indispo (graceful degradation).
 
 import Link from 'next/link';
+import { AlertTriangle, Download, ExternalLink } from 'lucide-react';
 import { createClient } from '@/lib/supabase/server';
 import {
   getStripe,
   PLANS,
   isStripeConfigured,
-  type BillingPlanId,
 } from '@/lib/stripe';
 import { PlanCard } from '@/components/cabinet/PlanCard';
-import {
-  createPortalSessionForm,
-} from '@/lib/server-actions/billing';
+import { createPortalSessionForm } from '@/lib/server-actions/billing';
 import type { BillingPlan, Invoice, SubscriptionInfo } from '@/lib/types/billing';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
+import { cn } from '@/lib/utils';
 
 export const dynamic = 'force-dynamic';
 
@@ -62,20 +78,33 @@ function formatDateFr(input: string | number | null): string {
   }).format(d);
 }
 
-function statusLabel(status: Invoice['status']): { label: string; color: string } {
+function statusBadge(status: Invoice['status']): { label: string; className: string } {
   switch (status) {
     case 'paid':
-      return { label: 'Payée', color: 'var(--status-green, #16a34a)' };
+      return { label: 'Payée', className: 'bg-green-100 text-green-800' };
     case 'overdue':
-      return { label: 'En retard', color: 'var(--status-red, #dc2626)' };
+      return { label: 'En retard', className: 'bg-red-100 text-red-800' };
     case 'sent':
-      return { label: 'Envoyée', color: 'var(--status-blue, #2563eb)' };
+      return { label: 'Envoyée', className: 'bg-blue-100 text-blue-800' };
     case 'draft':
-      return { label: 'Brouillon', color: 'var(--ink-500)' };
+      return { label: 'Brouillon', className: 'bg-muted text-muted-foreground' };
     case 'cancelled':
-      return { label: 'Annulée', color: 'var(--ink-400)' };
+      return { label: 'Annulée', className: 'bg-muted text-muted-foreground/70' };
     default:
-      return { label: status, color: 'var(--ink-500)' };
+      return { label: status, className: 'bg-muted text-muted-foreground' };
+  }
+}
+
+function planLabel(plan: BillingPlan): string {
+  switch (plan) {
+    case 'cabinet':
+      return 'Cabinet';
+    case 'pro':
+      return 'Cabinet Pro';
+    case 'enterprise':
+      return 'Enterprise';
+    default:
+      return plan;
   }
 }
 
@@ -102,9 +131,13 @@ export default async function BillingPage() {
   const org = (membership as unknown as MembershipRow | null)?.organizations ?? null;
   if (!org) {
     return (
-      <div className="app-card app-card-pad">
-        <h2>Aucun cabinet</h2>
-        <p>Votre compte n&apos;est rattaché à aucun cabinet.</p>
+      <div className="mx-auto w-full max-w-2xl p-6">
+        <Card>
+          <CardHeader>
+            <CardTitle>Aucun cabinet</CardTitle>
+            <CardDescription>Votre compte n&apos;est rattaché à aucun cabinet.</CardDescription>
+          </CardHeader>
+        </Card>
       </div>
     );
   }
@@ -158,172 +191,104 @@ export default async function BillingPage() {
   const stripeConfigured = isStripeConfigured();
 
   return (
-    <>
-      <div className="page-head">
-        <div>
-          <h1>Facturation</h1>
-          <p>
-            Gérez votre abonnement Compta et consultez l&apos;historique de
-            facturation de votre cabinet.
-          </p>
-        </div>
+    <div className="mx-auto w-full max-w-6xl space-y-6 p-4 sm:p-6">
+      <div>
+        <h1 className="text-2xl font-semibold tracking-tight">Facturation</h1>
+        <p className="text-sm text-muted-foreground">
+          Gérez votre abonnement Compta et consultez l&apos;historique de
+          facturation de votre cabinet.
+        </p>
       </div>
 
       {!stripeConfigured && (
-        <div
-          className="app-card app-card-pad"
-          style={{
-            marginBottom: 24,
-            background: 'var(--amber-50, #fffbeb)',
-            border: '1px solid var(--amber-200, #fde68a)',
-          }}
-        >
-          <strong>Stripe non configuré.</strong>
-          <p style={{ margin: '6px 0 0', fontSize: 13 }}>
-            La variable d&apos;environnement <code>STRIPE_SECRET_KEY</code> est
-            manquante. Le checkout et le portail client sont désactivés. Voir{' '}
-            <code>SETUP-STRIPE.md</code>.
-          </p>
-        </div>
+        <Card className="border-amber-300 bg-amber-50">
+          <CardContent className="flex items-start gap-3 py-4 text-sm text-amber-900">
+            <AlertTriangle className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
+            <div>
+              <p className="font-semibold">Stripe non configuré.</p>
+              <p className="mt-1 text-amber-800/90">
+                La variable d&apos;environnement{' '}
+                <code className="rounded bg-white/70 px-1 font-mono text-xs">STRIPE_SECRET_KEY</code>{' '}
+                est manquante. Le checkout et le portail client sont désactivés. Voir{' '}
+                <code className="rounded bg-white/70 px-1 font-mono text-xs">SETUP-STRIPE.md</code>.
+              </p>
+            </div>
+          </CardContent>
+        </Card>
       )}
 
       {stripeFetchError && (
-        <div
-          className="app-card app-card-pad"
-          style={{
-            marginBottom: 24,
-            background: 'var(--amber-50, #fffbeb)',
-            border: '1px solid var(--amber-200, #fde68a)',
-          }}
-        >
-          <strong>Lecture Stripe impossible.</strong>
-          <p style={{ margin: '6px 0 0', fontSize: 13 }}>{stripeFetchError}</p>
-        </div>
+        <Card className="border-amber-300 bg-amber-50">
+          <CardContent className="flex items-start gap-3 py-4 text-sm text-amber-900">
+            <AlertTriangle className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
+            <div>
+              <p className="font-semibold">Lecture Stripe impossible.</p>
+              <p className="mt-1 text-amber-800/90">{stripeFetchError}</p>
+            </div>
+          </CardContent>
+        </Card>
       )}
 
       {/* ─── Bloc abonnement actif ─────────────────────────────────── */}
       {sub.hasActiveSubscription ? (
-        <section className="app-card" style={{ marginBottom: 28 }}>
-          <div className="app-card-head">
-            <h3>Abonnement</h3>
-            <span
-              className="pill"
-              style={{
-                background: 'var(--status-green, #16a34a)',
-                color: 'white',
-                fontSize: 11,
-                padding: '3px 10px',
-              }}
-            >
-              Plan actif
-            </span>
-          </div>
-          <div style={{ padding: '6px 22px 22px' }}>
-            <div
-              style={{
-                display: 'grid',
-                gap: 20,
-                gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
-                marginBottom: 20,
-              }}
-            >
+        <Card>
+          <CardHeader className="flex-row items-center justify-between space-y-0">
+            <CardTitle>Abonnement</CardTitle>
+            <Badge className="bg-green-600 text-white hover:bg-green-600">Plan actif</Badge>
+          </CardHeader>
+          <CardContent className="space-y-5">
+            <div className="grid gap-5 sm:grid-cols-3">
               <div>
-                <div
-                  style={{
-                    fontSize: 12,
-                    color: 'var(--ink-500)',
-                    marginBottom: 4,
-                  }}
-                >
-                  Plan
-                </div>
-                <div style={{ fontSize: 18, fontWeight: 600 }}>
-                  {sub.plan === 'cabinet'
-                    ? 'Cabinet'
-                    : sub.plan === 'pro'
-                      ? 'Cabinet Pro'
-                      : sub.plan === 'enterprise'
-                        ? 'Enterprise'
-                        : sub.plan}
-                </div>
+                <p className="text-xs text-muted-foreground">Plan</p>
+                <p className="text-lg font-semibold">{planLabel(sub.plan)}</p>
               </div>
               <div>
-                <div
-                  style={{
-                    fontSize: 12,
-                    color: 'var(--ink-500)',
-                    marginBottom: 4,
-                  }}
-                >
-                  Statut
-                </div>
-                <div style={{ fontSize: 18, fontWeight: 600 }}>
+                <p className="text-xs text-muted-foreground">Statut</p>
+                <p className="text-lg font-semibold">
                   {sub.status === 'trialing'
                     ? 'Période d’essai'
                     : sub.status === 'active'
                       ? 'Actif'
                       : (sub.status ?? '—')}
-                </div>
+                </p>
               </div>
               <div>
-                <div
-                  style={{
-                    fontSize: 12,
-                    color: 'var(--ink-500)',
-                    marginBottom: 4,
-                  }}
-                >
+                <p className="text-xs text-muted-foreground">
                   {sub.cancelAtPeriodEnd ? 'Fin de l’abonnement' : 'Prochain renouvellement'}
-                </div>
-                <div style={{ fontSize: 18, fontWeight: 600 }}>
-                  {formatDateFr(sub.currentPeriodEnd)}
-                </div>
+                </p>
+                <p className="text-lg font-semibold">{formatDateFr(sub.currentPeriodEnd)}</p>
               </div>
             </div>
 
             {sub.cancelAtPeriodEnd && (
-              <p
-                style={{
-                  fontSize: 13,
-                  color: 'var(--status-red, #dc2626)',
-                  marginBottom: 14,
-                }}
-              >
+              <p className="text-sm font-medium text-destructive">
                 Votre abonnement sera annulé le {formatDateFr(sub.currentPeriodEnd)}.
               </p>
             )}
 
-            <form action={createPortalSessionForm}>
-              <button
-                type="submit"
-                className="btn btn-accent"
-                disabled={!stripeConfigured}
-              >
-                Gérer mon abonnement
-              </button>
-            </form>
-            <p style={{ marginTop: 10, fontSize: 12, color: 'var(--ink-500)' }}>
-              Vous serez redirigé vers le portail client Stripe pour modifier votre
-              moyen de paiement, changer de plan ou télécharger vos factures.
-            </p>
-          </div>
-        </section>
+            <div className="space-y-2">
+              <form action={createPortalSessionForm}>
+                <Button type="submit" disabled={!stripeConfigured}>
+                  Gérer mon abonnement
+                  <ExternalLink className="size-4" />
+                </Button>
+              </form>
+              <p className="text-xs text-muted-foreground">
+                Vous serez redirigé vers le portail client Stripe pour modifier votre
+                moyen de paiement, changer de plan ou télécharger vos factures.
+              </p>
+            </div>
+          </CardContent>
+        </Card>
       ) : (
-        <section style={{ marginBottom: 28 }}>
-          <div style={{ marginBottom: 14 }}>
-            <h2 style={{ fontSize: 20, marginBottom: 4 }}>Choisissez un plan</h2>
-            <p style={{ fontSize: 13, color: 'var(--ink-500)' }}>
+        <section className="space-y-4">
+          <div>
+            <h2 className="text-lg font-semibold tracking-tight">Choisissez un plan</h2>
+            <p className="text-sm text-muted-foreground">
               Sans engagement. Annulable à tout moment depuis le portail client.
             </p>
           </div>
-          <div
-            className="grid-3 pricing-grid"
-            style={{
-              display: 'grid',
-              gap: 18,
-              gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))',
-            }}
-          >
+          <div className="grid gap-4 pt-3 lg:grid-cols-3">
             <PlanCard
               planId="cabinet"
               name={PLANS.cabinet.name}
@@ -365,125 +330,83 @@ export default async function BillingPage() {
       )}
 
       {/* ─── Tableau des factures ──────────────────────────────────── */}
-      <section className="app-card">
-        <div className="app-card-head">
-          <h3>Factures</h3>
-          <span style={{ fontSize: 12, color: 'var(--ink-500)' }}>
-            Facturation Compta → cabinet
-          </span>
-        </div>
+      <Card>
+        <CardHeader className="flex-row items-center justify-between space-y-0">
+          <CardTitle>Factures</CardTitle>
+          <span className="text-xs text-muted-foreground">Facturation Compta → cabinet</span>
+        </CardHeader>
+        <CardContent>
+          {invoices.length === 0 ? (
+            <p className="py-10 text-center text-sm text-muted-foreground">
+              Aucune facture pour le moment.
+            </p>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Date</TableHead>
+                  <TableHead>Numéro</TableHead>
+                  <TableHead>Description</TableHead>
+                  <TableHead className="text-right">Montant</TableHead>
+                  <TableHead>Statut</TableHead>
+                  <TableHead className="text-right">PDF</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {invoices.map((inv) => {
+                  const meta = (inv.metadata ?? {}) as Record<string, unknown>;
+                  const pdfUrl =
+                    (meta.invoice_pdf as string | undefined) ??
+                    (meta.hosted_invoice_url as string | undefined) ??
+                    null;
+                  const sBadge = statusBadge(inv.status);
+                  return (
+                    <TableRow key={inv.id}>
+                      <TableCell className="text-muted-foreground">
+                        {formatDateFr(inv.created_at)}
+                      </TableCell>
+                      <TableCell className="font-mono text-xs text-muted-foreground">
+                        {inv.number ?? inv.stripe_invoice_id ?? '—'}
+                      </TableCell>
+                      <TableCell>
+                        Abonnement Compta
+                        {inv.due_date ? ` — échéance ${formatDateFr(inv.due_date)}` : ''}
+                      </TableCell>
+                      <TableCell className="text-right font-medium">
+                        {formatMoney(inv.amount_cents, inv.currency)}
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant="secondary" className={cn('font-normal', sBadge.className)}>
+                          {sBadge.label}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        {pdfUrl ? (
+                          <Button variant="ghost" size="sm" asChild>
+                            <a href={pdfUrl} target="_blank" rel="noopener noreferrer">
+                              <Download className="size-3.5" />
+                              Télécharger
+                            </a>
+                          </Button>
+                        ) : (
+                          <span className="text-xs text-muted-foreground/60">—</span>
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          )}
+        </CardContent>
+      </Card>
 
-        {invoices.length === 0 ? (
-          <div
-            style={{
-              padding: '48px 22px',
-              textAlign: 'center',
-              color: 'var(--ink-500)',
-              fontSize: 14,
-            }}
-          >
-            Aucune facture pour le moment.
-          </div>
-        ) : (
-          <div className="app-table">
-            <div
-              className="app-table-head"
-              style={{
-                gridTemplateColumns: '120px 130px 1fr 110px 110px 130px',
-              }}
-            >
-              <div>Date</div>
-              <div>Numéro</div>
-              <div>Description</div>
-              <div style={{ textAlign: 'right' }}>Montant</div>
-              <div>Statut</div>
-              <div style={{ textAlign: 'right' }}>PDF</div>
-            </div>
-            {invoices.map((inv) => {
-              const meta = (inv.metadata ?? {}) as Record<string, unknown>;
-              const pdfUrl =
-                (meta.invoice_pdf as string | undefined) ??
-                (meta.hosted_invoice_url as string | undefined) ??
-                null;
-              const sLab = statusLabel(inv.status);
-              return (
-                <div
-                  key={inv.id}
-                  className="app-table-row"
-                  style={{
-                    gridTemplateColumns: '120px 130px 1fr 110px 110px 130px',
-                  }}
-                >
-                  <div style={{ fontSize: 13, color: 'var(--ink-600)' }}>
-                    {formatDateFr(inv.created_at)}
-                  </div>
-                  <div
-                    className="mono"
-                    style={{ fontSize: 12, color: 'var(--ink-600)' }}
-                  >
-                    {inv.number ?? inv.stripe_invoice_id ?? '—'}
-                  </div>
-                  <div style={{ fontSize: 13 }}>
-                    Abonnement Compta
-                    {inv.due_date ? ` — échéance ${formatDateFr(inv.due_date)}` : ''}
-                  </div>
-                  <div
-                    style={{
-                      textAlign: 'right',
-                      fontWeight: 500,
-                    }}
-                  >
-                    {formatMoney(inv.amount_cents, inv.currency)}
-                  </div>
-                  <div>
-                    <span
-                      className="pill"
-                      style={{
-                        background: sLab.color,
-                        color: 'white',
-                        fontSize: 11,
-                        padding: '2px 8px',
-                      }}
-                    >
-                      {sLab.label}
-                    </span>
-                  </div>
-                  <div style={{ textAlign: 'right' }}>
-                    {pdfUrl ? (
-                      <a
-                        href={pdfUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="btn btn-link btn-sm"
-                      >
-                        Télécharger
-                      </a>
-                    ) : (
-                      <span style={{ fontSize: 12, color: 'var(--ink-400)' }}>
-                        —
-                      </span>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        )}
-      </section>
-
-      <p
-        style={{
-          marginTop: 24,
-          fontSize: 12,
-          color: 'var(--ink-500)',
-          textAlign: 'center',
-        }}
-      >
+      <p className="text-center text-xs text-muted-foreground">
         Une question ?{' '}
-        <Link href="mailto:support@compta.app" className="btn-link">
+        <Link href="mailto:support@compta.app" className="font-medium text-primary hover:underline">
           Contactez le support
         </Link>
       </p>
-    </>
+    </div>
   );
 }

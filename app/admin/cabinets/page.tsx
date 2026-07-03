@@ -1,6 +1,17 @@
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/server';
 import { formatDateFr, formatSiren } from '@/lib/types';
+import { PageHeader, EmptyState, ErrorNote } from '@/components/admin/bits';
+import { Badge } from '@/components/ui/badge';
+import { Card, CardContent } from '@/components/ui/card';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
 
 export const dynamic = 'force-dynamic';
 
@@ -14,8 +25,6 @@ interface OrgRow {
   memberships: { id: string }[] | null;
   dossiers: { id: string }[] | null;
 }
-
-const GRID = '1.6fr 1fr 140px 110px 110px 110px 130px';
 
 export default async function AdminCabinetsPage() {
   const supabase = await createClient();
@@ -31,79 +40,61 @@ export default async function AdminCabinetsPage() {
 
   return (
     <>
-      <div className="page-head">
-        <div>
-          <h1>Cabinets</h1>
-          <p>
-            {rows.length} cabinet{rows.length > 1 ? 's' : ''} inscrits sur la
-            plateforme.
-          </p>
-        </div>
-      </div>
+      <PageHeader
+        title="Cabinets"
+        subtitle={`${rows.length} cabinet${rows.length > 1 ? 's' : ''} inscrits sur la plateforme.`}
+      />
 
-      {error && (
-        <div className="form-error" style={{ marginBottom: 16 }}>
-          {error.message}
-        </div>
-      )}
+      {error && <ErrorNote message={error.message} />}
 
-      <div className="app-card">
-        <div className="app-table-head" style={{ gridTemplateColumns: GRID }}>
-          <span>Nom</span>
-          <span>Slug</span>
-          <span>SIREN</span>
-          <span>Plan</span>
-          <span>Membres</span>
-          <span>Dossiers</span>
-          <span>Inscrit le</span>
-        </div>
-        {rows.length === 0 ? (
-          <div
-            style={{
-              padding: 48,
-              textAlign: 'center',
-              color: 'var(--ink-500)',
-              fontSize: 14,
-            }}
-          >
-            Aucun cabinet pour l&apos;instant.
-          </div>
-        ) : (
-          rows.map((o) => (
-            <Link
-              key={o.id}
-              href={`/admin/cabinets/${o.id}`}
-              className="app-table-row"
-              style={{
-                gridTemplateColumns: GRID,
-                textDecoration: 'none',
-              }}
-            >
-              <span style={{ fontWeight: 500 }}>{o.name}</span>
-              <span className="mono" style={{ fontSize: 12, color: 'var(--ink-500)' }}>
-                {o.slug}
-              </span>
-              <span className="mono" style={{ fontSize: 12 }}>
-                {formatSiren(o.siren)}
-              </span>
-              <span>
-                <span className="pill gray" style={{ fontSize: 11 }}>
-                  {o.plan ?? 'cabinet'}
-                </span>
-              </span>
-              <span className="mono" style={{ fontSize: 12 }}>
-                {o.memberships?.length ?? 0}
-              </span>
-              <span className="mono" style={{ fontSize: 12 }}>
-                {o.dossiers?.length ?? 0}
-              </span>
-              <span className="mono" style={{ fontSize: 11, color: 'var(--ink-500)' }}>
-                {formatDateFr(o.created_at)}
-              </span>
-            </Link>
-          ))
-        )}
-      </div>
+      <Card>
+        <CardContent>
+          {rows.length === 0 ? (
+            <EmptyState label="Aucun cabinet pour l'instant." />
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Nom</TableHead>
+                  <TableHead>Slug</TableHead>
+                  <TableHead>SIREN</TableHead>
+                  <TableHead>Plan</TableHead>
+                  <TableHead className="text-right">Membres</TableHead>
+                  <TableHead className="text-right">Dossiers</TableHead>
+                  <TableHead>Inscrit le</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {rows.map((o) => (
+                  <TableRow key={o.id}>
+                    <TableCell className="font-medium">
+                      <Link href={`/admin/cabinets/${o.id}`} className="hover:underline">
+                        {o.name}
+                      </Link>
+                    </TableCell>
+                    <TableCell className="font-mono text-xs text-muted-foreground">
+                      {o.slug}
+                    </TableCell>
+                    <TableCell className="font-mono text-xs">{formatSiren(o.siren)}</TableCell>
+                    <TableCell>
+                      <Badge variant="secondary">{o.plan ?? 'cabinet'}</Badge>
+                    </TableCell>
+                    <TableCell className="text-right font-mono text-xs">
+                      {o.memberships?.length ?? 0}
+                    </TableCell>
+                    <TableCell className="text-right font-mono text-xs">
+                      {o.dossiers?.length ?? 0}
+                    </TableCell>
+                    <TableCell className="font-mono text-xs text-muted-foreground">
+                      {formatDateFr(o.created_at)}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+        </CardContent>
+      </Card>
     </>
   );
 }

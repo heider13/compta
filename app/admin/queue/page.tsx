@@ -1,7 +1,17 @@
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/server';
-import { StatusPill } from '@/components/cabinet/StatusPill';
+import { StatusBadge } from '@/components/cabinet/StatusBadge';
 import { formatDateFr } from '@/lib/types';
+import { PageHeader, EmptyState, ErrorNote } from '@/components/admin/bits';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
 
 export const dynamic = 'force-dynamic';
 
@@ -16,8 +26,6 @@ interface QueueRow {
   updated_at: string | null;
   organizations: { name: string } | null;
 }
-
-const GRID = '100px 1.3fr 1fr 90px 1fr 120px 130px';
 
 export default async function AdminQueuePage() {
   const supabase = await createClient();
@@ -36,117 +44,88 @@ export default async function AdminQueuePage() {
 
   return (
     <>
-      <div className="page-head">
-        <div>
-          <h1>À valider</h1>
-          <p>
-            {awaiting.length} dossier{awaiting.length > 1 ? 's' : ''} en attente
-            · {amendment.length} en correction.
-          </p>
-        </div>
-      </div>
+      <PageHeader
+        title="À valider"
+        subtitle={`${awaiting.length} dossier${awaiting.length > 1 ? 's' : ''} en attente · ${amendment.length} en correction.`}
+      />
 
-      {error && (
-        <div className="form-error" style={{ marginBottom: 16 }}>
-          {error.message}
-        </div>
-      )}
+      {error && <ErrorNote message={error.message} />}
 
-      <Section title={`En attente de validation (${awaiting.length})`}>
-        {awaiting.length === 0 ? (
-          <Empty label="Aucun dossier en attente." />
-        ) : (
-          awaiting.map((d) => <QueueRowItem key={d.id} dossier={d} />)
-        )}
-      </Section>
+      <QueueSection
+        title={`En attente de validation (${awaiting.length})`}
+        rows={awaiting}
+        emptyLabel="Aucun dossier en attente."
+      />
 
-      <div style={{ height: 20 }} />
-
-      <Section title={`En correction (${amendment.length})`}>
-        {amendment.length === 0 ? (
-          <Empty label="Aucun dossier en correction." />
-        ) : (
-          amendment.map((d) => <QueueRowItem key={d.id} dossier={d} />)
-        )}
-      </Section>
+      <QueueSection
+        title={`En correction (${amendment.length})`}
+        rows={amendment}
+        emptyLabel="Aucun dossier en correction."
+      />
     </>
   );
 }
 
-function Section({
+function QueueSection({
   title,
-  children,
+  rows,
+  emptyLabel,
 }: {
   title: string;
-  children: React.ReactNode;
+  rows: QueueRow[];
+  emptyLabel: string;
 }) {
   return (
-    <div className="app-card">
-      <div className="app-card-head">
-        <h3>{title}</h3>
-      </div>
-      <div
-        className="app-table-head"
-        style={{ gridTemplateColumns: GRID }}
-      >
-        <span>Référence</span>
-        <span>Client</span>
-        <span>Cabinet</span>
-        <span>Forme</span>
-        <span>Type</span>
-        <span>Soumis</span>
-        <span>Statut</span>
-      </div>
-      {children}
-    </div>
-  );
-}
-
-function QueueRowItem({ dossier: d }: { dossier: QueueRow }) {
-  return (
-    <Link
-      href={`/admin/dossiers/${d.id}`}
-      className="app-table-row"
-      style={{ gridTemplateColumns: GRID, textDecoration: 'none' }}
-    >
-      <span
-        className="mono"
-        style={{ fontSize: 11, color: 'var(--ink-500)' }}
-      >
-        {d.reference ?? d.id.slice(0, 8)}
-      </span>
-      <span style={{ fontWeight: 500 }}>{d.client_name}</span>
-      <span style={{ color: 'var(--ink-600)', fontSize: 13 }}>
-        {d.organizations?.name ?? '—'}
-      </span>
-      <span style={{ fontSize: 12, color: 'var(--ink-700)' }}>
-        {d.forme_juridique ?? '—'}
-      </span>
-      <span style={{ color: 'var(--ink-700)', fontSize: 13 }}>
-        {d.type_formalite}
-      </span>
-      <span
-        className="mono"
-        style={{ fontSize: 11, color: 'var(--ink-500)' }}
-      >
-        {formatDateFr(d.created_at)}
-      </span>
-      <StatusPill statut={d.statut} />
-    </Link>
-  );
-}
-
-function Empty({ label }: { label: string }) {
-  return (
-    <div
-      style={{
-        padding: 40,
-        textAlign: 'center',
-        color: 'var(--ink-500)',
-        fontSize: 13,
-      }}
-    >
-      {label}
-    </div>
+    <Card>
+      <CardHeader>
+        <CardTitle>{title}</CardTitle>
+      </CardHeader>
+      <CardContent>
+        {rows.length === 0 ? (
+          <EmptyState label={emptyLabel} />
+        ) : (
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Référence</TableHead>
+                <TableHead>Client</TableHead>
+                <TableHead>Cabinet</TableHead>
+                <TableHead>Forme</TableHead>
+                <TableHead>Type</TableHead>
+                <TableHead>Soumis</TableHead>
+                <TableHead>Statut</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {rows.map((d) => (
+                <TableRow key={d.id}>
+                  <TableCell className="font-mono text-xs text-muted-foreground">
+                    <Link href={`/admin/dossiers/${d.id}`} className="hover:underline">
+                      {d.reference ?? d.id.slice(0, 8)}
+                    </Link>
+                  </TableCell>
+                  <TableCell className="font-medium">
+                    <Link href={`/admin/dossiers/${d.id}`} className="hover:underline">
+                      {d.client_name}
+                    </Link>
+                  </TableCell>
+                  <TableCell className="text-muted-foreground">
+                    {d.organizations?.name ?? '—'}
+                  </TableCell>
+                  <TableCell className="text-xs">{d.forme_juridique ?? '—'}</TableCell>
+                  <TableCell>{d.type_formalite}</TableCell>
+                  <TableCell className="font-mono text-xs text-muted-foreground">
+                    {formatDateFr(d.created_at)}
+                  </TableCell>
+                  <TableCell>
+                    <StatusBadge statut={d.statut} />
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        )}
+      </CardContent>
+    </Card>
   );
 }

@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
+import { ArrowRight, Mail, Pencil, Phone, Plus } from 'lucide-react';
 import { createClient } from '@/lib/supabase/server';
 import {
   formatAdresse,
@@ -10,11 +11,32 @@ import {
   type Client,
   type Dossier,
 } from '@/lib/types';
+import { typeFormaliteLabel } from '@/lib/utils/format';
+import { StatusBadge } from '@/components/cabinet/StatusBadge';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableRow,
+} from '@/components/ui/table';
 
 export const dynamic = 'force-dynamic';
 
 interface PageProps {
   params: Promise<{ id: string }>;
+}
+
+function InfoRow({ label, value }: { label: string; value: React.ReactNode }) {
+  return (
+    <div className="flex items-start justify-between gap-4 border-b border-border py-2.5 text-sm last:border-0">
+      <span className="text-muted-foreground">{label}</span>
+      <span className="text-right font-medium">{value}</span>
+    </div>
+  );
 }
 
 export default async function ClientDetailPage({ params }: PageProps) {
@@ -53,195 +75,164 @@ export default async function ClientDetailPage({ params }: PageProps) {
     : [];
 
   return (
-    <>
-      <div className="page-head">
-        <div style={{ display: 'flex', gap: 16, alignItems: 'center' }}>
-          <div className="avatar avatar-lg">{getInitials(c.denomination)}</div>
+    <div className="mx-auto w-full max-w-7xl space-y-6 p-4 sm:p-6">
+      {/* En-tête */}
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        <div className="flex items-center gap-4">
+          <Avatar className="size-12">
+            <AvatarFallback className="bg-accent text-base font-semibold text-accent-foreground">
+              {getInitials(c.denomination)}
+            </AvatarFallback>
+          </Avatar>
           <div>
-            <h1 style={{ marginBottom: 4 }}>{c.denomination}</h1>
-            <p style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
-              <span className="mono">SIREN {formatSiren(c.siren)}</span>
+            <h1 className="text-2xl font-semibold tracking-tight">{c.denomination}</h1>
+            <div className="mt-1 flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+              <span className="font-mono">SIREN {formatSiren(c.siren)}</span>
               {c.forme_juridique && (
-                <span className="pill violet">{c.forme_juridique}</span>
+                <Badge variant="outline" className="border-accent bg-accent/50 text-accent-foreground">
+                  {c.forme_juridique}
+                </Badge>
               )}
-              {c.archived_at && <span className="pill gray">Archivé</span>}
-            </p>
+              {c.archived_at && <Badge variant="secondary">Archivé</Badge>}
+            </div>
           </div>
         </div>
-        <div style={{ display: 'flex', gap: 8 }}>
-          <Link href={`/clients/${c.id}/edit`} className="btn btn-ghost">
-            Modifier
-          </Link>
-          <button type="button" className="btn btn-ghost" disabled>
-            Archiver
-          </button>
-          <Link href={`/dossiers/new?client_id=${c.id}`} className="btn btn-accent">
-            + Nouveau dossier
-          </Link>
+        <div className="flex gap-2">
+          <Button variant="outline" asChild>
+            <Link href={`/clients/${c.id}/edit`}>
+              <Pencil className="size-4" />
+              Modifier
+            </Link>
+          </Button>
+          <Button asChild>
+            <Link href={`/dossiers/new?client_id=${c.id}`}>
+              <Plus className="size-4" />
+              Nouveau dossier
+            </Link>
+          </Button>
         </div>
       </div>
 
-      <div className="detail-grid">
-        <div style={{ display: 'grid', gap: 16 }}>
-          <section className="app-card">
-            <div className="app-card-head">
-              <h3>Informations</h3>
-            </div>
-            <div className="app-card-pad">
-              <div className="kv-list">
-                <div className="kv-row">
-                  <span className="k">Adresse du siège</span>
-                  <span className="v">{formatAdresse(c.adresse_siege)}</span>
-                </div>
-                <div className="kv-row">
-                  <span className="k">Code NAF</span>
-                  <span className="v">{c.code_naf ?? '—'}</span>
-                </div>
-                <div className="kv-row">
-                  <span className="k">Capital social</span>
-                  <span className="v">{formatCapital(c.capital_social_cents)}</span>
-                </div>
-                <div className="kv-row">
-                  <span className="k">Date d&apos;immatriculation</span>
-                  <span className="v">{formatDateFr(c.date_immatriculation)}</span>
-                </div>
-                <div className="kv-row">
-                  <span className="k">Source</span>
-                  <span className="v">{c.source}</span>
-                </div>
-                <div className="kv-row">
-                  <span className="k">Ajouté le</span>
-                  <span className="v">{formatDateFr(c.created_at)}</span>
-                </div>
-              </div>
-            </div>
-          </section>
+      <div className="grid gap-5 lg:grid-cols-[1.6fr_1fr]">
+        <div className="space-y-5">
+          {/* Informations */}
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base">Informations</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <InfoRow label="Adresse du siège" value={formatAdresse(c.adresse_siege)} />
+              <InfoRow label="Code NAF" value={c.code_naf ?? '—'} />
+              <InfoRow label="Capital social" value={formatCapital(c.capital_social_cents)} />
+              <InfoRow label="Date d'immatriculation" value={formatDateFr(c.date_immatriculation)} />
+              <InfoRow label="Source" value={c.source} />
+              <InfoRow label="Ajouté le" value={formatDateFr(c.created_at)} />
+            </CardContent>
+          </Card>
 
-          <section className="app-card">
-            <div className="app-card-head">
-              <h3>Dossiers récents</h3>
-              <Link href={`/dossiers?client_id=${c.id}`} className="btn btn-link btn-sm">
-                Tout voir →
-              </Link>
-            </div>
-            {dossiers.length === 0 ? (
-              <div
-                className="app-card-pad"
-                style={{ color: 'var(--ink-500)', fontSize: 14 }}
-              >
-                Aucun dossier lié à ce client pour l&apos;instant.
-              </div>
-            ) : (
-              <div className="app-table">
-                {dossiers.map((d) => (
-                  <Link
-                    key={d.id}
-                    href={`/dossiers/${d.id}`}
-                    className="app-table-row"
-                    style={{
-                      gridTemplateColumns: '1fr 160px 140px 120px',
-                      textDecoration: 'none',
-                    }}
-                  >
-                    <div style={{ fontWeight: 500 }}>
-                      {d.reference ?? d.client_name}
-                    </div>
-                    <div style={{ fontSize: 13, color: 'var(--ink-600)' }}>
-                      {d.type_formalite}
-                    </div>
-                    <div>
-                      <span className="pill blue">{d.statut}</span>
-                    </div>
-                    <div style={{ fontSize: 13, color: 'var(--ink-500)' }}>
-                      {formatDateFr(d.created_at)}
-                    </div>
-                  </Link>
-                ))}
-              </div>
-            )}
-          </section>
+          {/* Dossiers récents */}
+          <Card>
+            <CardHeader className="flex-row items-center justify-between pb-2">
+              <CardTitle className="text-base">Dossiers récents</CardTitle>
+              <Button variant="link" size="sm" asChild>
+                <Link href={`/dossiers?client_id=${c.id}`}>
+                  Tout voir
+                  <ArrowRight className="size-3.5" />
+                </Link>
+              </Button>
+            </CardHeader>
+            <CardContent className="p-0">
+              {dossiers.length === 0 ? (
+                <p className="px-6 pb-5 text-sm text-muted-foreground">
+                  Aucun dossier lié à ce client pour l&apos;instant.
+                </p>
+              ) : (
+                <Table>
+                  <TableBody>
+                    {dossiers.map((d) => (
+                      <TableRow key={d.id}>
+                        <TableCell className="font-medium">
+                          <Link href={`/dossiers/${d.id}`} className="hover:underline">
+                            {d.reference ?? d.client_name}
+                          </Link>
+                        </TableCell>
+                        <TableCell className="text-muted-foreground">
+                          {typeFormaliteLabel(d.type_formalite)}
+                        </TableCell>
+                        <TableCell>
+                          <StatusBadge statut={d.statut} />
+                        </TableCell>
+                        <TableCell className="text-right text-muted-foreground">
+                          {formatDateFr(d.created_at)}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              )}
+            </CardContent>
+          </Card>
 
+          {/* Données registre brutes */}
           {pappersEntries.length > 0 && (
-            <section className="app-card">
-              <details>
-                <summary
-                  className="app-card-head"
-                  style={{ cursor: 'pointer', listStyle: 'none' }}
-                >
-                  <h3>Données Pappers / RNE</h3>
-                  <span className="btn btn-link btn-sm">Afficher</span>
-                </summary>
-                <div className="app-card-pad">
-                  <pre
-                    style={{
-                      fontSize: 12,
-                      lineHeight: 1.5,
-                      background: 'var(--ink-50)',
-                      padding: 14,
-                      borderRadius: 10,
-                      overflow: 'auto',
-                      margin: 0,
-                      maxHeight: 480,
-                    }}
-                  >
+            <Card>
+              <CardContent className="pt-5">
+                <details>
+                  <summary className="cursor-pointer text-sm font-semibold">
+                    Données Pappers / RNE
+                  </summary>
+                  <pre className="mt-3 max-h-[480px] overflow-auto rounded-lg bg-muted p-4 text-xs leading-relaxed">
                     {JSON.stringify(c.pappers_data, null, 2)}
                   </pre>
-                </div>
-              </details>
-            </section>
+                </details>
+              </CardContent>
+            </Card>
           )}
         </div>
 
-        <aside style={{ display: 'grid', gap: 16 }}>
-          <section className="app-card">
-            <div className="app-card-head">
-              <h3>Contact</h3>
-            </div>
-            <div className="app-card-pad">
-              <div className="kv-list">
-                <div className="kv-row">
-                  <span className="k">Prénom</span>
-                  <span className="v">{c.contact_first_name ?? '—'}</span>
-                </div>
-                <div className="kv-row">
-                  <span className="k">Nom</span>
-                  <span className="v">{c.contact_last_name ?? '—'}</span>
-                </div>
-                <div className="kv-row">
-                  <span className="k">Email</span>
-                  <span className="v">
-                    {c.contact_email ? (
-                      <a
-                        href={`mailto:${c.contact_email}`}
-                        style={{ color: 'var(--accent-ink)' }}
-                      >
-                        {c.contact_email}
-                      </a>
-                    ) : (
-                      '—'
-                    )}
-                  </span>
-                </div>
-                <div className="kv-row">
-                  <span className="k">Téléphone</span>
-                  <span className="v">
-                    {c.contact_phone ? (
-                      <a
-                        href={`tel:${c.contact_phone}`}
-                        style={{ color: 'var(--accent-ink)' }}
-                      >
-                        {c.contact_phone}
-                      </a>
-                    ) : (
-                      '—'
-                    )}
-                  </span>
-                </div>
-              </div>
-            </div>
-          </section>
-        </aside>
+        {/* Contact */}
+        <Card className="h-fit">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base">Contact</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <InfoRow label="Prénom" value={c.contact_first_name ?? '—'} />
+            <InfoRow label="Nom" value={c.contact_last_name ?? '—'} />
+            <InfoRow
+              label="Email"
+              value={
+                c.contact_email ? (
+                  <a
+                    href={`mailto:${c.contact_email}`}
+                    className="inline-flex items-center gap-1 text-primary hover:underline"
+                  >
+                    <Mail className="size-3.5" />
+                    {c.contact_email}
+                  </a>
+                ) : (
+                  '—'
+                )
+              }
+            />
+            <InfoRow
+              label="Téléphone"
+              value={
+                c.contact_phone ? (
+                  <a
+                    href={`tel:${c.contact_phone}`}
+                    className="inline-flex items-center gap-1 text-primary hover:underline"
+                  >
+                    <Phone className="size-3.5" />
+                    {c.contact_phone}
+                  </a>
+                ) : (
+                  '—'
+                )
+              }
+            />
+          </CardContent>
+        </Card>
       </div>
-    </>
+    </div>
   );
 }

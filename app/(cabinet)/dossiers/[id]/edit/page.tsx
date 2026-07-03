@@ -1,7 +1,16 @@
 import Link from 'next/link';
 import { notFound, redirect } from 'next/navigation';
+import { ArrowLeft } from 'lucide-react';
 import { createClient } from '@/lib/supabase/server';
 import { updateDossier } from '@/lib/server-actions/dossiers';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+
+// Select natif stylé : le formulaire poste via Server Action (FormData).
+const selectClass =
+  'border-input flex h-10 w-full cursor-pointer rounded-md border bg-card px-3 py-1 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50';
 
 export default async function EditDossierPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -24,61 +33,88 @@ export default async function EditDossierPage({ params }: { params: Promise<{ id
   }
 
   return (
-    <div className="app-content with-bg">
-      <div style={{ fontSize: 13, color: 'var(--ink-500)', marginBottom: 12 }}>
-        <Link href={`/dossiers/${id}`} style={{ color: 'var(--ink-500)' }}>← Retour au dossier</Link>
+    <div className="mx-auto w-full max-w-7xl p-4 sm:p-6">
+      <nav className="mb-4">
+        <Link
+          href={`/dossiers/${id}`}
+          className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"
+        >
+          <ArrowLeft className="size-4" />
+          Retour au dossier
+        </Link>
+      </nav>
+
+      <div className="mb-6">
+        <h1 className="text-2xl font-semibold tracking-tight">Modifier le dossier</h1>
+        <p className="text-sm text-muted-foreground">
+          Métadonnées de pilotage. Le contenu INPI s&apos;édite via{' '}
+          <a
+            href={`/app.html?route=nouveau&type=${dossier.forme_juridique || dossier.type_formalite}&d=${id}`}
+            className="font-medium text-primary hover:underline"
+          >
+            le wizard
+          </a>
+          .
+        </p>
       </div>
 
-      <div className="page-head">
-        <div>
-          <h1>Modifier le dossier</h1>
-          <p>Métadonnées de pilotage. Le contenu INPI s&apos;édite via <a href={`/app.html?route=nouveau&type=${dossier.forme_juridique || dossier.type_formalite}&d=${id}`} style={{ color: 'var(--accent-ink)' }}>le wizard</a>.</p>
-        </div>
-      </div>
-
-      <form action={action} style={{ maxWidth: 640 }}>
-        <div className="app-card" style={{ padding: 24, display: 'grid', gap: 14 }}>
-          <Field label="Client lié">
-            <select name="client_id" defaultValue={dossier.client_id || ''} style={selectStyle}>
-              <option value="">— Aucun —</option>
-              {(clients ?? []).map((c) => <option key={c.id} value={c.id}>{c.denomination}</option>)}
-            </select>
-          </Field>
-          <Field label="Priorité">
-            <select name="priority" defaultValue={dossier.priority || 'normal'} style={selectStyle}>
-              <option value="low">Basse</option>
-              <option value="normal">Normale</option>
-              <option value="high">Haute</option>
-              <option value="urgent">Urgente</option>
-            </select>
-          </Field>
-          <Field label="Échéance interne">
-            <input type="date" name="internal_due_date" defaultValue={dossier.internal_due_date || ''} style={inputStyle} />
-          </Field>
-          <Field label="Assigné à">
-            <select name="assigned_to" defaultValue={dossier.assigned_to || ''} style={selectStyle}>
-              <option value="">— Aucun —</option>
-              {(memberships ?? []).map((m: any) => {
-                const p = Array.isArray(m.profiles) ? m.profiles[0] : m.profiles;
-                return <option key={m.user_id} value={m.user_id}>{p?.first_name} {p?.last_name}</option>;
-              })}
-            </select>
-          </Field>
-          <Field label="Tags (séparés par virgule)">
-            <input name="tags" defaultValue={(dossier.tags || []).join(', ')} placeholder="urgent, vip" style={inputStyle} />
-          </Field>
-        </div>
-        <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 16 }}>
-          <Link href={`/dossiers/${id}`} className="btn btn-ghost">Annuler</Link>
-          <button type="submit" className="btn btn-accent">Enregistrer</button>
+      <form action={action} className="max-w-2xl space-y-4">
+        <Card>
+          <CardContent className="grid gap-4 pt-6">
+            <div className="space-y-1.5">
+              <Label htmlFor="client_id">Client lié</Label>
+              <select id="client_id" name="client_id" defaultValue={dossier.client_id || ''} className={selectClass}>
+                <option value="">— Aucun —</option>
+                {(clients ?? []).map((c) => (
+                  <option key={c.id} value={c.id}>{c.denomination}</option>
+                ))}
+              </select>
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="priority">Priorité</Label>
+              <select id="priority" name="priority" defaultValue={dossier.priority || 'normal'} className={selectClass}>
+                <option value="low">Basse</option>
+                <option value="normal">Normale</option>
+                <option value="high">Haute</option>
+                <option value="urgent">Urgente</option>
+              </select>
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="internal_due_date">Échéance interne</Label>
+              <Input
+                id="internal_due_date"
+                type="date"
+                name="internal_due_date"
+                defaultValue={dossier.internal_due_date || ''}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="assigned_to">Assigné à</Label>
+              <select id="assigned_to" name="assigned_to" defaultValue={dossier.assigned_to || ''} className={selectClass}>
+                <option value="">— Aucun —</option>
+                {(memberships ?? []).map((m: any) => {
+                  const p = Array.isArray(m.profiles) ? m.profiles[0] : m.profiles;
+                  return (
+                    <option key={m.user_id} value={m.user_id}>
+                      {p?.first_name} {p?.last_name}
+                    </option>
+                  );
+                })}
+              </select>
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="tags">Tags (séparés par virgule)</Label>
+              <Input id="tags" name="tags" defaultValue={(dossier.tags || []).join(', ')} placeholder="urgent, vip" />
+            </div>
+          </CardContent>
+        </Card>
+        <div className="flex justify-end gap-2.5">
+          <Button asChild variant="ghost">
+            <Link href={`/dossiers/${id}`}>Annuler</Link>
+          </Button>
+          <Button type="submit">Enregistrer</Button>
         </div>
       </form>
     </div>
   );
-}
-
-const inputStyle: React.CSSProperties = { width: '100%', padding: '10px 12px', border: '1px solid var(--ink-200)', borderRadius: 8, fontSize: 14, fontFamily: 'inherit' };
-const selectStyle: React.CSSProperties = { ...inputStyle, background: 'white' };
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
-  return (<div><label className="auth-label" style={{ display: 'block', marginBottom: 6, fontSize: 12 }}>{label}</label>{children}</div>);
 }

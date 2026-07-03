@@ -1,8 +1,11 @@
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
+import { Users } from 'lucide-react';
 import { createClient } from '@/lib/supabase/server';
 import { prepareNewDossier } from '@/lib/server-actions/dossiers';
 import { getInpiCredentialsStatus } from '@/lib/server-actions/inpi-credentials';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
 
 const FORMALITY_GROUPS = [
   { group: 'Création', items: [
@@ -21,6 +24,11 @@ const FORMALITY_GROUPS = [
     { id: 'COMPTES', label: 'Dépôt comptes annuels' },
   ]},
 ];
+
+// Select natif stylé : le formulaire poste via Server Action (FormData),
+// les Select Radix ne portent pas de name natif.
+const selectClass =
+  'border-input flex h-10 w-full cursor-pointer rounded-md border bg-muted/40 px-3 py-1 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50';
 
 export default async function NewDossierPage() {
   // Garde : impossible de lancer une formalité tant que les identifiants
@@ -51,130 +59,107 @@ export default async function NewDossierPage() {
     .eq('organization_id', m.organization_id) : { data: null };
 
   return (
-    <div className="app-content with-bg">
-      {/* Breadcrumb */}
-      <div style={{ fontSize: 13, color: 'var(--ink-500)', marginBottom: 14, display: 'flex', alignItems: 'center', gap: 6 }}>
-        <Link href="/dashboard" style={{ color: 'var(--ink-500)' }}>🏠</Link>
+    <div className="mx-auto w-full max-w-7xl p-4 sm:p-6">
+      <nav className="mb-4 flex items-center gap-1.5 text-sm text-muted-foreground">
+        <Link href="/dashboard" className="hover:text-foreground">
+          Tableau de bord
+        </Link>
         <span>›</span>
-        <span style={{ color: 'var(--ink-900)' }}>Nouvelle formalité</span>
-      </div>
+        <span className="text-foreground">Nouvelle formalité</span>
+      </nav>
 
-      {/* Card centrée */}
-      <form
-        action={prepareNewDossier}
-        className="card-elev"
-        style={{
-          maxWidth: 720,
-          margin: '20px auto 32px',
-          padding: '40px 44px',
-          borderRadius: 18,
-          background: 'white',
-          textAlign: 'center',
-        }}
-      >
-        <div style={{ width: 72, height: 72, margin: '0 auto 18px', display: 'grid', placeItems: 'center', background: 'var(--accent-soft)', borderRadius: '50%' }}>
-          <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="var(--accent-ink)" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
-            <circle cx="9" cy="7" r="4" />
-            <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
-            <path d="M16 3.13a4 4 0 0 1 0 7.75" />
-          </svg>
-        </div>
-        <h1 style={{ fontSize: 24, fontWeight: 400, margin: '0 0 6px', letterSpacing: '-0.02em' }}>
-          Organisez votre <strong style={{ fontWeight: 600 }}>opération</strong>
-        </h1>
-        <p style={{ fontSize: 13, color: 'var(--ink-500)', margin: '0 0 28px' }}>
-          Choisissez le client, le type de formalité et le collaborateur en charge.
-        </p>
+      <Card className="mx-auto mb-8 mt-4 max-w-3xl shadow-lg">
+        <CardContent className="px-6 py-9 sm:px-11">
+          <form action={prepareNewDossier} className="text-center">
+            <div className="mx-auto mb-4 grid size-16 place-items-center rounded-full bg-accent">
+              <Users className="size-8 text-primary" />
+            </div>
+            <h1 className="text-2xl font-normal tracking-tight">
+              Organisez votre <strong className="font-semibold">opération</strong>
+            </h1>
+            <p className="mb-7 mt-1.5 text-sm text-muted-foreground">
+              Choisissez le client, le type de formalité et le collaborateur en charge.
+            </p>
 
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, textAlign: 'left', marginBottom: 18 }}>
-          <div>
-            <label className="auth-label" style={labelStyle}>Société cliente</label>
-            <select name="client_id" defaultValue="" style={selectStyle}>
-              <option value="">Sélectionnez la société</option>
-              {(clients ?? []).map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.denomination}{c.siren ? ` · ${c.siren}` : ''}
-                </option>
-              ))}
-            </select>
-            <Link href="/clients/new" style={{ display: 'inline-block', marginTop: 6, fontSize: 12, color: 'var(--accent-ink)', textDecoration: 'none' }}>
-              + Ajouter une société
-            </Link>
-          </div>
-          <div>
-            <label className="auth-label" style={labelStyle}>Collaborateur en charge</label>
-            <select name="assigned_to" defaultValue={user?.id ?? ''} style={selectStyle}>
-              <option value="">— Sélectionner —</option>
-              {(members ?? []).map((mem: { user_id: string; profiles: { first_name: string | null; last_name: string | null } | { first_name: string | null; last_name: string | null }[] }) => {
-                const p = Array.isArray(mem.profiles) ? mem.profiles[0] : mem.profiles;
-                const name = `${p?.first_name ?? ''} ${p?.last_name ?? ''}`.trim() || mem.user_id.slice(0, 6);
-                return <option key={mem.user_id} value={mem.user_id}>{name}{mem.user_id === user?.id ? ' (vous)' : ''}</option>;
-              })}
-            </select>
-          </div>
-        </div>
-
-        <div style={{ textAlign: 'left', marginBottom: 24 }}>
-          <label className="auth-label" style={labelStyle}>Type de formalité</label>
-          <div style={{ display: 'grid', gap: 12 }}>
-            {FORMALITY_GROUPS.map((g) => (
-              <details key={g.group} open={g.group === 'Création'} style={{ border: '1px solid var(--ink-200)', borderRadius: 10, padding: '10px 14px', background: 'var(--ink-50)' }}>
-                <summary style={{ cursor: 'pointer', fontSize: 12, fontWeight: 600, color: 'var(--ink-700)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                  {g.group} ({g.items.length})
-                </summary>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 6, marginTop: 10 }}>
-                  {g.items.map((it) => (
-                    <label key={it.id} style={radioLabelStyle}>
-                      <input type="radio" name="type" value={it.id} required style={{ accentColor: 'var(--accent)' }} />
-                      <span>{it.label}</span>
-                    </label>
+            <div className="mb-4 grid gap-4 text-left sm:grid-cols-2">
+              <div className="space-y-1.5">
+                <label htmlFor="client_id" className="text-xs font-medium text-foreground/80">
+                  Société cliente
+                </label>
+                <select id="client_id" name="client_id" defaultValue="" className={selectClass}>
+                  <option value="">Sélectionnez la société</option>
+                  {(clients ?? []).map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.denomination}{c.siren ? ` · ${c.siren}` : ''}
+                    </option>
                   ))}
-                </div>
-              </details>
-            ))}
-          </div>
-        </div>
+                </select>
+                <Link
+                  href="/clients/new"
+                  className="inline-block text-xs font-medium text-primary hover:underline"
+                >
+                  + Ajouter une société
+                </Link>
+              </div>
+              <div className="space-y-1.5">
+                <label htmlFor="assigned_to" className="text-xs font-medium text-foreground/80">
+                  Collaborateur en charge
+                </label>
+                <select id="assigned_to" name="assigned_to" defaultValue={user?.id ?? ''} className={selectClass}>
+                  <option value="">— Sélectionner —</option>
+                  {(members ?? []).map((mem: { user_id: string; profiles: { first_name: string | null; last_name: string | null } | { first_name: string | null; last_name: string | null }[] }) => {
+                    const p = Array.isArray(mem.profiles) ? mem.profiles[0] : mem.profiles;
+                    const name = `${p?.first_name ?? ''} ${p?.last_name ?? ''}`.trim() || mem.user_id.slice(0, 6);
+                    return (
+                      <option key={mem.user_id} value={mem.user_id}>
+                        {name}{mem.user_id === user?.id ? ' (vous)' : ''}
+                      </option>
+                    );
+                  })}
+                </select>
+              </div>
+            </div>
 
-        <button
-          type="submit"
-          className="btn btn-accent btn-lg"
-          style={{ width: '100%', justifyContent: 'center', fontSize: 15, padding: '14px 24px' }}
-        >
-          Commencer →
-        </button>
-      </form>
+            <div className="mb-6 space-y-3 text-left">
+              <p className="text-xs font-medium text-foreground/80">Type de formalité</p>
+              {FORMALITY_GROUPS.map((g) => (
+                <details
+                  key={g.group}
+                  open={g.group === 'Création'}
+                  className="rounded-lg border bg-muted/40 px-3.5 py-2.5"
+                >
+                  <summary className="cursor-pointer text-xs font-semibold uppercase tracking-wider text-foreground/70">
+                    {g.group} ({g.items.length})
+                  </summary>
+                  <div className="mt-2.5 grid grid-cols-[repeat(auto-fit,minmax(160px,1fr))] gap-1.5">
+                    {g.items.map((it) => (
+                      // Radio-card : l'input reste visible pour l'accessibilité
+                      // clavier, le label entier est cliquable.
+                      <label
+                        key={it.id}
+                        className="flex cursor-pointer items-center gap-2 rounded-md border bg-card px-3 py-2 text-[13px] transition-colors hover:border-primary/50 has-[:checked]:border-primary has-[:checked]:bg-accent has-[:checked]:font-medium"
+                      >
+                        <input
+                          type="radio"
+                          name="type"
+                          value={it.id}
+                          required
+                          className="accent-primary"
+                        />
+                        <span>{it.label}</span>
+                      </label>
+                    ))}
+                  </div>
+                </details>
+              ))}
+            </div>
+
+            <Button type="submit" size="lg" className="w-full text-[15px]">
+              Commencer →
+            </Button>
+          </form>
+        </CardContent>
+      </Card>
     </div>
   );
 }
-
-const labelStyle: React.CSSProperties = {
-  display: 'block',
-  fontSize: 12,
-  fontWeight: 500,
-  color: 'var(--ink-700)',
-  marginBottom: 6,
-};
-
-const selectStyle: React.CSSProperties = {
-  width: '100%',
-  padding: '11px 14px',
-  border: '1px solid var(--ink-200)',
-  borderRadius: 10,
-  background: 'var(--ink-50)',
-  fontSize: 14,
-  fontFamily: 'inherit',
-  cursor: 'pointer',
-};
-
-const radioLabelStyle: React.CSSProperties = {
-  display: 'flex',
-  alignItems: 'center',
-  gap: 8,
-  padding: '8px 12px',
-  background: 'white',
-  border: '1px solid var(--ink-200)',
-  borderRadius: 8,
-  fontSize: 13,
-  cursor: 'pointer',
-};

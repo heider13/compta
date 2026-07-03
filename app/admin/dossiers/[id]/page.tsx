@@ -1,13 +1,20 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
+import { Download, Send, ShieldCheck, Wrench } from 'lucide-react';
 import { createClient } from '@/lib/supabase/server';
-import { StatusPill } from '@/components/cabinet/StatusPill';
+import { StatusBadge } from '@/components/cabinet/StatusBadge';
 import { formatDateFr } from '@/lib/types';
 import {
   validateDossierForm,
   requestAmendmentForm,
   addObservationForm,
 } from '@/lib/server-actions/admin';
+import { KvRow, EmptyState } from '@/components/admin/bits';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Textarea } from '@/components/ui/textarea';
+import { cn } from '@/lib/utils';
 
 export const dynamic = 'force-dynamic';
 
@@ -129,30 +136,21 @@ export default async function AdminDossierDetailPage({
 
   return (
     <>
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: 8,
-          marginBottom: 12,
-          fontSize: 13,
-          color: 'var(--ink-500)',
-        }}
-      >
-        <Link href="/admin/queue" style={{ color: 'var(--ink-500)' }}>
+      <nav className="flex items-center gap-1.5 text-sm text-muted-foreground">
+        <Link href="/admin/queue" className="hover:text-foreground">
           ← À valider
         </Link>
         <span>/</span>
-        <span className="mono">{d.reference ?? d.id.slice(0, 8)}</span>
-      </div>
+        <span className="font-mono text-xs">{d.reference ?? d.id.slice(0, 8)}</span>
+      </nav>
 
-      <div className="page-head">
-        <div>
-          <h1 style={{ margin: 0 }}>{d.client_name}</h1>
-          <p style={{ marginTop: 4, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="space-y-2">
+          <h1 className="text-2xl font-semibold tracking-tight">{d.client_name}</h1>
+          <p className="flex flex-wrap gap-x-2 text-sm text-muted-foreground">
             <span>{d.type_formalite}</span>
             <span>·</span>
-            <span className="mono">{d.reference ?? d.id.slice(0, 8)}</span>
+            <span className="font-mono text-xs">{d.reference ?? d.id.slice(0, 8)}</span>
             <span>·</span>
             <span>Cabinet : {d.organizations?.name ?? '—'}</span>
             {author && (
@@ -162,42 +160,30 @@ export default async function AdminDossierDetailPage({
               </>
             )}
           </p>
-          {d.forme_juridique && (
-            <span
-              className="pill violet"
-              style={{ marginTop: 10, fontSize: 12 }}
-            >
-              {d.forme_juridique}
-            </span>
-          )}
+          {d.forme_juridique && <Badge variant="secondary">{d.forme_juridique}</Badge>}
         </div>
-        <StatusPill statut={d.statut} />
+        <StatusBadge statut={d.statut} />
       </div>
 
-      <div className="detail-grid">
-        <div style={{ display: 'grid', gap: 20 }}>
+      <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_320px]">
+        <div className="grid gap-5">
           {/* Métadonnées */}
-          <div className="app-card">
-            <div className="app-card-head">
-              <h3>Informations</h3>
-            </div>
-            <div style={{ padding: '6px 0' }}>
+          <Card className="py-0">
+            <CardHeader className="border-b py-4">
+              <CardTitle>Informations</CardTitle>
+            </CardHeader>
+            <CardContent className="px-0 pb-2">
               <KvRow label="Type formalité" value={d.type_formalite} />
-              <KvRow
-                label="Forme juridique"
-                value={d.forme_juridique ?? '—'}
-              />
+              <KvRow label="Forme juridique" value={d.forme_juridique ?? '—'} />
               <KvRow
                 label="SIREN"
-                value={
-                  d.siren ? <span className="mono">{d.siren}</span> : '—'
-                }
+                value={d.siren ? <span className="font-mono">{d.siren}</span> : '—'}
               />
               <KvRow
                 label="Référence INPI"
                 value={
                   d.inpi_reference ? (
-                    <span className="mono">{d.inpi_reference}</span>
+                    <span className="font-mono">{d.inpi_reference}</span>
                   ) : (
                     '—'
                   )
@@ -209,7 +195,7 @@ export default async function AdminDossierDetailPage({
                   d.organizations ? (
                     <Link
                       href={`/admin/cabinets/${d.organizations.id}`}
-                      style={{ color: 'var(--accent-ink)' }}
+                      className="text-primary hover:underline"
                     >
                       {d.organizations.name}
                     </Link>
@@ -220,9 +206,13 @@ export default async function AdminDossierDetailPage({
               />
               <KvRow
                 label="Assigné à"
-                value={d.assigned_to ? (
-                  <span className="mono">{d.assigned_to.slice(0, 8)}</span>
-                ) : '—'}
+                value={
+                  d.assigned_to ? (
+                    <span className="font-mono">{d.assigned_to.slice(0, 8)}</span>
+                  ) : (
+                    '—'
+                  )
+                }
               />
               <KvRow label="Créé le" value={formatDateFr(d.created_at)} />
               <KvRow
@@ -230,349 +220,176 @@ export default async function AdminDossierDetailPage({
                 value={formatDateFr(d.updated_at ?? d.created_at)}
                 last
               />
-            </div>
-          </div>
+            </CardContent>
+          </Card>
 
           {/* INPI content */}
-          <div className="app-card">
-            <div className="app-card-head">
-              <h3>Données INPI saisies</h3>
-            </div>
-            <div style={{ padding: 16 }}>
+          <Card>
+            <CardHeader>
+              <CardTitle>Données INPI saisies</CardTitle>
+            </CardHeader>
+            <CardContent>
               {d.inpi_content ? (
-                <details style={{ fontSize: 12 }}>
-                  <summary
-                    style={{
-                      cursor: 'pointer',
-                      color: 'var(--ink-600)',
-                      marginBottom: 8,
-                    }}
-                  >
+                <details className="text-sm">
+                  <summary className="cursor-pointer text-muted-foreground hover:text-foreground">
                     Voir le payload JSON complet
                   </summary>
-                  <pre
-                    style={{
-                      background: 'var(--ink-50)',
-                      padding: 12,
-                      borderRadius: 8,
-                      fontSize: 11,
-                      overflow: 'auto',
-                      maxHeight: 400,
-                    }}
-                  >
+                  <pre className="mt-2 max-h-96 overflow-auto rounded-lg bg-muted p-3 text-[11px]">
                     {JSON.stringify(d.inpi_content, null, 2)}
                   </pre>
                 </details>
               ) : (
-                <p
-                  style={{
-                    color: 'var(--ink-500)',
-                    fontSize: 13,
-                    margin: 0,
-                  }}
-                >
+                <p className="text-sm text-muted-foreground">
                   Aucun contenu INPI enregistré.
                 </p>
               )}
-            </div>
-          </div>
+            </CardContent>
+          </Card>
 
           {/* Pièces */}
-          <div className="app-card">
-            <div className="app-card-head">
-              <h3>Pièces ({docsWithUrl.length})</h3>
-            </div>
-            <div style={{ padding: 16, display: 'grid', gap: 10 }}>
-              {docsWithUrl.length === 0 && (
-                <p
-                  style={{
-                    color: 'var(--ink-500)',
-                    fontSize: 13,
-                    padding: 12,
-                  }}
-                >
-                  Aucune pièce uploadée.
-                </p>
-              )}
+          <Card>
+            <CardHeader>
+              <CardTitle>Pièces ({docsWithUrl.length})</CardTitle>
+            </CardHeader>
+            <CardContent className="grid gap-2.5">
+              {docsWithUrl.length === 0 && <EmptyState label="Aucune pièce uploadée." />}
               {docsWithUrl.map((doc) => (
                 <div
                   key={doc.id}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 12,
-                    padding: '10px 12px',
-                    border: '1px solid var(--ink-150)',
-                    borderRadius: 8,
-                  }}
+                  className="flex items-center gap-3 rounded-lg border px-3 py-2.5"
                 >
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div
-                      style={{
-                        fontSize: 13,
-                        fontWeight: 500,
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis',
-                        whiteSpace: 'nowrap',
-                      }}
-                    >
-                      {doc.name}
-                    </div>
-                    <div
-                      style={{ fontSize: 11, color: 'var(--ink-500)' }}
-                    >
-                      {doc.size_bytes
-                        ? `${Math.round(doc.size_bytes / 1024)} Ko · `
-                        : ''}
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-medium">{doc.name}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {doc.size_bytes ? `${Math.round(doc.size_bytes / 1024)} Ko · ` : ''}
                       {doc.status ? `${doc.status} · ` : ''}
                       {formatDateFr(doc.created_at)}
-                    </div>
+                    </p>
                   </div>
                   {doc.signedUrl ? (
-                    <a
-                      href={doc.signedUrl}
-                      target="_blank"
-                      rel="noopener"
-                      className="btn btn-ghost btn-sm"
-                    >
-                      Télécharger
-                    </a>
+                    <Button asChild variant="outline" size="sm">
+                      <a href={doc.signedUrl} target="_blank" rel="noopener">
+                        <Download className="size-4" />
+                        Télécharger
+                      </a>
+                    </Button>
                   ) : (
-                    <span
-                      style={{
-                        fontSize: 11,
-                        color: 'var(--ink-400)',
-                      }}
-                    >
-                      indisponible
-                    </span>
+                    <span className="text-xs text-muted-foreground">indisponible</span>
                   )}
                 </div>
               ))}
-            </div>
-          </div>
+            </CardContent>
+          </Card>
 
           {/* Observations */}
-          <div className="app-card">
-            <div className="app-card-head">
-              <h3>Observations ({obs.length})</h3>
-            </div>
-            <div style={{ padding: 18, display: 'grid', gap: 12 }}>
+          <Card>
+            <CardHeader>
+              <CardTitle>Observations ({obs.length})</CardTitle>
+            </CardHeader>
+            <CardContent className="grid gap-3">
               {obs.length === 0 && (
-                <p style={{ color: 'var(--ink-500)', fontSize: 13 }}>
-                  Aucune observation.
-                </p>
+                <p className="text-sm text-muted-foreground">Aucune observation.</p>
               )}
               {obs.map((o) => (
                 <div
                   key={o.id}
-                  style={{
-                    padding: 12,
-                    borderRadius: 10,
-                    background:
-                      o.author_role === 'admin'
-                        ? '#FEF3C7'
-                        : 'var(--ink-50)',
-                    borderLeft: `3px solid ${
-                      o.author_role === 'admin'
-                        ? '#F59E0B'
-                        : 'var(--accent)'
-                    }`,
-                  }}
+                  className={cn(
+                    'rounded-lg border-l-[3px] p-3',
+                    o.author_role === 'admin'
+                      ? 'border-l-amber-500 bg-amber-50'
+                      : 'border-l-primary bg-muted/50',
+                  )}
                 >
-                  <div
-                    style={{
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      marginBottom: 4,
-                      fontSize: 12,
-                      color: 'var(--ink-500)',
-                    }}
-                  >
+                  <div className="mb-1 flex justify-between text-xs text-muted-foreground">
                     <strong>
-                      {o.author_role === 'admin'
-                        ? 'Admin Compta'
-                        : author || 'Client'}
+                      {o.author_role === 'admin' ? 'Admin Compta' : author || 'Client'}
                     </strong>
-                    <span className="mono">
+                    <span className="font-mono">
                       {new Date(o.created_at).toLocaleString('fr-FR')}
                     </span>
                   </div>
-                  <div
-                    style={{ fontSize: 14, whiteSpace: 'pre-wrap' }}
-                  >
-                    {o.message}
-                  </div>
+                  <p className="whitespace-pre-wrap text-sm">{o.message}</p>
                 </div>
               ))}
 
-              <form action={addObservationForm} style={{ marginTop: 4 }}>
+              <form action={addObservationForm} className="mt-1 space-y-2">
                 <input type="hidden" name="dossierId" value={d.id} />
-                <textarea
+                <Textarea
                   name="message"
                   rows={3}
                   placeholder="Message pour le cabinet…"
                   required
-                  style={{
-                    width: '100%',
-                    padding: 10,
-                    border: '1px solid var(--ink-200)',
-                    borderRadius: 8,
-                    fontFamily: 'inherit',
-                    fontSize: 13,
-                    resize: 'vertical',
-                  }}
                 />
-                <div
-                  style={{
-                    display: 'flex',
-                    justifyContent: 'flex-end',
-                    marginTop: 8,
-                  }}
-                >
-                  <button
-                    type="submit"
-                    className="btn btn-ghost btn-sm"
-                  >
+                <div className="flex justify-end">
+                  <Button type="submit" variant="outline" size="sm">
+                    <Send className="size-4" />
                     Envoyer comme commentaire
-                  </button>
+                  </Button>
                 </div>
               </form>
-            </div>
-          </div>
+            </CardContent>
+          </Card>
         </div>
 
         {/* Sidebar Actions */}
-        <aside style={{ display: 'grid', gap: 20 }}>
-          <div className="app-card">
-            <div className="app-card-head">
-              <h3>Actions</h3>
-            </div>
-            <div
-              style={{
-                padding: 18,
-                display: 'grid',
-                gap: 10,
-              }}
-            >
+        <aside className="grid content-start gap-5">
+          <Card>
+            <CardHeader>
+              <CardTitle>Actions</CardTitle>
+            </CardHeader>
+            <CardContent className="grid gap-2.5">
               {canValidate ? (
                 <>
                   <form action={validateDossierForm}>
                     <input type="hidden" name="dossierId" value={d.id} />
                     <input type="hidden" name="sendToInpi" value="true" />
-                    <button
-                      type="submit"
-                      className="btn btn-accent btn-lg"
-                      style={{ width: '100%' }}
-                    >
+                    <Button type="submit" size="lg" className="w-full">
+                      <Send className="size-4" />
                       Valider + envoyer INPI
-                    </button>
+                    </Button>
                   </form>
                   <form action={validateDossierForm}>
                     <input type="hidden" name="dossierId" value={d.id} />
                     <input type="hidden" name="sendToInpi" value="false" />
-                    <button
-                      type="submit"
-                      className="btn btn-ghost btn-lg"
-                      style={{ width: '100%' }}
-                    >
+                    <Button type="submit" variant="outline" size="lg" className="w-full">
+                      <ShieldCheck className="size-4" />
                       Valider sans INPI
-                    </button>
+                    </Button>
                   </form>
-                  <form action={requestAmendmentForm}>
+                  <form action={requestAmendmentForm} className="space-y-2">
                     <input type="hidden" name="dossierId" value={d.id} />
-                    <textarea
+                    <Textarea
                       name="message"
                       rows={2}
                       placeholder="Raison de la demande de correction…"
                       required
-                      style={{
-                        width: '100%',
-                        padding: 8,
-                        border: '1px solid var(--ink-200)',
-                        borderRadius: 8,
-                        fontFamily: 'inherit',
-                        fontSize: 12,
-                        resize: 'vertical',
-                        marginBottom: 8,
-                      }}
+                      className="text-xs"
                     />
-                    <button
+                    <Button
                       type="submit"
-                      className="btn btn-ghost btn-sm"
-                      style={{
-                        width: '100%',
-                        border: '1px solid #F59E0B',
-                        color: '#92400E',
-                      }}
+                      variant="outline"
+                      size="sm"
+                      className="w-full border-amber-400 text-amber-800 hover:bg-amber-50"
                     >
+                      <Wrench className="size-4" />
                       Demander correction
-                    </button>
+                    </Button>
                   </form>
-                  <p
-                    style={{
-                      fontSize: 11,
-                      color: 'var(--ink-500)',
-                      margin: 0,
-                      marginTop: 6,
-                    }}
-                  >
-                    « Valider + envoyer INPI » relaie au backend VPS (creds
-                    mandataires). « Valider sans INPI » marque seulement le
-                    dossier comme validé en interne.
+                  <p className="text-[11px] leading-relaxed text-muted-foreground">
+                    « Valider + envoyer INPI » relaie au backend VPS (creds mandataires).
+                    « Valider sans INPI » marque seulement le dossier comme validé en
+                    interne.
                   </p>
                 </>
               ) : (
-                <p
-                  style={{
-                    color: 'var(--ink-500)',
-                    fontSize: 13,
-                    margin: 0,
-                  }}
-                >
-                  Aucune action requise. Statut actuel :{' '}
-                  <strong>{d.statut}</strong>
+                <p className="text-sm text-muted-foreground">
+                  Aucune action requise. Statut actuel : <strong>{d.statut}</strong>
                 </p>
               )}
-            </div>
-          </div>
+            </CardContent>
+          </Card>
         </aside>
       </div>
     </>
-  );
-}
-
-function KvRow({
-  label,
-  value,
-  last,
-}: {
-  label: string;
-  value: React.ReactNode;
-  last?: boolean;
-}) {
-  return (
-    <div
-      style={{
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        padding: '12px 22px',
-        borderBottom: last ? 'none' : '1px solid var(--ink-100)',
-        fontSize: 13,
-        gap: 12,
-      }}
-    >
-      <span style={{ color: 'var(--ink-500)' }}>{label}</span>
-      <span
-        style={{
-          color: 'var(--ink-900)',
-          fontWeight: 500,
-          textAlign: 'right',
-        }}
-      >
-        {value}
-      </span>
-    </div>
   );
 }

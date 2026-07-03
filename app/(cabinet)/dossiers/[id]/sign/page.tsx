@@ -4,7 +4,13 @@
 
 import Link from 'next/link';
 import { notFound, redirect } from 'next/navigation';
+import { CheckCircle2, ExternalLink, PenLine, RefreshCw } from 'lucide-react';
 import { createClient } from '@/lib/supabase/server';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { cn } from '@/lib/utils';
 
 export const dynamic = 'force-dynamic';
 
@@ -148,308 +154,192 @@ export default async function DossierSignPage({
   const okFlag = sp.ok === '1';
 
   return (
-    <>
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: 8,
-          marginBottom: 12,
-          fontSize: 13,
-          color: 'var(--ink-500)',
-        }}
-      >
-        <Link href="/dossiers" style={{ color: 'var(--ink-500)' }}>
-          ← Dossiers
+    <div className="mx-auto w-full max-w-7xl space-y-6 p-4 sm:p-6">
+      <nav className="flex items-center gap-1.5 text-sm text-muted-foreground">
+        <Link href="/dossiers" className="hover:text-foreground">
+          Dossiers
         </Link>
-        <span>/</span>
-        <span className="mono">
-          {dossier.reference ?? dossier.id.slice(0, 8)}
-        </span>
-        <span>/</span>
-        <span>Signature</span>
-      </div>
+        <span>›</span>
+        <span className="font-mono text-xs">{dossier.reference ?? dossier.id.slice(0, 8)}</span>
+        <span>›</span>
+        <span className="text-foreground">Signature</span>
+      </nav>
 
-      <div className="page-head">
-        <div>
-          <h1 style={{ margin: 0 }}>Signature électronique</h1>
-          <p style={{ marginTop: 4 }}>
-            {dossier.client_name} · {dossier.type_formalite} ·{' '}
-            <span className="mono">
-              {dossier.reference ?? dossier.id.slice(0, 8)}
-            </span>
-          </p>
-        </div>
+      <div>
+        <h1 className="text-2xl font-semibold tracking-tight">Signature électronique</h1>
+        <p className="text-sm text-muted-foreground">
+          {dossier.client_name} · {dossier.type_formalite} ·{' '}
+          <span className="font-mono text-xs">{dossier.reference ?? dossier.id.slice(0, 8)}</span>
+        </p>
       </div>
 
       {okFlag && (
-        <div
-          style={{
-            padding: 12,
-            borderRadius: 10,
-            background: '#ECFDF5',
-            border: '1px solid #A7F3D0',
-            color: '#065F46',
-            marginBottom: 16,
-            fontSize: 13,
-          }}
-        >
+        <div className="flex items-center gap-2 rounded-lg border border-green-300 bg-green-50 px-4 py-3 text-sm text-green-800">
+          <CheckCircle2 className="size-4 shrink-0" />
           Demande de signature envoyée. Le signataire va recevoir un email Yousign.
         </div>
       )}
       {errorCode && (
         <div
-          style={{
-            padding: 12,
-            borderRadius: 10,
-            background: '#FEF2F2',
-            border: '1px solid #FECACA',
-            color: '#991B1B',
-            marginBottom: 16,
-            fontSize: 13,
-          }}
+          role="alert"
+          className="rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive"
         >
-          Erreur : <span className="mono">{errorCode}</span>
+          Erreur : <span className="font-mono text-xs">{errorCode}</span>
         </div>
       )}
 
-      <div className="detail-grid">
-        <div style={{ display: 'grid', gap: 20 }}>
+      <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_320px]">
+        <div className="space-y-5">
           {/* Statut courant */}
-          <div className="app-card">
-            <div className="app-card-head">
-              <h3>Statut</h3>
-            </div>
-            <div style={{ padding: 18 }}>
+          <Card>
+            <CardHeader>
+              <CardTitle>Statut</CardTitle>
+            </CardHeader>
+            <CardContent>
               {!hasPending ? (
-                <p
-                  style={{ margin: 0, color: 'var(--ink-500)', fontSize: 14 }}
-                >
+                <p className="text-sm text-muted-foreground">
                   Aucune demande de signature envoyée pour ce dossier.
                 </p>
               ) : (
-                <div style={{ display: 'grid', gap: 8, fontSize: 13 }}>
+                <div className="grid gap-2.5 text-sm">
                   <KvRow
                     label="État"
                     value={
                       <strong
-                        style={{
-                          color: isSigned
-                            ? '#065F46'
-                            : isDeclined || isExpired
-                              ? '#991B1B'
-                              : 'var(--ink-900)',
-                        }}
+                        className={cn(
+                          'font-semibold',
+                          isSigned && 'text-green-700',
+                          (isDeclined || isExpired) && 'text-destructive',
+                        )}
                       >
                         {meta.signature_status ?? 'pending'}
                       </strong>
                     }
                   />
-                  <KvRow
-                    label="Signataire"
-                    value={meta.signature_signer_email ?? '—'}
-                  />
+                  <KvRow label="Signataire" value={meta.signature_signer_email ?? '—'} />
                   <KvRow
                     label="Référence Yousign"
                     value={
-                      <span className="mono" style={{ fontSize: 12 }}>
-                        {meta.signature_request_id}
-                      </span>
+                      <span className="font-mono text-xs">{meta.signature_request_id}</span>
                     }
                   />
                   {meta.signature_requested_at && (
                     <KvRow
                       label="Envoyée le"
-                      value={new Date(
-                        meta.signature_requested_at,
-                      ).toLocaleString('fr-FR')}
+                      value={new Date(meta.signature_requested_at).toLocaleString('fr-FR')}
                     />
                   )}
                   {meta.signature_signed_at && (
                     <KvRow
                       label="Signée le"
-                      value={new Date(meta.signature_signed_at).toLocaleString(
-                        'fr-FR',
-                      )}
+                      value={new Date(meta.signature_signed_at).toLocaleString('fr-FR')}
                     />
                   )}
                   {meta.signature_link && !isSigned && (
-                    <div style={{ marginTop: 8 }}>
-                      <a
-                        href={meta.signature_link}
-                        target="_blank"
-                        rel="noopener"
-                        className="btn btn-ghost btn-sm"
-                      >
-                        Ouvrir le lien Yousign
-                      </a>
+                    <div className="mt-1">
+                      <Button asChild variant="outline" size="sm">
+                        <a href={meta.signature_link} target="_blank" rel="noopener">
+                          Ouvrir le lien Yousign
+                          <ExternalLink className="size-3.5" />
+                        </a>
+                      </Button>
                     </div>
                   )}
                 </div>
               )}
-            </div>
-          </div>
+            </CardContent>
+          </Card>
 
           {/* Formulaire */}
           {!isSigned && (
-            <div className="app-card">
-              <div className="app-card-head">
-                <h3>
+            <Card>
+              <CardHeader>
+                <CardTitle>
                   {hasPending && !isDeclined && !isExpired
                     ? 'Renvoyer / mettre à jour la demande'
                     : 'Envoyer la demande de signature'}
-                </h3>
-              </div>
-              <div style={{ padding: 18 }}>
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
                 {hasPending && !isDeclined && !isExpired ? (
-                  <form action={resendSignatureEmail}>
+                  <form action={resendSignatureEmail} className="space-y-3">
                     <input type="hidden" name="dossierId" value={dossier.id} />
-                    <p
-                      style={{
-                        fontSize: 13,
-                        color: 'var(--ink-500)',
-                        marginTop: 0,
-                      }}
-                    >
-                      Une demande est déjà en cours. Yousign envoie
-                      automatiquement des rappels. Cliquez pour rafraîchir le
-                      statut.
+                    <p className="text-sm text-muted-foreground">
+                      Une demande est déjà en cours. Yousign envoie automatiquement des
+                      rappels. Cliquez pour rafraîchir le statut.
                     </p>
-                    <button
-                      type="submit"
-                      className="btn btn-ghost btn-sm"
-                    >
+                    <Button type="submit" variant="outline" size="sm">
+                      <RefreshCw className="size-3.5" />
                       Rafraîchir le statut
-                    </button>
+                    </Button>
                   </form>
                 ) : (
-                  <form
-                    action={sendSignatureRequest}
-                    style={{ display: 'grid', gap: 12 }}
-                  >
+                  <form action={sendSignatureRequest} className="grid gap-4">
                     <input type="hidden" name="dossierId" value={dossier.id} />
-                    <Field label="Prénom" name="firstName" required />
-                    <Field label="Nom" name="lastName" required />
-                    <Field
-                      label="Email signataire"
-                      name="email"
-                      type="email"
-                      required
-                    />
-                    <Field
-                      label="Téléphone (OTP SMS, optionnel)"
-                      name="phoneNumber"
-                      placeholder="+33612345678"
-                    />
-                    <div
-                      style={{
-                        display: 'flex',
-                        justifyContent: 'flex-end',
-                        gap: 8,
-                      }}
-                    >
-                      <button type="submit" className="btn btn-accent btn-lg">
-                        Envoyer la demande de signature
-                      </button>
+                    <div className="grid gap-4 sm:grid-cols-2">
+                      <div className="space-y-1.5">
+                        <Label htmlFor="firstName">Prénom</Label>
+                        <Input id="firstName" name="firstName" required />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label htmlFor="lastName">Nom</Label>
+                        <Input id="lastName" name="lastName" required />
+                      </div>
                     </div>
-                    <p
-                      style={{
-                        fontSize: 12,
-                        color: 'var(--ink-500)',
-                        margin: 0,
-                      }}
-                    >
-                      Signature avancée RGS via Yousign. Le signataire reçoit un
-                      email avec un lien sécurisé.
+                    <div className="space-y-1.5">
+                      <Label htmlFor="email">Email signataire</Label>
+                      <Input id="email" name="email" type="email" required />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label htmlFor="phoneNumber">Téléphone (OTP SMS, optionnel)</Label>
+                      <Input id="phoneNumber" name="phoneNumber" placeholder="+33612345678" />
+                    </div>
+                    <div className="flex justify-end">
+                      <Button type="submit" size="lg">
+                        <PenLine className="size-4" />
+                        Envoyer la demande de signature
+                      </Button>
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      Signature avancée RGS via Yousign. Le signataire reçoit un email avec
+                      un lien sécurisé.
                     </p>
                   </form>
                 )}
-              </div>
-            </div>
+              </CardContent>
+            </Card>
           )}
         </div>
 
-        <aside style={{ display: 'grid', gap: 20 }}>
-          <div className="app-card">
-            <div className="app-card-head">
-              <h3>Workflow</h3>
-            </div>
-            <div
-              style={{
-                padding: 18,
-                fontSize: 13,
-                color: 'var(--ink-600)',
-                lineHeight: 1.55,
-              }}
-            >
-              <ol style={{ paddingLeft: 18, margin: 0 }}>
+        <aside className="space-y-5">
+          <Card>
+            <CardHeader>
+              <CardTitle>Workflow</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <ol className="list-decimal space-y-1.5 pl-4 text-sm leading-relaxed text-muted-foreground">
                 <li>Admin valide le dossier (modif / cessation INPI).</li>
                 <li>Signature requise → cette page envoie au client.</li>
                 <li>Client signe sur Yousign (RGS avancée).</li>
                 <li>
-                  Webhook reçoit la signature → dossier passe à
-                  <strong> VALIDATED_INTERNAL</strong>.
+                  Webhook reçoit la signature → dossier passe à{' '}
+                  <strong className="text-foreground">VALIDATED_INTERNAL</strong>.
                 </li>
                 <li>Push automatique vers l&apos;INPI.</li>
               </ol>
-            </div>
-          </div>
+            </CardContent>
+          </Card>
         </aside>
       </div>
-    </>
+    </div>
   );
 }
 
-function Field({
-  label,
-  name,
-  type = 'text',
-  required,
-  placeholder,
-}: {
-  label: string;
-  name: string;
-  type?: string;
-  required?: boolean;
-  placeholder?: string;
-}) {
+function KvRow({ label, value }: { label: string; value: React.ReactNode }) {
   return (
-    <label style={{ display: 'grid', gap: 4, fontSize: 13 }}>
-      <span style={{ color: 'var(--ink-600)' }}>{label}</span>
-      <input
-        type={type}
-        name={name}
-        required={required}
-        placeholder={placeholder}
-        style={{
-          padding: '8px 10px',
-          border: '1px solid var(--ink-200)',
-          borderRadius: 8,
-          fontFamily: 'inherit',
-          fontSize: 13,
-        }}
-      />
-    </label>
-  );
-}
-
-function KvRow({
-  label,
-  value,
-}: {
-  label: string;
-  value: React.ReactNode;
-}) {
-  return (
-    <div
-      style={{
-        display: 'flex',
-        justifyContent: 'space-between',
-        gap: 12,
-      }}
-    >
-      <span style={{ color: 'var(--ink-500)' }}>{label}</span>
-      <span style={{ color: 'var(--ink-900)', fontWeight: 500 }}>{value}</span>
+    <div className="flex justify-between gap-3">
+      <span className="text-muted-foreground">{label}</span>
+      <span className="text-right font-medium">{value}</span>
     </div>
   );
 }

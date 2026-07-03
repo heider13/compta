@@ -1,123 +1,166 @@
 // Blocs fonctionnalités alternés texte/visuel — layout inspiré des landing
 // legaltech (image gauche/droite en alternance). Les visuels sont des
-// mini-mockups UI en pur CSS (pas de screenshots à maintenir).
+// mini-mockups UI en pur Tailwind (pas de screenshots à maintenir).
 
 import { Arrow, Users, Chart, Sparkle } from '@/components/icons';
+import { cn } from '@/lib/utils';
+import { Container, Eyebrow, SectionHead } from './ui';
 
-// ─── Mini-mockups CSS ────────────────────────────────────────────
+// ─── Atomes des mockups ──────────────────────────────────────────
+
+function MockCard({ children, className }: { children: React.ReactNode; className?: string }) {
+  return (
+    <div
+      className={cn(
+        'w-full max-w-[360px] rounded-xl border border-[var(--ink-150)] bg-white p-[18px] shadow-[0_12px_32px_rgba(35,20,80,0.10)]',
+        className,
+      )}
+    >
+      {children}
+    </div>
+  );
+}
+
+function MockLine({ filled, className }: { filled?: boolean; className?: string }) {
+  return (
+    <div
+      className={cn(
+        'mb-2 h-[9px] rounded-[5px]',
+        filled ? 'bg-[var(--violet-200)]' : 'bg-[var(--ink-100)]',
+        className,
+      )}
+    />
+  );
+}
+
+function MockPill({ children, className }: { children: React.ReactNode; className?: string }) {
+  return (
+    <span
+      className={cn(
+        'inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[11px] font-semibold',
+        className,
+      )}
+    >
+      {children}
+    </span>
+  );
+}
+
+const pillIndigo = 'bg-[var(--violet-50)] text-[var(--accent-ink)]';
+const pillGreen = 'bg-[rgba(19,115,51,0.1)] text-[#137333]';
+
+// ─── Mini-mockups ────────────────────────────────────────────────
 
 function MockOcr() {
   return (
-    <div className="mock-card">
-      <div style={{ display: 'flex', gap: 14, alignItems: 'center', marginBottom: 14 }}>
-        <div
-          style={{
-            width: 84, height: 56, borderRadius: 8, flexShrink: 0,
-            background: 'linear-gradient(135deg, var(--violet-100, #E9E2FA), var(--violet-50))',
-            border: '1px solid var(--ink-150)', display: 'grid', placeItems: 'center',
-            fontSize: 10, fontWeight: 700, color: 'var(--accent-ink)', letterSpacing: '0.06em',
-          }}
-        >
+    <MockCard>
+      <div className="mb-3.5 flex items-center gap-3.5">
+        <div className="grid h-14 w-[84px] shrink-0 place-items-center rounded-lg border border-[var(--ink-150)] bg-gradient-to-br from-[var(--violet-100)] to-[var(--violet-50)] text-[10px] font-bold tracking-[0.06em] text-[var(--accent-ink)]">
           CNI / PDF
         </div>
-        <Arrow size={18} style={{ color: 'var(--accent)', flexShrink: 0 }} />
-        <div style={{ flex: 1 }}>
-          <div className="mock-line filled" style={{ width: '90%' }} />
-          <div className="mock-line filled" style={{ width: '70%' }} />
-          <div className="mock-line filled" style={{ width: '80%', marginBottom: 0 }} />
+        <Arrow size={18} className="shrink-0" style={{ color: 'var(--accent)' }} />
+        <div className="flex-1">
+          <MockLine filled className="w-[90%]" />
+          <MockLine filled className="w-[70%]" />
+          <MockLine filled className="mb-0 w-[80%]" />
         </div>
       </div>
-      <span className="mock-pill" style={{ background: 'rgba(19,115,51,0.1)', color: '#137333' }}>
-        ✓ 12 champs préremplis en 8 s
-      </span>
-    </div>
+      <MockPill className={pillGreen}>✓ 12 champs préremplis en 8 s</MockPill>
+    </MockCard>
   );
 }
 
 function MockGuichet() {
   return (
-    <div className="mock-card">
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-        <span style={{ fontSize: 12, fontWeight: 700 }}>Dossier SASU Lemaire</span>
-        <span className="mock-pill" style={{ background: 'var(--violet-50)', color: 'var(--accent-ink)' }}>
-          Synchronisé INPI
-        </span>
+    <MockCard>
+      <div className="mb-3 flex items-center justify-between">
+        <span className="text-xs font-bold">Dossier SASU Lemaire</span>
+        <MockPill className={pillIndigo}>Synchronisé INPI</MockPill>
       </div>
       {['Déposé au Guichet Unique', 'Paiement des frais validé', 'En examen au greffe'].map((step, i) => (
-        <div key={step} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '7px 0', borderBottom: i < 2 ? '1px solid var(--ink-100)' : 'none' }}>
+        <div
+          key={step}
+          className={cn('flex items-center gap-2 py-[7px]', i < 2 && 'border-b border-[var(--ink-100)]')}
+        >
           <span
-            style={{
-              width: 16, height: 16, borderRadius: '50%', fontSize: 10, fontWeight: 700,
-              display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-              background: i < 2 ? 'var(--accent)' : 'var(--ink-150)',
-              color: i < 2 ? 'white' : 'var(--ink-500)',
-            }}
+            className={cn(
+              'inline-flex size-4 items-center justify-center rounded-full text-[10px] font-bold',
+              i < 2 ? 'bg-[var(--accent)] text-white' : 'bg-[var(--ink-150)] text-[var(--ink-500)]',
+            )}
           >
             {i < 2 ? '✓' : '…'}
           </span>
-          <span style={{ fontSize: 13, color: i < 2 ? 'var(--ink-900)' : 'var(--ink-500)' }}>{step}</span>
+          <span className={cn('text-[13px]', i < 2 ? 'text-[var(--ink-900)]' : 'text-[var(--ink-500)]')}>
+            {step}
+          </span>
         </div>
       ))}
-    </div>
+    </MockCard>
   );
 }
 
 function MockStatuts() {
   return (
-    <div className="mock-card" style={{ maxWidth: 300 }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 12 }}>
-        <span style={{ fontSize: 12, fontWeight: 700 }}>Statuts — SASU Lemaire</span>
-        <span className="mock-pill" style={{ background: 'var(--violet-50)', color: 'var(--accent-ink)' }}>.DOCX</span>
+    <MockCard className="max-w-[300px]">
+      <div className="mb-3 flex items-center justify-between">
+        <span className="text-xs font-bold">Statuts — SASU Lemaire</span>
+        <MockPill className={pillIndigo}>.DOCX</MockPill>
       </div>
-      <div className="mock-line" style={{ width: '55%', height: 11 }} />
-      <div className="mock-line filled" style={{ width: '100%' }} />
-      <div className="mock-line filled" style={{ width: '92%' }} />
-      <div className="mock-line filled" style={{ width: '96%' }} />
-      <div className="mock-line" style={{ width: '45%', height: 11, marginTop: 12 }} />
-      <div className="mock-line filled" style={{ width: '100%' }} />
-      <div className="mock-line filled" style={{ width: '85%', marginBottom: 0 }} />
-    </div>
+      <MockLine className="h-[11px] w-[55%]" />
+      <MockLine filled className="w-full" />
+      <MockLine filled className="w-[92%]" />
+      <MockLine filled className="w-[96%]" />
+      <MockLine className="mt-3 h-[11px] w-[45%]" />
+      <MockLine filled className="w-full" />
+      <MockLine filled className="mb-0 w-[85%]" />
+    </MockCard>
   );
 }
 
 function MockSignature() {
   return (
-    <div className="mock-card" style={{ maxWidth: 320 }}>
-      <div style={{ fontSize: 12, fontWeight: 700, marginBottom: 10 }}>Signature du PV de décision</div>
-      <svg width="140" height="44" viewBox="0 0 140 44" aria-hidden="true" style={{ display: 'block', marginBottom: 10 }}>
+    <MockCard className="max-w-[320px]">
+      <div className="mb-2.5 text-xs font-bold">Signature du PV de décision</div>
+      <svg width="140" height="44" viewBox="0 0 140 44" aria-hidden="true" className="mb-2.5 block">
         <path
           d="M6 32 C 22 8, 34 40, 48 24 S 74 6, 88 26 S 116 38, 134 14"
-          fill="none" stroke="var(--accent)" strokeWidth="2.4" strokeLinecap="round"
+          fill="none"
+          stroke="var(--accent)"
+          strokeWidth="2.4"
+          strokeLinecap="round"
         />
       </svg>
-      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-        <span className="mock-pill" style={{ background: 'var(--violet-50)', color: 'var(--accent-ink)' }}>OTP SMS vérifié</span>
-        <span className="mock-pill" style={{ background: 'rgba(19,115,51,0.1)', color: '#137333' }}>✓ eIDAS avancée</span>
+      <div className="flex flex-wrap gap-2">
+        <MockPill className={pillIndigo}>OTP SMS vérifié</MockPill>
+        <MockPill className={pillGreen}>✓ eIDAS avancée</MockPill>
       </div>
-    </div>
+    </MockCard>
   );
 }
 
 function MockDashboard() {
   const cols: Array<[string, number]> = [['À traiter', 3], ['Au greffe', 2], ['Validés', 4]];
   return (
-    <div className="mock-card" style={{ maxWidth: 380 }}>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10 }}>
+    <MockCard className="max-w-[380px]">
+      <div className="grid grid-cols-3 gap-2.5">
         {cols.map(([title, count]) => (
           <div key={title}>
-            <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--ink-500)', marginBottom: 6 }}>
+            <div className="mb-1.5 text-[10px] font-bold uppercase tracking-[0.05em] text-[var(--ink-500)]">
               {title} · {count}
             </div>
             {Array.from({ length: Math.min(count, 3) }).map((_, i) => (
-              <div key={i} style={{ background: 'var(--ink-50)', border: '1px solid var(--ink-100)', borderRadius: 6, padding: '6px 7px', marginBottom: 6 }}>
-                <div className="mock-line filled" style={{ width: '85%', height: 6, marginBottom: 4 }} />
-                <div className="mock-line" style={{ width: '55%', height: 6, marginBottom: 0 }} />
+              <div
+                key={i}
+                className="mb-1.5 rounded-md border border-[var(--ink-100)] bg-[var(--ink-50)] px-[7px] py-1.5"
+              >
+                <MockLine filled className="mb-1 h-1.5 w-[85%]" />
+                <MockLine className="mb-0 h-1.5 w-[55%]" />
               </div>
             ))}
           </div>
         ))}
       </div>
-    </div>
+    </MockCard>
   );
 }
 
@@ -176,43 +219,69 @@ const EXTRAS = [
 
 export function FeatureRows() {
   return (
-    <section id="fonctionnalites" className="section" style={{ background: 'white' }}>
-      <div className="container">
-        <div className="sec-head">
-          <span className="eyebrow"><span className="dot" />Fonctionnalités</span>
-          <h2>Une app qui relie vos outils métiers<br />au Guichet Unique.</h2>
-          <p className="lead">
-            Chaque fonctionnalité supprime une tâche manuelle fastidieuse :
-            l&apos;outil remplit, génère et dépose — vous vérifiez.
-          </p>
-        </div>
+    <section id="fonctionnalites" className="scroll-mt-20 bg-white py-20 sm:py-24">
+      <Container>
+        <SectionHead
+          eyebrow="Fonctionnalités"
+          title={
+            <>
+              Une app qui relie vos outils métiers
+              <br />
+              au Guichet Unique.
+            </>
+          }
+          lead={
+            <>
+              Chaque fonctionnalité supprime une tâche manuelle fastidieuse :
+              l&apos;outil remplit, génère et dépose — vous vérifiez.
+            </>
+          }
+        />
 
         {ROWS.map((row, i) => (
-          <div key={row.title} className={`feature-row${i % 2 === 1 ? ' reverse' : ''}`}>
-            <div className="feature-copy">
-              <span className="eyebrow"><span className="dot" />{row.eyebrow}</span>
-              <h3 style={{ marginTop: 14 }}>{row.title}</h3>
-              <p>{row.desc}</p>
-              <a href="/auth/signup" className="btn btn-link" style={{ paddingLeft: 0 }}>
+          <div
+            key={row.title}
+            className="grid items-center gap-6 py-8 lg:grid-cols-2 lg:gap-14 lg:py-12"
+          >
+            <div className={cn(i % 2 === 1 && 'lg:order-2')}>
+              <Eyebrow>{row.eyebrow}</Eyebrow>
+              <h3 className="mb-3 mt-3.5 text-2xl leading-snug tracking-tight sm:text-[28px] lg:text-[32px]">
+                {row.title}
+              </h3>
+              <p className="mb-4 text-base leading-relaxed text-[var(--ink-600)]">{row.desc}</p>
+              <a
+                href="/auth/signup"
+                className="inline-flex items-center gap-1.5 text-[15px] font-semibold text-[var(--accent-ink)] transition-colors hover:text-[var(--violet-900)]"
+              >
                 Demander une démo <Arrow size={15} />
               </a>
             </div>
-            <div className="feature-visual">{row.visual}</div>
+            <div
+              className={cn(
+                'grid min-h-[300px] place-items-center overflow-hidden rounded-[20px] border border-[#ffcfca] bg-gradient-to-br from-[#fff3f1] via-[#eae8f6] to-white p-8 transition-transform duration-300 hover:scale-[1.015]',
+                i % 2 === 1 && 'lg:order-1',
+              )}
+            >
+              {row.visual}
+            </div>
           </div>
         ))}
 
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 20, marginTop: 40 }}>
+        <div className="mt-10 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
           {EXTRAS.map((f) => (
-            <div key={f.title} className="card" style={{ padding: 22, background: 'var(--ink-50)' }}>
-              <div className="icon-tile-lg" style={{ marginBottom: 12 }}>
+            <div
+              key={f.title}
+              className="rounded-2xl border border-[var(--ink-150)] bg-[var(--ink-50)] p-5.5 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_12px_32px_rgba(8,3,49,0.07)]"
+            >
+              <div className="mb-3 grid size-11 place-items-center rounded-xl bg-[#fff3f1] text-[#cc6d62]">
                 <f.icon size={20} />
               </div>
-              <h3 style={{ fontSize: 16, marginBottom: 6 }}>{f.title}</h3>
-              <p style={{ fontSize: 13.5, color: 'var(--ink-600)', margin: 0 }}>{f.desc}</p>
+              <h3 className="mb-1.5 text-base font-semibold">{f.title}</h3>
+              <p className="text-[13.5px] leading-relaxed text-[var(--ink-600)]">{f.desc}</p>
             </div>
           ))}
         </div>
-      </div>
+      </Container>
     </section>
   );
 }

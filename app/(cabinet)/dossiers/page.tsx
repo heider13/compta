@@ -1,9 +1,21 @@
 import Link from 'next/link';
+import { Plus } from 'lucide-react';
 import { createClient } from '@/lib/supabase/server';
 import { StatCard } from '@/components/cabinet/StatCard';
 import { FilterBar } from '@/components/cabinet/FilterBar';
-import { StatusPill } from '@/components/cabinet/StatusPill';
+import { StatusBadge } from '@/components/cabinet/StatusBadge';
 import { formatDate, typeFormaliteLabel, formeJuridiqueLabel } from '@/lib/utils/format';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
+import { cn } from '@/lib/utils';
 
 export const dynamic = 'force-dynamic';
 
@@ -80,23 +92,31 @@ export default async function DossiersPage({ searchParams }: { searchParams: Pro
   const view: 'table' | 'kanban' = sp.view === 'kanban' ? 'kanban' : 'table';
 
   return (
-    <div className="app-content with-bg">
-      <div className="page-head">
+    <div className="mx-auto w-full max-w-7xl space-y-6 p-4 sm:p-6">
+      <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1>Dossiers</h1>
-          <p>{rows.length} dossier{rows.length > 1 ? 's' : ''}{(sp.type || sp.statut || sp.forme || sp.q) ? ' (filtré)' : ''}.</p>
+          <h1 className="text-2xl font-semibold tracking-tight">Dossiers</h1>
+          <p className="text-sm text-muted-foreground">
+            {rows.length} dossier{rows.length > 1 ? 's' : ''}
+            {(sp.type || sp.statut || sp.forme || sp.q) ? ' (filtré)' : ''}.
+          </p>
         </div>
-        <div style={{ display: 'flex', gap: 8 }}>
+        <div className="flex items-center gap-2">
           <ViewToggle current={view} />
-          <Link href="/dossiers/new" className="btn btn-accent">+ Nouvelle formalité</Link>
+          <Button asChild>
+            <Link href="/dossiers/new">
+              <Plus className="size-4" />
+              Nouvelle formalité
+            </Link>
+          </Button>
         </div>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 14, marginBottom: 24 }}>
-        <StatCard count={counts.enCours}     label="Formalités" sublabel="En cours"               tone="gray"   href="/dossiers?statut=AWAITING_VALIDATION" />
-        <StatCard count={counts.enSignature} label="Formalités" sublabel="En signature"           tone="violet" href="/dossiers?statut=SIGNATURE_PENDING" />
-        <StatCard count={counts.enTraitement} label="Formalités" sublabel="En cours de traitement" tone="amber"  href="/dossiers?statut=AMENDMENT_PENDING" />
-        <StatCard count={counts.enAttente}   label="Formalités" sublabel="En attente du greffe"    tone="orange" href="/dossiers?statut=PAYMENT_PENDING" />
+      <div className="grid gap-3.5 sm:grid-cols-2 xl:grid-cols-4">
+        <StatCard count={counts.enCours}      label="Formalités" sublabel="En cours"                tone="gray"   href="/dossiers?statut=AWAITING_VALIDATION" />
+        <StatCard count={counts.enSignature}  label="Formalités" sublabel="En signature"            tone="violet" href="/dossiers?statut=SIGNATURE_PENDING" />
+        <StatCard count={counts.enTraitement} label="Formalités" sublabel="En cours de traitement"  tone="amber"  href="/dossiers?statut=AMENDMENT_PENDING" />
+        <StatCard count={counts.enAttente}    label="Formalités" sublabel="En attente du greffe"    tone="orange" href="/dossiers?statut=PAYMENT_PENDING" />
       </div>
 
       <FilterBar
@@ -114,65 +134,74 @@ export default async function DossiersPage({ searchParams }: { searchParams: Pro
 }
 
 function ViewToggle({ current }: { current: 'table' | 'kanban' }) {
+  const linkClass = (active: boolean) =>
+    cn(
+      'rounded-md px-3.5 py-1.5 text-xs font-medium no-underline transition-colors',
+      active ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground',
+    );
   return (
-    <div style={{ display: 'inline-flex', background: 'var(--ink-100)', borderRadius: 8, padding: 3 }}>
-      <Link href="/dossiers?view=table" style={tStyle(current === 'table')}>Liste</Link>
-      <Link href="/dossiers?view=kanban" style={tStyle(current === 'kanban')}>Kanban</Link>
+    <div className="inline-flex rounded-lg bg-muted p-0.5">
+      <Link href="/dossiers?view=table" className={linkClass(current === 'table')}>
+        Liste
+      </Link>
+      <Link href="/dossiers?view=kanban" className={linkClass(current === 'kanban')}>
+        Kanban
+      </Link>
     </div>
   );
-}
-
-function tStyle(active: boolean): React.CSSProperties {
-  return {
-    padding: '6px 14px',
-    borderRadius: 6,
-    fontSize: 12,
-    fontWeight: 500,
-    background: active ? 'white' : 'transparent',
-    color: active ? 'var(--ink-900)' : 'var(--ink-600)',
-    textDecoration: 'none',
-    boxShadow: active ? '0 1px 2px rgba(0,0,0,0.04)' : 'none',
-  };
 }
 
 function TableView({ rows }: { rows: DossierRow[] }) {
   if (rows.length === 0) {
     return (
-      <div className="app-card" style={{ padding: 48, textAlign: 'center', color: 'var(--ink-500)', fontSize: 14 }}>
-        Aucun dossier ne correspond. <Link href="/dossiers/new" style={{ color: 'var(--accent-ink)' }}>Créer un dossier</Link>.
-      </div>
+      <Card>
+        <CardContent className="py-12 text-center text-sm text-muted-foreground">
+          Aucun dossier ne correspond.{' '}
+          <Link href="/dossiers/new" className="font-medium text-primary hover:underline">
+            Créer un dossier
+          </Link>
+          .
+        </CardContent>
+      </Card>
     );
   }
   return (
-    <div className="app-card" style={{ overflow: 'hidden', padding: 0 }}>
-      <div style={{ display: 'grid', gridTemplateColumns: '140px 1.4fr 0.9fr 0.7fr 0.9fr 110px', padding: '12px 18px', background: 'var(--ink-50)', borderBottom: '1px solid var(--ink-150)', fontSize: 11, fontWeight: 600, color: 'var(--ink-500)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-        <span>Référence</span><span>Client</span><span>Type</span><span>Forme</span><span>Statut</span><span>MAJ</span>
-      </div>
-      {rows.map((d) => (
-        <Link
-          key={d.id}
-          href={`/dossiers/${d.id}`}
-          style={{
-            display: 'grid',
-            gridTemplateColumns: '140px 1.4fr 0.9fr 0.7fr 0.9fr 110px',
-            padding: '14px 18px',
-            alignItems: 'center',
-            gap: 12,
-            borderBottom: '1px solid var(--ink-100)',
-            fontSize: 13,
-            textDecoration: 'none',
-            color: 'inherit',
-          }}
-        >
-          <span className="mono" style={{ fontSize: 12, color: 'var(--ink-500)' }}>{d.reference}</span>
-          <span style={{ fontWeight: 500, color: 'var(--ink-900)' }}>{d.client_name}</span>
-          <span style={{ color: 'var(--ink-700)' }}>{typeFormaliteLabel(d.type_formalite)}</span>
-          <span style={{ color: 'var(--ink-600)' }}>{formeJuridiqueLabel(d.forme_juridique || undefined) || '—'}</span>
-          <StatusPill statut={d.statut} />
-          <span className="mono" style={{ color: 'var(--ink-500)', fontSize: 11 }}>{formatDate(d.updated_at)}</span>
-        </Link>
-      ))}
-    </div>
+    <Card className="overflow-hidden py-0">
+      <Table>
+        <TableHeader>
+          <TableRow className="hover:bg-transparent">
+            <TableHead className="w-36">Référence</TableHead>
+            <TableHead>Client</TableHead>
+            <TableHead>Type</TableHead>
+            <TableHead>Forme</TableHead>
+            <TableHead>Statut</TableHead>
+            <TableHead className="w-28 text-right">MAJ</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {rows.map((d) => (
+            <TableRow key={d.id} className="relative">
+              <TableCell className="font-mono text-xs text-muted-foreground">
+                {/* Lien plein-rang : couvre toute la ligne via l'overlay */}
+                <Link href={`/dossiers/${d.id}`} className="absolute inset-0" aria-label={d.client_name} />
+                {d.reference}
+              </TableCell>
+              <TableCell className="font-medium">{d.client_name}</TableCell>
+              <TableCell className="text-muted-foreground">{typeFormaliteLabel(d.type_formalite)}</TableCell>
+              <TableCell className="text-muted-foreground">
+                {formeJuridiqueLabel(d.forme_juridique || undefined) || '—'}
+              </TableCell>
+              <TableCell>
+                <StatusBadge statut={d.statut} />
+              </TableCell>
+              <TableCell className="text-right font-mono text-xs text-muted-foreground">
+                {formatDate(d.updated_at)}
+              </TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+    </Card>
   );
 }
 
@@ -186,23 +215,30 @@ function KanbanView({ rows }: { rows: DossierRow[] }) {
   ];
 
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 14, overflow: 'auto' }}>
+    <div className="grid gap-3.5 overflow-x-auto md:grid-cols-3 xl:grid-cols-5">
       {columns.map((col) => {
         const items = rows.filter((r) => col.statuts.includes(r.statut));
         return (
-          <div key={col.id} style={{ background: 'var(--ink-50)', borderRadius: 12, padding: 12, minHeight: 200 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10, padding: '0 4px' }}>
-              <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--ink-700)' }}>{col.title}</span>
-              <span style={{ fontSize: 11, color: 'var(--ink-500)' }}>{items.length}</span>
+          <div key={col.id} className="min-h-52 rounded-xl bg-muted/60 p-3">
+            <div className="mb-2.5 flex items-center justify-between px-1">
+              <span className="text-xs font-semibold text-foreground/80">{col.title}</span>
+              <span className="rounded-full bg-card px-2 py-0.5 text-[11px] font-medium text-muted-foreground">
+                {items.length}
+              </span>
             </div>
-            <div style={{ display: 'grid', gap: 8 }}>
+            <div className="grid gap-2">
               {items.map((d) => (
-                <Link key={d.id} href={`/dossiers/${d.id}`} className="app-card" style={{ padding: 12, textDecoration: 'none', color: 'inherit', display: 'block' }}>
-                  <div style={{ fontSize: 12, fontWeight: 500, color: 'var(--ink-900)', marginBottom: 4 }}>{d.client_name}</div>
-                  <div className="mono" style={{ fontSize: 11, color: 'var(--ink-500)' }}>{d.reference}</div>
-                  <div style={{ fontSize: 11, color: 'var(--ink-500)', marginTop: 6 }}>
-                    {typeFormaliteLabel(d.type_formalite)}{d.forme_juridique && ` · ${formeJuridiqueLabel(d.forme_juridique)}`}
-                  </div>
+                <Link
+                  key={d.id}
+                  href={`/dossiers/${d.id}`}
+                  className="block rounded-lg border bg-card p-3 no-underline transition-shadow hover:shadow-md"
+                >
+                  <p className="mb-1 text-xs font-medium text-foreground">{d.client_name}</p>
+                  <p className="font-mono text-[11px] text-muted-foreground">{d.reference}</p>
+                  <p className="mt-1.5 text-[11px] text-muted-foreground">
+                    {typeFormaliteLabel(d.type_formalite)}
+                    {d.forme_juridique && ` · ${formeJuridiqueLabel(d.forme_juridique)}`}
+                  </p>
                 </Link>
               ))}
             </div>
