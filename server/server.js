@@ -1012,7 +1012,9 @@ app.use('/api/dossiers', requireUser, requireOrg, documentsRoutes);
 app.use((err, req, res, _next) => {
   console.error(`[ERR] ${req.method} ${req.path}:`, err.message);
   res.status(err.status || 500).json({
-    error: err.status ? 'inpi_request_failed' : 'internal_error',
+    // err.code (pdf_conversion_failed, inpi_credentials_missing, …) prime ;
+    // sinon on garde la convention historique.
+    error: err.code || (err.status ? 'request_failed' : 'internal_error'),
     detail: String(err.message),
     payload: err.payload,
   });
