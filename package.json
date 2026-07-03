@@ -2,7 +2,9 @@
   "name": "compta",
   "version": "0.1.0",
   "private": true,
-  "engines": { "node": "22.x" },
+  "engines": {
+    "node": "22.x"
+  },
   "scripts": {
     "dev": "next dev",
     "build": "next build",
@@ -11,18 +13,27 @@
     "type-check": "tsc --noEmit"
   },
   "dependencies": {
+    "@stripe/stripe-js": "^4.10.0",
+    "@supabase/ssr": "^0.5.2",
+    "@supabase/supabase-js": "^2.45.0",
+    "@tailwindcss/postcss": "^4.3.2",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
+    "lucide-react": "^1.23.0",
     "next": "^15.0.3",
+    "postcss": "^8.5.16",
+    "radix-ui": "^1.6.1",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
-    "@supabase/supabase-js": "^2.45.0",
-    "@supabase/ssr": "^0.5.2",
     "stripe": "^17.5.0",
-    "@stripe/stripe-js": "^4.10.0"
+    "tailwind-merge": "^3.6.0",
+    "tailwindcss": "^4.3.2",
+    "tw-animate-css": "^1.4.0"
   },
   "devDependencies": {
-    "typescript": "^5.6.3",
+    "@types/node": "^22.9.0",
     "@types/react": "^18.3.12",
     "@types/react-dom": "^18.3.1",
-    "@types/node": "^22.9.0"
+    "typescript": "^5.6.3"
   }
 }
