@@ -844,3 +844,74 @@ section[id] { scroll-margin-top: 80px; }
   .sidebar-user { justify-content: center; }
 }
 
+
+/* ---------- Landing v2 — layout inspiré legaltech (blocs alternés) ---------- */
+.logo-band {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 40px;
+  flex-wrap: wrap;
+  padding: 28px 0;
+  opacity: 0.75;
+}
+.logo-band .logo-item {
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: var(--ink-500);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  white-space: nowrap;
+}
+.feature-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 56px;
+  align-items: center;
+  padding: 48px 0;
+}
+.feature-row.reverse .feature-copy { order: 2; }
+.feature-row.reverse .feature-visual { order: 1; }
+.feature-copy h3 {
+  font-size: clamp(24px, 2.6vw, 32px);
+  letter-spacing: -0.02em;
+  margin-bottom: 12px;
+}
+.feature-copy p {
+  font-size: 16px;
+  color: var(--ink-600);
+  line-height: 1.65;
+  margin: 0 0 18px;
+}
+.feature-visual {
+  background: linear-gradient(145deg, var(--violet-50), #F5F2FE 60%, white);
+  border: 1px solid var(--ink-100);
+  border-radius: 20px;
+  padding: 32px;
+  min-height: 300px;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+}
+.mock-card {
+  background: white;
+  border: 1px solid var(--ink-150);
+  border-radius: 12px;
+  box-shadow: 0 12px 32px rgba(35, 20, 80, 0.10);
+  padding: 18px;
+  width: 100%;
+  max-width: 360px;
+}
+.mock-line { height: 9px; border-radius: 5px; background: var(--ink-100); margin-bottom: 8px; }
+.mock-line.filled { background: var(--violet-200, #D6C9F5); }
+.mock-pill {
+  display: inline-flex; align-items: center; gap: 5px;
+  font-size: 11px; font-weight: 600; padding: 3px 10px; border-radius: 999px;
+}
+@media (max-width: 860px) {
+  .feature-row { grid-template-columns: 1fr; gap: 24px; padding: 32px 0; }
+  .feature-row.reverse .feature-copy { order: 1; }
+  .feature-row.reverse .feature-visual { order: 2; }
+}
