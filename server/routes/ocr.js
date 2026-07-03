@@ -13,12 +13,21 @@ const express = require('express');
 const router = express.Router();
 
 const { extractIdentity } = require('../lib/ocr');
+const { isPdf, pdfToPngPages } = require('../lib/pdf');
 const { getSupabaseAdmin } = require('../lib/db');
 
 const MAX_BASE64_LENGTH = 14_000_000; // ≈10 Mo binaire
 
 function asyncRoute(fn) {
   return (req, res, next) => fn(req, res, next).catch(next);
+}
+
+// Score de fiabilité d'une extraction — pour garder la meilleure page d'un PDF.
+function methodScore(method) {
+  if (method === 'mrz') return 3;
+  if (method === 'mrz_partial') return 2;
+  if (method === 'heuristic') return 1;
+  return 0;
 }
 
 router.post(
@@ -44,7 +53,20 @@ router.post(
       return res.status(400).json({ error: 'image_too_small' });
     }
 
-    const result = await extractIdentity(buffer);
+    // PDF scanné : conversion des 1-2 premières pages (recto/verso) en PNG,
+    // OCR page par page, on garde le meilleur résultat (MRZ > heuristique).
+    let result;
+    if (isPdf(buffer)) {
+      const pages = await pdfToPngPages(buffer, { maxPages: 2 });
+      result = { fields: null, method: 'none', confidence: null };
+      for (const page of pages) {
+        const r = await extractIdentity(page);
+        if (methodScore(r.method) > methodScore(result.method)) result = r;
+        if (r.method === 'mrz') break; // MRZ complet : inutile d'aller plus loin
+      }
+    } else {
+      result = await extractIdentity(buffer);
+    }
 
     // Audit sans PII : on trace l'usage et la méthode, pas les champs.
     try {

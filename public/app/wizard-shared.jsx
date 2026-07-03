@@ -226,7 +226,7 @@ const IdentityOcrUpload = ({ onExtracted, label = 'Scanner une pièce d\'identit
       });
     } catch (e) {
       const detail = e.status === 422
-        ? 'Lecture impossible. Photo nette, à plat, zone MRZ (lignes en bas du document) visible.'
+        ? 'Lecture impossible. Photo/scan net, à plat, zone MRZ (lignes en bas du document) visible. PDF : vérifiez que le scan n\'est pas trop clair.'
         : (e.message || 'Erreur inconnue');
       setState({ status: 'error', message: detail });
     }
@@ -234,7 +234,7 @@ const IdentityOcrUpload = ({ onExtracted, label = 'Scanner une pièce d\'identit
 
   return (
     <div style={{ marginBottom: 16 }}>
-      <input type="file" accept="image/jpeg,image/png,image/webp" capture="environment"
+      <input type="file" accept="image/jpeg,image/png,image/webp,application/pdf" capture="environment"
         style={{ display: 'none' }} ref={inputRef}
         onChange={e => { onPick(e.target.files[0]); e.target.value = ''; }} />
       <button type="button" className="btn btn-ghost"
