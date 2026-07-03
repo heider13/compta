@@ -1,10 +1,12 @@
 import { Arrow, Shield, Bolt, Check } from '@/components/icons';
+import { FxBackground } from './FxBackground';
 
 export function Hero() {
   return (
     <section className="hero">
       <div className="hero-bg" />
       <div className="hero-grid" />
+      <FxBackground />
       <div className="container hero-content">
         <span className="eyebrow" style={{ margin: '0 auto' }}>
           <span className="dot" />

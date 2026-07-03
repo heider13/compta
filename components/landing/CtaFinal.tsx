@@ -1,4 +1,5 @@
 import { Arrow } from '@/components/icons';
+import { FxBackground } from './FxBackground';
 
 export function CtaFinal() {
   return (
@@ -25,6 +26,7 @@ export function CtaFinal() {
               pointerEvents: 'none',
             }}
           />
+          <FxBackground scanline={false} />
           <span
             className="eyebrow"
             style={{

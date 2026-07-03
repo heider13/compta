@@ -966,3 +966,94 @@ section[id] { scroll-margin-top: 80px; }
 }
 .landing-theme .mock-line.filled { background: #c2bbe5; }
 .landing-theme .icon-tile-lg { background: #fff3f1; color: #cc6d62; }
+
+/* ---------- Effets de fond animés (landing, futuriste) ---------- */
+/* Pur CSS, transform/opacity uniquement (GPU). Désactivés si l'utilisateur
+   préfère réduire les animations. */
+.fx-layer {
+  position: absolute; inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+.fx-orb {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(70px);
+  opacity: 0.32;
+  will-change: transform;
+}
+.fx-orb.o1 {
+  width: 420px; height: 420px;
+  background: radial-gradient(circle, #ff887b, transparent 65%);
+  top: -8%; right: 4%;
+  animation: fx-drift-1 16s ease-in-out infinite alternate;
+}
+.fx-orb.o2 {
+  width: 360px; height: 360px;
+  background: radial-gradient(circle, #361fab, transparent 65%);
+  bottom: -12%; left: -4%;
+  opacity: 0.22;
+  animation: fx-drift-2 20s ease-in-out infinite alternate;
+}
+.fx-orb.o3 {
+  width: 280px; height: 280px;
+  background: radial-gradient(circle, #ea42fd, transparent 65%);
+  top: 38%; left: 58%;
+  opacity: 0.16;
+  animation: fx-drift-3 24s ease-in-out infinite alternate;
+}
+@keyframes fx-drift-1 {
+  from { transform: translate3d(0, 0, 0) scale(1); }
+  to   { transform: translate3d(-70px, 50px, 0) scale(1.15); }
+}
+@keyframes fx-drift-2 {
+  from { transform: translate3d(0, 0, 0) scale(1); }
+  to   { transform: translate3d(60px, -40px, 0) scale(1.1); }
+}
+@keyframes fx-drift-3 {
+  from { transform: translate3d(0, 0, 0) scale(0.95); }
+  to   { transform: translate3d(-40px, -60px, 0) scale(1.12); }
+}
+
+/* Ligne de scan horizontale qui balaie le hero */
+.fx-scanline {
+  position: absolute;
+  left: 10%; right: 10%;
+  height: 1px;
+  top: 0;
+  background: linear-gradient(90deg, transparent, rgba(255, 136, 123, 0.55) 30%, rgba(234, 66, 253, 0.55) 70%, transparent);
+  box-shadow: 0 0 18px rgba(255, 136, 123, 0.35);
+  animation: fx-scan 9s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  will-change: transform, opacity;
+}
+@keyframes fx-scan {
+  0%   { transform: translateY(40px);  opacity: 0; }
+  12%  { opacity: 0.8; }
+  50%  { opacity: 0.5; }
+  88%  { opacity: 0.8; }
+  100% { transform: translateY(520px); opacity: 0; }
+}
+
+/* Particules flottantes */
+.fx-particle {
+  position: absolute;
+  bottom: -8px;
+  width: 5px; height: 5px;
+  border-radius: 50%;
+  background: rgba(54, 31, 171, 0.35);
+  animation: fx-float 12s linear infinite;
+  will-change: transform, opacity;
+}
+.fx-particle.coral { background: rgba(255, 136, 123, 0.5); }
+.fx-particle.magenta { background: rgba(234, 66, 253, 0.35); width: 4px; height: 4px; }
+@keyframes fx-float {
+  0%   { transform: translate3d(0, 0, 0); opacity: 0; }
+  8%   { opacity: 0.9; }
+  85%  { opacity: 0.4; }
+  100% { transform: translate3d(24px, -560px, 0); opacity: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fx-orb, .fx-scanline, .fx-particle { animation: none; }
+  .fx-scanline, .fx-particle { display: none; }
+}
