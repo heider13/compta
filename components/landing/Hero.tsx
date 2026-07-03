@@ -11,14 +11,14 @@ export function Hero() {
           Pour les experts-comptables, avocats et formalistes
         </span>
         <h1>
-          Toutes les formalités<br />
-          juridiques d&apos;entreprise.<br />
-          <span className="hl">Un seul logiciel.</span>
+          Compta pense comme<br />
+          un formaliste.<br />
+          <span className="hl">Et travaille comme tout un cabinet.</span>
         </h1>
         <p className="lead" style={{ maxWidth: 640, margin: '0 auto' }}>
-          Compta centralise la gestion des dossiers de création, modification et radiation
-          de sociétés (auto-entreprises, SASU, SAS, EURL, SARL, SCI, holdings) directement
-          via l&apos;API officielle du Guichet Unique INPI.
+          Déposez une pièce d&apos;identité, saisissez un SIREN : la liasse INPI se
+          remplit toute seule, les statuts se génèrent, la signature part en un clic.
+          Vous ne faites plus que vérifier.
         </p>
         <div className="hero-cta">
           <a href="/auth/signup" className="btn btn-accent btn-lg">

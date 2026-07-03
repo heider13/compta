@@ -2,44 +2,44 @@ import { Workflow, Building, Users, Link as LinkIcon, Lock, Sparkle, Chart, Doc 
 
 const FEATURES = [
   {
+    icon: Sparkle,
+    title: "Préremplissage par lecture de la pièce d'identité",
+    desc: "Déposez la CNI ou le passeport du dirigeant — photo ou PDF scanné. L'OCR extrait l'identité complète et remplit la liasse INPI à votre place. Vous gagnez 15 à 20 minutes par dossier.",
+  },
+  {
     icon: Building,
-    title: 'Connexion native INPI',
-    desc: "Dépôt direct au Guichet Unique via l'API officielle. Statuts synchronisés en temps réel, régularisations traitées automatiquement.",
+    title: '100 % intégré au Guichet Unique',
+    desc: "Connectez le compte INPI de votre cabinet une fois : dépôt direct via l'API officielle, statuts synchronisés en temps réel, régularisations suivies automatiquement.",
+  },
+  {
+    icon: Doc,
+    title: 'Statuts générés automatiquement',
+    desc: "SASU, SAS, EURL, SARL, SCI : les statuts se génèrent en .docx éditable depuis les données du dossier. Votre base de travail est prête, vous n'ajustez que les clauses spécifiques.",
+  },
+  {
+    icon: Lock,
+    title: 'Signature électronique avancée intégrée',
+    desc: "Signature simple (création) et avancée eIDAS (modification, cessation) sans quitter l'outil. Le signataire reçoit un email, signe avec OTP SMS, le dossier avance tout seul.",
+  },
+  {
+    icon: LinkIcon,
+    title: 'Zéro ressaisie avec le SIREN',
+    desc: "Saisissez un SIREN : raison sociale, siège, forme juridique et dirigeants remontent instantanément du registre national. Pas de double saisie, pas d'erreur de recopie.",
+  },
+  {
+    icon: Workflow,
+    title: 'Un tableau de bord unifié',
+    desc: "Pilotez toutes vos formalités au même endroit : kanban des dossiers, tâches par collaborateur, relances clients, et les dossiers qui requièrent votre attention en premier.",
   },
   {
     icon: Users,
     title: 'Multi-cabinets, multi-collaborateurs',
-    desc: "Isolation totale entre cabinets, rôles (owner, admin, collaborateur), permissions fines, audit log complet de chaque action.",
-  },
-  {
-    icon: Workflow,
-    title: 'Pipeline et workflows automatisés',
-    desc: "Kanban des dossiers en cours, attribution des tâches, relances automatiques aux clients, deadlines internes.",
-  },
-  {
-    icon: Doc,
-    title: 'Génération de documents',
-    desc: "Statuts, PV, actes, lettres-types pré-remplis depuis les données de la société. Variables dynamiques, modèles personnalisables.",
-  },
-  {
-    icon: LinkIcon,
-    title: 'Import Kbis/SIREN automatique',
-    desc: "Saisie d'un SIREN → récupération instantanée des données entreprise via Pappers + RNE. Pas de double saisie.",
-  },
-  {
-    icon: Lock,
-    title: 'Signature électronique',
-    desc: "Signature simple (création) et avancée RGS (modification/cessation) intégrée. Envoi aux signataires en un clic.",
-  },
-  {
-    icon: Sparkle,
-    title: 'CRM intégré',
-    desc: "Carnet de clients du cabinet, historique des formalités par client, espace client pour suivi en autonomie.",
+    desc: "Isolation totale entre cabinets, rôles et permissions fines (owner, admin, collaborateur), audit log complet de chaque action.",
   },
   {
     icon: Chart,
     title: 'API & marque blanche',
-    desc: "Sous-domaine personnalisé, logo et couleurs du cabinet. API publique + webhooks pour vos intégrations partenaires.",
+    desc: "Sous-domaine personnalisé, logo et couleurs de votre cabinet. API publique + webhooks pour vos intégrations partenaires.",
   },
 ];
 
@@ -49,10 +49,10 @@ export function Features() {
       <div className="container">
         <div className="sec-head">
           <span className="eyebrow"><span className="dot" />Fonctionnalités</span>
-          <h2>Le back-office complet<br />pour vos formalités juridiques.</h2>
+          <h2>Une app qui relie vos outils métiers<br />au Guichet Unique.</h2>
           <p className="lead">
-            Pensé pour la productivité des cabinets : tout ce dont vous avez besoin
-            pour traiter des centaines de dossiers par mois, sans changer d&apos;outil.
+            Chaque fonctionnalité est pensée pour supprimer le travail manuel
+            fastidieux : vous vérifiez, l&apos;outil remplit, génère et dépose.
           </p>
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 20 }}>
