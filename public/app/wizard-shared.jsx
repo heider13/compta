@@ -189,22 +189,76 @@ const RgsWarning = () => (
   </div>
 );
 
-// ─── Scan de pièce d'identité (OCR) ────────────────────────────────────
-// Upload d'une photo de CNI / passeport → le backend extrait nom, prénoms,
-// date/lieu de naissance, sexe, nationalité (zone MRZ prioritaire) →
-// onExtracted(fields) pour préremplir le formulaire. L'image n'est PAS
-// conservée côté serveur.
-const IdentityOcrUpload = ({ onExtracted, label = 'Scanner une pièce d\'identité' }) => {
-  const inputRef = React.useRef(null);
-  const [state, setState] = React.useState({ status: 'idle', message: null });
+// ─── Scan de pièce d'identité (OCR) — recto + verso ────────────────────
+// Deux emplacements : recto (infos imprimées) et verso (zone MRZ sur la CNI
+// 2021). Chaque face est analysée dès son upload ; les résultats sont
+// fusionnés avec priorité au MRZ (méthode la plus fiable), et
+// onExtracted(fieldsFusionnés) est rappelé après chaque analyse.
+// Les images ne sont PAS conservées côté serveur.
+const OCR_METHOD_SCORE = { mrz: 3, mrz_partial: 2, heuristic: 1, none: 0 };
 
-  const onPick = async (file) => {
+const OcrSlot = ({ side, label, state, onPick }) => {
+  const inputRef = React.useRef(null);
+  const icons = { idle: '📷', loading: '⏳', done: '✅', error: '⚠️' };
+  return (
+    <div style={{ flex: 1, minWidth: 180 }}>
+      <input type="file" accept="image/jpeg,image/png,image/webp,application/pdf" capture="environment"
+        style={{ display: 'none' }} ref={inputRef}
+        onChange={e => { onPick(side, e.target.files[0]); e.target.value = ''; }} />
+      <button type="button" className="btn btn-ghost"
+        onClick={() => inputRef.current?.click()}
+        disabled={state.status === 'loading'}
+        style={{
+          width: '100%', justifyContent: 'center', padding: '13px 12px', fontSize: 13,
+          border: `1.5px dashed ${state.status === 'done' ? 'var(--status-green, #137333)' : 'var(--accent)'}`,
+          color: state.status === 'done' ? 'var(--status-green, #137333)' : 'var(--accent-ink)',
+        }}>
+        {icons[state.status]} {state.status === 'loading' ? 'Analyse…' : state.status === 'done' ? `${label} lu` : label}
+      </button>
+    </div>
+  );
+};
+
+const IdentityOcrUpload = ({ onExtracted, label = 'Scanner une pièce d\'identité' }) => {
+  const [slots, setSlots] = React.useState({
+    recto: { status: 'idle' },
+    verso: { status: 'idle' },
+  });
+  const [message, setMessage] = React.useState(null);
+  // Résultats par face pour la fusion — ref pour éviter les courses entre
+  // deux analyses simultanées.
+  const resultsRef = React.useRef({});
+
+  const setSlot = (side, patch) =>
+    setSlots(s => ({ ...s, [side]: { ...s[side], ...patch } }));
+
+  const mergeAndEmit = () => {
+    // Trie les faces par fiabilité croissante puis superpose : les champs
+    // de la méthode la plus fiable (MRZ) écrasent ceux du texte libre.
+    const parts = Object.values(resultsRef.current)
+      .filter(r => r && r.fields)
+      .sort((a, b) => (OCR_METHOD_SCORE[a.method] || 0) - (OCR_METHOD_SCORE[b.method] || 0));
+    if (!parts.length) return null;
+    const merged = {};
+    for (const p of parts) {
+      for (const [k, v] of Object.entries(p.fields)) {
+        if (v !== null && v !== undefined && v !== '' && !(Array.isArray(v) && !v.length)) {
+          merged[k] = v;
+        }
+      }
+    }
+    onExtracted(merged);
+    return merged;
+  };
+
+  const onPick = async (side, file) => {
     if (!file) return;
     if (file.size > 10 * 1024 * 1024) {
-      setState({ status: 'error', message: 'Image trop lourde (max 10 Mo).' });
+      setMessage({ tone: 'error', text: 'Fichier trop lourd (max 10 Mo).' });
       return;
     }
-    setState({ status: 'loading', message: 'Analyse du document en cours… (10-20 s)' });
+    setSlot(side, { status: 'loading' });
+    setMessage({ tone: 'info', text: `Analyse du ${side} en cours… (10-20 s)` });
     try {
       const base64 = await new Promise((resolve, reject) => {
         const reader = new FileReader();
@@ -217,41 +271,43 @@ const IdentityOcrUpload = ({ onExtracted, label = 'Scanner une pièce d\'identit
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ imageBase64: base64 }),
       });
-      const f = result.fields || {};
-      onExtracted(f);
-      const nomComplet = [f.prenoms?.join(' '), f.nom].filter(Boolean).join(' ');
-      setState({
-        status: 'done',
-        message: `✓ Identité extraite${nomComplet ? ` : ${nomComplet}` : ''} — vérifiez les champs préremplis.`,
+      resultsRef.current[side] = result;
+      setSlot(side, { status: 'done' });
+      const merged = mergeAndEmit();
+      const nomComplet = merged ? [merged.prenoms?.join(' '), merged.nom].filter(Boolean).join(' ') : '';
+      setMessage({
+        tone: 'ok',
+        text: `✓ ${side.charAt(0).toUpperCase() + side.slice(1)} lu${nomComplet ? ` — ${nomComplet}` : ''}. Vérifiez les champs préremplis.`,
       });
     } catch (e) {
-      // Trace complète en console pour le support (contient le debug serveur).
-      console.warn('[ocr] échec extraction :', e.message || e);
+      console.warn(`[ocr] échec extraction ${side} :`, e.message || e);
+      setSlot(side, { status: 'error' });
       const detail = e.status === 422
-        ? 'Lecture impossible. Photo/scan net, à plat, zone MRZ (lignes en bas du document) visible. PDF : vérifiez que le scan n\'est pas trop clair.'
+        ? `Lecture du ${side} impossible. Photo nette, à plat${side === 'verso' ? ', les lignes MRZ (chevrons <<<) bien visibles' : ''}. Vous pouvez réessayer ou scanner l'autre face.`
         : (e.message || 'Erreur inconnue');
-      setState({ status: 'error', message: detail });
+      setMessage({ tone: 'error', text: detail });
     }
   };
 
   return (
     <div style={{ marginBottom: 16 }}>
-      <input type="file" accept="image/jpeg,image/png,image/webp,application/pdf" capture="environment"
-        style={{ display: 'none' }} ref={inputRef}
-        onChange={e => { onPick(e.target.files[0]); e.target.value = ''; }} />
-      <button type="button" className="btn btn-ghost"
-        onClick={() => inputRef.current?.click()}
-        disabled={state.status === 'loading'}
-        style={{ width: '100%', justifyContent: 'center', border: '1.5px dashed var(--accent)', color: 'var(--accent-ink)', padding: '14px 18px' }}>
-        {state.status === 'loading' ? '⏳ Analyse en cours…' : `📷 ${label}`}
-      </button>
-      {state.message && (
+      <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--ink-700)', marginBottom: 8 }}>
+        📷 {label} <span style={{ fontWeight: 400, color: 'var(--ink-500)' }}>— photo ou PDF, chaque face analysée automatiquement</span>
+      </div>
+      <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+        <OcrSlot side="recto" label="Recto" state={slots.recto} onPick={onPick} />
+        <OcrSlot side="verso" label="Verso (lignes <<< )" state={slots.verso} onPick={onPick} />
+      </div>
+      <div style={{ fontSize: 11, color: 'var(--ink-500)', marginTop: 6 }}>
+        CNI récente : la zone MRZ (la plus fiable) est au <strong>verso</strong>. Passeport : tout est sur la page photo → utilisez « Recto ».
+      </div>
+      {message && (
         <div style={{
           marginTop: 8, fontSize: 12, padding: '8px 10px', borderRadius: 6,
-          background: state.status === 'error' ? '#FEE2E2' : state.status === 'done' ? 'rgba(19,115,51,0.08)' : 'var(--ink-50)',
-          color: state.status === 'error' ? '#b42318' : state.status === 'done' ? 'var(--status-green, #137333)' : 'var(--ink-600)',
+          background: message.tone === 'error' ? '#FEE2E2' : message.tone === 'ok' ? 'rgba(19,115,51,0.08)' : 'var(--ink-50)',
+          color: message.tone === 'error' ? '#b42318' : message.tone === 'ok' ? 'var(--status-green, #137333)' : 'var(--ink-600)',
         }}>
-          {state.message}
+          {message.text}
         </div>
       )}
     </div>
