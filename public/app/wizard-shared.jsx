@@ -225,6 +225,8 @@ const IdentityOcrUpload = ({ onExtracted, label = 'Scanner une pièce d\'identit
         message: `✓ Identité extraite${nomComplet ? ` : ${nomComplet}` : ''} — vérifiez les champs préremplis.`,
       });
     } catch (e) {
+      // Trace complète en console pour le support (contient le debug serveur).
+      console.warn('[ocr] échec extraction :', e.message || e);
       const detail = e.status === 422
         ? 'Lecture impossible. Photo/scan net, à plat, zone MRZ (lignes en bas du document) visible. PDF : vérifiez que le scan n\'est pas trop clair.'
         : (e.message || 'Erreur inconnue');

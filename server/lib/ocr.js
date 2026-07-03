@@ -71,10 +71,18 @@ function parseMrzName(field) {
 }
 
 // Extrait les lignes candidates MRZ du texte OCR brut.
+// Tolère les confusions classiques de tesseract sur les chevrons («, ‹, (, [, {)
+// et les espaces insérés au milieu des lignes.
 function extractMrzLines(rawText) {
   return rawText
     .split(/\r?\n/)
-    .map((l) => l.replace(/\s+/g, '').toUpperCase())
+    .map((l) =>
+      l
+        .replace(/\s+/g, '')
+        .toUpperCase()
+        .replace(/[«‹〈<({\[]/g, '<')
+        .replace(/[»›〉)}\]]/g, '<'),
+    )
     .filter((l) => l.length >= 28 && /^[A-Z0-9<]+$/.test(l) && l.includes('<'));
 }
 
@@ -164,25 +172,64 @@ function frDateToIso(d, m, y) {
   return `${y}-${mm}-${dd}`;
 }
 
+// Sur la CNI 2021 les libellés sont bilingues ("NOM/Surname") et la valeur
+// est souvent sur la LIGNE SUIVANTE. On cherche la valeur sur la même ligne
+// d'abord, sinon sur les 2 lignes qui suivent le libellé.
+function valueAfterLabel(lines, labelRe, valueRe) {
+  for (let i = 0; i < lines.length; i++) {
+    const m = lines[i].match(labelRe);
+    if (!m) continue;
+    const sameLine = lines[i].slice(m.index + m[0].length).replace(/^[\s:./]+/, '');
+    const vSame = sameLine.match(valueRe);
+    if (vSame) return vSame[0].trim();
+    for (let j = i + 1; j <= i + 2 && j < lines.length; j++) {
+      const next = lines[j].trim();
+      if (!next) continue;
+      const vNext = next.match(valueRe);
+      if (vNext) return vNext[0].trim();
+      break;
+    }
+  }
+  return null;
+}
+
 function parseHeuristic(rawText) {
   const text = rawText.replace(/ /g, ' ');
   const fields = {};
 
-  const nomM = text.match(/(?:Nom|NOM)\s*[:.]?\s*([A-ZÀ-Ý][A-ZÀ-Ý' -]{1,40})(?:\n|$)/m);
-  if (nomM) fields.nom = nomM[1].trim();
+  const lines = text.split(/\r?\n/);
 
-  const prenomM = text.match(/Pr[ée]nom\(?s?\)?\s*[:.]?\s*([A-Za-zÀ-ÿ][A-Za-zÀ-ÿ' ,-]{1,60})(?:\n|$)/im);
-  if (prenomM) {
-    fields.prenoms = prenomM[1]
+  const nom = valueAfterLabel(
+    lines,
+    /(?:^|\b)(?:NOM|Nom)\b(?:\s*\/?\s*Surname)?/,
+    /^[A-ZÀ-Ý][A-ZÀ-Ý' -]{1,40}/,
+  );
+  if (nom) fields.nom = nom;
+
+  const prenoms = valueAfterLabel(
+    lines,
+    /Pr[ée]noms?\(?s?\)?(?:\s*\/?\s*Given\s*names?)?/i,
+    /^[A-Za-zÀ-ÿ][A-Za-zÀ-ÿ' ,-]{1,60}/,
+  );
+  if (prenoms) {
+    fields.prenoms = prenoms
       .split(/[,]+/)
       .map((p) => p.trim())
       .filter(Boolean);
   }
 
-  const dobM = text.match(/(?:n[ée]\(?e?\)?\s*le|naissance)\s*[:.]?\s*(\d{1,2})[\s./-](\d{1,2})[\s./-](\d{4})/i);
-  if (dobM) fields.dateNaissance = frDateToIso(dobM[1], dobM[2], dobM[3]);
+  const dobM = text.match(
+    /(?:n[ée]\(?e?\)?\s*le|naiss(?:ance|\.)?|birth)\D{0,24}?(\d{1,2})[\s./-](\d{1,2})[\s./-](\d{4})/i,
+  );
+  if (dobM) {
+    fields.dateNaissance = frDateToIso(dobM[1], dobM[2], dobM[3]);
+  } else {
+    // Dernier recours : première date JJ/MM/AAAA plausible pour une naissance.
+    const anyDate = text.match(/(\d{2})[\s./-](\d{2})[\s./-](19\d{2}|20[0-1]\d)/);
+    if (anyDate) fields.dateNaissance = frDateToIso(anyDate[1], anyDate[2], anyDate[3]);
+  }
 
-  const sexeM = text.match(/Sexe\s*[:.]?\s*([MF])/i);
+  const sexeM = text.match(/Sexe(?:\s*\/?\s*Sex)?\s*[:.]?\s*([MF])\b/i);
   if (sexeM) fields.sexe = sexeM[1].toUpperCase();
 
   const lieuM = text.match(/(?:à|a)\s*[:.]?\s*([A-ZÀ-Ý][A-Za-zÀ-ÿ' -]{2,40})\s*(?:\(|\n)/);
@@ -193,12 +240,29 @@ function parseHeuristic(rawText) {
 
 // ─── Point d'entrée ──────────────────────────────────────────────
 
+const MRZ_WHITELIST = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789<';
+
 async function extractIdentity(imageBuffer) {
   const worker = await getWorker();
+
+  // Passe 1 — texte libre (libellés imprimés, fallback heuristique).
   const { data } = await worker.recognize(imageBuffer);
   const rawText = data?.text || '';
 
-  const mrzLines = extractMrzLines(rawText);
+  // Passe 2 — dédiée au MRZ : whitelist stricte A-Z0-9< + mode "bloc".
+  // C'est ce qui fait la différence sur les photos réelles : tesseract ne
+  // « corrige » plus les chevrons en ponctuation ni les O/0.
+  let mrzText = '';
+  try {
+    await worker.setParameters({ tessedit_char_whitelist: MRZ_WHITELIST });
+    const { data: mrzData } = await worker.recognize(imageBuffer);
+    mrzText = mrzData?.text || '';
+  } finally {
+    await worker.setParameters({ tessedit_char_whitelist: '' });
+  }
+
+  // Le MRZ peut apparaître dans l'une ou l'autre passe selon la qualité.
+  const mrzLines = [...extractMrzLines(mrzText), ...extractMrzLines(rawText)];
   const mrzResult =
     parseTd3(mrzLines) || parseTd1(mrzLines) || parseOldFrenchCni(mrzLines);
 
@@ -216,7 +280,18 @@ async function extractIdentity(imageBuffer) {
     };
   }
 
-  return { fields: null, method: 'none', confidence: data?.confidence ?? null };
+  return {
+    fields: null,
+    method: 'none',
+    confidence: data?.confidence ?? null,
+    // Diagnostic renvoyé uniquement au demandeur (c'est SON document) :
+    // aide à comprendre pourquoi l'extraction échoue (photo floue, MRZ coupé…).
+    debug: {
+      mrzCandidates: mrzLines.length,
+      textLength: rawText.length,
+      textPreview: rawText.slice(0, 300),
+    },
+  };
 }
 
 module.exports = {

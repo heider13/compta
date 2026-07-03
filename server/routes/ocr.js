@@ -89,6 +89,7 @@ router.post(
         detail:
           "Impossible d'extraire l'identité. Vérifiez que la photo est nette, bien cadrée et que la zone MRZ (lignes de caractères en bas du document) est lisible.",
         method: result.method,
+        debug: result.debug ?? null,
       });
     }
 
