@@ -3,10 +3,10 @@ import { Arrow } from '@/components/icons';
 import { Container, btnCtaSm, btnGhostSm } from './ui';
 
 const LINKS = [
-  { href: '#formalites', label: 'Formalités' },
-  { href: '#tarifs', label: 'Tarifs' },
-  { href: '#fonctionnalites', label: 'Fonctionnalités' },
-  { href: '/app.html', label: 'Démo' },
+  { href: '/experts-comptables', label: 'Experts-comptables' },
+  { href: '/avocats', label: 'Avocats' },
+  { href: '/directions-juridiques', label: 'Dir. juridiques' },
+  { href: '/#tarifs', label: 'Tarifs' },
 ];
 
 export function Nav() {

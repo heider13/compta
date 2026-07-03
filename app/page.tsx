@@ -2,6 +2,7 @@ import { Nav } from '@/components/landing/Nav';
 import { Hero } from '@/components/landing/Hero';
 import { LogoBand } from '@/components/landing/LogoBand';
 import { Metrics } from '@/components/landing/Metrics';
+import { PersonaSelector } from '@/components/landing/PersonaSelector';
 import { FeatureRows } from '@/components/landing/FeatureRows';
 import { FormalityTypes } from '@/components/landing/FormalityTypes';
 import { Testimonials } from '@/components/landing/Testimonials';
@@ -16,6 +17,7 @@ export default function LandingPage() {
       <Hero />
       <LogoBand />
       <Metrics />
+      <PersonaSelector />
       <FeatureRows />
       <FormalityTypes />
       <Testimonials />
