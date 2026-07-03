@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { Plus, Building2, ArrowRight } from 'lucide-react';
 import { createClient } from '@/lib/supabase/server';
 import {
   formatDateFr,
@@ -6,10 +7,20 @@ import {
   getInitials,
   type Client,
 } from '@/lib/types';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
 
 export const dynamic = 'force-dynamic';
-
-const GRID_TEMPLATE = '44px 1fr 160px 100px 140px 100px';
 
 export default async function ClientsPage() {
   const supabase = await createClient();
@@ -33,95 +44,107 @@ export default async function ClientsPage() {
   >[];
 
   return (
-    <>
-      <div className="page-head">
+    <div className="mx-auto w-full max-w-6xl space-y-6 px-4 py-6">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1>Clients</h1>
-          <p>
+          <h1 className="text-2xl font-semibold tracking-tight">Clients</h1>
+          <p className="text-sm text-muted-foreground">
             {clients.length} {clients.length > 1 ? 'entreprises gérées' : 'entreprise gérée'}
           </p>
         </div>
-        <Link href="/clients/new" className="btn btn-accent">
-          + Nouveau client
-        </Link>
+        <Button asChild>
+          <Link href="/clients/new">
+            <Plus className="size-4" />
+            Ajouter une société
+          </Link>
+        </Button>
       </div>
 
       {error && (
-        <div className="form-error" style={{ marginBottom: 16 }}>
+        <div
+          role="alert"
+          className="rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive"
+        >
           Erreur de chargement : {error.message}
         </div>
       )}
 
-      <div className="app-card">
-        <div className="app-table">
-          <div
-            className="app-table-head"
-            style={{ gridTemplateColumns: GRID_TEMPLATE }}
-          >
-            <div></div>
-            <div>Dénomination</div>
-            <div>SIREN</div>
-            <div>Forme</div>
-            <div>Ajouté le</div>
-            <div style={{ textAlign: 'right' }}>Actions</div>
-          </div>
-
-          {clients.length === 0 && !error && (
-            <div
-              style={{
-                padding: '64px 22px',
-                textAlign: 'center',
-                color: 'var(--ink-500)',
-              }}
-            >
-              <p style={{ marginBottom: 14 }}>
-                Aucun client pour l&apos;instant. Commencez par enregistrer votre première entreprise.
-              </p>
-              <Link href="/clients/new" className="btn btn-primary">
-                + Nouveau client
-              </Link>
+      <Card className="py-0">
+        <CardContent className="px-0">
+          {clients.length === 0 && !error ? (
+            <div className="flex flex-col items-center gap-4 px-6 py-16 text-center">
+              <div className="grid size-12 place-items-center rounded-full bg-accent text-accent-foreground">
+                <Building2 className="size-6" aria-hidden="true" />
+              </div>
+              <div className="space-y-1">
+                <p className="font-medium">Aucun client pour l&apos;instant</p>
+                <p className="text-sm text-muted-foreground">
+                  Commencez par enregistrer votre première entreprise.
+                </p>
+              </div>
+              <Button asChild variant="outline">
+                <Link href="/clients/new">
+                  <Plus className="size-4" />
+                  Nouveau client
+                </Link>
+              </Button>
             </div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="w-14" />
+                  <TableHead>Dénomination</TableHead>
+                  <TableHead>SIREN</TableHead>
+                  <TableHead>Forme</TableHead>
+                  <TableHead>Ajouté le</TableHead>
+                  <TableHead className="w-24 text-right" />
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {clients.map((c) => (
+                  <TableRow key={c.id} className="group relative">
+                    <TableCell className="pl-4">
+                      <Avatar className="size-8">
+                        <AvatarFallback className="bg-accent text-xs font-semibold text-accent-foreground">
+                          {getInitials(c.denomination)}
+                        </AvatarFallback>
+                      </Avatar>
+                    </TableCell>
+                    <TableCell className="max-w-64 font-medium">
+                      <Link
+                        href={`/clients/${c.id}`}
+                        className="block truncate after:absolute after:inset-0"
+                      >
+                        {c.denomination}
+                      </Link>
+                    </TableCell>
+                    <TableCell className="font-mono text-xs text-muted-foreground">
+                      {formatSiren(c.siren)}
+                    </TableCell>
+                    <TableCell>
+                      {c.forme_juridique ? (
+                        <Badge variant="secondary">{c.forme_juridique}</Badge>
+                      ) : (
+                        <span className="text-muted-foreground">—</span>
+                      )}
+                    </TableCell>
+                    <TableCell className="text-sm text-muted-foreground">
+                      {formatDateFr(c.created_at)}
+                    </TableCell>
+                    <TableCell className="pr-4 text-right">
+                      <ArrowRight
+                        className="ml-auto size-4 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100"
+                        aria-hidden="true"
+                      />
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
           )}
-
-          {clients.map((c) => (
-            <Link
-              key={c.id}
-              href={`/clients/${c.id}`}
-              className="app-table-row"
-              style={{ gridTemplateColumns: GRID_TEMPLATE, textDecoration: 'none' }}
-            >
-              <div className="avatar">{getInitials(c.denomination)}</div>
-              <div
-                style={{
-                  fontWeight: 500,
-                  color: 'var(--ink-900)',
-                  overflow: 'hidden',
-                  textOverflow: 'ellipsis',
-                  whiteSpace: 'nowrap',
-                }}
-              >
-                {c.denomination}
-              </div>
-              <div className="mono" style={{ fontSize: 13, color: 'var(--ink-600)' }}>
-                {formatSiren(c.siren)}
-              </div>
-              <div>
-                {c.forme_juridique ? (
-                  <span className="pill violet">{c.forme_juridique}</span>
-                ) : (
-                  <span style={{ color: 'var(--ink-400)' }}>—</span>
-                )}
-              </div>
-              <div style={{ fontSize: 13, color: 'var(--ink-600)' }}>
-                {formatDateFr(c.created_at)}
-              </div>
-              <div style={{ textAlign: 'right' }}>
-                <span className="btn btn-link btn-sm">Ouvrir →</span>
-              </div>
-            </Link>
-          ))}
-        </div>
-      </div>
-    </>
+        </CardContent>
+      </Card>
+    </div>
   );
 }

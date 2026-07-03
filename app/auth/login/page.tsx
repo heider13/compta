@@ -1,6 +1,11 @@
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { ShieldCheck, Zap, Building2 } from 'lucide-react';
 
 async function signIn(formData: FormData) {
   'use server';
@@ -28,60 +33,117 @@ async function signIn(formData: FormData) {
   return redirect('/dashboard');
 }
 
+const REASSURANCE = [
+  { icon: Building2, text: 'Connecté au Guichet Unique INPI — dépôt direct de vos formalités.' },
+  { icon: Zap, text: '90 % des champs préremplis : OCR pièce d’identité + lecture SIREN.' },
+  { icon: ShieldCheck, text: 'RGPD, hébergement France, chiffrement des identifiants INPI.' },
+];
+
 export default async function LoginPage({ searchParams }: { searchParams: Promise<{ e?: string }> }) {
   const sp = await searchParams;
   return (
-    <main style={{ minHeight: '100vh', display: 'grid', placeItems: 'center', padding: 24, background: 'var(--ink-50)' }}>
-      <div className="card-elev" style={{ width: '100%', maxWidth: 440, padding: 40, borderRadius: 20 }}>
-        <Link href="/" className="logo" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, marginBottom: 32, textDecoration: 'none' }}>
-          <span className="logo-mark">C</span>
-          <span style={{ fontSize: 22 }}>compta</span>
+    <main className="grid min-h-screen lg:grid-cols-2">
+      {/* Panneau gauche — marque */}
+      <aside className="relative hidden flex-col justify-between overflow-hidden bg-sidebar p-10 text-sidebar-foreground lg:flex">
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_500px_400px_at_80%_10%,rgba(117,81,232,0.25),transparent_60%),radial-gradient(ellipse_400px_300px_at_10%_90%,rgba(149,122,245,0.15),transparent_60%)]"
+        />
+        <Link href="/" className="relative flex items-center gap-2.5 text-white no-underline">
+          <span className="grid size-9 place-items-center rounded-lg bg-primary text-lg font-bold text-white">
+            C
+          </span>
+          <span className="text-xl font-semibold tracking-tight">compta</span>
         </Link>
-        <h1 style={{ fontSize: 24, textAlign: 'center', marginBottom: 6 }}>Content de vous revoir</h1>
-        <p style={{ textAlign: 'center', fontSize: 14, color: 'var(--ink-500)', marginBottom: 28 }}>
-          Connectez-vous à votre cabinet.
-        </p>
 
-        <form action={signIn}>
-          <div style={{ marginBottom: 14 }}>
-            <label className="auth-label">Email</label>
-            <input
-              name="email"
-              type="email"
-              required
-              autoFocus
-              placeholder="vous@cabinet.fr"
-              style={{ width: '100%', padding: '12px 14px', border: '1px solid var(--ink-200)', borderRadius: 10, fontSize: 15, fontFamily: 'inherit' }}
-            />
-          </div>
-          <div style={{ marginBottom: 8 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <label className="auth-label">Mot de passe</label>
-              <a href="#" style={{ fontSize: 12, color: 'var(--accent-ink)', fontWeight: 500 }}>Oublié ?</a>
-            </div>
-            <input
-              name="password"
-              type="password"
-              required
-              placeholder="••••••••"
-              style={{ width: '100%', padding: '12px 14px', border: '1px solid var(--ink-200)', borderRadius: 10, fontSize: 15, fontFamily: 'inherit' }}
-            />
-          </div>
-          {sp.e && (
-            <div style={{ color: '#b42318', fontSize: 13, marginTop: 10 }}>{sp.e}</div>
-          )}
-          <button type="submit" className="btn btn-accent btn-lg" style={{ width: '100%', marginTop: 20, justifyContent: 'center' }}>
-            Se connecter
-          </button>
-        </form>
-
-        <div style={{ textAlign: 'center', fontSize: 13, color: 'var(--ink-500)', marginTop: 24 }}>
-          Pas encore de cabinet ?{' '}
-          <Link href="/auth/signup" style={{ color: 'var(--accent-ink)', fontWeight: 500 }}>
-            Créer un compte
-          </Link>
+        <div className="relative max-w-md">
+          <h2 className="text-3xl font-semibold leading-tight tracking-tight text-white">
+            Toutes vos formalités.
+            <br />
+            Un seul outil.
+          </h2>
+          <ul className="mt-8 space-y-4">
+            {REASSURANCE.map(({ icon: Icon, text }) => (
+              <li key={text} className="flex items-start gap-3 text-sm leading-relaxed text-sidebar-foreground">
+                <Icon className="mt-0.5 size-4 shrink-0 text-sidebar-primary" aria-hidden="true" />
+                {text}
+              </li>
+            ))}
+          </ul>
         </div>
-      </div>
+
+        <p className="relative text-xs text-sidebar-foreground/60">
+          © {new Date().getFullYear()} Compta — plateforme de formalités pour cabinets.
+        </p>
+      </aside>
+
+      {/* Panneau droit — formulaire */}
+      <section className="flex items-center justify-center bg-muted/40 p-6">
+        <Card className="w-full max-w-md border-border/60 shadow-lg">
+          <CardHeader className="space-y-1 text-center">
+            <Link href="/" className="mx-auto mb-2 flex items-center gap-2 no-underline lg:hidden">
+              <span className="grid size-8 place-items-center rounded-lg bg-primary text-base font-bold text-white">
+                C
+              </span>
+              <span className="text-lg font-semibold text-foreground">compta</span>
+            </Link>
+            <CardTitle className="text-2xl">Content de vous revoir</CardTitle>
+            <CardDescription>Connectez-vous à votre cabinet.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <form action={signIn} className="space-y-4">
+              <div className="space-y-1.5">
+                <Label htmlFor="email">Email</Label>
+                <Input
+                  id="email"
+                  name="email"
+                  type="email"
+                  required
+                  autoFocus
+                  autoComplete="email"
+                  placeholder="vous@cabinet.fr"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="password">Mot de passe</Label>
+                  <a href="#" className="text-xs font-medium text-primary hover:underline">
+                    Oublié ?
+                  </a>
+                </div>
+                <Input
+                  id="password"
+                  name="password"
+                  type="password"
+                  required
+                  autoComplete="current-password"
+                  placeholder="••••••••"
+                />
+              </div>
+
+              {sp.e && (
+                <div
+                  role="alert"
+                  className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive"
+                >
+                  {sp.e}
+                </div>
+              )}
+
+              <Button type="submit" className="w-full" size="lg">
+                Se connecter
+              </Button>
+            </form>
+
+            <p className="mt-6 text-center text-sm text-muted-foreground">
+              Pas encore de cabinet ?{' '}
+              <Link href="/auth/signup" className="font-medium text-primary hover:underline">
+                Créer un compte
+              </Link>
+            </p>
+          </CardContent>
+        </Card>
+      </section>
     </main>
   );
 }

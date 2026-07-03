@@ -1,13 +1,35 @@
 import Link from 'next/link';
-import { createClient } from '@/lib/supabase/server';
-import { Kpi } from '@/components/cabinet/Kpi';
-import { StatusPill } from '@/components/cabinet/StatusPill';
-import { getInpiCredentialsStatus } from '@/lib/server-actions/inpi-credentials';
 import {
-  formatDate,
-  formatRelative,
-  typeFormaliteLabel,
-} from '@/lib/utils/format';
+  AlertTriangle,
+  ArrowRight,
+  CalendarClock,
+  CheckCircle2,
+  ClipboardCheck,
+  FolderOpen,
+  Plus,
+  Users,
+} from 'lucide-react';
+import { createClient } from '@/lib/supabase/server';
+import { getInpiCredentialsStatus } from '@/lib/server-actions/inpi-credentials';
+import { formatDate, formatRelative, typeFormaliteLabel } from '@/lib/utils/format';
+import { StatusBadge } from '@/components/cabinet/StatusBadge';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
 
 export const dynamic = 'force-dynamic';
 
@@ -18,8 +40,6 @@ const IN_PROGRESS_STATUSES = [
   'RECEIVED',
   'VALIDATION_PENDING',
 ];
-
-const RECENT_GRID = '110px 1fr 130px 140px 110px';
 
 interface RecentDossier {
   id: string;
@@ -41,25 +61,9 @@ interface TaskRow {
   dossiers: { id: string; reference: string | null; client_name: string } | null;
 }
 
-interface ProfileRow {
-  id: string;
-  first_name: string | null;
-  last_name: string | null;
-}
-
 function startOfCurrentMonthIso(): string {
   const now = new Date();
   return new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
-}
-
-function profileLabel(p: ProfileRow | null | undefined): string {
-  if (!p) return '—';
-  const fn = (p.first_name ?? '').trim();
-  const ln = (p.last_name ?? '').trim();
-  if (fn && ln) return `${fn} ${ln[0]}.`;
-  if (fn) return fn;
-  if (ln) return ln;
-  return '—';
 }
 
 export default async function CabinetDashboardPage() {
@@ -85,42 +89,66 @@ export default async function CabinetDashboardPage() {
   const monthStart = startOfCurrentMonthIso();
 
   // KPI counts (count: 'exact', head: true) — pas de payload
-  const [
-    awaitingValidationRes,
-    inProgressRes,
-    clientsRes,
-    validatedMonthRes,
-  ] = await Promise.all([
-    supabase
-      .from('dossiers')
-      .select('id', { count: 'exact', head: true })
-      .eq('statut', 'AWAITING_VALIDATION'),
-    supabase
-      .from('dossiers')
-      .select('id', { count: 'exact', head: true })
-      .in('statut', IN_PROGRESS_STATUSES),
-    supabase
-      .from('clients')
-      .select('id', { count: 'exact', head: true })
-      .is('archived_at', null),
-    supabase
-      .from('dossiers')
-      .select('id', { count: 'exact', head: true })
-      .eq('statut', 'VALIDATED')
-      .gte('updated_at', monthStart),
-  ]);
+  const [awaitingValidationRes, inProgressRes, clientsRes, validatedMonthRes] =
+    await Promise.all([
+      supabase
+        .from('dossiers')
+        .select('id', { count: 'exact', head: true })
+        .eq('statut', 'AWAITING_VALIDATION'),
+      supabase
+        .from('dossiers')
+        .select('id', { count: 'exact', head: true })
+        .in('statut', IN_PROGRESS_STATUSES),
+      supabase
+        .from('clients')
+        .select('id', { count: 'exact', head: true })
+        .is('archived_at', null),
+      supabase
+        .from('dossiers')
+        .select('id', { count: 'exact', head: true })
+        .eq('statut', 'VALIDATED')
+        .gte('updated_at', monthStart),
+    ]);
 
-  const kpiAwaitingValidation = awaitingValidationRes.count ?? 0;
-  const kpiInProgress = inProgressRes.count ?? 0;
-  const kpiClients = clientsRes.count ?? 0;
-  const kpiValidatedMonth = validatedMonthRes.count ?? 0;
+  const kpis = [
+    {
+      label: 'Dossiers à valider',
+      value: awaitingValidationRes.count ?? 0,
+      hint: 'En attente de votre validation',
+      icon: ClipboardCheck,
+      href: '/dossiers',
+      iconClass: 'text-blue-600 bg-blue-50',
+    },
+    {
+      label: 'En cours',
+      value: inProgressRes.count ?? 0,
+      hint: 'Tous statuts actifs',
+      icon: FolderOpen,
+      href: '/dossiers',
+      iconClass: 'text-primary bg-accent',
+    },
+    {
+      label: 'Clients',
+      value: clientsRes.count ?? 0,
+      hint: 'Entreprises gérées',
+      icon: Users,
+      href: '/clients',
+      iconClass: 'text-muted-foreground bg-muted',
+    },
+    {
+      label: 'Validés ce mois',
+      value: validatedMonthRes.count ?? 0,
+      hint: 'Formalités acceptées INPI',
+      icon: CheckCircle2,
+      href: null,
+      iconClass: 'text-green-600 bg-green-50',
+    },
+  ];
 
   // Dossiers récents (5 derniers)
   const { data: recentData } = await supabase
     .from('dossiers')
-    .select(
-      'id, reference, client_name, type_formalite, statut, updated_at, created_at',
-    )
+    .select('id, reference, client_name, type_formalite, statut, updated_at, created_at')
     .order('updated_at', { ascending: false, nullsFirst: false })
     .limit(5);
 
@@ -129,9 +157,7 @@ export default async function CabinetDashboardPage() {
   // Tâches à traiter
   let tasksQuery = supabase
     .from('dossier_tasks')
-    .select(
-      'id, title, due_date, assigned_to, dossier_id, done, dossiers(id, reference, client_name)',
-    )
+    .select('id, title, due_date, assigned_to, dossier_id, done, dossiers(id, reference, client_name)')
     .eq('done', false)
     .order('due_date', { ascending: true, nullsFirst: false })
     .limit(5);
@@ -149,280 +175,190 @@ export default async function CabinetDashboardPage() {
   const inpiNotConfigured = !inpiStatus || !inpiStatus.configured;
 
   return (
-    <>
+    <div className="mx-auto w-full max-w-7xl space-y-6 p-4 sm:p-6">
       {inpiNotConfigured && (
-        <div
-          style={{
-            marginBottom: 20,
-            padding: '14px 18px',
-            background: '#FFF6E5',
-            border: '1px solid #F1C75A',
-            borderRadius: 12,
-            display: 'flex',
-            alignItems: 'center',
-            gap: 14,
-            flexWrap: 'wrap',
-          }}
-        >
-          <div
-            style={{
-              width: 36,
-              height: 36,
-              display: 'grid',
-              placeItems: 'center',
-              background: '#F1C75A',
-              borderRadius: 10,
-              flexShrink: 0,
-              fontSize: 18,
-            }}
-            aria-hidden="true"
-          >
-            ⚠
-          </div>
-          <div style={{ flex: 1, minWidth: 220 }}>
-            <div style={{ fontWeight: 600, color: '#8A5400', fontSize: 14 }}>
-              Connectez votre compte INPI pour démarrer
+        <Card className="border-amber-300 bg-amber-50">
+          <CardContent className="flex flex-wrap items-center gap-4 py-4">
+            <span className="grid size-10 shrink-0 place-items-center rounded-lg bg-amber-400/80 text-amber-950">
+              <AlertTriangle className="size-5" />
+            </span>
+            <div className="min-w-56 flex-1">
+              <p className="text-sm font-semibold text-amber-900">
+                Connectez votre compte INPI pour démarrer
+              </p>
+              <p className="text-sm text-amber-800/80">
+                Vos identifiants du Guichet Unique sont nécessaires pour déposer les
+                formalités au registre.
+              </p>
             </div>
-            <div style={{ fontSize: 13, color: '#6B4400', marginTop: 2 }}>
-              Vos identifiants du Guichet Unique sont nécessaires pour déposer
-              les formalités au registre.
-            </div>
-          </div>
-          <Link
-            href="/settings/inpi?next=/dashboard"
-            className="btn btn-accent btn-sm"
-            style={{ flexShrink: 0 }}
-          >
-            Configurer maintenant →
-          </Link>
-        </div>
+            <Button asChild size="sm" className="shrink-0">
+              <Link href="/settings/inpi?next=/dashboard">
+                Configurer maintenant
+                <ArrowRight className="size-4" />
+              </Link>
+            </Button>
+          </CardContent>
+        </Card>
       )}
 
-      <div className="page-head">
+      <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1>Tableau de bord</h1>
-          <p>
+          <h1 className="text-2xl font-semibold tracking-tight">Tableau de bord</h1>
+          <p className="text-sm text-muted-foreground">
             Bienvenue{greetingName ? ` ${greetingName}` : ''}. Voici l&apos;activité de
             votre cabinet.
           </p>
         </div>
-        <Link href="/dossiers/new" className="btn btn-accent">
-          + Nouveau dossier
-        </Link>
+        <Button asChild>
+          <Link href="/dossiers/new">
+            <Plus className="size-4" />
+            Nouveau dossier
+          </Link>
+        </Button>
       </div>
 
-      <div
-        style={{
-          display: 'grid',
-          gap: 16,
-          gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-          marginBottom: 28,
-        }}
-      >
-        <Kpi
-          label="Dossiers à valider"
-          value={kpiAwaitingValidation}
-          accent="var(--status-blue)"
-          href="/dossiers"
-          hint="En attente de votre validation"
-        />
-        <Kpi
-          label="En cours"
-          value={kpiInProgress}
-          accent="var(--accent)"
-          href="/dossiers"
-          hint="Tous statuts actifs"
-        />
-        <Kpi
-          label="Clients"
-          value={kpiClients}
-          accent="var(--ink-300)"
-          href="/clients"
-          hint="Entreprises gérées"
-        />
-        <Kpi
-          label="Validés ce mois"
-          value={kpiValidatedMonth}
-          accent="var(--status-green)"
-          hint="Formalités acceptées INPI"
-        />
-      </div>
-
-      <div
-        style={{
-          display: 'grid',
-          gap: 20,
-          gridTemplateColumns: 'minmax(0, 1.4fr) minmax(0, 1fr)',
-        }}
-      >
-        {/* Dossiers récents */}
-        <section className="app-card">
-          <div className="app-card-head">
-            <h3>Dossiers récents</h3>
-            <Link href="/dossiers" className="btn btn-link btn-sm">
-              Voir tout →
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        {kpis.map((kpi) => {
+          const inner = (
+            <Card className="h-full transition-shadow hover:shadow-md">
+              <CardContent className="flex items-start justify-between gap-3 pt-5">
+                <div className="space-y-1">
+                  <p className="text-sm text-muted-foreground">{kpi.label}</p>
+                  <p className="text-3xl font-semibold tracking-tight">{kpi.value}</p>
+                  <p className="text-xs text-muted-foreground">{kpi.hint}</p>
+                </div>
+                <span className={`grid size-10 shrink-0 place-items-center rounded-lg ${kpi.iconClass}`}>
+                  <kpi.icon className="size-5" />
+                </span>
+              </CardContent>
+            </Card>
+          );
+          return kpi.href ? (
+            <Link key={kpi.label} href={kpi.href} className="block">
+              {inner}
             </Link>
-          </div>
-
-          {recentDossiers.length === 0 ? (
-            <div
-              style={{
-                padding: '48px 22px',
-                textAlign: 'center',
-                color: 'var(--ink-500)',
-                fontSize: 14,
-              }}
-            >
-              Aucun dossier pour l&apos;instant.
-            </div>
           ) : (
-            <div className="app-table">
-              <div
-                className="app-table-head"
-                style={{ gridTemplateColumns: RECENT_GRID }}
-              >
-                <div>Référence</div>
-                <div>Client</div>
-                <div>Type</div>
-                <div>Statut</div>
-                <div style={{ textAlign: 'right' }}>Maj</div>
-              </div>
-              {recentDossiers.map((d) => (
-                <Link
-                  key={d.id}
-                  href={`/dossiers/${d.id}`}
-                  className="app-table-row"
-                  style={{
-                    gridTemplateColumns: RECENT_GRID,
-                    textDecoration: 'none',
-                  }}
-                >
-                  <div
-                    className="mono"
-                    style={{ fontSize: 12, color: 'var(--ink-600)' }}
-                  >
-                    {d.reference ?? '—'}
-                  </div>
-                  <div
-                    style={{
-                      fontWeight: 500,
-                      overflow: 'hidden',
-                      textOverflow: 'ellipsis',
-                      whiteSpace: 'nowrap',
-                    }}
-                  >
-                    {d.client_name}
-                  </div>
-                  <div style={{ fontSize: 13, color: 'var(--ink-600)' }}>
-                    {typeFormaliteLabel(d.type_formalite)}
-                  </div>
-                  <div>
-                    <StatusPill statut={d.statut} />
-                  </div>
-                  <div
-                    style={{
-                      textAlign: 'right',
-                      fontSize: 12,
-                      color: 'var(--ink-500)',
-                    }}
-                  >
-                    {formatRelative(d.updated_at ?? d.created_at)}
-                  </div>
-                </Link>
-              ))}
+            <div key={kpi.label}>{inner}</div>
+          );
+        })}
+      </div>
+
+      <div className="grid gap-5 lg:grid-cols-[1.4fr_1fr]">
+        {/* Dossiers récents */}
+        <Card>
+          <CardHeader className="flex-row items-center justify-between space-y-0">
+            <div>
+              <CardTitle className="text-base">Dossiers récents</CardTitle>
+              <CardDescription>Les 5 dernières formalités mises à jour</CardDescription>
             </div>
-          )}
-        </section>
+            <Button asChild variant="ghost" size="sm">
+              <Link href="/dossiers">
+                Voir tout
+                <ArrowRight className="size-4" />
+              </Link>
+            </Button>
+          </CardHeader>
+          <CardContent>
+            {recentDossiers.length === 0 ? (
+              <p className="py-10 text-center text-sm text-muted-foreground">
+                Aucun dossier pour l&apos;instant.
+              </p>
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Référence</TableHead>
+                    <TableHead>Client</TableHead>
+                    <TableHead className="hidden md:table-cell">Type</TableHead>
+                    <TableHead>Statut</TableHead>
+                    <TableHead className="hidden text-right sm:table-cell">Maj</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {recentDossiers.map((d) => (
+                    <TableRow key={d.id}>
+                      <TableCell className="font-mono text-xs text-muted-foreground">
+                        <Link href={`/dossiers/${d.id}`} className="hover:underline">
+                          {d.reference ?? '—'}
+                        </Link>
+                      </TableCell>
+                      <TableCell className="max-w-40 truncate font-medium">
+                        <Link href={`/dossiers/${d.id}`} className="hover:underline">
+                          {d.client_name}
+                        </Link>
+                      </TableCell>
+                      <TableCell className="hidden text-sm text-muted-foreground md:table-cell">
+                        {typeFormaliteLabel(d.type_formalite)}
+                      </TableCell>
+                      <TableCell>
+                        <StatusBadge statut={d.statut} />
+                      </TableCell>
+                      <TableCell className="hidden text-right text-xs text-muted-foreground sm:table-cell">
+                        {formatRelative(d.updated_at ?? d.created_at)}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            )}
+          </CardContent>
+        </Card>
 
         {/* Tâches à traiter */}
-        <section className="app-card">
-          <div className="app-card-head">
-            <h3>Tâches à traiter</h3>
-            <Link href="/tasks" className="btn btn-link btn-sm">
-              Voir tout →
-            </Link>
-          </div>
-
-          {tasks.length === 0 ? (
-            <div
-              style={{
-                padding: '48px 22px',
-                textAlign: 'center',
-                color: 'var(--ink-500)',
-                fontSize: 14,
-              }}
-            >
-              Aucune tâche à traiter. Bon travail !
+        <Card>
+          <CardHeader className="flex-row items-center justify-between space-y-0">
+            <div>
+              <CardTitle className="text-base">Tâches à traiter</CardTitle>
+              <CardDescription>Les vôtres et les non assignées</CardDescription>
             </div>
-          ) : (
-            <div style={{ padding: '6px 4px' }}>
-              {tasks.map((t) => {
+            <Button asChild variant="ghost" size="sm">
+              <Link href="/tasks">
+                Voir tout
+                <ArrowRight className="size-4" />
+              </Link>
+            </Button>
+          </CardHeader>
+          <CardContent className="space-y-1">
+            {tasks.length === 0 ? (
+              <p className="py-10 text-center text-sm text-muted-foreground">
+                Aucune tâche à traiter. Bon travail !
+              </p>
+            ) : (
+              tasks.map((t) => {
                 const dossier = t.dossiers;
                 return (
                   <Link
                     key={t.id}
-                    href={
-                      dossier ? `/dossiers/${dossier.id}` : '/tasks'
-                    }
-                    style={{
-                      display: 'flex',
-                      gap: 12,
-                      alignItems: 'flex-start',
-                      padding: '12px 18px',
-                      borderBottom: '1px solid var(--ink-100)',
-                      textDecoration: 'none',
-                      color: 'inherit',
-                    }}
+                    href={dossier ? `/dossiers/${dossier.id}` : '/tasks'}
+                    className="flex items-start gap-3 rounded-lg px-2 py-2.5 transition-colors hover:bg-muted"
                   >
-                    <input
-                      type="checkbox"
-                      disabled
-                      style={{ marginTop: 3, accentColor: 'var(--accent)' }}
-                      aria-label="Tâche à faire"
-                    />
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div
-                        style={{
-                          fontSize: 14,
-                          color: 'var(--ink-900)',
-                          fontWeight: 500,
-                          marginBottom: 2,
-                          overflow: 'hidden',
-                          textOverflow: 'ellipsis',
-                          whiteSpace: 'nowrap',
-                        }}
-                      >
-                        {t.title}
-                      </div>
-                      <div
-                        style={{
-                          fontSize: 12,
-                          color: 'var(--ink-500)',
-                          display: 'flex',
-                          gap: 8,
-                          alignItems: 'center',
-                          flexWrap: 'wrap',
-                        }}
-                      >
+                    <span className="mt-0.5 grid size-5 shrink-0 place-items-center rounded-full border border-border" />
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate text-sm font-medium">{t.title}</span>
+                      <span className="mt-0.5 flex flex-wrap items-center gap-2">
                         {dossier && (
-                          <span className="mono" style={{ fontSize: 11 }}>
+                          <span className="font-mono text-[11px] text-muted-foreground">
                             {dossier.reference ?? dossier.client_name}
                           </span>
                         )}
                         {t.due_date && (
-                          <span className="pill amber" style={{ fontSize: 10 }}>
+                          <Badge
+                            variant="outline"
+                            className="gap-1 border-amber-200 bg-amber-50 px-1.5 py-0 text-[10px] text-amber-700"
+                          >
+                            <CalendarClock className="size-3" />
                             {formatDate(t.due_date)}
-                          </span>
+                          </Badge>
                         )}
-                      </div>
-                    </div>
+                      </span>
+                    </span>
                   </Link>
                 );
-              })}
-            </div>
-          )}
-        </section>
+              })
+            )}
+          </CardContent>
+        </Card>
       </div>
-    </>
+    </div>
   );
 }

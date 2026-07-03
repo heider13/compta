@@ -1,17 +1,15 @@
 'use client';
 
-import { Fragment, useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { Check, Loader2, X, AlertTriangle, BadgeCheck } from 'lucide-react';
 import type { OnboardingData } from '@/lib/types/onboarding';
 import { formatSiren, validateSiren } from '@/lib/validators/siren';
 import { lookupSiren, type SirenLookupResult } from '@/lib/services/siren-lookup';
-
-// Noms par défaut posés par le trigger DB `handle_new_user` qu'on peut écraser sans
-// craindre d'écraser une saisie de l'utilisateur.
-const DEFAULT_CABINET_NAMES = ['compta default', 'cabinet par défaut', 'cabinet par defaut'];
-
-function isDefaultCabinetName(name: string): boolean {
-  return DEFAULT_CABINET_NAMES.includes(name.trim().toLowerCase());
-}
+import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { cn } from '@/lib/utils';
 
 type Props = {
   data: OnboardingData;
@@ -20,24 +18,13 @@ type Props = {
   onPrev: () => void;
 };
 
-const fieldStyle: React.CSSProperties = {
-  width: '100%',
-  padding: '10px 12px',
-  borderRadius: 'var(--r-md)',
-  border: '1px solid var(--ink-200)',
-  background: 'white',
-  fontSize: 14,
-  color: 'var(--ink-900)',
-  outline: 'none',
-};
+// Noms par défaut posés par le trigger DB `handle_new_user` qu'on peut écraser sans
+// craindre d'écraser une saisie de l'utilisateur.
+const DEFAULT_CABINET_NAMES = ['compta default', 'cabinet par défaut', 'cabinet par defaut'];
 
-const labelStyle: React.CSSProperties = {
-  display: 'block',
-  fontSize: 13,
-  fontWeight: 500,
-  color: 'var(--ink-700)',
-  marginBottom: 6,
-};
+function isDefaultCabinetName(name: string): boolean {
+  return DEFAULT_CABINET_NAMES.includes(name.trim().toLowerCase());
+}
 
 type SirenStatus =
   | { kind: 'idle' }
@@ -148,36 +135,19 @@ export function Step1Cabinet({ data, onUpdate, onNext }: Props) {
 
   return (
     <div>
-      <h2
-        style={{
-          fontSize: 22,
-          fontWeight: 600,
-          margin: 0,
-          letterSpacing: '-0.01em',
-        }}
-      >
-        Votre cabinet
-      </h2>
-      <p
-        style={{
-          color: 'var(--ink-500)',
-          marginTop: 6,
-          marginBottom: 24,
-          fontSize: 14,
-        }}
-      >
+      <h2 className="text-[22px] font-semibold tracking-tight text-foreground">Votre cabinet</h2>
+      <p className="mb-6 mt-1.5 text-sm text-muted-foreground">
         Personnalisez le nom et renseignez le SIREN de votre cabinet.
       </p>
 
-      <div style={{ display: 'grid', gap: 16 }}>
-        <div>
-          <label style={labelStyle} htmlFor="cabinetName">
-            Nom du cabinet <span style={{ color: 'var(--status-red)' }}>*</span>
-          </label>
-          <input
+      <div className="grid gap-4">
+        <div className="space-y-1.5">
+          <Label htmlFor="cabinetName">
+            Nom du cabinet <span className="text-destructive">*</span>
+          </Label>
+          <Input
             id="cabinetName"
             type="text"
-            style={fieldStyle}
             value={data.cabinetName}
             onChange={(e) => {
               nameAutoFilled.current = false;
@@ -188,21 +158,22 @@ export function Step1Cabinet({ data, onUpdate, onNext }: Props) {
           />
         </div>
 
-        <div>
-          <label style={labelStyle} htmlFor="siren">
-            SIREN du cabinet <span style={{ color: 'var(--status-red)' }}>*</span>
-          </label>
-          <div style={{ position: 'relative' }}>
-            <input
+        <div className="space-y-1.5">
+          <Label htmlFor="siren">
+            SIREN du cabinet <span className="text-destructive">*</span>
+          </Label>
+          <div className="relative">
+            <Input
               id="siren"
               type="text"
               inputMode="numeric"
               maxLength={11}
-              style={{
-                ...fieldStyle,
-                paddingRight: 36,
-                borderColor: sirenBorderColor(sirenStatus),
-              }}
+              className={cn(
+                'pr-10',
+                sirenStatus.kind === 'verified' && 'border-green-600 focus-visible:ring-green-600/30',
+                isSirenInvalid(sirenStatus) && 'border-destructive focus-visible:ring-destructive/30',
+                sirenStatus.kind === 'lookup_error' && 'border-amber-500 focus-visible:ring-amber-500/30',
+              )}
               value={data.siren}
               onChange={(e) => onUpdate({ siren: formatSiren(e.target.value) })}
               placeholder="123 456 789"
@@ -212,34 +183,28 @@ export function Step1Cabinet({ data, onUpdate, onNext }: Props) {
             <SirenStatusIcon status={sirenStatus} />
           </div>
           <SirenStatusMessage status={sirenStatus} />
-          {sirenStatus.kind === 'verified' && (
-            <CompanyInfoCard info={sirenStatus.info} />
-          )}
+          {sirenStatus.kind === 'verified' && <CompanyInfoCard info={sirenStatus.info} />}
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-          <div>
-            <label style={labelStyle} htmlFor="contactEmail">
-              Email de contact <span style={{ color: 'var(--status-red)' }}>*</span>
-            </label>
-            <input
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <div className="space-y-1.5">
+            <Label htmlFor="contactEmail">
+              Email de contact <span className="text-destructive">*</span>
+            </Label>
+            <Input
               id="contactEmail"
               type="email"
-              style={fieldStyle}
               value={data.contactEmail}
               onChange={(e) => onUpdate({ contactEmail: e.target.value })}
               placeholder="contact@cabinet.fr"
               required
             />
           </div>
-          <div>
-            <label style={labelStyle} htmlFor="contactPhone">
-              Téléphone
-            </label>
-            <input
+          <div className="space-y-1.5">
+            <Label htmlFor="contactPhone">Téléphone</Label>
+            <Input
               id="contactPhone"
               type="tel"
-              style={fieldStyle}
               value={data.contactPhone}
               onChange={(e) => onUpdate({ contactPhone: e.target.value })}
               placeholder="+33 1 23 45 67 89"
@@ -250,54 +215,27 @@ export function Step1Cabinet({ data, onUpdate, onNext }: Props) {
 
       {error && (
         <div
-          style={{
-            marginTop: 16,
-            padding: '10px 12px',
-            borderRadius: 'var(--r-md)',
-            background: '#FDEAEA',
-            color: 'var(--status-red)',
-            fontSize: 13,
-          }}
+          role="alert"
+          className="mt-4 rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive"
         >
           {error}
         </div>
       )}
 
-      <div
-        style={{
-          marginTop: 32,
-          display: 'flex',
-          justifyContent: 'flex-end',
-          gap: 12,
-        }}
-      >
-        <button
-          type="button"
-          onClick={handleNext}
-          disabled={submitting || !isValid}
-          className="btn btn-accent"
-          style={{ opacity: submitting || !isValid ? 0.6 : 1 }}
-        >
-          {submitting ? 'Sauvegarde…' : 'Suivant →'}
-        </button>
+      <div className="mt-8 flex justify-end gap-3">
+        <Button type="button" onClick={handleNext} disabled={submitting || !isValid}>
+          {submitting ? (
+            <>
+              <Loader2 className="size-4 animate-spin" aria-hidden="true" />
+              Sauvegarde…
+            </>
+          ) : (
+            'Suivant →'
+          )}
+        </Button>
       </div>
     </div>
   );
-}
-
-function sirenBorderColor(status: SirenStatus): string {
-  switch (status.kind) {
-    case 'verified':
-      return 'var(--status-green, #137333)';
-    case 'bad_checksum':
-    case 'not_found':
-    case 'closed':
-      return 'var(--status-red)';
-    case 'lookup_error':
-      return 'var(--status-amber, #b54708)';
-    default:
-      return 'var(--ink-200)';
-  }
 }
 
 function isSirenInvalid(status: SirenStatus): boolean {
@@ -309,71 +247,77 @@ function isSirenInvalid(status: SirenStatus): boolean {
 }
 
 function SirenStatusIcon({ status }: { status: SirenStatus }) {
-  const base: React.CSSProperties = {
-    position: 'absolute',
-    right: 10,
-    top: '50%',
-    transform: 'translateY(-50%)',
-    width: 18,
-    height: 18,
-    display: 'inline-flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    fontSize: 12,
-    fontWeight: 700,
-    borderRadius: '50%',
-    color: 'white',
-  };
+  const wrap = 'pointer-events-none absolute right-3 top-1/2 -translate-y-1/2';
   switch (status.kind) {
     case 'looking_up':
       return (
-        <span
-          style={{
-            ...base,
-            background: 'transparent',
-            color: 'var(--ink-500)',
-          }}
-          aria-label="Vérification en cours"
-        >
-          <span
-            style={{
-              width: 14,
-              height: 14,
-              border: '2px solid var(--ink-200)',
-              borderTopColor: 'var(--accent)',
-              borderRadius: '50%',
-              display: 'inline-block',
-              animation: 'spin 0.8s linear infinite',
-            }}
-          />
-          <style>{`@keyframes spin { to { transform: rotate(360deg) } }`}</style>
+        <span className={wrap} aria-label="Vérification en cours">
+          <Loader2 className="size-4 animate-spin text-primary" aria-hidden="true" />
         </span>
       );
     case 'verified':
       return (
-        <span style={{ ...base, background: 'var(--status-green, #137333)' }} aria-label="SIREN vérifié">
-          ✓
+        <span
+          className={cn(wrap, 'grid size-4.5 place-items-center rounded-full bg-green-600')}
+          aria-label="SIREN vérifié"
+        >
+          <Check className="size-3 text-white" aria-hidden="true" />
         </span>
       );
     case 'bad_checksum':
     case 'not_found':
     case 'closed':
       return (
-        <span style={{ ...base, background: 'var(--status-red)' }} aria-label="SIREN invalide">
-          ✕
+        <span
+          className={cn(wrap, 'grid size-4.5 place-items-center rounded-full bg-destructive')}
+          aria-label="SIREN invalide"
+        >
+          <X className="size-3 text-white" aria-hidden="true" />
         </span>
       );
     case 'lookup_error':
       return (
-        <span
-          style={{ ...base, background: 'var(--status-amber, #b54708)' }}
-          aria-label="Vérification impossible"
-        >
-          !
+        <span className={wrap} aria-label="Vérification impossible">
+          <AlertTriangle className="size-4 text-amber-500" aria-hidden="true" />
         </span>
       );
     default:
       return null;
+  }
+}
+
+function SirenStatusMessage({ status }: { status: SirenStatus }) {
+  switch (status.kind) {
+    case 'idle':
+      return <p className="text-xs text-muted-foreground">9 chiffres — visible sur votre Kbis.</p>;
+    case 'too_short':
+      return <p className="text-xs text-muted-foreground">Encore quelques chiffres…</p>;
+    case 'bad_checksum':
+      return (
+        <p className="text-xs text-destructive">
+          Numéro invalide — la clé de contrôle ne correspond pas.
+        </p>
+      );
+    case 'looking_up':
+      return <p className="text-xs text-muted-foreground">Vérification auprès du registre national…</p>;
+    case 'not_found':
+      return <p className="text-xs text-destructive">Aucune entreprise trouvée avec ce SIREN.</p>;
+    case 'closed':
+      return (
+        <p className="text-xs text-destructive">
+          {status.info.nomComplet || 'Cette entreprise'} est marquée comme cessée au registre.
+        </p>
+      );
+    case 'verified':
+      return (
+        <p className="text-xs font-medium text-green-700">
+          Société identifiée au registre national.
+        </p>
+      );
+    case 'lookup_error':
+      return (
+        <p className="text-xs text-amber-600">Vérification impossible : {status.message}</p>
+      );
   }
 }
 
@@ -389,66 +333,25 @@ function CompanyInfoCard({ info }: { info: SirenLookupResult }) {
     rows.push({ label: 'Immatriculée le', value: formatFrenchDate(info.dateCreation) });
   if (info.activitePrincipale)
     rows.push({ label: 'Activité principale', value: info.activitePrincipale });
-  if (info.trancheEffectifs)
-    rows.push({ label: 'Effectif', value: info.trancheEffectifs });
+  if (info.trancheEffectifs) rows.push({ label: 'Effectif', value: info.trancheEffectifs });
 
   return (
-    <div
-      style={{
-        marginTop: 12,
-        border: '1px solid var(--status-green, #137333)',
-        background: 'rgba(19, 115, 51, 0.06)',
-        borderRadius: 'var(--r-md)',
-        padding: 14,
-      }}
-    >
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: 8,
-          fontSize: 13,
-          fontWeight: 600,
-          color: 'var(--status-green, #137333)',
-          marginBottom: 10,
-        }}
-      >
-        <span
-          style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            width: 18,
-            height: 18,
-            borderRadius: '50%',
-            background: 'var(--status-green, #137333)',
-            color: 'white',
-            fontSize: 11,
-            fontWeight: 700,
-          }}
-        >
-          ✓
-        </span>
-        Société identifiée au registre national
-      </div>
-      <dl
-        style={{
-          margin: 0,
-          display: 'grid',
-          gridTemplateColumns: '160px 1fr',
-          rowGap: 6,
-          columnGap: 12,
-          fontSize: 13,
-        }}
-      >
-        {rows.map((row) => (
-          <Fragment key={row.label}>
-            <dt style={{ color: 'var(--ink-500)' }}>{row.label}</dt>
-            <dd style={{ margin: 0, color: 'var(--ink-900)' }}>{row.value}</dd>
-          </Fragment>
-        ))}
-      </dl>
-    </div>
+    <Card className="mt-3 gap-0 border-green-600/40 bg-green-50/60 py-0 shadow-none">
+      <CardContent className="p-4">
+        <div className="mb-3 flex items-center gap-2 text-[13px] font-semibold text-green-700">
+          <BadgeCheck className="size-4" aria-hidden="true" />
+          Société identifiée au registre national
+        </div>
+        <dl className="grid grid-cols-[150px_1fr] gap-x-3 gap-y-1.5 text-[13px]">
+          {rows.map((row) => (
+            <div key={row.label} className="contents">
+              <dt className="text-muted-foreground">{row.label}</dt>
+              <dd className="m-0 font-medium text-foreground">{row.value}</dd>
+            </div>
+          ))}
+        </dl>
+      </CardContent>
+    </Card>
   );
 }
 
@@ -456,62 +359,4 @@ function formatFrenchDate(iso: string): string {
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return iso;
   return d.toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric' });
-}
-
-function SirenStatusMessage({ status }: { status: SirenStatus }) {
-  const baseStyle: React.CSSProperties = {
-    fontSize: 12,
-    marginTop: 4,
-    display: 'block',
-  };
-  switch (status.kind) {
-    case 'idle':
-      return (
-        <span style={{ ...baseStyle, color: 'var(--ink-500)' }}>
-          9 chiffres — visible sur votre Kbis.
-        </span>
-      );
-    case 'too_short':
-      return (
-        <span style={{ ...baseStyle, color: 'var(--ink-500)' }}>
-          Encore quelques chiffres…
-        </span>
-      );
-    case 'bad_checksum':
-      return (
-        <span style={{ ...baseStyle, color: 'var(--status-red)' }}>
-          Numéro invalide — la clé de contrôle ne correspond pas.
-        </span>
-      );
-    case 'looking_up':
-      return (
-        <span style={{ ...baseStyle, color: 'var(--ink-500)' }}>
-          Vérification auprès du registre national…
-        </span>
-      );
-    case 'not_found':
-      return (
-        <span style={{ ...baseStyle, color: 'var(--status-red)' }}>
-          Aucune entreprise trouvée avec ce SIREN.
-        </span>
-      );
-    case 'closed':
-      return (
-        <span style={{ ...baseStyle, color: 'var(--status-red)' }}>
-          {status.info.nomComplet || 'Cette entreprise'} est marquée comme cessée au registre.
-        </span>
-      );
-    case 'verified':
-      return (
-        <span style={{ ...baseStyle, color: 'var(--status-green, #137333)' }}>
-          ✓ Société identifiée au registre national.
-        </span>
-      );
-    case 'lookup_error':
-      return (
-        <span style={{ ...baseStyle, color: 'var(--status-amber, #b54708)' }}>
-          Vérification impossible : {status.message}
-        </span>
-      );
-  }
 }

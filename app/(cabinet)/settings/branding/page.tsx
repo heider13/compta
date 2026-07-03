@@ -2,6 +2,16 @@ import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { updateBranding } from '@/lib/server-actions/branding';
 import type { WhiteLabelConfig } from '@/lib/white-label';
+import { Button } from '@/components/ui/button';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 
 export default async function BrandingPage({ searchParams }: { searchParams: Promise<{ saved?: string; e?: string }> }) {
   const sp = await searchParams;
@@ -25,55 +35,109 @@ export default async function BrandingPage({ searchParams }: { searchParams: Pro
   }
 
   return (
-    <div className="app-content with-bg">
-      <div className="page-head">
-        <div>
-          <h1>Marque blanche</h1>
-          <p>Personnalisez l&apos;apparence de l&apos;espace pour vos clients.</p>
+    <div className="mx-auto w-full max-w-2xl px-4 py-8">
+      <header className="mb-6">
+        <h1 className="text-2xl font-semibold tracking-tight">Marque blanche</h1>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Personnalisez l&apos;apparence de l&apos;espace pour vos clients.
+        </p>
+      </header>
+
+      {sp.saved && (
+        <div className="mb-4 rounded-lg border border-green-300 bg-green-50 px-4 py-3 text-sm text-green-800">
+          Préférences enregistrées.
         </div>
-      </div>
+      )}
+      {sp.e && (
+        <div
+          role="alert"
+          className="mb-4 rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive"
+        >
+          {sp.e}
+        </div>
+      )}
 
-      {sp.saved && <div style={{ background: '#D1FAE5', color: '#065F46', padding: 12, marginBottom: 16, borderRadius: 8, fontSize: 13 }}>Préférences enregistrées.</div>}
-      {sp.e && <div style={{ color: '#b42318', padding: 12, marginBottom: 16, fontSize: 13 }}>{sp.e}</div>}
+      <form action={action}>
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Identité du cabinet</CardTitle>
+            <CardDescription>
+              Ces réglages s&apos;appliquent à l&apos;espace client et aux emails envoyés en votre nom.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-5">
+            <div className="space-y-1.5">
+              <Label htmlFor="company_name">Nom du cabinet (affiché)</Label>
+              <Input id="company_name" name="company_name" defaultValue={cfg.company_name || org?.name || ''} />
+            </div>
 
-      <form action={action} style={{ maxWidth: 640 }}>
-        <div className="app-card" style={{ padding: 24, display: 'grid', gap: 14 }}>
-          <Field label="Nom du cabinet (affiché)">
-            <input name="company_name" defaultValue={cfg.company_name || org?.name || ''} style={inputStyle} />
-          </Field>
-          <Field label="URL du logo (PNG/SVG, 64×64 conseillé)">
-            <input name="logo_url" type="url" defaultValue={cfg.logo_url || ''} placeholder="https://…" style={inputStyle} />
-          </Field>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
-            <Field label="Couleur principale">
-              <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                <input name="primary_color" type="color" defaultValue={cfg.primary_color || '#5B36D6'} style={{ width: 56, height: 40, padding: 0, border: '1px solid var(--ink-200)', borderRadius: 8, cursor: 'pointer' }} />
-                <input name="primary_color" defaultValue={cfg.primary_color || '#5B36D6'} placeholder="#5B36D6" style={{ ...inputStyle, fontFamily: 'monospace' }} />
+            <div className="space-y-1.5">
+              <Label htmlFor="logo_url">URL du logo (PNG/SVG, 64×64 conseillé)</Label>
+              <Input id="logo_url" name="logo_url" type="url" defaultValue={cfg.logo_url || ''} placeholder="https://…" />
+            </div>
+
+            <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
+              <div className="space-y-1.5">
+                <Label htmlFor="primary_color_picker">Couleur principale</Label>
+                <div className="flex items-center gap-2">
+                  <input
+                    id="primary_color_picker"
+                    name="primary_color"
+                    type="color"
+                    defaultValue={cfg.primary_color || '#5B36D6'}
+                    className="border-input size-9 shrink-0 cursor-pointer rounded-md border p-0.5"
+                  />
+                  <Input
+                    name="primary_color"
+                    defaultValue={cfg.primary_color || '#5B36D6'}
+                    placeholder="#5B36D6"
+                    className="font-mono"
+                  />
+                </div>
               </div>
-            </Field>
-            <Field label="Couleur secondaire (soft)">
-              <input name="secondary_color" defaultValue={cfg.secondary_color || ''} placeholder="#ECE6FF" style={{ ...inputStyle, fontFamily: 'monospace' }} />
-            </Field>
-          </div>
-          <Field label="Domaine personnalisé (optionnel)">
-            <input name="custom_domain" defaultValue={cfg.custom_domain || ''} placeholder="formalites.mon-cabinet.fr" style={inputStyle} />
-            <p style={{ fontSize: 11, color: 'var(--ink-500)', marginTop: 4 }}>
-              Configurez un CNAME vers <span className="mono">compta-navy.vercel.app</span> et ajoutez le domaine dans Vercel.
-            </p>
-          </Field>
-          <Field label="Email d'envoi (notifications client)">
-            <input name="custom_email_from" defaultValue={cfg.custom_email_from || ''} placeholder="Cabinet Dupont <contact@mon-cabinet.fr>" style={inputStyle} />
-          </Field>
-        </div>
-        <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 16 }}>
-          <button type="submit" className="btn btn-accent">Enregistrer</button>
+              <div className="space-y-1.5">
+                <Label htmlFor="secondary_color">Couleur secondaire (soft)</Label>
+                <Input
+                  id="secondary_color"
+                  name="secondary_color"
+                  defaultValue={cfg.secondary_color || ''}
+                  placeholder="#ECE6FF"
+                  className="font-mono"
+                />
+              </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="custom_domain">Domaine personnalisé (optionnel)</Label>
+              <Input
+                id="custom_domain"
+                name="custom_domain"
+                defaultValue={cfg.custom_domain || ''}
+                placeholder="formalites.mon-cabinet.fr"
+              />
+              <p className="text-xs text-muted-foreground">
+                Configurez un CNAME vers{' '}
+                <code className="rounded bg-muted px-1 py-0.5 font-mono text-[11px]">compta-navy.vercel.app</code> et
+                ajoutez le domaine dans Vercel.
+              </p>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="custom_email_from">Email d&apos;envoi (notifications client)</Label>
+              <Input
+                id="custom_email_from"
+                name="custom_email_from"
+                defaultValue={cfg.custom_email_from || ''}
+                placeholder="Cabinet Dupont <contact@mon-cabinet.fr>"
+              />
+            </div>
+          </CardContent>
+        </Card>
+
+        <div className="mt-4 flex justify-end">
+          <Button type="submit">Enregistrer</Button>
         </div>
       </form>
     </div>
   );
-}
-
-const inputStyle: React.CSSProperties = { width: '100%', padding: '10px 12px', border: '1px solid var(--ink-200)', borderRadius: 8, fontSize: 14, fontFamily: 'inherit' };
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
-  return <div><label className="auth-label" style={{ display: 'block', marginBottom: 6, fontSize: 12 }}>{label}</label>{children}</div>;
 }

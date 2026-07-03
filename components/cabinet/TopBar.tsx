@@ -1,7 +1,22 @@
 'use client';
 
 import Link from 'next/link';
+import { Plus, Sparkles, BookOpen, CreditCard, User, ChevronDown } from 'lucide-react';
+
 import { NotificationBell } from '@/components/cabinet/NotificationBell';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Separator } from '@/components/ui/separator';
+import { SidebarTrigger } from '@/components/ui/sidebar';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 
 interface TopBarProps {
   userLabel: string;
@@ -14,102 +29,71 @@ export function TopBar({ userLabel, userEmail, userInitials, plan }: TopBarProps
   const planLabel = (plan && plan.charAt(0).toUpperCase() + plan.slice(1)) || 'Cabinet';
 
   return (
-    <header
-      style={{
-        display: 'flex',
-        alignItems: 'center',
-        gap: 16,
-        padding: '14px 28px',
-        background: 'white',
-        borderBottom: '1px solid var(--ink-100)',
-        position: 'sticky',
-        top: 0,
-        zIndex: 10,
-      }}
-    >
-      {/* CTA principal : nouvelle formalité */}
-      <Link
-        href="/dossiers/new"
-        className="btn btn-accent btn-sm"
-        style={{ fontWeight: 500, padding: '8px 16px', fontSize: 13 }}
-      >
-        + Nouvelle formalité
-      </Link>
+    <header className="sticky top-0 z-10 flex h-14 items-center gap-3 border-b bg-background px-4">
+      <SidebarTrigger className="-ml-1" />
+      <Separator orientation="vertical" className="h-5" />
 
-      {/* Pill abonnement (centré sur écran large) */}
-      <div style={{ flex: 1, display: 'flex', justifyContent: 'center' }}>
-        <Link
-          href="/billing"
-          style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: 8,
-            padding: '8px 18px',
-            background: 'linear-gradient(135deg, var(--accent), var(--accent-ink))',
-            color: 'white',
-            borderRadius: 999,
-            fontSize: 12,
-            fontWeight: 600,
-            letterSpacing: '0.02em',
-            textDecoration: 'none',
-            boxShadow: '0 4px 14px rgba(91, 54, 214, 0.25)',
-          }}
-        >
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-            <path d="M3 17l4-10 5 6 5-8 4 12H3z" />
-          </svg>
-          Abonnement {planLabel}
+      <Button asChild size="sm">
+        <Link href="/dossiers/new">
+          <Plus className="size-4" />
+          Nouvelle formalité
+        </Link>
+      </Button>
+
+      <div className="flex flex-1 justify-center">
+        <Link href="/billing" className="hidden sm:block">
+          <Badge className="gap-1.5 rounded-full bg-gradient-to-r from-primary to-accent-foreground px-3.5 py-1.5 text-white shadow-sm transition-opacity hover:opacity-90">
+            <Sparkles className="size-3" />
+            Abonnement {planLabel}
+          </Badge>
         </Link>
       </div>
 
-      {/* Liens secondaires */}
-      <Link href="/billing" className="btn btn-ghost btn-sm" style={{ fontSize: 12, padding: '6px 12px', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M21 14h-3l-2 7-4-14-2 7H3"/></svg>
-        Grille de prix
-      </Link>
-      <a href="/app.html" className="btn btn-ghost btn-sm" style={{ fontSize: 12, padding: '6px 12px', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
-        Guide formalités
-      </a>
+      <Button asChild variant="ghost" size="sm" className="hidden text-muted-foreground lg:inline-flex">
+        <a href="/app.html">
+          <BookOpen className="size-4" />
+          Guide formalités
+        </a>
+      </Button>
 
       <NotificationBell />
 
-      {/* User profile card */}
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: 10,
-          padding: '4px 10px 4px 4px',
-          borderLeft: '1px solid var(--ink-100)',
-          marginLeft: 6,
-          paddingLeft: 16,
-        }}
-      >
-        <div
-          style={{
-            width: 36,
-            height: 36,
-            borderRadius: '50%',
-            background: 'var(--accent-soft)',
-            color: 'var(--accent-ink)',
-            display: 'grid',
-            placeItems: 'center',
-            fontSize: 13,
-            fontWeight: 600,
-          }}
-        >
-          {userInitials}
-        </div>
-        <div style={{ minWidth: 0, maxWidth: 200 }}>
-          <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--ink-900)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-            {userLabel}
-          </div>
-          <div style={{ fontSize: 11, color: 'var(--ink-500)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-            {userEmail}
-          </div>
-        </div>
-      </div>
+      <DropdownMenu>
+        <DropdownMenuTrigger className="flex items-center gap-2 rounded-full py-1 pl-1 pr-2 transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+          <Avatar className="size-8">
+            <AvatarFallback className="bg-accent text-xs font-semibold text-accent-foreground">
+              {userInitials}
+            </AvatarFallback>
+          </Avatar>
+          <ChevronDown className="size-3.5 text-muted-foreground" />
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" className="w-56">
+          <DropdownMenuLabel className="grid gap-0.5">
+            <span className="truncate text-sm font-medium">{userLabel}</span>
+            <span className="truncate text-xs font-normal text-muted-foreground">{userEmail}</span>
+          </DropdownMenuLabel>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem asChild>
+            <Link href="/profile">
+              <User className="size-4" />
+              Mon compte
+            </Link>
+          </DropdownMenuItem>
+          <DropdownMenuItem asChild>
+            <Link href="/billing">
+              <CreditCard className="size-4" />
+              Facturation
+            </Link>
+          </DropdownMenuItem>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem asChild>
+            <a href="/app.html">
+              <BookOpen className="size-4" />
+              Guide formalités
+            </a>
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
     </header>
   );
 }

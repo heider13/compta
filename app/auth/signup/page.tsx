@@ -1,6 +1,11 @@
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { ScanLine, FileSignature, Clock } from 'lucide-react';
 
 async function signUp(formData: FormData) {
   'use server';
@@ -38,93 +43,145 @@ async function signUp(formData: FormData) {
   return redirect('/onboarding');
 }
 
+const HIGHLIGHTS = [
+  { icon: ScanLine, text: 'Scannez une pièce d’identité : la liasse INPI se remplit toute seule.' },
+  { icon: FileSignature, text: 'Statuts générés en .docx, signature électronique avancée intégrée.' },
+  { icon: Clock, text: '15 à 20 minutes gagnées par dossier, dès le premier jour.' },
+];
+
 export default async function SignupPage({ searchParams }: { searchParams: Promise<{ e?: string; info?: string }> }) {
   const sp = await searchParams;
   return (
-    <main style={{ minHeight: '100vh', display: 'grid', placeItems: 'center', padding: 24, background: 'var(--ink-50)' }}>
-      <div className="card-elev" style={{ width: '100%', maxWidth: 460, padding: 40, borderRadius: 20 }}>
-        <Link href="/" className="logo" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, marginBottom: 28, textDecoration: 'none' }}>
-          <span className="logo-mark">C</span>
-          <span style={{ fontSize: 22 }}>compta</span>
+    <main className="grid min-h-screen lg:grid-cols-2">
+      {/* Panneau gauche — marque */}
+      <aside className="relative hidden flex-col justify-between overflow-hidden bg-sidebar p-10 text-sidebar-foreground lg:flex">
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_500px_400px_at_80%_10%,rgba(117,81,232,0.25),transparent_60%),radial-gradient(ellipse_400px_300px_at_10%_90%,rgba(149,122,245,0.15),transparent_60%)]"
+        />
+        <Link href="/" className="relative flex items-center gap-2.5 text-white no-underline">
+          <span className="grid size-9 place-items-center rounded-lg bg-primary text-lg font-bold text-white">
+            C
+          </span>
+          <span className="text-xl font-semibold tracking-tight">compta</span>
         </Link>
-        <h1 style={{ fontSize: 24, textAlign: 'center', marginBottom: 6 }}>Créez votre cabinet</h1>
-        <p style={{ textAlign: 'center', fontSize: 14, color: 'var(--ink-500)', marginBottom: 24 }}>
-          Démarrez avec 30 jours d&apos;essai gratuit. Sans CB.
-        </p>
 
-        <form action={signUp}>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 14 }}>
-            <div>
-              <label className="auth-label">Prénom</label>
-              <input
-                name="first_name"
-                required
-                autoFocus
-                placeholder="Jean"
-                style={{ width: '100%', padding: '12px 14px', border: '1px solid var(--ink-200)', borderRadius: 10, fontSize: 15, fontFamily: 'inherit' }}
-              />
-            </div>
-            <div>
-              <label className="auth-label">Nom</label>
-              <input
-                name="last_name"
-                required
-                placeholder="Dupont"
-                style={{ width: '100%', padding: '12px 14px', border: '1px solid var(--ink-200)', borderRadius: 10, fontSize: 15, fontFamily: 'inherit' }}
-              />
-            </div>
-          </div>
-          <div style={{ marginBottom: 14 }}>
-            <label className="auth-label">Nom du cabinet (optionnel)</label>
-            <input
-              name="cabinet_name"
-              placeholder="Cabinet Dupont & Associés"
-              style={{ width: '100%', padding: '12px 14px', border: '1px solid var(--ink-200)', borderRadius: 10, fontSize: 15, fontFamily: 'inherit' }}
-            />
-          </div>
-          <div style={{ marginBottom: 14 }}>
-            <label className="auth-label">Email professionnel</label>
-            <input
-              name="email"
-              type="email"
-              required
-              placeholder="vous@cabinet.fr"
-              style={{ width: '100%', padding: '12px 14px', border: '1px solid var(--ink-200)', borderRadius: 10, fontSize: 15, fontFamily: 'inherit' }}
-            />
-          </div>
-          <div style={{ marginBottom: 4 }}>
-            <label className="auth-label">Mot de passe</label>
-            <input
-              name="password"
-              type="password"
-              required
-              minLength={8}
-              placeholder="Au moins 8 caractères"
-              style={{ width: '100%', padding: '12px 14px', border: '1px solid var(--ink-200)', borderRadius: 10, fontSize: 15, fontFamily: 'inherit' }}
-            />
-            <div style={{ fontSize: 11, color: 'var(--ink-500)', marginTop: 6 }}>8 caractères min · 1 majuscule · 1 chiffre</div>
-          </div>
-          <label style={{ display: 'flex', alignItems: 'flex-start', gap: 10, fontSize: 12, color: 'var(--ink-600)', marginTop: 14, cursor: 'pointer' }}>
-            <input type="checkbox" required style={{ marginTop: 2, accentColor: 'var(--accent)' }} />
-            <span>
-              J&apos;accepte les <a href="#" style={{ color: 'var(--accent-ink)' }}>CGU</a> et la{' '}
-              <a href="#" style={{ color: 'var(--accent-ink)' }}>politique de confidentialité</a>.
-            </span>
-          </label>
-          {sp.e && <div style={{ color: '#b42318', fontSize: 13, marginTop: 10 }}>{sp.e}</div>}
-          {sp.info && <div style={{ color: '#067647', fontSize: 13, marginTop: 10 }}>{sp.info}</div>}
-          <button type="submit" className="btn btn-accent btn-lg" style={{ width: '100%', marginTop: 20, justifyContent: 'center' }}>
-            Créer mon cabinet
-          </button>
-        </form>
-
-        <div style={{ textAlign: 'center', fontSize: 13, color: 'var(--ink-500)', marginTop: 24 }}>
-          Déjà un cabinet ?{' '}
-          <Link href="/auth/login" style={{ color: 'var(--accent-ink)', fontWeight: 500 }}>
-            Se connecter
-          </Link>
+        <div className="relative max-w-md">
+          <h2 className="text-3xl font-semibold leading-tight tracking-tight text-white">
+            Votre cabinet,
+            <br />
+            en pilote automatique.
+          </h2>
+          <ul className="mt-8 space-y-4">
+            {HIGHLIGHTS.map(({ icon: Icon, text }) => (
+              <li key={text} className="flex items-start gap-3 text-sm leading-relaxed text-sidebar-foreground">
+                <Icon className="mt-0.5 size-4 shrink-0 text-sidebar-primary" aria-hidden="true" />
+                {text}
+              </li>
+            ))}
+          </ul>
         </div>
-      </div>
+
+        <p className="relative text-xs text-sidebar-foreground/60">
+          30 jours d&apos;essai gratuit — sans carte bancaire.
+        </p>
+      </aside>
+
+      {/* Panneau droit — formulaire */}
+      <section className="flex items-center justify-center bg-muted/40 p-6">
+        <Card className="w-full max-w-md border-border/60 shadow-lg">
+          <CardHeader className="space-y-1 text-center">
+            <Link href="/" className="mx-auto mb-2 flex items-center gap-2 no-underline lg:hidden">
+              <span className="grid size-8 place-items-center rounded-lg bg-primary text-base font-bold text-white">
+                C
+              </span>
+              <span className="text-lg font-semibold text-foreground">compta</span>
+            </Link>
+            <CardTitle className="text-2xl">Créez votre cabinet</CardTitle>
+            <CardDescription>Démarrez avec 30 jours d&apos;essai gratuit. Sans CB.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <form action={signUp} className="space-y-4">
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label htmlFor="first_name">Prénom</Label>
+                  <Input id="first_name" name="first_name" required autoFocus placeholder="Jean" autoComplete="given-name" />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="last_name">Nom</Label>
+                  <Input id="last_name" name="last_name" required placeholder="Dupont" autoComplete="family-name" />
+                </div>
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="cabinet_name">
+                  Nom du cabinet <span className="font-normal text-muted-foreground">(optionnel)</span>
+                </Label>
+                <Input id="cabinet_name" name="cabinet_name" placeholder="Cabinet Dupont & Associés" autoComplete="organization" />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="email">Email professionnel</Label>
+                <Input id="email" name="email" type="email" required placeholder="vous@cabinet.fr" autoComplete="email" />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="password">Mot de passe</Label>
+                <Input
+                  id="password"
+                  name="password"
+                  type="password"
+                  required
+                  minLength={8}
+                  placeholder="Au moins 8 caractères"
+                  autoComplete="new-password"
+                />
+                <p className="text-xs text-muted-foreground">8 caractères min · 1 majuscule · 1 chiffre</p>
+              </div>
+
+              <label className="flex cursor-pointer items-start gap-2.5 text-xs leading-relaxed text-muted-foreground">
+                <input type="checkbox" required className="mt-0.5 accent-primary" />
+                <span>
+                  J&apos;accepte les{' '}
+                  <a href="#" className="font-medium text-primary hover:underline">
+                    CGU
+                  </a>{' '}
+                  et la{' '}
+                  <a href="#" className="font-medium text-primary hover:underline">
+                    politique de confidentialité
+                  </a>
+                  .
+                </span>
+              </label>
+
+              {sp.e && (
+                <div
+                  role="alert"
+                  className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive"
+                >
+                  {sp.e}
+                </div>
+              )}
+              {sp.info && (
+                <div
+                  role="status"
+                  className="rounded-md border border-green-600/30 bg-green-600/10 px-3 py-2 text-sm text-green-700"
+                >
+                  {sp.info}
+                </div>
+              )}
+
+              <Button type="submit" className="w-full" size="lg">
+                Créer mon cabinet
+              </Button>
+            </form>
+
+            <p className="mt-6 text-center text-sm text-muted-foreground">
+              Déjà un cabinet ?{' '}
+              <Link href="/auth/login" className="font-medium text-primary hover:underline">
+                Se connecter
+              </Link>
+            </p>
+          </CardContent>
+        </Card>
+      </section>
     </main>
   );
 }

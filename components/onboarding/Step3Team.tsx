@@ -1,7 +1,18 @@
 'use client';
 
 import { useState } from 'react';
+import { Loader2, Plus, Trash2 } from 'lucide-react';
 import type { InvitationRole, OnboardingData, PendingInvitation } from '@/lib/types/onboarding';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 
 type Props = {
   data: OnboardingData;
@@ -10,29 +21,10 @@ type Props = {
   onPrev: () => void;
 };
 
-const fieldStyle: React.CSSProperties = {
-  width: '100%',
-  padding: '10px 12px',
-  borderRadius: 'var(--r-md)',
-  border: '1px solid var(--ink-200)',
-  background: 'white',
-  fontSize: 14,
-  color: 'var(--ink-900)',
-  outline: 'none',
-};
-
-const labelStyle: React.CSSProperties = {
-  display: 'block',
-  fontSize: 13,
-  fontWeight: 500,
-  color: 'var(--ink-700)',
-  marginBottom: 6,
-};
-
 const ROLES: { value: InvitationRole; label: string }[] = [
   { value: 'admin', label: 'Admin' },
-  { value: 'collaborator', label: 'Collaborator' },
-  { value: 'readonly', label: 'Readonly' },
+  { value: 'collaborator', label: 'Collaborateur' },
+  { value: 'readonly', label: 'Lecture seule' },
 ];
 
 export function Step3Team({ data, onUpdate, onNext, onPrev }: Props) {
@@ -91,30 +83,20 @@ export function Step3Team({ data, onUpdate, onNext, onPrev }: Props) {
 
   return (
     <div>
-      <h2 style={{ fontSize: 22, fontWeight: 600, margin: 0, letterSpacing: '-0.01em' }}>
+      <h2 className="text-[22px] font-semibold tracking-tight text-foreground">
         Invitez votre équipe
       </h2>
-      <p
-        style={{
-          color: 'var(--ink-500)',
-          marginTop: 6,
-          marginBottom: 20,
-          fontSize: 14,
-        }}
-      >
-        Ajoutez les emails de vos collaborateurs. Les invitations seront stockées et envoyées dans une
-        phase future (MVP : pas d&apos;envoi d&apos;email).
+      <p className="mb-5 mt-1.5 text-sm text-muted-foreground">
+        Ajoutez les emails de vos collaborateurs. Les invitations seront stockées et envoyées dans
+        une phase future (MVP : pas d&apos;envoi d&apos;email).
       </p>
 
-      <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end' }}>
-        <div style={{ flex: 1 }}>
-          <label style={labelStyle} htmlFor="inviteEmail">
-            Inviter par email
-          </label>
-          <input
+      <div className="flex flex-wrap items-end gap-2.5">
+        <div className="min-w-52 flex-1 space-y-1.5">
+          <Label htmlFor="inviteEmail">Inviter par email</Label>
+          <Input
             id="inviteEmail"
             type="email"
-            style={fieldStyle}
             value={draftEmail}
             onChange={(e) => setDraftEmail(e.target.value)}
             placeholder="collaborateur@cabinet.fr"
@@ -126,135 +108,90 @@ export function Step3Team({ data, onUpdate, onNext, onPrev }: Props) {
             }}
           />
         </div>
-        <div style={{ width: 160 }}>
-          <label style={labelStyle} htmlFor="inviteRole">
-            Rôle
-          </label>
-          <select
-            id="inviteRole"
-            style={fieldStyle}
-            value={draftRole}
-            onChange={(e) => setDraftRole(e.target.value as InvitationRole)}
-          >
-            {ROLES.map((r) => (
-              <option key={r.value} value={r.value}>
-                {r.label}
-              </option>
-            ))}
-          </select>
+        <div className="w-40 space-y-1.5">
+          <Label htmlFor="inviteRole">Rôle</Label>
+          <Select value={draftRole} onValueChange={(v) => setDraftRole(v as InvitationRole)}>
+            <SelectTrigger id="inviteRole" className="w-full">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {ROLES.map((r) => (
+                <SelectItem key={r.value} value={r.value}>
+                  {r.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
-        <button
-          type="button"
-          onClick={addInvitation}
-          disabled={!isEmailValid}
-          className="btn btn-ghost"
-          style={{ opacity: !isEmailValid ? 0.6 : 1, height: 42 }}
-        >
-          + Ajouter
-        </button>
+        <Button type="button" variant="outline" onClick={addInvitation} disabled={!isEmailValid}>
+          <Plus className="size-4" aria-hidden="true" />
+          Ajouter
+        </Button>
       </div>
 
       {error && (
         <div
-          style={{
-            marginTop: 12,
-            padding: '8px 12px',
-            borderRadius: 'var(--r-md)',
-            background: '#FDEAEA',
-            color: 'var(--status-red)',
-            fontSize: 13,
-          }}
+          role="alert"
+          className="mt-3 rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive"
         >
           {error}
         </div>
       )}
 
       {data.invitations.length > 0 ? (
-        <div
-          style={{
-            marginTop: 20,
-            border: '1px solid var(--ink-150)',
-            borderRadius: 'var(--r-md)',
-            overflow: 'hidden',
-            background: 'white',
-          }}
-        >
-          {data.invitations.map((inv, idx) => (
-            <div
-              key={inv.email}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 12,
-                padding: '10px 14px',
-                borderTop: idx === 0 ? 'none' : '1px solid var(--ink-100)',
-                fontSize: 14,
-              }}
-            >
-              <span style={{ flex: 1, color: 'var(--ink-900)' }}>{inv.email}</span>
-              <select
+        <div className="mt-5 divide-y overflow-hidden rounded-lg border bg-card">
+          {data.invitations.map((inv) => (
+            <div key={inv.email} className="flex items-center gap-3 px-4 py-2.5 text-sm">
+              <span className="flex-1 truncate text-foreground">{inv.email}</span>
+              <Select
                 value={inv.role}
-                onChange={(e) => changeRole(inv.email, e.target.value as InvitationRole)}
-                style={{
-                  padding: '6px 10px',
-                  borderRadius: 'var(--r-md)',
-                  border: '1px solid var(--ink-200)',
-                  background: 'white',
-                  fontSize: 13,
-                }}
+                onValueChange={(v) => changeRole(inv.email, v as InvitationRole)}
               >
-                {ROLES.map((r) => (
-                  <option key={r.value} value={r.value}>
-                    {r.label}
-                  </option>
-                ))}
-              </select>
-              <button
+                <SelectTrigger size="sm" className="w-36" aria-label={`Rôle de ${inv.email}`}>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {ROLES.map((r) => (
+                    <SelectItem key={r.value} value={r.value}>
+                      {r.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Button
                 type="button"
+                variant="ghost"
+                size="icon"
+                className="text-destructive hover:text-destructive"
                 onClick={() => removeInvitation(inv.email)}
-                className="btn btn-ghost btn-sm"
-                style={{ color: 'var(--status-red)' }}
                 aria-label={`Retirer ${inv.email}`}
               >
-                Retirer
-              </button>
+                <Trash2 className="size-4" aria-hidden="true" />
+              </Button>
             </div>
           ))}
         </div>
       ) : (
-        <p
-          style={{
-            marginTop: 20,
-            color: 'var(--ink-500)',
-            fontSize: 13,
-            fontStyle: 'italic',
-          }}
-        >
-          Aucune invitation en attente. Vous pouvez passer cette étape et inviter plus tard depuis les
-          réglages.
+        <p className="mt-5 text-[13px] italic text-muted-foreground">
+          Aucune invitation en attente. Vous pouvez passer cette étape et inviter plus tard depuis
+          les réglages.
         </p>
       )}
 
-      <div
-        style={{
-          marginTop: 32,
-          display: 'flex',
-          justifyContent: 'space-between',
-          gap: 12,
-        }}
-      >
-        <button type="button" onClick={onPrev} className="btn btn-ghost">
+      <div className="mt-8 flex justify-between gap-3">
+        <Button type="button" variant="ghost" onClick={onPrev}>
           ← Précédent
-        </button>
-        <button
-          type="button"
-          onClick={handleNext}
-          disabled={submitting}
-          className="btn btn-accent"
-          style={{ opacity: submitting ? 0.6 : 1 }}
-        >
-          {submitting ? 'Sauvegarde…' : 'Suivant →'}
-        </button>
+        </Button>
+        <Button type="button" onClick={handleNext} disabled={submitting}>
+          {submitting ? (
+            <>
+              <Loader2 className="size-4 animate-spin" aria-hidden="true" />
+              Sauvegarde…
+            </>
+          ) : (
+            'Suivant →'
+          )}
+        </Button>
       </div>
     </div>
   );

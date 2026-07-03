@@ -4,6 +4,9 @@ import { createClient } from '@/lib/supabase/server';
 import { CabinetSidebar } from '@/components/cabinet/CabinetSidebar';
 import { TopBar } from '@/components/cabinet/TopBar';
 import { getInitials } from '@/lib/types';
+import { SidebarInset, SidebarProvider } from '@/components/ui/sidebar';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 
 export const dynamic = 'force-dynamic';
 
@@ -46,21 +49,22 @@ export default async function CabinetLayout({
   if (!currentOrg) {
     // L'utilisateur est connecté mais n'appartient à aucun cabinet.
     return (
-      <div style={{ minHeight: '100vh', background: 'var(--ink-50)', padding: 28 }}>
-        <div
-          className="app-card app-card-pad"
-          style={{ maxWidth: 560, margin: '64px auto' }}
-        >
-          <h2 style={{ marginBottom: 8 }}>Aucun cabinet</h2>
-          <p style={{ marginBottom: 16 }}>
-            Votre compte n&apos;est encore rattaché à aucun cabinet. Contactez
-            l&apos;administrateur de votre organisation pour recevoir une invitation,
-            ou créez votre propre cabinet.
-          </p>
-          <Link href="/" className="btn btn-ghost">
-            Retour à l&apos;accueil
-          </Link>
-        </div>
+      <div className="flex min-h-screen items-center justify-center bg-muted/40 p-6">
+        <Card className="w-full max-w-lg">
+          <CardHeader>
+            <CardTitle>Aucun cabinet</CardTitle>
+            <CardDescription>
+              Votre compte n&apos;est encore rattaché à aucun cabinet. Contactez
+              l&apos;administrateur de votre organisation pour recevoir une invitation,
+              ou créez votre propre cabinet.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Button asChild variant="outline">
+              <Link href="/">Retour à l&apos;accueil</Link>
+            </Button>
+          </CardContent>
+        </Card>
       </div>
     );
   }
@@ -71,21 +75,21 @@ export default async function CabinetLayout({
     'Utilisateur';
 
   return (
-    <div className="app-shell">
+    <SidebarProvider>
       <CabinetSidebar
         orgName={currentOrg.name}
         userLabel={userLabel}
         userInitials={getInitials(userLabel)}
       />
-      <main className="app-main">
+      <SidebarInset>
         <TopBar
           userLabel={userLabel}
           userEmail={user.email ?? ''}
           userInitials={getInitials(userLabel)}
           plan={currentOrg.plan}
         />
-        {children}
-      </main>
-    </div>
+        <div className="flex-1">{children}</div>
+      </SidebarInset>
+    </SidebarProvider>
   );
 }

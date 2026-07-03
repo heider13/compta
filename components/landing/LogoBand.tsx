@@ -2,6 +2,8 @@
 // On affiche les intégrations RÉELLES de la plateforme (pas de faux logos
 // clients) : c'est vérifiable et ça rassure autant.
 
+import { Container } from './ui';
+
 const INTEGRATIONS = [
   'INPI Guichet Unique',
   'Registre National (RNE)',
@@ -13,39 +15,26 @@ const INTEGRATIONS = [
 
 export function LogoBand() {
   return (
-    <section style={{ borderBottom: '1px solid var(--ink-100)', background: 'white' }}>
-      <div className="container">
-        <p
-          style={{
-            textAlign: 'center',
-            fontSize: 12,
-            fontWeight: 600,
-            letterSpacing: '0.08em',
-            textTransform: 'uppercase',
-            color: 'var(--ink-400)',
-            margin: '20px 0 0',
-          }}
-        >
+    <section className="border-b border-[var(--ink-100)] bg-white">
+      <Container>
+        <p className="mt-5 text-center text-xs font-semibold uppercase tracking-[0.08em] text-[var(--ink-400)]">
           Connecté à vos outils et registres officiels
         </p>
-        <div className="logo-band">
+        <div className="flex flex-wrap items-center justify-center gap-x-10 gap-y-3 py-7 opacity-80">
           {INTEGRATIONS.map((name) => (
-            <span key={name} className="logo-item">
+            <span
+              key={name}
+              className="flex items-center gap-2 whitespace-nowrap text-sm font-semibold tracking-wide text-[var(--ink-500)]"
+            >
               <span
                 aria-hidden="true"
-                style={{
-                  width: 7,
-                  height: 7,
-                  borderRadius: '50%',
-                  background: 'var(--accent)',
-                  display: 'inline-block',
-                }}
+                className="inline-block h-[7px] w-[7px] rounded-full bg-[var(--accent)]"
               />
               {name}
             </span>
           ))}
         </div>
-      </div>
+      </Container>
     </section>
   );
 }

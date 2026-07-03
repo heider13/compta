@@ -1,8 +1,20 @@
 import Link from 'next/link';
+import { ArrowLeft, CheckCircle2, ExternalLink, Lock, TriangleAlert } from 'lucide-react';
 import {
   getInpiCredentialsStatus,
   saveInpiCredentials,
 } from '@/lib/server-actions/inpi-credentials';
+import { Button } from '@/components/ui/button';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Separator } from '@/components/ui/separator';
 
 export const dynamic = 'force-dynamic';
 
@@ -26,203 +38,147 @@ export default async function InpiSettingsPage({
   const isReconfig = status?.configured ?? false;
 
   return (
-    <div className="app-content with-bg">
-      <div style={{ fontSize: 13, color: 'var(--ink-500)', marginBottom: 14, display: 'flex', alignItems: 'center', gap: 6 }}>
-        <Link href="/dashboard" style={{ color: 'var(--ink-500)' }}>🏠</Link>
+    <div className="mx-auto w-full max-w-2xl px-4 py-8">
+      <nav className="mb-5 flex items-center gap-1.5 text-sm text-muted-foreground">
+        <Link href="/dashboard" className="hover:text-foreground">
+          Tableau de bord
+        </Link>
         <span>›</span>
-        <Link href="/profile" style={{ color: 'var(--ink-500)' }}>Paramètres</Link>
-        <span>›</span>
-        <span style={{ color: 'var(--ink-900)' }}>Connexion INPI</span>
-      </div>
+        <span className="text-foreground">Connexion INPI</span>
+      </nav>
 
-      <div
-        className="card-elev"
-        style={{
-          maxWidth: 640,
-          margin: '20px auto',
-          padding: '36px 40px',
-          borderRadius: 18,
-          background: 'white',
-        }}
-      >
-        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 14, marginBottom: 24 }}>
-          <div
-            style={{
-              width: 48,
-              height: 48,
-              display: 'grid',
-              placeItems: 'center',
-              background: 'var(--accent-soft)',
-              borderRadius: 12,
-              flexShrink: 0,
-            }}
-          >
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--accent-ink)" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-              <rect x="3" y="11" width="18" height="11" rx="2" />
-              <path d="M7 11V7a5 5 0 0 1 10 0v4" />
-            </svg>
+      <Card>
+        <CardHeader>
+          <div className="flex items-start gap-4">
+            <div className="grid size-12 shrink-0 place-items-center rounded-xl bg-accent text-accent-foreground">
+              <Lock className="size-5" aria-hidden="true" />
+            </div>
+            <div className="space-y-1.5">
+              <CardTitle className="text-xl">Connexion à votre compte INPI</CardTitle>
+              <CardDescription className="leading-relaxed">
+                Vos identifiants du Guichet Unique sont nécessaires pour déposer les
+                formalités au registre. Ils sont chiffrés et stockés dans votre cabinet
+                uniquement — jamais partagés.
+              </CardDescription>
+            </div>
           </div>
-          <div style={{ flex: 1 }}>
-            <h1 style={{ fontSize: 22, fontWeight: 600, margin: 0, letterSpacing: '-0.01em' }}>
-              Connexion à votre compte INPI
-            </h1>
-            <p style={{ fontSize: 14, color: 'var(--ink-500)', margin: '6px 0 0' }}>
-              Vos identifiants du Guichet Unique sont nécessaires pour déposer
-              les formalités au registre. Ils sont chiffrés et stockés dans votre
-              cabinet uniquement — jamais partagés.
-            </p>
-          </div>
-        </div>
+        </CardHeader>
 
-        {!isReconfig && (
-          <div
-            style={{
-              marginBottom: 22,
-              padding: '12px 14px',
-              background: '#FFF6E5',
-              border: '1px solid #F1C75A',
-              borderRadius: 10,
-              fontSize: 13,
-              color: '#8A5400',
-            }}
-          >
-            <strong>Configuration requise.</strong> Tant que vos identifiants
-            INPI ne sont pas renseignés, vous ne pouvez pas déposer de
-            formalité depuis Compta.
-          </div>
-        )}
+        <CardContent className="space-y-5">
+          {!isReconfig && (
+            <div className="flex items-start gap-3 rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+              <TriangleAlert className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
+              <p>
+                <strong className="font-semibold">Configuration requise.</strong> Tant que
+                vos identifiants INPI ne sont pas renseignés, vous ne pouvez pas déposer de
+                formalité depuis Compta.
+              </p>
+            </div>
+          )}
 
-        {isReconfig && (
-          <div
-            style={{
-              marginBottom: 22,
-              padding: '12px 14px',
-              background: 'rgba(19, 115, 51, 0.08)',
-              border: '1px solid var(--status-green, #137333)',
-              borderRadius: 10,
-              fontSize: 13,
-              color: 'var(--status-green, #137333)',
-            }}
-          >
-            <strong>Compte INPI connecté</strong>
-            {status?.username ? ` — ${status.username}` : ''}
-            {status?.env === 'demo' ? ' (environnement bac à sable)' : ''}.
-            Vous pouvez mettre à jour les identifiants ci-dessous.
-          </div>
-        )}
+          {isReconfig && (
+            <div className="flex items-start gap-3 rounded-lg border border-green-300 bg-green-50 px-4 py-3 text-sm text-green-800">
+              <CheckCircle2 className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
+              <p>
+                <strong className="font-semibold">Compte INPI connecté</strong>
+                {status?.username ? ` — ${status.username}` : ''}
+                {status?.env === 'demo' ? ' (environnement bac à sable)' : ''}. Vous pouvez
+                mettre à jour les identifiants ci-dessous.
+              </p>
+            </div>
+          )}
 
-        {errorMessage && (
-          <div
-            style={{
-              marginBottom: 18,
-              padding: '10px 12px',
-              borderRadius: 10,
-              background: '#FDEAEA',
-              color: 'var(--status-red)',
-              fontSize: 13,
-            }}
-          >
-            {errorMessage}
-          </div>
-        )}
-
-        <form action={saveInpiCredentials} style={{ display: 'grid', gap: 16 }}>
-          <input type="hidden" name="next" value={next} />
-
-          <div>
-            <label htmlFor="inpi_username" style={labelStyle}>
-              Identifiant INPI (email) <span style={{ color: 'var(--status-red)' }}>*</span>
-            </label>
-            <input
-              id="inpi_username"
-              name="inpi_username"
-              type="email"
-              required
-              autoComplete="username"
-              defaultValue={status?.username ?? ''}
-              placeholder="vous@cabinet.fr"
-              style={fieldStyle}
-            />
-          </div>
-
-          <div>
-            <label htmlFor="inpi_password" style={labelStyle}>
-              Mot de passe INPI <span style={{ color: 'var(--status-red)' }}>*</span>
-            </label>
-            <input
-              id="inpi_password"
-              name="inpi_password"
-              type="password"
-              required
-              autoComplete="current-password"
-              placeholder={isReconfig ? 'Laissez identique pour conserver' : '••••••••'}
-              style={fieldStyle}
-            />
-            <span style={{ fontSize: 12, color: 'var(--ink-500)', marginTop: 4, display: 'block' }}>
-              Le mot de passe est chiffré côté serveur avant stockage.
-            </span>
-          </div>
-
-          <div>
-            <label htmlFor="inpi_env" style={labelStyle}>
-              Environnement
-            </label>
-            <select
-              id="inpi_env"
-              name="inpi_env"
-              defaultValue={status?.env ?? 'prod'}
-              style={fieldStyle}
+          {errorMessage && (
+            <div
+              role="alert"
+              className="rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive"
             >
-              <option value="prod">Production (procedures-bis.inpi.fr)</option>
-              <option value="demo">Bac à sable / démo (procedures-demo.inpi.fr)</option>
-            </select>
-          </div>
+              {errorMessage}
+            </div>
+          )}
 
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 8 }}>
-            <Link href={next} style={{ fontSize: 13, color: 'var(--ink-500)', textDecoration: 'none' }}>
-              ← Annuler
-            </Link>
-            <button type="submit" className="btn btn-accent" style={{ minWidth: 200, justifyContent: 'center' }}>
-              {isReconfig ? 'Mettre à jour' : 'Connecter mon compte INPI'}
-            </button>
-          </div>
-        </form>
+          <form action={saveInpiCredentials} className="space-y-5">
+            <input type="hidden" name="next" value={next} />
 
-        <hr style={{ margin: '28px 0 18px', border: 0, borderTop: '1px solid var(--ink-150)' }} />
-        <div style={{ fontSize: 12, color: 'var(--ink-500)', lineHeight: 1.6 }}>
-          <strong>Vous n&apos;avez pas encore de compte INPI ?</strong>{' '}
-          Créez-le gratuitement sur{' '}
-          <a
-            href="https://procedures.inpi.fr/?/"
-            target="_blank"
-            rel="noreferrer noopener"
-            style={{ color: 'var(--accent-ink)', textDecoration: 'none', fontWeight: 500 }}
-          >
-            procedures.inpi.fr
-          </a>{' '}
-          puis revenez ici saisir vos identifiants.
-        </div>
-      </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="inpi_username">
+                Identifiant INPI (email) <span className="text-destructive">*</span>
+              </Label>
+              <Input
+                id="inpi_username"
+                name="inpi_username"
+                type="email"
+                required
+                autoComplete="username"
+                defaultValue={status?.username ?? ''}
+                placeholder="vous@cabinet.fr"
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="inpi_password">
+                Mot de passe INPI <span className="text-destructive">*</span>
+              </Label>
+              <Input
+                id="inpi_password"
+                name="inpi_password"
+                type="password"
+                required
+                autoComplete="current-password"
+                placeholder={isReconfig ? 'Laissez identique pour conserver' : '••••••••'}
+              />
+              <p className="text-xs text-muted-foreground">
+                Le mot de passe est chiffré côté serveur avant stockage.
+              </p>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="inpi_env">Environnement</Label>
+              {/* Select natif : le formulaire est une Server Action (POST FormData). */}
+              <select
+                id="inpi_env"
+                name="inpi_env"
+                defaultValue={status?.env ?? 'prod'}
+                className="border-input flex h-9 w-full rounded-md border bg-transparent px-3 py-1 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
+              >
+                <option value="prod">Production (procedures-bis.inpi.fr)</option>
+                <option value="demo">Bac à sable / démo (procedures-demo.inpi.fr)</option>
+              </select>
+            </div>
+
+            <div className="flex items-center justify-between pt-1">
+              <Button variant="ghost" size="sm" asChild>
+                <Link href={next}>
+                  <ArrowLeft className="size-4" />
+                  Annuler
+                </Link>
+              </Button>
+              <Button type="submit" size="lg" className="min-w-52">
+                {isReconfig ? 'Mettre à jour' : 'Connecter mon compte INPI'}
+              </Button>
+            </div>
+          </form>
+
+          <Separator />
+
+          <p className="text-xs leading-relaxed text-muted-foreground">
+            <strong className="font-medium text-foreground">
+              Vous n&apos;avez pas encore de compte INPI ?
+            </strong>{' '}
+            Créez-le gratuitement sur{' '}
+            <a
+              href="https://procedures.inpi.fr/?/"
+              target="_blank"
+              rel="noreferrer noopener"
+              className="inline-flex items-center gap-0.5 font-medium text-primary hover:underline"
+            >
+              procedures.inpi.fr
+              <ExternalLink className="size-3" aria-hidden="true" />
+            </a>{' '}
+            puis revenez ici saisir vos identifiants.
+          </p>
+        </CardContent>
+      </Card>
     </div>
   );
 }
-
-const fieldStyle: React.CSSProperties = {
-  width: '100%',
-  padding: '11px 14px',
-  borderRadius: 10,
-  border: '1px solid var(--ink-200)',
-  background: 'white',
-  fontSize: 14,
-  color: 'var(--ink-900)',
-  outline: 'none',
-  fontFamily: 'inherit',
-};
-
-const labelStyle: React.CSSProperties = {
-  display: 'block',
-  fontSize: 13,
-  fontWeight: 500,
-  color: 'var(--ink-700)',
-  marginBottom: 6,
-};

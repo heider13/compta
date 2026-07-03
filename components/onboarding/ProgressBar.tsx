@@ -1,86 +1,53 @@
 'use client';
 
+import { Check } from 'lucide-react';
+import { cn } from '@/lib/utils';
+
 type ProgressBarProps = {
   steps: string[];
   current: number; // 1-based index of the active step
 };
 
-// Barre de progression 4 étapes — affiche les étapes complétées, l'étape active et celles à venir.
+// Barre de progression — étapes complétées, active et à venir.
 export function ProgressBar({ steps, current }: ProgressBarProps) {
   return (
-    <div
-      style={{
-        display: 'flex',
-        alignItems: 'center',
-        gap: 8,
-        marginBottom: 32,
-      }}
-    >
+    <div className="mb-8 flex items-center gap-2">
       {steps.map((label, idx) => {
         const stepNum = idx + 1;
         const isDone = stepNum < current;
         const isActive = stepNum === current;
-        const circleBg = isDone
-          ? 'var(--accent)'
-          : isActive
-            ? 'var(--accent)'
-            : 'var(--white)';
-        const circleColor = isDone || isActive ? 'white' : 'var(--ink-500)';
-        const circleBorder = isDone || isActive ? 'var(--accent)' : 'var(--ink-200)';
 
         return (
-          <div
-            key={label}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 8,
-              flex: 1,
-            }}
-          >
+          <div key={label} className="flex flex-1 items-center gap-2">
             <div
-              style={{
-                width: 28,
-                height: 28,
-                borderRadius: 999,
-                background: circleBg,
-                border: `1px solid ${circleBorder}`,
-                color: circleColor,
-                display: 'grid',
-                placeItems: 'center',
-                fontSize: 13,
-                fontWeight: 600,
-                flexShrink: 0,
-                transition: 'background 0.15s ease, border-color 0.15s ease',
-              }}
               aria-current={isActive ? 'step' : undefined}
+              className={cn(
+                'grid size-7 shrink-0 place-items-center rounded-full border text-[13px] font-semibold transition-colors',
+                isDone || isActive
+                  ? 'border-primary bg-primary text-primary-foreground'
+                  : 'border-input bg-background text-muted-foreground',
+              )}
             >
-              {isDone ? '✓' : stepNum}
+              {isDone ? <Check className="size-3.5" aria-hidden="true" /> : stepNum}
             </div>
             <span
-              style={{
-                fontSize: 13,
-                fontWeight: isActive ? 600 : 500,
-                color: isActive
-                  ? 'var(--ink-900)'
+              className={cn(
+                'whitespace-nowrap text-[13px]',
+                isActive
+                  ? 'font-semibold text-foreground'
                   : isDone
-                    ? 'var(--ink-700)'
-                    : 'var(--ink-500)',
-                whiteSpace: 'nowrap',
-              }}
+                    ? 'font-medium text-foreground/80'
+                    : 'font-medium text-muted-foreground',
+              )}
             >
               {label}
             </span>
             {idx < steps.length - 1 && (
               <div
-                style={{
-                  height: 1,
-                  flex: 1,
-                  background: isDone ? 'var(--accent)' : 'var(--ink-200)',
-                  marginLeft: 4,
-                  marginRight: 4,
-                  transition: 'background 0.15s ease',
-                }}
+                className={cn(
+                  'mx-1 h-px flex-1 transition-colors',
+                  isDone ? 'bg-primary' : 'bg-border',
+                )}
               />
             )}
           </div>

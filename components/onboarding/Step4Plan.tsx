@@ -1,7 +1,11 @@
 'use client';
 
 import { useState } from 'react';
+import { Check, Loader2 } from 'lucide-react';
 import type { OnboardingData, OrgPlan } from '@/lib/types/onboarding';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { cn } from '@/lib/utils';
 
 type Props = {
   data: OnboardingData;
@@ -76,39 +80,29 @@ export function Step4Plan({ data, onUpdate, onNext, onPrev }: Props) {
 
   return (
     <div>
-      <h2 style={{ fontSize: 22, fontWeight: 600, margin: 0, letterSpacing: '-0.01em' }}>
+      <h2 className="text-[22px] font-semibold tracking-tight text-foreground">
         Choisissez un plan
       </h2>
-      <p
-        style={{
-          color: 'var(--ink-500)',
-          marginTop: 6,
-          marginBottom: 24,
-          fontSize: 14,
-        }}
-      >
+      <p className="mb-6 mt-1.5 text-sm text-muted-foreground">
         Vous pouvez changer ou passer à la facturation plus tard. Aucun paiement requis maintenant.
       </p>
 
-      <div className="grid-3" style={{ gap: 16 }}>
+      <div
+        role="radiogroup"
+        aria-label="Plan d'abonnement"
+        className="grid grid-cols-1 gap-4 sm:grid-cols-3"
+      >
         {PLANS.map((plan) => {
           const isSelected = data.plan === plan.value;
           return (
             <label
               key={plan.value}
-              className="card"
-              style={{
-                cursor: 'pointer',
-                borderColor: isSelected ? 'var(--accent)' : 'var(--ink-150)',
-                boxShadow: isSelected ? '0 6px 20px rgba(91,54,214,0.12)' : 'none',
-                background: isSelected ? 'var(--violet-50)' : 'white',
-                position: 'relative',
-                display: 'flex',
-                flexDirection: 'column',
-                gap: 10,
-                transition:
-                  'border-color 0.15s ease, box-shadow 0.15s ease, background 0.15s ease',
-              }}
+              className={cn(
+                'relative flex cursor-pointer flex-col gap-2.5 rounded-xl border bg-card p-5 transition-all',
+                isSelected
+                  ? 'border-primary bg-accent/40 shadow-[0_6px_20px_rgba(91,54,214,0.12)] ring-1 ring-primary'
+                  : 'hover:border-ring/60',
+              )}
             >
               <input
                 type="radio"
@@ -116,49 +110,25 @@ export function Step4Plan({ data, onUpdate, onNext, onPrev }: Props) {
                 value={plan.value}
                 checked={isSelected}
                 onChange={() => onUpdate({ plan: plan.value })}
-                style={{ position: 'absolute', top: 14, right: 14 }}
+                className="absolute right-4 top-4 accent-primary"
               />
               {plan.highlighted && (
-                <span
-                  className="pill violet"
-                  style={{ alignSelf: 'flex-start', fontSize: 11 }}
-                >
-                  Recommandé
-                </span>
+                <Badge className="w-fit">Recommandé</Badge>
               )}
               <div>
-                <h3 style={{ margin: 0, fontSize: 17, fontWeight: 600 }}>{plan.name}</h3>
-                <p
-                  style={{
-                    margin: '4px 0 0',
-                    fontSize: 13,
-                    color: 'var(--ink-500)',
-                    minHeight: 36,
-                  }}
-                >
-                  {plan.tagline}
-                </p>
+                <h3 className="text-[17px] font-semibold text-foreground">{plan.name}</h3>
+                <p className="mt-1 min-h-9 text-[13px] text-muted-foreground">{plan.tagline}</p>
               </div>
-              <div style={{ display: 'flex', alignItems: 'baseline', gap: 4 }}>
-                <span style={{ fontSize: 24, fontWeight: 600, letterSpacing: '-0.02em' }}>
+              <div className="flex items-baseline gap-1">
+                <span className="text-2xl font-semibold tracking-tight text-foreground">
                   {plan.price}
                 </span>
-                <span style={{ fontSize: 12, color: 'var(--ink-500)' }}>{plan.priceSuffix}</span>
+                <span className="text-xs text-muted-foreground">{plan.priceSuffix}</span>
               </div>
-              <ul
-                style={{
-                  listStyle: 'none',
-                  padding: 0,
-                  margin: 0,
-                  display: 'grid',
-                  gap: 6,
-                  fontSize: 13,
-                  color: 'var(--ink-700)',
-                }}
-              >
+              <ul className="grid gap-1.5 text-[13px] text-foreground/80">
                 {plan.features.map((f) => (
-                  <li key={f} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <span style={{ color: 'var(--accent)' }}>✓</span>
+                  <li key={f} className="flex items-center gap-2">
+                    <Check className="size-3.5 shrink-0 text-primary" aria-hidden="true" />
                     {f}
                   </li>
                 ))}
@@ -168,53 +138,34 @@ export function Step4Plan({ data, onUpdate, onNext, onPrev }: Props) {
         })}
       </div>
 
-      <p
-        style={{
-          marginTop: 16,
-          fontSize: 12,
-          color: 'var(--ink-500)',
-          fontStyle: 'italic',
-        }}
-      >
-        Stripe n&apos;est pas encore branché — votre choix est sauvegardé et nous reviendrons vers vous
-        pour la facturation.
+      <p className="mt-4 text-xs italic text-muted-foreground">
+        Stripe n&apos;est pas encore branché — votre choix est sauvegardé et nous reviendrons vers
+        vous pour la facturation.
       </p>
 
       {error && (
         <div
-          style={{
-            marginTop: 16,
-            padding: '10px 12px',
-            borderRadius: 'var(--r-md)',
-            background: '#FDEAEA',
-            color: 'var(--status-red)',
-            fontSize: 13,
-          }}
+          role="alert"
+          className="mt-4 rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive"
         >
           {error}
         </div>
       )}
 
-      <div
-        style={{
-          marginTop: 32,
-          display: 'flex',
-          justifyContent: 'space-between',
-          gap: 12,
-        }}
-      >
-        <button type="button" onClick={onPrev} className="btn btn-ghost">
+      <div className="mt-8 flex justify-between gap-3">
+        <Button type="button" variant="ghost" onClick={onPrev}>
           ← Précédent
-        </button>
-        <button
-          type="button"
-          onClick={handleFinish}
-          disabled={submitting}
-          className="btn btn-accent"
-          style={{ opacity: submitting ? 0.6 : 1 }}
-        >
-          {submitting ? 'Finalisation…' : 'Terminer & accéder au dashboard'}
-        </button>
+        </Button>
+        <Button type="button" onClick={handleFinish} disabled={submitting}>
+          {submitting ? (
+            <>
+              <Loader2 className="size-4 animate-spin" aria-hidden="true" />
+              Finalisation…
+            </>
+          ) : (
+            'Terminer & accéder au dashboard'
+          )}
+        </Button>
       </div>
     </div>
   );

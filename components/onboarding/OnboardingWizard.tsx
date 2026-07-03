@@ -9,6 +9,7 @@ import type {
   OrgPlan,
   PendingInvitation,
 } from '@/lib/types/onboarding';
+import { Card, CardContent } from '@/components/ui/card';
 import { ProgressBar } from './ProgressBar';
 import { Step1Cabinet } from './Step1Cabinet';
 import { Step3Team } from './Step3Team';
@@ -131,69 +132,65 @@ export function OnboardingWizard({ org, userId: _userId }: Props) {
   }, [data.plan, persistPartial, router]);
 
   return (
-    <div className="card-elev" style={{ padding: 32 }}>
-      <ProgressBar steps={STEPS} current={step} />
+    <Card className="shadow-lg">
+      <CardContent className="p-6 sm:p-8">
+        <ProgressBar steps={STEPS} current={step} />
 
-      {globalError && (
-        <div
-          style={{
-            marginBottom: 16,
-            padding: '10px 12px',
-            borderRadius: 'var(--r-md)',
-            background: '#FDEAEA',
-            color: 'var(--status-red)',
-            fontSize: 13,
-          }}
-        >
-          {globalError}
-        </div>
-      )}
+        {globalError && (
+          <div
+            role="alert"
+            className="mb-4 rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive"
+          >
+            {globalError}
+          </div>
+        )}
 
-      {step === 1 && (
-        <Step1Cabinet
-          data={data}
-          onUpdate={handleUpdate}
-          onNext={async () => {
-            try {
-              await handleStep1Next();
-            } catch (err) {
-              setGlobalError(err instanceof Error ? err.message : 'Erreur de sauvegarde.');
-              throw err;
-            }
-          }}
-          onPrev={goPrev}
-        />
-      )}
-      {step === 2 && (
-        <Step3Team
-          data={data}
-          onUpdate={handleUpdate}
-          onNext={async () => {
-            try {
-              await handleStep2Next();
-            } catch (err) {
-              setGlobalError(err instanceof Error ? err.message : 'Erreur de sauvegarde.');
-              throw err;
-            }
-          }}
-          onPrev={goPrev}
-        />
-      )}
-      {step === 3 && (
-        <Step4Plan
-          data={data}
-          onUpdate={handleUpdate}
-          onNext={async () => {
-            try {
-              await handleStep3Finish();
-            } catch (err) {
-              setGlobalError(err instanceof Error ? err.message : 'Erreur de sauvegarde.');
-              throw err;
-            }
-          }}
-          onPrev={goPrev}
-        />
-      )}
-    </div>
+        {step === 1 && (
+          <Step1Cabinet
+            data={data}
+            onUpdate={handleUpdate}
+            onNext={async () => {
+              try {
+                await handleStep1Next();
+              } catch (err) {
+                setGlobalError(err instanceof Error ? err.message : 'Erreur de sauvegarde.');
+                throw err;
+              }
+            }}
+            onPrev={goPrev}
+          />
+        )}
+        {step === 2 && (
+          <Step3Team
+            data={data}
+            onUpdate={handleUpdate}
+            onNext={async () => {
+              try {
+                await handleStep2Next();
+              } catch (err) {
+                setGlobalError(err instanceof Error ? err.message : 'Erreur de sauvegarde.');
+                throw err;
+              }
+            }}
+            onPrev={goPrev}
+          />
+        )}
+        {step === 3 && (
+          <Step4Plan
+            data={data}
+            onUpdate={handleUpdate}
+            onNext={async () => {
+              try {
+                await handleStep3Finish();
+              } catch (err) {
+                setGlobalError(err instanceof Error ? err.message : 'Erreur de sauvegarde.');
+                throw err;
+              }
+            }}
+            onPrev={goPrev}
+          />
+        )}
+      </CardContent>
+    </Card>
   );
 }
