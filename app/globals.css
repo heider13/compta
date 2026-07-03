@@ -1,3 +1,4 @@
+@import url('https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700&family=Poppins:wght@400;500;600&display=swap');
 /* Compta — Landing page styles */
 :root {
   /* Violet palette — calibrated for SaaS modern */
@@ -915,3 +916,53 @@ section[id] { scroll-margin-top: 80px; }
   .feature-row.reverse .feature-copy { order: 1; }
   .feature-row.reverse .feature-visual { order: 2; }
 }
+
+/* ---------- Thème landing "legit" — indigo profond + corail ---------- */
+/* Scoped : n'affecte que la landing (div.landing-theme), l'app reste violette. */
+.landing-theme {
+  --violet-50:  #eae8f6;
+  --violet-100: #d7d2ee;
+  --violet-200: #c2bbe5;
+  --violet-300: #9a8fd5;
+  --violet-400: #9a8fd5;
+  --violet-500: #361fab;
+  --violet-600: #361fab;
+  --violet-700: #201367;
+  --violet-800: #201367;
+  --violet-900: #080331;
+  --accent: #ff887b;          /* corail — CTA, dots, icônes */
+  --accent-soft: #fff3f1;
+  --accent-ink: #361fab;      /* indigo — liens, gros chiffres */
+  --shadow-violet: 0 10px 28px rgba(255, 136, 123, 0.35);
+  font-family: 'Poppins', var(--font-sans);
+}
+.landing-theme h1, .landing-theme h2, .landing-theme h3 {
+  font-family: 'Sora', var(--font-sans);
+  color: var(--violet-900);
+}
+.landing-theme .btn { border-radius: 999px; }
+.landing-theme .btn-accent {
+  background: #ff887b;
+  color: #080331;
+  font-weight: 600;
+}
+.landing-theme .btn-accent:hover { background: #ffaca3; }
+.landing-theme .btn-primary { background: #080331; }
+.landing-theme .btn-primary:hover { background: #361fab; }
+.landing-theme .hero h1 .hl {
+  background: linear-gradient(110deg, #ff887b 10%, #ea42fd 90%);
+  -webkit-background-clip: text; background-clip: text;
+  color: transparent;
+}
+.landing-theme .hero-bg {
+  background:
+    radial-gradient(ellipse 620px 420px at 82% 8%, rgba(255, 136, 123, 0.22), transparent 60%),
+    radial-gradient(ellipse 520px 320px at 8% 32%, rgba(54, 31, 171, 0.10), transparent 60%),
+    radial-gradient(ellipse 400px 260px at 50% 90%, rgba(234, 66, 253, 0.07), transparent 65%);
+}
+.landing-theme .feature-visual {
+  background: linear-gradient(145deg, #fff3f1, #eae8f6 70%, white);
+  border-color: #ffcfca;
+}
+.landing-theme .mock-line.filled { background: #c2bbe5; }
+.landing-theme .icon-tile-lg { background: #fff3f1; color: #cc6d62; }

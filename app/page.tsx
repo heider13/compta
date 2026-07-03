@@ -11,7 +11,7 @@ import { Footer } from '@/components/landing/Footer';
 
 export default function LandingPage() {
   return (
-    <>
+    <div className="landing-theme">
       <Nav />
       <Hero />
       <LogoBand />
@@ -22,6 +22,6 @@ export default function LandingPage() {
       <Pricing />
       <CtaFinal />
       <Footer />
-    </>
+    </div>
   );
 }
