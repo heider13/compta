@@ -181,15 +181,107 @@ def ingest_legifrance_code(textid, max_articles, token=None):
     print(f"Terminé : {total} chunks au total")
 
 
+# ─── Jurisprudence Conseil d'État (fonds CETAT via PISTE) ─────────
+def ingest_jurisprudence_ce(query, max_results, token=None):
+    """Recherche de décisions du Conseil d'État sur un thème de contentieux
+    fiscal et ingestion de leur texte intégral (fonds CETAT)."""
+    token = token or piste_token()
+    payload = {
+        "recherche": {
+            "champs": [{
+                "typeChamp": "ALL",
+                "criteres": [{"typeRecherche": "UN_DES_MOTS", "valeur": query, "operateur": "ET"}],
+                "operateur": "ET",
+            }],
+            "filtres": [{"facette": "JURIDICTION", "valeurs": ["CONSEIL_ETAT"]}],
+            "pageNumber": 1, "pageSize": min(max_results, 50),
+            "sort": "PERTINENCE", "typePagination": "DEFAUT",
+        },
+        "fond": "CETAT",
+    }
+    res = piste("/search", payload, token)
+    results = res.get("results") or []
+    print(f"{len(results)} décisions trouvées pour « {query} »")
+    total = 0
+    for r in results[:max_results]:
+        cid = r.get("id") or (r.get("titles") or [{}])[0].get("id")
+        if not cid:
+            continue
+        try:
+            data = piste("/consult/juri", {"textId": cid}, token)
+            txt = strip_html((data.get("text") or {}).get("texteHtml") or (data.get("text") or {}).get("texte") or "")
+            meta = data.get("text") or {}
+            num = meta.get("num") or meta.get("numero") or cid[:12]
+            date = meta.get("dateTexte") or meta.get("datePubli")
+            title = f"CE, {num}" + (f", {date}" if date else "")
+            total += store("jurisprudence_ce", cid, title,
+                           f"https://www.legifrance.gouv.fr/ceta/id/{cid}",
+                           "jurisprudence", date, txt)
+        except Exception as e:  # noqa: BLE001
+            print(f"  [err] {cid}: {e}")
+    print(f"Terminé : {total} chunks")
+
+
+# ─── BOFiP (open data DGFiP, sans clé) ────────────────────────────
+def ingest_bofip(boi_id):
+    """Ingère un document BOFiP par son identifiant BOI (ex : BOI-TVA-DECLA-20-30-10)."""
+    url = f"https://bofip.impots.gouv.fr/bofip/{boi_id.replace('BOI-', '').replace('-', '/')}/BOFIP.html"
+    # Fallback sur la page HTML publique
+    page_url = f"https://bofip.impots.gouv.fr/bofip/ext/{boi_id}"
+    req = urllib.request.Request(page_url, headers={"User-Agent": "Mozilla/5.0 (ComptaBot)"})
+    try:
+        with urllib.request.urlopen(req, timeout=120) as r:
+            page = r.read().decode("utf-8", "replace")
+    except Exception as e:  # noqa: BLE001
+        print(f"  [err] BOFiP {boi_id} inaccessible: {e}")
+        return 0
+    m = re.search(r"<title>([^<]+)</title>", page)
+    title = html.unescape(m.group(1)).strip() if m else boi_id
+    text = strip_html(page)
+    return store("bofip", boi_id, f"{title} ({boi_id})", page_url, "doctrine_fiscale", None, text)
+
+
+# ─── PDF (PCG, bulletins CNCC — upload manuel ou URL) ─────────────
+def ingest_pdf(source, source_id, title, path_or_url, doc_type="reglement", url=None):
+    """Extrait le texte d'un PDF (fichier local ou URL) et l'indexe.
+    Nécessite pypdf dans le venv."""
+    from pypdf import PdfReader
+    import io
+
+    if path_or_url.startswith("http"):
+        req = urllib.request.Request(path_or_url, headers={"User-Agent": "Mozilla/5.0 (ComptaBot)"})
+        with urllib.request.urlopen(req, timeout=300) as r:
+            raw = r.read()
+        reader = PdfReader(io.BytesIO(raw))
+    else:
+        reader = PdfReader(path_or_url)
+    text = "\n".join((pg.extract_text() or "") for pg in reader.pages)
+    return store(source, source_id, title, url or path_or_url, doc_type, None, text)
+
+
 if __name__ == "__main__":
     p = argparse.ArgumentParser()
-    p.add_argument("mode", choices=["eurlex", "legifrance", "legifrance-article"])
-    p.add_argument("identifier")
+    p.add_argument("mode", choices=[
+        "eurlex", "legifrance", "legifrance-article",
+        "jurisprudence-ce", "bofip", "pdf",
+    ])
+    p.add_argument("identifier", nargs="?")
     p.add_argument("--max-articles", type=int, default=300)
+    p.add_argument("--max-results", type=int, default=30)
+    # options mode pdf
+    p.add_argument("--source"); p.add_argument("--source-id")
+    p.add_argument("--title"); p.add_argument("--path"); p.add_argument("--url")
     args = p.parse_args()
+
     if args.mode == "eurlex":
         ingest_eurlex(args.identifier)
     elif args.mode == "legifrance-article":
         ingest_legifrance_article(args.identifier)
-    else:
+    elif args.mode == "legifrance":
         ingest_legifrance_code(args.identifier, args.max_articles)
+    elif args.mode == "jurisprudence-ce":
+        ingest_jurisprudence_ce(args.identifier, args.max_results)
+    elif args.mode == "bofip":
+        ingest_bofip(args.identifier)
+    elif args.mode == "pdf":
+        ingest_pdf(args.source, args.source_id, args.title, args.path, url=args.url)

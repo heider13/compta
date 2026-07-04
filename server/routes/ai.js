@@ -71,12 +71,21 @@ router.post(
     try {
       // 1) RAG
       const chunks = await searchLegalChunks(question);
+      const SOURCE_LABELS = {
+        legifrance: 'Légifrance',
+        eurlex: 'EUR-Lex',
+        bofip: 'BOFiP',
+        jurisprudence_ce: "Conseil d'État",
+        pcg: 'PCG',
+        cncc: 'CNCC',
+      };
       sse(res, 'sources', {
         sources: chunks.map((c, i) => ({
           n: i + 1,
           title: c.title,
           url: c.url,
           source: c.source,
+          source_label: SOURCE_LABELS[c.source] || c.source,
           source_id: c.source_id,
           similarity: Math.round(c.similarity * 100) / 100,
         })),

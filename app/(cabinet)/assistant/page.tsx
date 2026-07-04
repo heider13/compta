@@ -14,7 +14,7 @@ import { cn } from '@/lib/utils';
 
 const VPS = process.env.NEXT_PUBLIC_VPS_BACKEND_URL ?? 'https://vps-84ac2579.vps.ovh.net';
 
-type Source = { n: number; title: string; url: string | null; source: string; source_id: string };
+type Source = { n: number; title: string; url: string | null; source: string; source_label?: string; source_id: string };
 type Msg = { role: 'user' | 'assistant'; content: string; sources?: Source[] };
 
 const SUGGESTIONS = [
@@ -177,8 +177,14 @@ export default function AssistantPage() {
                         className="inline-flex max-w-full items-center gap-1"
                         title={s.title}
                       >
-                        <Badge variant="secondary" className="max-w-[280px] cursor-pointer gap-1 truncate font-normal hover:bg-accent">
-                          [{s.n}] {s.title}
+                        <Badge variant="secondary" className="max-w-[300px] cursor-pointer gap-1 font-normal hover:bg-accent">
+                          <span className="shrink-0 font-semibold text-primary">[{s.n}]</span>
+                          {s.source_label && (
+                            <span className="shrink-0 rounded bg-primary/10 px-1 text-[10px] font-medium text-primary">
+                              {s.source_label}
+                            </span>
+                          )}
+                          <span className="truncate">{s.title}</span>
                           <ExternalLink className="size-2.5 shrink-0" />
                         </Badge>
                       </a>
