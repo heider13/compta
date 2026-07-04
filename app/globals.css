@@ -1080,3 +1080,67 @@ section[id] { scroll-margin-top: 80px; }
   .demo-appear { animation: none; opacity: 1; }
   .demo-draw-path { animation: none; stroke-dashoffset: 0; }
 }
+
+/* ---------- Démo "screen video" ---------- */
+/* Pause globale : fige toutes les animations de la scène */
+.demo-paused, .demo-paused * { animation-play-state: paused !important; }
+
+/* Curseur simulé : trajets par scène (waypoints en %) */
+@keyframes demo-cursor-s1 {
+  0%   { left: 78%; top: 18%; }
+  22%  { left: 38%; top: 46%; }
+  38%  { left: 38%; top: 46%; }
+  60%  { left: 66%; top: 40%; }
+  100% { left: 70%; top: 62%; }
+}
+@keyframes demo-cursor-s2 {
+  0%   { left: 20%; top: 25%; }
+  30%  { left: 55%; top: 38%; }
+  60%  { left: 55%; top: 58%; }
+  100% { left: 60%; top: 75%; }
+}
+@keyframes demo-cursor-s3 {
+  0%   { left: 30%; top: 30%; }
+  28%  { left: 74%; top: 34%; }
+  42%  { left: 74%; top: 34%; }
+  100% { left: 45%; top: 66%; }
+}
+@keyframes demo-cursor-s4 {
+  0%   { left: 25%; top: 60%; }
+  30%  { left: 68%; top: 72%; }
+  45%  { left: 68%; top: 72%; }
+  100% { left: 48%; top: 40%; }
+}
+@keyframes demo-cursor-s5 {
+  0%   { left: 60%; top: 70%; }
+  35%  { left: 42%; top: 40%; }
+  70%  { left: 42%; top: 56%; }
+  100% { left: 70%; top: 30%; }
+}
+.demo-cursor {
+  position: absolute;
+  z-index: 30;
+  width: 18px; height: 18px;
+  pointer-events: none;
+  filter: drop-shadow(0 2px 4px rgba(8,3,49,0.4));
+  animation-duration: 7s;
+  animation-timing-function: cubic-bezier(0.45, 0, 0.25, 1);
+  animation-fill-mode: both;
+}
+/* Onde de clic */
+@keyframes demo-click-pulse {
+  0%   { transform: scale(0.3); opacity: 0.9; }
+  100% { transform: scale(2.6); opacity: 0; }
+}
+.demo-click {
+  position: absolute;
+  z-index: 25;
+  width: 34px; height: 34px;
+  margin: -17px 0 0 -17px;
+  border-radius: 50%;
+  border: 3px solid var(--accent);
+  background: rgba(255,136,123,0.25);
+  pointer-events: none;
+  opacity: 0;
+  animation: demo-click-pulse 0.7s ease-out both;
+}

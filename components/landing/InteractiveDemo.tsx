@@ -1,74 +1,129 @@
 'use client';
 
-// Démo interactive du flow produit — 5 étapes cliquables avec visuels
-// animés en pur CSS (pas de screenshots ni vidéo à maintenir).
-// Auto-avance toutes les 6 s ; un clic sur une étape prend la main.
-// prefers-reduced-motion : pas d'auto-avance, visuels statiques.
+// Démo interactive façon "screen recording" — une fenêtre de navigateur
+// simulée montrant l'app, avec curseur animé qui clique, et contrôles de
+// lecteur vidéo (play/pause + timeline chapitrée cliquable).
+// 100 % CSS/React : rien à re-tourner quand le produit évolue.
+// prefers-reduced-motion : lecture manuelle uniquement, visuels posés.
 
 import { useEffect, useRef, useState } from 'react';
+import { Pause, Play } from 'lucide-react';
 import { Container, SectionHead } from './ui';
 import { cn } from '@/lib/utils';
 
-const STEP_DURATION_MS = 6000;
+const SCENE_MS = 7000;
 
-// ─── Visuels d'étape (remontés avec délais échelonnés) ───────────
+// ─── Briques visuelles ───────────────────────────────────────────
 
-function Line({ w, delay, filled = true }: { w: string; delay: number; filled?: boolean }) {
+function L({ w, delay, tone = 'fill', h = 'h-2' }: { w: string; delay?: number; tone?: 'fill' | 'ghost'; h?: string }) {
   return (
     <div
-      className={cn('demo-appear mb-2 h-2.5 rounded-[5px]', filled ? 'bg-[var(--violet-200)]' : 'bg-[var(--ink-100)]')}
-      style={{ width: w, animationDelay: `${delay}ms` }}
+      className={cn('demo-appear mb-1.5 rounded', h, tone === 'fill' ? 'bg-[var(--violet-200)]' : 'bg-[var(--ink-100)]')}
+      style={{ width: w, animationDelay: `${delay ?? 0}ms` }}
     />
   );
 }
 
-function Pill({ children, tone, delay }: { children: React.ReactNode; tone: 'green' | 'indigo'; delay: number }) {
+function Tag({ children, tone, delay }: { children: React.ReactNode; tone: 'green' | 'indigo' | 'amber'; delay?: number }) {
+  const tones = {
+    green: 'bg-[rgba(19,115,51,0.1)] text-[#137333]',
+    indigo: 'bg-[var(--violet-50)] text-[var(--accent-ink)]',
+    amber: 'bg-amber-100 text-amber-800',
+  };
   return (
     <span
-      className={cn(
-        'demo-appear inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold',
-        tone === 'green' ? 'bg-[rgba(19,115,51,0.1)] text-[#137333]' : 'bg-[var(--violet-50)] text-[var(--accent-ink)]',
-      )}
-      style={{ animationDelay: `${delay}ms` }}
+      className={cn('demo-appear inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold', tones[tone])}
+      style={{ animationDelay: `${delay ?? 0}ms` }}
     >
       {children}
     </span>
   );
 }
 
-function Panel({ title, badge, children }: { title: string; badge?: React.ReactNode; children: React.ReactNode }) {
+function Cursor({ scene }: { scene: number }) {
   return (
-    <div className="w-full max-w-md rounded-2xl border border-[var(--ink-150)] bg-white p-6 shadow-[0_18px_48px_rgba(35,20,80,0.12)]">
-      <div className="mb-4 flex items-center justify-between gap-3">
-        <span className="text-sm font-bold text-[var(--violet-900)]">{title}</span>
-        {badge}
+    <svg
+      viewBox="0 0 24 24"
+      className="demo-cursor"
+      style={{ animationName: `demo-cursor-s${scene + 1}` }}
+      aria-hidden="true"
+    >
+      <path d="M5 3 L19 12 L12 13.5 L9.5 20 Z" fill="white" stroke="#080331" strokeWidth="1.6" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+function Click({ left, top, delay }: { left: string; top: string; delay: number }) {
+  return <span className="demo-click" style={{ left, top, animationDelay: `${delay}ms` }} aria-hidden="true" />;
+}
+
+// Coquille de l'app dans la fenêtre : sidebar violette + zone contenu
+function AppShell({ title, children }: { title: string; children: React.ReactNode }) {
+  const nav = ['Tableau de bord', 'Formalités', 'Clients', 'Tâches'];
+  return (
+    <div className="flex h-full">
+      <div className="hidden w-36 shrink-0 flex-col gap-1 bg-[#14102a] p-3 sm:flex">
+        <div className="mb-3 flex items-center gap-1.5">
+          <span className="grid size-5 place-items-center rounded bg-[#7551e8] text-[10px] font-bold text-white">C</span>
+          <span className="text-[11px] font-semibold text-white">Compta</span>
+        </div>
+        {nav.map((n, i) => (
+          <div
+            key={n}
+            className={cn(
+              'rounded px-2 py-1.5 text-[10px]',
+              i === 1 ? 'bg-[#241d45] font-semibold text-white' : 'text-[#8e8a9f]',
+            )}
+          >
+            {n}
+          </div>
+        ))}
       </div>
-      {children}
+      <div className="min-w-0 flex-1 bg-[#f8f7fb] p-4">
+        <div className="mb-3 text-[11px] font-bold text-[#0e0b1a]">{title}</div>
+        {children}
+      </div>
     </div>
   );
 }
 
-function StepScan() {
+// ─── Scènes (une par chapitre) ───────────────────────────────────
+
+function SceneScan() {
   return (
-    <Panel title="Pièce d'identité du dirigeant">
-      <div className="flex items-center gap-4">
-        <div
-          className="demo-appear grid h-20 w-28 shrink-0 place-items-center rounded-lg border border-[var(--ink-150)] bg-gradient-to-br from-[var(--violet-100)] to-[var(--violet-50)] text-[11px] font-bold tracking-wide text-[var(--accent-ink)]"
-          style={{ animationDelay: '0ms' }}
-        >
-          CNI / PDF
+    <AppShell title="Nouvelle formalité — Identité du déclarant">
+      <div className="grid gap-3 sm:grid-cols-2">
+        <div className="rounded-lg border border-[var(--ink-150)] bg-white p-3">
+          <div className="mb-2 text-[10px] font-semibold text-[var(--ink-600)]">📷 Scanner une pièce d'identité</div>
+          <div className="grid grid-cols-2 gap-2">
+            {/* Le bouton Recto passe au vert après le "clic" (2 s) */}
+            <div className="relative rounded-md border-[1.5px] border-dashed border-[var(--accent)] px-2 py-2 text-center text-[10px] font-semibold text-[var(--accent-ink)]">
+              Recto
+              <div
+                className="demo-appear absolute inset-0 grid place-items-center rounded-md border-[1.5px] border-[#137333] bg-[#f0faf2] text-[#137333]"
+                style={{ animationDelay: '2300ms' }}
+              >
+                ✅ Recto lu
+              </div>
+            </div>
+            <div className="rounded-md border-[1.5px] border-dashed border-[var(--ink-200)] px-2 py-2 text-center text-[10px] font-semibold text-[var(--ink-500)]">
+              Verso
+            </div>
+          </div>
+          <div className="mt-2">
+            <Tag tone="green" delay={3200}>✓ Identité extraite — 12 champs préremplis</Tag>
+          </div>
         </div>
-        <div className="flex-1">
-          <Line w="92%" delay={500} />
-          <Line w="70%" delay={800} />
-          <Line w="82%" delay={1100} />
-          <Line w="55%" delay={1400} />
+        <div className="rounded-lg border border-[var(--ink-150)] bg-white p-3">
+          <div className="mb-2 text-[10px] font-semibold text-[var(--ink-600)]">Champs INPI</div>
+          <L w="90%" delay={3600} />
+          <L w="72%" delay={3900} />
+          <L w="84%" delay={4200} />
+          <L w="60%" delay={4500} />
         </div>
       </div>
-      <div className="mt-4">
-        <Pill tone="green" delay={1900}>✓ Identité extraite — 12 champs préremplis en 8 s</Pill>
-      </div>
-    </Panel>
+      <Click left="38%" top="46%" delay={1700} />
+    </AppShell>
   );
 }
 
@@ -79,211 +134,224 @@ const FIELDS: Array<[string, string]> = [
   ['Nationalité', 'Française'],
 ];
 
-function StepForm() {
+function SceneForm() {
   return (
-    <Panel title="Questionnaire de création" badge={<Pill tone="indigo" delay={0}>SASU</Pill>}>
-      <div className="grid gap-2.5">
+    <AppShell title="Questionnaire de création — SASU Martin Conseil">
+      <div className="grid max-w-md gap-1.5">
         {FIELDS.map(([label, value], i) => (
           <div
             key={label}
-            className="demo-appear flex items-center justify-between rounded-lg border border-[var(--ink-100)] bg-[var(--ink-50)] px-3.5 py-2.5"
-            style={{ animationDelay: `${300 + i * 350}ms` }}
+            className="demo-appear flex items-center justify-between rounded-md border border-[var(--ink-100)] bg-white px-2.5 py-1.5"
+            style={{ animationDelay: `${500 + i * 500}ms` }}
           >
-            <span className="text-xs text-[var(--ink-500)]">{label}</span>
-            <span className="text-[13px] font-semibold text-[var(--ink-900)]">{value}</span>
+            <span className="text-[9px] text-[var(--ink-500)]">{label}</span>
+            <span className="text-[10px] font-semibold text-[var(--ink-900)]">{value}</span>
           </div>
         ))}
+        <div className="mt-1">
+          <Tag tone="green" delay={3000}>✓ Prérempli par l'OCR — rien à ressaisir</Tag>
+        </div>
       </div>
-      <div className="mt-4">
-        <Pill tone="green" delay={1900}>✓ Rien à ressaisir — vous vérifiez, c'est tout</Pill>
-      </div>
-    </Panel>
+      <Click left="55%" top="38%" delay={2000} />
+    </AppShell>
   );
 }
 
-function StepStatuts() {
+function SceneStatuts() {
   return (
-    <Panel title="Statuts — SASU Martin Conseil" badge={<Pill tone="indigo" delay={0}>.DOCX éditable</Pill>}>
-      <Line w="50%" delay={200} filled={false} />
-      <Line w="100%" delay={400} />
-      <Line w="94%" delay={550} />
-      <Line w="97%" delay={700} />
-      <div className="my-3" />
-      <Line w="42%" delay={900} filled={false} />
-      <Line w="100%" delay={1050} />
-      <Line w="88%" delay={1200} />
-      <div className="mt-4">
-        <Pill tone="green" delay={1700}>✓ Générés depuis le dossier — vos clauses restent les vôtres</Pill>
+    <AppShell title="Dossier SASU Martin Conseil">
+      <div className="grid gap-3 sm:grid-cols-[1fr_130px]">
+        <div className="rounded-lg border border-[var(--ink-150)] bg-white p-3">
+          <div className="mb-2 flex items-center justify-between">
+            <span className="text-[10px] font-semibold text-[var(--ink-600)]">Pièces jointes</span>
+            <Tag tone="indigo" delay={3400}>Statuts — .DOCX</Tag>
+          </div>
+          <L w="45%" delay={3600} tone="ghost" />
+          <L w="95%" delay={3800} />
+          <L w="88%" delay={4000} />
+          <L w="92%" delay={4200} />
+        </div>
+        <div className="flex flex-col gap-1.5">
+          {/* Bouton cliqué à 2 s */}
+          <div className="relative rounded-md bg-[var(--accent-ink)] px-2 py-1.5 text-center text-[9px] font-semibold text-white">
+            📄 Générer les statuts
+          </div>
+          <div className="rounded-md border border-[var(--ink-200)] px-2 py-1.5 text-center text-[9px] text-[var(--ink-600)]">
+            Demander la signature
+          </div>
+          <Tag tone="green" delay={3200}>✓ Document généré</Tag>
+        </div>
       </div>
-    </Panel>
+      <Click left="74%" top="34%" delay={1900} />
+    </AppShell>
   );
 }
 
-function StepSignature() {
+function SceneSign() {
   return (
-    <Panel title="Signature du dirigeant" badge={<Pill tone="indigo" delay={0}>eIDAS avancée</Pill>}>
-      <div className="grid place-items-center rounded-lg border border-dashed border-[var(--ink-200)] bg-[var(--ink-50)] py-5">
-        <svg width="200" height="56" viewBox="0 0 200 56" aria-hidden="true">
-          <path
-            className="demo-draw-path"
-            d="M10 40 C 32 8, 48 52, 68 30 S 104 6, 124 32 S 166 48, 190 16"
-            fill="none"
-            stroke="var(--accent)"
-            strokeWidth="3"
-            strokeLinecap="round"
-          />
-        </svg>
+    <AppShell title="Signature électronique — PV de décision">
+      <div className="grid max-w-md gap-2">
+        <div className="rounded-lg border border-[var(--ink-150)] bg-white p-3">
+          <div className="grid place-items-center rounded border border-dashed border-[var(--ink-200)] bg-[var(--ink-50)] py-2">
+            <svg width="150" height="40" viewBox="0 0 200 56" aria-hidden="true">
+              <path
+                className="demo-draw-path"
+                style={{ animationDelay: '3000ms' }}
+                d="M10 40 C 32 8, 48 52, 68 30 S 104 6, 124 32 S 166 48, 190 16"
+                fill="none" stroke="var(--accent)" strokeWidth="3" strokeLinecap="round"
+              />
+            </svg>
+          </div>
+          <div className="mt-2 flex flex-wrap gap-1.5">
+            <Tag tone="indigo" delay={4300}>OTP SMS vérifié</Tag>
+            <Tag tone="green" delay={4800}>✓ eIDAS avancée</Tag>
+          </div>
+        </div>
+        <div className="relative w-40 rounded-md bg-[var(--accent-ink)] px-2 py-1.5 text-center text-[9px] font-semibold text-white">
+          Envoyer la demande de signature
+        </div>
       </div>
-      <div className="mt-4 flex flex-wrap gap-2">
-        <Pill tone="indigo" delay={1400}>OTP SMS vérifié</Pill>
-        <Pill tone="green" delay={1800}>✓ Valeur légale — exigence INPI respectée</Pill>
-      </div>
-    </Panel>
+      <Click left="68%" top="72%" delay={2000} />
+    </AppShell>
   );
 }
 
-const TIMELINE = ['Dossier transmis au Guichet Unique', 'Frais légaux réglés', 'Validé — SIREN attribué'];
+const TIMELINE = ['Transmis au Guichet Unique', 'Frais légaux réglés', 'Validé — SIREN attribué'];
 
-function StepDepot() {
+function SceneDepot() {
   return (
-    <Panel title="Suivi INPI en temps réel" badge={<Pill tone="indigo" delay={0}>Synchronisé</Pill>}>
-      <div className="grid gap-1">
+    <AppShell title="Suivi INPI — temps réel">
+      <div className="grid max-w-sm gap-1">
         {TIMELINE.map((label, i) => (
           <div
             key={label}
-            className="demo-appear flex items-center gap-3 border-b border-[var(--ink-100)] py-2.5 last:border-0"
-            style={{ animationDelay: `${400 + i * 600}ms` }}
+            className="demo-appear flex items-center gap-2 rounded-md border border-[var(--ink-100)] bg-white px-2.5 py-2"
+            style={{ animationDelay: `${600 + i * 900}ms` }}
           >
-            <span className="grid size-5 shrink-0 place-items-center rounded-full bg-[#137333] text-[11px] font-bold text-white">
-              ✓
-            </span>
-            <span className="text-sm text-[var(--ink-900)]">{label}</span>
+            <span className="grid size-4 shrink-0 place-items-center rounded-full bg-[#137333] text-[9px] font-bold text-white">✓</span>
+            <span className="text-[10px] text-[var(--ink-900)]">{label}</span>
           </div>
         ))}
+        <div className="mt-1.5">
+          <Tag tone="green" delay={3800}>🎉 Société immatriculée</Tag>
+        </div>
       </div>
-      <div className="mt-4">
-        <Pill tone="green" delay={2400}>🎉 Société immatriculée</Pill>
-      </div>
-    </Panel>
+      <Click left="42%" top="40%" delay={2200} />
+    </AppShell>
   );
 }
 
-// ─── Étapes ──────────────────────────────────────────────────────
+// ─── Chapitres ───────────────────────────────────────────────────
 
-const STEPS = [
-  {
-    label: 'Scanner',
-    title: "Déposez la pièce d'identité",
-    desc: "Photo ou PDF — l'OCR lit la zone MRZ et extrait l'identité complète.",
-    visual: <StepScan />,
-  },
-  {
-    label: 'Vérifier',
-    title: 'Le questionnaire se remplit seul',
-    desc: '90 % des champs INPI préremplis. Vous relisez, vous corrigez si besoin.',
-    visual: <StepForm />,
-  },
-  {
-    label: 'Statuts',
-    title: 'Les statuts se génèrent',
-    desc: 'Un .docx complet, éditable dans Word — pas un template figé.',
-    visual: <StepStatuts />,
-  },
-  {
-    label: 'Signer',
-    title: 'La signature part en un clic',
-    desc: "Email + OTP SMS : signature électronique avancée eIDAS, celle que l'INPI exige.",
-    visual: <StepSignature />,
-  },
-  {
-    label: 'Déposer',
-    title: 'Déposé et suivi au Guichet Unique',
-    desc: "Dépôt via l'API officielle, statut synchronisé en temps réel jusqu'à l'immatriculation.",
-    visual: <StepDepot />,
-  },
+const SCENES = [
+  { label: 'Scanner la CNI', url: 'app.compta.fr/dossiers/nouveau', view: <SceneScan /> },
+  { label: 'Vérifier', url: 'app.compta.fr/dossiers/nouveau', view: <SceneForm /> },
+  { label: 'Générer les statuts', url: 'app.compta.fr/dossiers/D-2481', view: <SceneStatuts /> },
+  { label: 'Signer', url: 'app.compta.fr/dossiers/D-2481/sign', view: <SceneSign /> },
+  { label: 'Déposer à l’INPI', url: 'app.compta.fr/dashboard', view: <SceneDepot /> },
 ];
 
 export function InteractiveDemo() {
   const [active, setActive] = useState(0);
-  const [paused, setPaused] = useState(false);
+  const [playing, setPlaying] = useState(true);
   const reducedMotion = useRef(false);
 
   useEffect(() => {
     reducedMotion.current = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (reducedMotion.current) setPlaying(false);
   }, []);
 
   useEffect(() => {
-    if (paused || reducedMotion.current) return;
-    const t = window.setTimeout(() => setActive((a) => (a + 1) % STEPS.length), STEP_DURATION_MS);
+    if (!playing) return;
+    const t = window.setTimeout(() => setActive((a) => (a + 1) % SCENES.length), SCENE_MS);
     return () => window.clearTimeout(t);
-  }, [active, paused]);
+  }, [active, playing]);
 
-  const step = STEPS[active];
+  const seek = (i: number) => {
+    setActive(i);
+    // rester en pause si l'utilisateur avait mis pause
+  };
 
   return (
-    <section
-      id="demo"
-      className="border-b border-[var(--ink-100)] bg-white py-20 sm:py-24"
-      onMouseEnter={() => setPaused(true)}
-      onMouseLeave={() => setPaused(false)}
-    >
+    <section id="demo" className="border-b border-[var(--ink-100)] bg-[var(--ink-50)] py-20 sm:py-24">
       <Container>
         <SectionHead
           eyebrow="Démo interactive"
           title={
             <>
-              De la pièce d&apos;identité à l&apos;immatriculation.
+              Regardez un dossier se déposer.
               <br />
-              En cinq étapes.
+              Sans lever le petit doigt.
             </>
           }
-          lead="Cliquez sur les étapes — ou laissez la démo dérouler le parcours d'un dossier de création."
+          lead="Une création de SASU, de la pièce d'identité à l'immatriculation — naviguez dans les chapitres ou laissez tourner."
         />
 
-        {/* Onglets d'étapes */}
-        <div className="mx-auto mb-10 flex max-w-3xl flex-wrap justify-center gap-2">
-          {STEPS.map((s, i) => (
-            <button
-              key={s.label}
-              type="button"
-              onClick={() => setActive(i)}
-              aria-current={i === active}
-              className={cn(
-                'relative overflow-hidden rounded-full border px-4 py-2 text-sm font-semibold transition-all duration-200',
-                i === active
-                  ? 'border-[var(--violet-900)] bg-[var(--violet-900)] text-white'
-                  : 'border-[var(--ink-200)] bg-white text-[var(--ink-600)] hover:border-[var(--ink-300)] hover:text-[var(--violet-900)]',
-              )}
-            >
-              <span className="relative z-10">
-                {i + 1}. {s.label}
-              </span>
-              {i === active && !paused && (
-                <span
-                  aria-hidden="true"
-                  className="absolute inset-y-0 left-0 bg-[var(--accent)]/30"
-                  style={{ animation: `demo-progress ${STEP_DURATION_MS}ms linear both` }}
-                />
-              )}
-            </button>
-          ))}
-        </div>
-
-        {/* Contenu de l'étape — key force le rejeu des animations */}
-        <div key={active} className="grid items-center gap-10 lg:grid-cols-2">
-          <div className="demo-appear order-2 text-center lg:order-1 lg:text-left">
-            <span className="font-[Sora] text-sm font-bold text-[var(--accent)]">
-              Étape {active + 1} / {STEPS.length}
-            </span>
-            <h3 className="mt-2 font-[Sora] text-2xl font-semibold tracking-tight text-[var(--violet-900)] sm:text-3xl">
-              {step.title}
-            </h3>
-            <p className="mx-auto mt-3 max-w-md text-base leading-relaxed text-[var(--ink-600)] lg:mx-0">
-              {step.desc}
-            </p>
+        {/* Fenêtre navigateur */}
+        <div className="mx-auto max-w-4xl overflow-hidden rounded-2xl border border-[var(--ink-200)] bg-white shadow-[0_30px_80px_rgba(8,3,49,0.18)]">
+          {/* Barre du navigateur */}
+          <div className="flex items-center gap-3 border-b border-[var(--ink-100)] bg-[var(--ink-50)] px-4 py-2.5">
+            <div className="flex gap-1.5" aria-hidden="true">
+              <span className="size-2.5 rounded-full bg-[#ff5f57]" />
+              <span className="size-2.5 rounded-full bg-[#febc2e]" />
+              <span className="size-2.5 rounded-full bg-[#28c840]" />
+            </div>
+            <div className="flex-1 rounded-md bg-white px-3 py-1 text-center text-[11px] text-[var(--ink-500)] ring-1 ring-[var(--ink-150)]">
+              🔒 {SCENES[active].url}
+            </div>
           </div>
-          <div className="order-1 flex justify-center rounded-2xl bg-gradient-to-br from-[#fff3f1] via-[#eae8f6] to-white p-6 sm:p-10 lg:order-2">
-            {step.visual}
+
+          {/* Écran — key remonte la scène pour rejouer les animations */}
+          <div key={active} className={cn('relative aspect-[16/9] overflow-hidden sm:aspect-[2/1]', !playing && 'demo-paused')}>
+            {SCENES[active].view}
+            <Cursor scene={active} />
+          </div>
+
+          {/* Contrôles vidéo */}
+          <div className="flex items-center gap-3 border-t border-[var(--ink-100)] bg-[#0e0b1a] px-4 py-3">
+            <button
+              type="button"
+              onClick={() => setPlaying((p) => !p)}
+              aria-label={playing ? 'Pause' : 'Lecture'}
+              className="grid size-9 shrink-0 place-items-center rounded-full bg-[var(--accent)] text-[#080331] transition-transform hover:scale-105"
+            >
+              {playing ? <Pause className="size-4" fill="currentColor" /> : <Play className="size-4 translate-x-[1px]" fill="currentColor" />}
+            </button>
+
+            {/* Timeline chapitrée */}
+            <div className="flex flex-1 gap-1.5">
+              {SCENES.map((s, i) => (
+                <button
+                  key={s.label}
+                  type="button"
+                  onClick={() => seek(i)}
+                  aria-label={`Chapitre ${i + 1} : ${s.label}`}
+                  aria-current={i === active}
+                  className="group relative h-6 flex-1"
+                >
+                  <span className="absolute inset-x-0 top-1/2 h-1.5 -translate-y-1/2 overflow-hidden rounded-full bg-white/20 transition-all group-hover:h-2.5">
+                    {i < active && <span className="absolute inset-0 bg-[var(--accent)]" />}
+                    {i === active && (
+                      <span
+                        key={`p-${active}-${playing}`}
+                        className="absolute inset-y-0 left-0 bg-[var(--accent)]"
+                        style={{
+                          animation: `demo-progress ${SCENE_MS}ms linear both`,
+                          animationPlayState: playing ? 'running' : 'paused',
+                        }}
+                      />
+                    )}
+                  </span>
+                  <span className="pointer-events-none absolute -top-7 left-1/2 hidden -translate-x-1/2 whitespace-nowrap rounded bg-[#080331] px-2 py-0.5 text-[10px] font-medium text-white group-hover:block">
+                    {s.label}
+                  </span>
+                </button>
+              ))}
+            </div>
+
+            <span className="hidden shrink-0 text-xs font-medium text-white/70 sm:block">
+              {active + 1} / {SCENES.length} — {SCENES[active].label}
+            </span>
           </div>
         </div>
       </Container>
