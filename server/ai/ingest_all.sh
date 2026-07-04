@@ -11,10 +11,9 @@ PY="./venv/bin/python"
 echo "════════ EUR-Lex (sans clé) ════════"
 $PY ingest.py eurlex 32006L0112   # Directive TVA 2006/112/CE
 
-echo "════════ BOFiP (open data, sans clé) ════════"
-for boi in BOI-TVA-DECLA-20-30-10 BOI-BIC-DECLA-10-40 BOI-IS-CHAMP-10 BOI-BNC-DECLA-10 BOI-RPPM-RCM; do
-  $PY ingest.py bofip "$boi"
-done
+echo "════════ BOFiP (archive stock open data, sans clé) ════════"
+# Filtré aux séries fiscales clés pour ne pas embarquer tout le BOFiP d'un coup.
+$PY ingest.py bofip --prefix BOI-TVA,BOI-IS,BOI-BIC,BOI-BNC,BOI-RPPM,BOI-IR
 
 echo "════════ Plan Comptable Général (PDF ANC) ════════"
 $PY ingest.py pdf --source pcg --source-id ANC-2014-03 \

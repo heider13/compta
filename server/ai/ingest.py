@@ -222,23 +222,74 @@ def ingest_jurisprudence_ce(query, max_results, token=None):
     print(f"Terminé : {total} chunks")
 
 
-# ─── BOFiP (open data DGFiP, sans clé) ────────────────────────────
-def ingest_bofip(boi_id):
-    """Ingère un document BOFiP par son identifiant BOI (ex : BOI-TVA-DECLA-20-30-10)."""
-    url = f"https://bofip.impots.gouv.fr/bofip/{boi_id.replace('BOI-', '').replace('-', '/')}/BOFIP.html"
-    # Fallback sur la page HTML publique
-    page_url = f"https://bofip.impots.gouv.fr/bofip/ext/{boi_id}"
-    req = urllib.request.Request(page_url, headers={"User-Agent": "Mozilla/5.0 (ComptaBot)"})
-    try:
-        with urllib.request.urlopen(req, timeout=120) as r:
-            page = r.read().decode("utf-8", "replace")
-    except Exception as e:  # noqa: BLE001
-        print(f"  [err] BOFiP {boi_id} inaccessible: {e}")
-        return 0
-    m = re.search(r"<title>([^<]+)</title>", page)
-    title = html.unescape(m.group(1)).strip() if m else boi_id
-    text = strip_html(page)
-    return store("bofip", boi_id, f"{title} ({boi_id})", page_url, "doctrine_fiscale", None, text)
+# ─── BOFiP (open data DGFiP, archive stock, sans clé) ─────────────
+def _bofip_latest_stock_url():
+    """Trouve l'URL de l'archive stock BOFiP la plus récente (contenu en vigueur)."""
+    api = ("https://data.economie.gouv.fr/api/records/1.0/search/"
+           "?dataset=bofip-impots&rows=50&q=stock_live")
+    with urllib.request.urlopen(api, timeout=60) as r:
+        recs = json.loads(r.read()).get("records", [])
+    stocks = [
+        rec for rec in recs
+        if "stock_live" in (rec.get("fields", {}).get("nom_du_fichier") or "")
+    ]
+    if not stocks:
+        raise RuntimeError("Aucune archive stock BOFiP trouvée")
+    stocks.sort(key=lambda x: x["fields"]["nom_du_fichier"], reverse=True)
+    f = stocks[0]["fields"]
+    # Le champ 'fichier' porte l'URL de téléchargement (ODS)
+    url = (f.get("fichier") or {}).get("url") if isinstance(f.get("fichier"), dict) else None
+    if not url:
+        rid = stocks[0]["recordid"]
+        url = (f"https://data.economie.gouv.fr/api/datasets/1.0/bofip-impots/"
+               f"attachments/{f['nom_du_fichier'].replace('.', '_')}/")
+    return url, f["nom_du_fichier"]
+
+
+def ingest_bofip_stock(prefix_filter=None, max_docs=None):
+    """Télécharge l'archive stock BOFiP et ingère les documents HTML.
+    prefix_filter : liste de préfixes BOI à garder (ex ['BOI-TVA','BOI-IS']).
+    """
+    import tarfile
+    import io
+    import tempfile
+
+    url, name = _bofip_latest_stock_url()
+    print(f"Téléchargement {name} …")
+    req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0 (ComptaBot)"})
+    with urllib.request.urlopen(req, timeout=600) as r:
+        blob = r.read()
+    print(f"  {len(blob) // (1024*1024)} Mo, extraction…")
+
+    total = count = 0
+    with tarfile.open(fileobj=io.BytesIO(blob), mode="r:gz") as tar:
+        for member in tar:
+            if not member.isfile() or not member.name.endswith(".html"):
+                continue
+            boi = re.sub(r"\.html$", "", member.name.split("/")[-1])
+            if prefix_filter and not any(boi.startswith(p) for p in prefix_filter):
+                continue
+            if max_docs and count >= max_docs:
+                break
+            f = tar.extractfile(member)
+            if not f:
+                continue
+            page = f.read().decode("utf-8", "replace")
+            m = re.search(r"<title>([^<]+)</title>", page)
+            title = html.unescape(m.group(1)).strip() if m else boi
+            text = strip_html(page)
+            if len(text) < 200:
+                continue
+            try:
+                total += store("bofip", boi, f"{title} ({boi})",
+                               f"https://bofip.impots.gouv.fr/bofip/ext/{boi}",
+                               "doctrine_fiscale", None, text)
+                count += 1
+                if count % 20 == 0:
+                    print(f"  … {count} documents BOFiP ingérés")
+            except Exception as e:  # noqa: BLE001
+                print(f"  [err] {boi}: {e}")
+    print(f"Terminé : {count} documents, {total} chunks")
 
 
 # ─── PDF (PCG, bulletins CNCC — upload manuel ou URL) ─────────────
@@ -268,6 +319,9 @@ if __name__ == "__main__":
     p.add_argument("identifier", nargs="?")
     p.add_argument("--max-articles", type=int, default=300)
     p.add_argument("--max-results", type=int, default=30)
+    p.add_argument("--max-docs", type=int, default=None)
+    p.add_argument("--prefix", default=None,
+                   help="Filtre BOFiP : préfixes BOI séparés par virgule (ex BOI-TVA,BOI-IS)")
     # options mode pdf
     p.add_argument("--source"); p.add_argument("--source-id")
     p.add_argument("--title"); p.add_argument("--path"); p.add_argument("--url")
@@ -282,6 +336,7 @@ if __name__ == "__main__":
     elif args.mode == "jurisprudence-ce":
         ingest_jurisprudence_ce(args.identifier, args.max_results)
     elif args.mode == "bofip":
-        ingest_bofip(args.identifier)
+        prefixes = args.prefix.split(",") if args.prefix else None
+        ingest_bofip_stock(prefix_filter=prefixes, max_docs=args.max_docs)
     elif args.mode == "pdf":
         ingest_pdf(args.source, args.source_id, args.title, args.path, url=args.url)
