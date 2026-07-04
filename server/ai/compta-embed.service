@@ -1,0 +1,16 @@
+[Unit]
+Description=Compta - service embeddings Solon (Ordalie)
+After=network.target
+
+[Service]
+Type=simple
+User=ubuntu
+WorkingDirectory=/opt/compta-proxy/server/ai
+ExecStart=/opt/compta-proxy/server/ai/venv/bin/python /opt/compta-proxy/server/ai/embed_server.py
+Restart=always
+RestartSec=5
+StandardOutput=append:/var/log/compta-embed.log
+StandardError=append:/var/log/compta-embed.log
+
+[Install]
+WantedBy=multi-user.target

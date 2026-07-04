@@ -11,6 +11,7 @@ const signatureRoutes = require('./routes/signatures');
 const yousignWebhookRoutes = require('./routes/yousign-webhook');
 const ocrRoutes = require('./routes/ocr');
 const documentsRoutes = require('./routes/documents');
+const aiRoutes = require('./routes/ai');
 
 const app = express();
 app.set('trust proxy', 'loopback');
@@ -1008,6 +1009,7 @@ app.use('/api/pappers', requireUser, requireOrg, pappersRoutes);
 app.use('/api/dossiers', requireUser, requireOrg, signatureRoutes);
 app.use('/api/ocr', requireUser, requireOrg, ocrRoutes);
 app.use('/api/dossiers', requireUser, requireOrg, documentsRoutes);
+app.use('/api/ai', requireUser, requireOrg, aiRoutes);
 
 app.use((err, req, res, _next) => {
   console.error(`[ERR] ${req.method} ${req.path}:`, err.message);

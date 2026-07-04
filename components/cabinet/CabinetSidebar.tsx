@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
   LayoutDashboard,
+  Scale,
   FileText,
   Users,
   CheckSquare,
@@ -46,6 +47,7 @@ const NAV_PILOTAGE: NavItem[] = [
   { href: '/dossiers', label: 'Formalités', matchPrefix: '/dossiers', icon: FileText },
   { href: '/clients', label: 'Clients', matchPrefix: '/clients', icon: Users },
   { href: '/tasks', label: 'Tâches', matchPrefix: '/tasks', icon: CheckSquare },
+  { href: '/assistant', label: 'Assistant IA', matchPrefix: '/assistant', icon: Scale },
 ];
 
 const NAV_CABINET: NavItem[] = [
