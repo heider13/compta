@@ -224,25 +224,25 @@ def ingest_jurisprudence_ce(query, max_results, token=None):
 
 # ─── BOFiP (open data DGFiP, archive stock, sans clé) ─────────────
 def _bofip_latest_stock_url():
-    """Trouve l'URL de l'archive stock BOFiP la plus récente (contenu en vigueur)."""
+    """Trouve l'URL de l'archive stock BOFiP la plus récente (contenu en vigueur).
+    Le champ `telechargement` du record open data porte l'URL directe
+    (ex : https://bofip.impots.gouv.fr/opendata/stock/6)."""
     api = ("https://data.economie.gouv.fr/api/records/1.0/search/"
-           "?dataset=bofip-impots&rows=50&q=stock_live")
+           "?dataset=bofip-impots&rows=50")
     with urllib.request.urlopen(api, timeout=60) as r:
         recs = json.loads(r.read()).get("records", [])
     stocks = [
         rec for rec in recs
-        if "stock_live" in (rec.get("fields", {}).get("nom_du_fichier") or "")
+        if (rec.get("fields", {}).get("type") == "stock"
+            or "stock" in (rec.get("fields", {}).get("nom_du_fichier") or ""))
     ]
     if not stocks:
         raise RuntimeError("Aucune archive stock BOFiP trouvée")
-    stocks.sort(key=lambda x: x["fields"]["nom_du_fichier"], reverse=True)
+    stocks.sort(key=lambda x: x["fields"].get("date_de_fin", ""), reverse=True)
     f = stocks[0]["fields"]
-    # Le champ 'fichier' porte l'URL de téléchargement (ODS)
-    url = (f.get("fichier") or {}).get("url") if isinstance(f.get("fichier"), dict) else None
+    url = f.get("telechargement")
     if not url:
-        rid = stocks[0]["recordid"]
-        url = (f"https://data.economie.gouv.fr/api/datasets/1.0/bofip-impots/"
-               f"attachments/{f['nom_du_fichier'].replace('.', '_')}/")
+        raise RuntimeError("Champ 'telechargement' absent du record stock BOFiP")
     return url, f["nom_du_fichier"]
 
 
