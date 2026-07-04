@@ -6,6 +6,7 @@ const LINKS = [
   { href: '/experts-comptables', label: 'Experts-comptables' },
   { href: '/avocats', label: 'Avocats' },
   { href: '/directions-juridiques', label: 'Dir. juridiques' },
+  { href: '/#demo', label: 'Démo' },
   { href: '/#tarifs', label: 'Tarifs' },
 ];
 

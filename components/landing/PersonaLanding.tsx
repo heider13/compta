@@ -8,6 +8,7 @@ import { Nav } from './Nav';
 import { FxBackground } from './FxBackground';
 import { LogoBand } from './LogoBand';
 import { Metrics } from './Metrics';
+import { InteractiveDemo } from './InteractiveDemo';
 import { FeatureRows } from './FeatureRows';
 import { FormalityTypes } from './FormalityTypes';
 import { Testimonials } from './Testimonials';
@@ -113,6 +114,7 @@ export function PersonaLanding({ persona }: { persona: PersonaContent }) {
       <PersonaHero persona={persona} />
       <LogoBand />
       <Metrics />
+      <InteractiveDemo />
       <PersonaPains persona={persona} />
       <FeatureRows />
       <FormalityTypes />
