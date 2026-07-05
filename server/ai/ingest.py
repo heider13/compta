@@ -162,14 +162,28 @@ def piste(path, payload, token):
     )
 
 
-def ingest_legifrance_article(article_id, token=None):
+def _context_titre(ctx):
+    """Extrait un libellé de code lisible du champ context (structure variable :
+    dict, liste de dicts avec 'titre', ou str)."""
+    if isinstance(ctx, dict):
+        t = ctx.get("titreTxt") or ctx.get("titre")
+        return _context_titre(t) if not isinstance(t, str) else (t or "")
+    if isinstance(ctx, list):
+        for item in reversed(ctx):  # le dernier niveau = le plus précis
+            if isinstance(item, dict) and item.get("titre"):
+                return str(item["titre"])
+        return ""
+    return str(ctx) if ctx else ""
+
+
+def ingest_legifrance_article(article_id, token=None, code_label=""):
     token = token or piste_token()
     data = piste("/consult/getArticle", {"id": article_id}, token)
     art = data.get("article") or {}
     texte = strip_html(art.get("texteHtml") or art.get("texte") or "")
     num = art.get("num") or ""
-    ctitle = (art.get("context") or {}).get("titreTxt") or ""
-    title = f"Article {num} — {ctitle}".strip(" —")
+    label = code_label or _context_titre(art.get("context")) or ""
+    title = f"Article {num} — {label}".strip(" —") if label else f"Article {num}"
     return store("legifrance", article_id, title,
                  f"https://www.legifrance.gouv.fr/codes/article_lc/{article_id}",
                  "code_article", art.get("dateDebut"), texte)
@@ -198,11 +212,23 @@ def ingest_legifrance_code(textid, max_articles, token=None):
     if not ids:
         walk(toc.get("sommaire") or {})
 
+    # Libellé du code : map des codes connus, sinon racine du sommaire.
+    KNOWN = {
+        "LEGITEXT000006069577": "Code général des impôts",
+        "LEGITEXT000006069583": "Livre des procédures fiscales",
+        "LEGITEXT000005634379": "Code de commerce",
+        "LEGITEXT000006069568": "CGI, annexe II",
+        "LEGITEXT000006069574": "CGI, annexe III",
+    }
+    code_label = KNOWN.get(textid) or (
+        toc.get("title") or toc.get("titre")
+        or (toc.get("sommaire") or {}).get("titre") or "").strip()
+
     print(f"{len(ids)} articles trouvés, ingestion de {min(len(ids), max_articles)}")
     total = 0
     for i, aid in enumerate(ids[:max_articles]):
         try:
-            total += ingest_legifrance_article(aid, token)
+            total += ingest_legifrance_article(aid, token, code_label=code_label)
         except Exception as e:  # noqa: BLE001
             print(f"  [err] {aid}: {e}")
         if (i + 1) % 25 == 0:
