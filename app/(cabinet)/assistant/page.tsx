@@ -13,23 +13,28 @@ import {
   FileText,
   Landmark,
   Loader2,
+  Paperclip,
   Percent,
   Receipt,
   Scale,
   ShieldCheck,
   Sparkles,
   Workflow,
+  X,
   type LucideIcon,
 } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Markdown } from '@/components/ui/markdown';
 import { cn } from '@/lib/utils';
+
+type Attachment = { name: string; summary: string; text: string };
 
 const VPS = process.env.NEXT_PUBLIC_VPS_BACKEND_URL ?? 'https://vps-84ac2579.vps.ovh.net';
 
 type Source = { n: number; title: string; url: string | null; source: string; source_label?: string; source_id: string };
-type Msg = { role: 'user' | 'assistant'; content: string; sources?: Source[] };
+type Msg = { role: 'user' | 'assistant'; content: string; sources?: Source[]; attachmentName?: string };
 
 // Bibliothèque de tâches — chaque carte pré-remplit le composer avec un point
 // de départ que l'utilisateur peut ajuster avant d'envoyer.
@@ -108,8 +113,11 @@ export default function AssistantPage() {
   const [conversationId, setConversationId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [firstName, setFirstName] = useState<string>('');
+  const [attachment, setAttachment] = useState<Attachment | null>(null);
+  const [attaching, setAttaching] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const fileRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     (async () => {
@@ -138,12 +146,63 @@ export default function AssistantPage() {
     textareaRef.current?.focus();
   }
 
+  async function onAttach(file: File) {
+    if (!file) return;
+    if (file.size > 20 * 1024 * 1024) {
+      setError('Fichier trop lourd (max 20 Mo).');
+      return;
+    }
+    setAttaching(true);
+    setError(null);
+    try {
+      const base64 = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result as string);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+      const supabase = createClient();
+      const token = (await supabase.auth.getSession()).data.session?.access_token;
+      if (!token) throw new Error('Session expirée — reconnectez-vous.');
+      const res = await fetch(`${VPS}/api/ocr/document`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ fileBase64: base64, filename: file.name }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error((data as { detail?: string }).detail || 'Analyse du document impossible.');
+      const f = (data.fields ?? {}) as { documentType?: string; societe?: { denomination?: string }; decisions?: unknown[] };
+      const nb = (f.decisions ?? []).length;
+      const summary =
+        [f.documentType, f.societe?.denomination, nb ? `${nb} décision(s)` : null].filter(Boolean).join(' · ') ||
+        'document analysé';
+      setAttachment({ name: file.name, summary, text: (data.text as string) || (data.textPreview as string) || '' });
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Analyse du document impossible.');
+    } finally {
+      setAttaching(false);
+      if (fileRef.current) fileRef.current.value = '';
+    }
+  }
+
   async function ask(question: string) {
-    if (!question.trim() || busy) return;
+    const att = attachment;
+    if ((!question.trim() && !att) || busy) return;
+    const q = question.trim() || 'Analyse ce document et résume les points clés.';
     setError(null);
     setBusy(true);
     setInput('');
-    setMessages((m) => [...m, { role: 'user', content: question }, { role: 'assistant', content: '' }]);
+    setAttachment(null);
+    setMessages((m) => [
+      ...m,
+      { role: 'user', content: q, attachmentName: att?.name },
+      { role: 'assistant', content: '' },
+    ]);
+
+    // Injecte le contenu du document joint en contexte de la question.
+    const payloadQuestion = att
+      ? `Document joint « ${att.name} » (${att.summary}) :\n"""\n${att.text}\n"""\n\nEn t'appuyant aussi sur ce document, réponds à : ${q}`
+      : q;
 
     try {
       const supabase = createClient();
@@ -154,7 +213,7 @@ export default function AssistantPage() {
       const res = await fetch(`${VPS}/api/ai/chat`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ question, conversation_id: conversationId }),
+        body: JSON.stringify({ question: payloadQuestion, conversation_id: conversationId }),
       });
       if (!res.ok || !res.body) {
         const body = await res.json().catch(() => ({}));
@@ -224,14 +283,51 @@ export default function AssistantPage() {
         disabled={busy}
         className="w-full resize-none border-0 bg-transparent px-2 pt-1.5 text-[15px] leading-relaxed outline-none placeholder:text-muted-foreground/70"
       />
+      {/* Chip du document joint */}
+      {attachment && (
+        <div className="mx-1 mb-1 inline-flex max-w-full items-center gap-2 rounded-lg border bg-muted/50 px-2.5 py-1.5 text-xs">
+          <FileText className="size-3.5 shrink-0 text-primary" />
+          <span className="truncate font-medium">{attachment.name}</span>
+          <span className="hidden shrink-0 text-muted-foreground sm:inline">· {attachment.summary}</span>
+          <button
+            type="button"
+            onClick={() => setAttachment(null)}
+            className="ml-0.5 rounded p-0.5 hover:bg-muted"
+            aria-label="Retirer le document"
+          >
+            <X className="size-3.5" />
+          </button>
+        </div>
+      )}
       <div className="flex items-center justify-between gap-2 px-1 pt-1">
-        <span className="inline-flex items-center gap-1.5 rounded-full border bg-muted/40 px-2.5 py-1 text-xs text-muted-foreground">
-          <Sparkles className="size-3" />
-          Légifrance · BOFiP · CGI
-        </span>
+        <div className="flex items-center gap-2">
+          <input
+            ref={fileRef}
+            type="file"
+            accept=".pdf,.png,.jpg,.jpeg,.docx,application/pdf,image/png,image/jpeg,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+            className="hidden"
+            onChange={(e) => {
+              const f = e.target.files?.[0];
+              if (f) onAttach(f);
+            }}
+          />
+          <button
+            type="button"
+            onClick={() => fileRef.current?.click()}
+            disabled={attaching || busy}
+            className="inline-flex items-center gap-1.5 rounded-full border bg-background px-2.5 py-1 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted disabled:opacity-50"
+          >
+            {attaching ? <Loader2 className="size-3 animate-spin" /> : <Paperclip className="size-3" />}
+            Pièce jointe
+          </button>
+          <span className="hidden items-center gap-1.5 rounded-full border bg-muted/40 px-2.5 py-1 text-xs text-muted-foreground sm:inline-flex">
+            <Sparkles className="size-3" />
+            Légifrance · BOFiP · CGI
+          </span>
+        </div>
         <button
           type="submit"
-          disabled={busy || !input.trim()}
+          disabled={busy || (!input.trim() && !attachment)}
           className="grid size-9 place-items-center rounded-full bg-primary text-primary-foreground transition-opacity hover:opacity-90 disabled:opacity-40"
           aria-label="Envoyer"
         >
@@ -348,8 +444,16 @@ export default function AssistantPage() {
                 <span className="inline-flex items-center gap-2 text-muted-foreground">
                   <Loader2 className="size-3.5 animate-spin" /> Recherche dans les sources…
                 </span>
+              ) : m.role === 'assistant' ? (
+                <Markdown>{m.content}</Markdown>
               ) : (
                 <div className="whitespace-pre-wrap">{m.content}</div>
+              )}
+              {m.attachmentName && (
+                <div className="mt-2 inline-flex items-center gap-1.5 rounded-md bg-white/15 px-2 py-1 text-xs">
+                  <FileText className="size-3" />
+                  <span className="max-w-[220px] truncate">{m.attachmentName}</span>
+                </div>
               )}
               {m.sources && m.sources.length > 0 && (
                 <div className="mt-3 border-t pt-2">

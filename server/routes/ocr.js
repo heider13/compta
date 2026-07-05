@@ -198,6 +198,9 @@ router.post(
       documentType: ai.data.documentType || docType || null,
       fields: ai.data,
       textPreview: text.slice(0, 400),
+      // Texte extrait (plafonné) — permet à l'assistant de répondre sur le
+      // contenu du document joint (mention @ dans le chat).
+      text: text.slice(0, 6000),
       refused: false,
     });
   }),
