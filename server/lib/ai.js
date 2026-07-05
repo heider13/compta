@@ -7,7 +7,18 @@ const Anthropic = require('@anthropic-ai/sdk');
 const { getSupabaseAdmin } = require('./db');
 
 const EMBED_URL = process.env.EMBED_SERVICE_URL || 'http://127.0.0.1:8100';
-const CLAUDE_MODEL = 'claude-opus-4-8';
+// Sélection du modèle par tâche — optimisée pour le coût des crédits.
+// Chaque tâche est routée vers le modèle le moins cher qui tient la qualité.
+// Ajustable sans redéploiement via variables d'environnement.
+//   cheap    Haiku 4.5  (1$/5$ par 1M)   → extraction structurée simple
+//   balanced Sonnet 5   (2$/10$ intro)   → compréhension & rédaction juridique
+//   premium  Opus 4.8   (5$/25$)         → réservé aux cas les plus exigeants
+const MODELS = {
+  cheap: process.env.CLAUDE_MODEL_CHEAP || 'claude-haiku-4-5',
+  balanced: process.env.CLAUDE_MODEL_BALANCED || 'claude-sonnet-5',
+  premium: process.env.CLAUDE_MODEL_PREMIUM || 'claude-opus-4-8',
+};
+const CLAUDE_MODEL = MODELS.premium; // rétro-compat (export)
 
 let _anthropic = null;
 function getAnthropic() {
@@ -98,7 +109,7 @@ function streamAnswer({ question, history = [], chunks }) {
   ];
 
   return client.messages.stream({
-    model: CLAUDE_MODEL,
+    model: MODELS.balanced, // chat juridique : Sonnet 5 (qualité citations / coût)
     max_tokens: 4096,
     thinking: { type: 'adaptive' },
     system: [{ type: 'text', text: SYSTEM_PROMPT, cache_control: { type: 'ephemeral' } }],
@@ -144,7 +155,7 @@ async function draftDocument({ docType, brief, chunks = [] }) {
     : 'Aucune source spécifique fournie ; appuie-toi sur le droit français général.';
 
   const msg = await client.messages.create({
-    model: CLAUDE_MODEL,
+    model: MODELS.balanced, // rédaction juridique : Sonnet 5
     max_tokens: 8192,
     thinking: { type: 'adaptive' },
     system: [{ type: 'text', text: DRAFT_SYSTEM, cache_control: { type: 'ephemeral' } }],
@@ -230,9 +241,9 @@ const PREFILL_SYSTEM = `Tu es un agent de saisie de formalités juridiques INPI.
 async function prefillFormality({ formeJuridique, brief }) {
   const client = getAnthropic();
   const msg = await client.messages.create({
-    model: CLAUDE_MODEL,
+    model: MODELS.cheap, // pré-remplissage : Haiku 4.5 (extraction simple, pas de raisonnement)
     max_tokens: 2048,
-    thinking: { type: 'adaptive' },
+    thinking: { type: 'disabled' },
     system: [{ type: 'text', text: PREFILL_SYSTEM, cache_control: { type: 'ephemeral' } }],
     output_config: { format: { type: 'json_schema', schema: PREFILL_SCHEMA } },
     messages: [{
@@ -343,7 +354,7 @@ async function extractDocument({ text, docTypeHint }) {
   // Plafonne l'entrée pour maîtriser les tokens (un PV/statuts tient largement).
   const clipped = String(text || '').slice(0, 24000);
   const msg = await client.messages.create({
-    model: CLAUDE_MODEL,
+    model: MODELS.balanced, // analyse PV/statuts (OCR bruité + droit) : Sonnet 5
     max_tokens: 3072,
     thinking: { type: 'adaptive' },
     system: [{ type: 'text', text: DOC_EXTRACT_SYSTEM, cache_control: { type: 'ephemeral' } }],
@@ -366,5 +377,5 @@ async function extractDocument({ text, docTypeHint }) {
 
 module.exports = {
   embed, searchLegalChunks, streamAnswer, draftDocument, DOC_TYPES,
-  prefillFormality, extractDocument, CLAUDE_MODEL,
+  prefillFormality, extractDocument, CLAUDE_MODEL, MODELS,
 };
