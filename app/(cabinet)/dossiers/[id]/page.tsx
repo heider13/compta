@@ -8,6 +8,7 @@ import {
   Paperclip,
   PenLine,
   Send,
+  Sparkles,
   SquarePen,
 } from 'lucide-react';
 import { createClient } from '@/lib/supabase/server';
@@ -381,6 +382,12 @@ export default async function DossierDetailPage({
               <CardTitle>Actions</CardTitle>
             </CardHeader>
             <CardContent className="space-y-2.5">
+              <Button asChild className="w-full">
+                <Link href={`/dossiers/${id}/orchestrator`}>
+                  <Sparkles className="size-4" />
+                  Orchestrateur IA
+                </Link>
+              </Button>
               <Button asChild variant="outline" className="w-full">
                 <Link href={`/dossiers/${id}/edit`}>
                   <SquarePen className="size-4" />
