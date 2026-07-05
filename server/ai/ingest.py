@@ -156,18 +156,27 @@ def ingest_legifrance_article(article_id, token=None):
 
 
 def ingest_legifrance_code(textid, max_articles, token=None):
+    import datetime
     token = token or piste_token()
-    toc = piste("/consult/legi/tableMatieres",
-                {"textId": textid, "nature": "CODE", "date": None}, token)
+    today = datetime.date.today().isoformat()
+    # /consult/code/tableMatieres : textId + date obligatoires (CodeConsultRequest)
+    toc = piste("/consult/code/tableMatieres",
+                {"textId": textid, "date": today}, token)
 
     ids = []
     def walk(node):
+        if not isinstance(node, dict):
+            return
         for a in node.get("articles") or []:
             if a.get("id"):
                 ids.append(a["id"])
-        for s in node.get("sections") or []:
-            walk(s)
+        for key in ("sections", "sommaires"):
+            for s in node.get(key) or []:
+                walk(s)
+    # La racine peut être {sections:[...]} ou {sommaire:{...}}
     walk(toc)
+    if not ids:
+        walk(toc.get("sommaire") or {})
 
     print(f"{len(ids)} articles trouvés, ingestion de {min(len(ids), max_articles)}")
     total = 0
