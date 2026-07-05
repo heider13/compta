@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { createClient } from '@/lib/supabase/server';
 import { CabinetSidebar } from '@/components/cabinet/CabinetSidebar';
 import { TopBar } from '@/components/cabinet/TopBar';
+import { FloatingAssistant } from '@/components/cabinet/FloatingAssistant';
 import { getInitials } from '@/lib/types';
 import { SidebarInset, SidebarProvider } from '@/components/ui/sidebar';
 import { Button } from '@/components/ui/button';
@@ -90,6 +91,7 @@ export default async function CabinetLayout({
         />
         <div className="flex-1">{children}</div>
       </SidebarInset>
+      <FloatingAssistant />
     </SidebarProvider>
   );
 }

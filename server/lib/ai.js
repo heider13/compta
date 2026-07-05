@@ -106,4 +106,61 @@ function streamAnswer({ question, history = [], chunks }) {
   });
 }
 
-module.exports = { embed, searchLegalChunks, streamAnswer, CLAUDE_MODEL };
+// ─── Rédaction de documents légaux / contractuels ────────────────
+
+const DOC_TYPES = {
+  contrat_prestation: 'Contrat de prestation de services',
+  cgv: 'Conditions générales de vente',
+  bail_commercial: 'Bail commercial',
+  pacte_associes: "Pacte d'associés",
+  pv_ag: "Procès-verbal d'assemblée générale",
+  contrat_travail: 'Contrat de travail',
+  nda: 'Accord de confidentialité (NDA)',
+  cession_parts: 'Acte de cession de parts sociales',
+  mandat: 'Mandat',
+  autre: 'Document juridique',
+};
+
+const DRAFT_SYSTEM = `Tu es un juriste rédacteur au sein de Compta, plateforme pour cabinets français (experts-comptables, avocats).
+
+Tu rédiges des documents juridiques et contractuels de droit français, prêts à être retravaillés par le professionnel.
+
+<regles>
+- Produis un document COMPLET et structuré en Markdown : titre, préambule/parties, articles numérotés, clauses standard du type de document demandé, signatures.
+- Adapte au droit français en vigueur. Quand une clause dépend d'un choix non précisé, insère un champ à compléter entre crochets : [À COMPLÉTER : ...].
+- Appuie-toi sur les EXTRAITS DE SOURCES fournis quand ils sont pertinents (cite l'article dans la clause concernée).
+- Reste neutre et équilibré entre les parties sauf instruction contraire.
+- Termine par : "⚖️ Projet généré automatiquement — à faire relire par un professionnel avant signature."
+- Réponds UNIQUEMENT avec le document en Markdown, sans commentaire d'introduction.
+</regles>`;
+
+async function draftDocument({ docType, brief, chunks = [] }) {
+  const client = getAnthropic();
+  const label = DOC_TYPES[docType] || DOC_TYPES.autre;
+  const context = chunks.length
+    ? chunks
+        .map((c, i) => `[${i + 1}] ${c.title} (${c.source}) — ${c.content}`)
+        .join('\n\n---\n\n')
+    : 'Aucune source spécifique fournie ; appuie-toi sur le droit français général.';
+
+  const msg = await client.messages.create({
+    model: CLAUDE_MODEL,
+    max_tokens: 8192,
+    thinking: { type: 'adaptive' },
+    system: [{ type: 'text', text: DRAFT_SYSTEM, cache_control: { type: 'ephemeral' } }],
+    messages: [{
+      role: 'user',
+      content: `SOURCES OFFICIELLES :\n${context}\n\n---\n\nTYPE DE DOCUMENT : ${label}\n\nBRIEF DU PROFESSIONNEL :\n${brief}\n\nRédige le document complet en Markdown.`,
+    }],
+  });
+
+  const text = (msg.content || [])
+    .filter((b) => b.type === 'text')
+    .map((b) => b.text)
+    .join('');
+  return { title: label, markdown: text, refused: msg.stop_reason === 'refusal', usage: msg.usage };
+}
+
+module.exports = {
+  embed, searchLegalChunks, streamAnswer, draftDocument, DOC_TYPES, CLAUDE_MODEL,
+};

@@ -8,8 +8,11 @@
 const express = require('express');
 const router = express.Router();
 
-const { searchLegalChunks, streamAnswer } = require('../lib/ai');
+const { searchLegalChunks, streamAnswer, draftDocument, DOC_TYPES } = require('../lib/ai');
 const { getSupabaseAdmin } = require('../lib/db');
+const {
+  Document, Packer, Paragraph, TextRun, HeadingLevel, AlignmentType,
+} = require('docx');
 
 function asyncRoute(fn) {
   return (req, res, next) => fn(req, res, next).catch(next);
@@ -167,5 +170,93 @@ router.get(
     res.json({ conversation: conv, messages: messages || [] });
   }),
 );
+
+// ─── Rédaction de document légal/contractuel ─────────────────────
+// POST /api/ai/draft-document  {docType, brief, format?: 'markdown'|'docx'}
+//   markdown (défaut) → {title, markdown}
+//   docx → fichier .docx en pièce jointe
+function markdownToDocx(title, markdown) {
+  const lines = markdown.split(/\r?\n/);
+  const children = [];
+  for (const line of lines) {
+    const t = line.trim();
+    if (!t) { children.push(new Paragraph({ text: '' })); continue; }
+    let m;
+    if ((m = t.match(/^#\s+(.+)/))) {
+      children.push(new Paragraph({ heading: HeadingLevel.HEADING_1, alignment: AlignmentType.CENTER, children: [new TextRun({ text: m[1], bold: true, size: 30 })] }));
+    } else if ((m = t.match(/^##\s+(.+)/))) {
+      children.push(new Paragraph({ heading: HeadingLevel.HEADING_2, spacing: { before: 200 }, children: [new TextRun({ text: m[1], bold: true, size: 26 })] }));
+    } else if ((m = t.match(/^###\s+(.+)/))) {
+      children.push(new Paragraph({ heading: HeadingLevel.HEADING_3, children: [new TextRun({ text: m[1], bold: true, size: 24 })] }));
+    } else {
+      // gras markdown **...**
+      const runs = [];
+      const parts = t.split(/(\*\*[^*]+\*\*)/g);
+      for (const p of parts) {
+        if (!p) continue;
+        const bm = p.match(/^\*\*([^*]+)\*\*$/);
+        runs.push(new TextRun({ text: bm ? bm[1] : p, bold: !!bm, size: 22 }));
+      }
+      children.push(new Paragraph({ alignment: AlignmentType.JUSTIFIED, spacing: { after: 100 }, children: runs }));
+    }
+  }
+  return new Document({ creator: 'Compta', title, sections: [{ children }] });
+}
+
+router.post(
+  '/draft-document',
+  asyncRoute(async (req, res) => {
+    const { docType = 'autre', brief, format = 'markdown' } = req.body || {};
+    if (!brief || typeof brief !== 'string' || brief.length > 6000) {
+      return res.status(400).json({ error: 'invalid_brief' });
+    }
+    if (!DOC_TYPES[docType]) {
+      return res.status(400).json({ error: 'unknown_doc_type', supported: Object.keys(DOC_TYPES) });
+    }
+
+    // RAG léger : le brief sert de requête pour retrouver les textes pertinents.
+    let chunks = [];
+    try {
+      chunks = await searchLegalChunks(brief, { matchCount: 6, minSimilarity: 0.3 });
+    } catch { /* le doc peut se rédiger sans sources */ }
+
+    const result = await draftDocument({ docType, brief, chunks });
+    if (result.refused) {
+      return res.status(422).json({ error: 'refusal', detail: 'Demande hors périmètre.' });
+    }
+
+    // Trace (sans PII lourde)
+    try {
+      const supa = getSupabaseAdmin();
+      await supa.from('audit_logs').insert({
+        organization_id: req.currentOrgId,
+        user_id: req.user.id,
+        action: 'ai.document.drafted',
+        resource_type: 'ai_document',
+        resource_id: null,
+        metadata: { doc_type: docType, sources: chunks.length },
+      });
+    } catch {}
+
+    if (format === 'docx') {
+      const doc = markdownToDocx(result.title, result.markdown);
+      const buffer = await Packer.toBuffer(doc);
+      const filename = `${result.title.replace(/[^\w-]+/g, '_')}.docx`;
+      res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document');
+      res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+      return res.status(200).end(buffer);
+    }
+
+    res.json({
+      title: result.title,
+      markdown: result.markdown,
+      sources: chunks.map((c, i) => ({ n: i + 1, title: c.title, url: c.url, source: c.source })),
+    });
+  }),
+);
+
+router.get('/doc-types', (req, res) => {
+  res.json({ types: Object.entries(DOC_TYPES).map(([id, label]) => ({ id, label })) });
+});
 
 module.exports = router;
