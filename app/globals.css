@@ -114,7 +114,9 @@ img, svg { display: block; max-width: 100%; }
 }
 .eyebrow .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); }
 
-h1, h2, h3, h4 {
+/* Ces règles ne concernent QUE la landing (.landing-theme) — sinon les
+   tailles clamp() géantes fuitent dans l'app cabinet (titres énormes). */
+.landing-theme h1, .landing-theme h2, .landing-theme h3, .landing-theme h4 {
   font-family: var(--font-sans);
   font-weight: 600;
   letter-spacing: -0.02em;
@@ -122,12 +124,12 @@ h1, h2, h3, h4 {
   margin: 0;
   color: var(--ink-900);
 }
-h1 { font-size: clamp(40px, 6vw, 72px); letter-spacing: -0.035em; }
-h2 { font-size: clamp(30px, 4vw, 48px); letter-spacing: -0.03em; }
-h3 { font-size: clamp(20px, 2vw, 24px); letter-spacing: -0.02em; }
+.landing-theme h1 { font-size: clamp(40px, 6vw, 72px); letter-spacing: -0.035em; }
+.landing-theme h2 { font-size: clamp(30px, 4vw, 48px); letter-spacing: -0.03em; }
+.landing-theme h3 { font-size: clamp(20px, 2vw, 24px); letter-spacing: -0.02em; }
 .display-serif { font-family: var(--font-display); font-style: italic; font-weight: 400; letter-spacing: -0.02em; }
 
-p { margin: 0; color: var(--ink-600); }
+.landing-theme p { margin: 0; color: var(--ink-600); }
 .lead { font-size: clamp(17px, 1.4vw, 20px); color: var(--ink-600); line-height: 1.55; }
 .kicker { color: var(--ink-500); font-size: 14px; }
 
