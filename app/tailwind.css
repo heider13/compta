@@ -134,24 +134,24 @@
      Le canvas légèrement violet fait ressortir les cartes blanches ;
      les titres de page passent en serif Fraunces, plus léger et raffiné
      (moins « grossier » que le sans-serif gras). */
-  .app-shell {
+  .cabinet-canvas {
     background-color: var(--app-canvas);
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
   }
-  .app-shell h1 {
+  .cabinet-canvas h1 {
     font-family: var(--font-display-app);
     font-weight: 500;
     letter-spacing: -0.01em;
   }
   /* Titres secondaires (sections) : serif discret également */
-  .app-shell h2 {
+  .cabinet-canvas h2 {
     font-family: var(--font-display-app);
     font-weight: 500;
     letter-spacing: -0.005em;
   }
   /* Titres de cartes : on garde le sans-serif, juste un poil resserré */
-  .app-shell [data-slot='card-title'] {
+  .cabinet-canvas [data-slot='card-title'] {
     letter-spacing: -0.01em;
   }
 }
