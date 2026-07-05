@@ -185,6 +185,28 @@ const WizardSARL = ({ setRoute, dossierId: initialDossierId, onCreated, demoMode
 
       {step === 0 && (
         <W.Section title="La société" subtitle="Identité de la SARL à créer.">
+          <W.AiPrefill formeJuridique="SARL" onPrefill={(d) => {
+            if (d.denomination) setEntreprise({ denomination: d.denomination.toUpperCase() });
+            if (d.sigle) setDescPM({ sigle: d.sigle });
+            if (d.objet) setEntreprise({ objet: d.objet });
+            if (d.capitalEuros) setEntreprise({ capital: d.capitalEuros });
+            if (d.dureeAnnees) setEntreprise({ dureeSociete: d.dureeAnnees });
+            if (d.siege?.voie) setEtabAdresse({ voie: d.siege.voie });
+            if (d.siege?.codePostal) setEtabAdresse({ codePostal: d.siege.codePostal });
+            if (d.siege?.commune) setEtabAdresse({ commune: d.siege.commune });
+            if (d.codeApe) setEtabActivite({ codeApe: d.codeApe });
+            if (d.objet) setEtabActivite({ descriptionDetaillee: d.objet });
+            if (d.dateDebutActivite) setEtabActivite({ dateDebutActivite: d.dateDebutActivite });
+            const dir = d.dirigeant || {};
+            const patch = {};
+            if (dir.nom) patch.nomNaissance = dir.nom.toUpperCase();
+            if (dir.prenoms?.length) patch.prenoms = dir.prenoms;
+            if (dir.dateNaissance) patch.dateDeNaissance = dir.dateNaissance;
+            if (dir.sexe) patch.sexe = dir.sexe;
+            if (dir.nationalite) patch.codeNationalite = dir.nationalite;
+            if (dir.lieuNaissance) patch.lieuDeNaissance = dir.lieuNaissance;
+            if (Object.keys(patch).length) updateGerantDesc(0, patch);
+          }} />
           <W.FieldText label="Dénomination sociale *" value={entreprise.denomination} onChange={v => setEntreprise({ denomination: v })} placeholder="Ex: DUPONT & FILS SARL" />
           <W.Row>
             <W.FieldText label="Sigle (optionnel)" value={descPM.sigle} onChange={v => setDescPM({ sigle: v })} />

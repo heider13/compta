@@ -229,6 +229,26 @@ const WizardEURL = ({ setRoute, dossierId: initialDossierId, onCreated, demoMode
 
       {step === 0 && (
         <W.Section title="Société (EURL)" subtitle="Entreprise Unipersonnelle à Responsabilité Limitée — un associé unique, gérant, parts sociales.">
+          <W.AiPrefill formeJuridique="EURL" onPrefill={(d) => {
+            if (d.denomination) setEntreprise({ denomination: d.denomination.toUpperCase() });
+            if (d.sigle) setDescription({ sigle: d.sigle });
+            if (d.objet) setEntreprise({ objet: d.objet });
+            if (d.capitalEuros) setEntreprise({ capital: d.capitalEuros });
+            if (d.dureeAnnees) setEntreprise({ dureeSociete: d.dureeAnnees });
+            if (d.siege?.voie) setEtabAdresse({ voie: d.siege.voie });
+            if (d.siege?.codePostal) setEtabAdresse({ codePostal: d.siege.codePostal });
+            if (d.siege?.commune) setEtabAdresse({ commune: d.siege.commune });
+            if (d.codeApe) setEtabActivite({ codeApe: d.codeApe });
+            if (d.objet) setEtabActivite({ descriptionDetaillee: d.objet });
+            if (d.dateDebutActivite) setEtabActivite({ dateDebutActivite: d.dateDebutActivite });
+            const dir = d.dirigeant || {};
+            if (dir.nom) setGerDesc({ nomNaissance: dir.nom.toUpperCase() });
+            if (dir.prenoms?.length) setGerDesc({ prenoms: dir.prenoms });
+            if (dir.dateNaissance) setGerDesc({ dateDeNaissance: dir.dateNaissance });
+            if (dir.sexe) setGerDesc({ sexe: dir.sexe });
+            if (dir.nationalite) setGerDesc({ codeNationalite: dir.nationalite });
+            if (dir.lieuNaissance) setGerLieu({ commune: dir.lieuNaissance });
+          }} />
           <W.Row>
             <W.FieldText label="Dénomination sociale *" value={ent.denomination} onChange={v => setEntreprise({ denomination: v })} placeholder="Ex: ACME CONSEIL EURL" />
             <W.FieldText label="Sigle (optionnel)" value={dsc.sigle} onChange={v => setDescription({ sigle: v })} />

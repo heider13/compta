@@ -224,6 +224,19 @@ const WizardHolding = ({ setRoute, dossierId: initialDossierId, onCreated, demoM
 
       {step === 1 && (
         <W.Section title={`La holding (${formeSJ})`} subtitle="Identité de la société holding à créer.">
+          <W.AiPrefill formeJuridique={formeSJ} onPrefill={(d) => {
+            if (d.denomination) setEntreprise({ denomination: d.denomination.toUpperCase() });
+            if (d.sigle) setDescPM({ sigle: d.sigle });
+            if (d.objet) setEntreprise({ objet: d.objet });
+            if (d.capitalEuros) setEntreprise({ capital: d.capitalEuros });
+            if (d.dureeAnnees) setEntreprise({ dureeSociete: d.dureeAnnees });
+            if (d.siege?.voie) setEtabAdresse({ voie: d.siege.voie });
+            if (d.siege?.codePostal) setEtabAdresse({ codePostal: d.siege.codePostal });
+            if (d.siege?.commune) setEtabAdresse({ commune: d.siege.commune });
+            if (d.codeApe) setEtabActivite({ codeApe: d.codeApe });
+            if (d.objet) setEtabActivite({ descriptionDetaillee: d.objet });
+            if (d.dateDebutActivite) setEtabActivite({ dateDebutActivite: d.dateDebutActivite });
+          }} />
           <W.FieldText label="Dénomination sociale *" value={entreprise.denomination} onChange={v => setEntreprise({ denomination: v })} placeholder="Ex: HOLDING DUPONT" />
           <W.Row>
             <W.FieldText label="Sigle (optionnel)" value={descPM.sigle} onChange={v => setDescPM({ sigle: v })} />

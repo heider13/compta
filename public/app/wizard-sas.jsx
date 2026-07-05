@@ -229,6 +229,26 @@ const WizardSAS = ({ setRoute, dossierId: initialDossierId, onCreated, demoMode 
 
       {step === 0 && (
         <W.Section title="Société (SAS)" subtitle="Société par Actions Simplifiée — plusieurs associés possibles, président, actions.">
+          <W.AiPrefill formeJuridique="SAS" onPrefill={(d) => {
+            if (d.denomination) setEntreprise({ denomination: d.denomination.toUpperCase() });
+            if (d.sigle) setDescription({ sigle: d.sigle });
+            if (d.objet) setEntreprise({ objet: d.objet });
+            if (d.capitalEuros) setEntreprise({ capital: d.capitalEuros });
+            if (d.dureeAnnees) setEntreprise({ dureeSociete: d.dureeAnnees });
+            if (d.siege?.voie) setEtabAdresse({ voie: d.siege.voie });
+            if (d.siege?.codePostal) setEtabAdresse({ codePostal: d.siege.codePostal });
+            if (d.siege?.commune) setEtabAdresse({ commune: d.siege.commune });
+            if (d.codeApe) setEtabActivite({ codeApe: d.codeApe });
+            if (d.objet) setEtabActivite({ descriptionDetaillee: d.objet });
+            if (d.dateDebutActivite) setEtabActivite({ dateDebutActivite: d.dateDebutActivite });
+            const dir = d.dirigeant || {};
+            if (dir.nom) setPresDesc({ nomNaissance: dir.nom.toUpperCase() });
+            if (dir.prenoms?.length) setPresDesc({ prenoms: dir.prenoms });
+            if (dir.dateNaissance) setPresDesc({ dateDeNaissance: dir.dateNaissance });
+            if (dir.sexe) setPresDesc({ sexe: dir.sexe });
+            if (dir.nationalite) setPresDesc({ codeNationalite: dir.nationalite });
+            if (dir.lieuNaissance) setPresLieu({ commune: dir.lieuNaissance });
+          }} />
           <W.Row>
             <W.FieldText label="Dénomination sociale *" value={ent.denomination} onChange={v => setEntreprise({ denomination: v })} placeholder="Ex: ACME SAS" />
             <W.FieldText label="Sigle (optionnel)" value={dsc.sigle} onChange={v => setDescription({ sigle: v })} />
