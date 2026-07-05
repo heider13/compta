@@ -24,60 +24,52 @@ const TRUST = [
 
 function PersonaHero({ persona }: { persona: PersonaContent }) {
   return (
-    <section className="relative overflow-hidden bg-[#0e0b1a]">
+    <section className="relative overflow-hidden bg-white">
       <div
         aria-hidden="true"
-        className="absolute inset-0"
+        className="pointer-events-none absolute inset-0"
         style={{
           background:
-            'radial-gradient(ellipse 720px 620px at 6% -6%, rgba(255,190,140,0.5), transparent 55%),' +
-            'radial-gradient(ellipse 1000px 800px at 62% 22%, rgba(117,81,232,0.4), transparent 62%),' +
-            'radial-gradient(ellipse 800px 700px at 98% 100%, rgba(234,66,253,0.2), transparent 62%)',
+            'radial-gradient(ellipse 620px 520px at 10% -8%, rgba(117,81,232,0.16), transparent 60%),' +
+            'radial-gradient(ellipse 640px 520px at 92% 6%, rgba(255,136,123,0.18), transparent 62%)',
         }}
-      />
-      <div
-        aria-hidden="true"
-        className="pointer-events-none absolute inset-x-0 bottom-0 h-24"
-        style={{ background: 'linear-gradient(to bottom, transparent, #0e0b1a)' }}
       />
 
       <div className="relative mx-auto flex max-w-3xl flex-col items-center gap-7 px-5 pb-20 pt-32 text-center">
-        <span className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-3.5 py-1.5 text-xs font-semibold text-white/85 backdrop-blur">
-          <span className="h-1.5 w-1.5 rounded-full bg-[#ff887b]" />
+        <span className="inline-flex items-center gap-2 rounded-full border border-[var(--ink-150)] bg-white px-3.5 py-1.5 text-xs font-semibold text-[var(--accent-ink)] shadow-sm">
+          <span className="h-1.5 w-1.5 rounded-full bg-[var(--accent)]" />
           {persona.eyebrow}
         </span>
 
-        <h1 className="font-[Sora] text-[clamp(2.3rem,5.4vw,3.8rem)] font-bold leading-[1.06] tracking-[-0.02em] !text-white [&>span]:!text-transparent">
+        <h1 className="font-[Sora] text-[clamp(2.3rem,5.4vw,3.8rem)] font-bold leading-[1.06] tracking-[-0.02em] text-[var(--violet-900)] [&>span]:text-[var(--accent-ink)]">
           {persona.heroLines[0]}
           <br />
           {persona.heroLines[1]}
           <br />
-          <span className="bg-gradient-to-r from-[#ffbe8c] via-[#ff887b] to-[#ea42fd] bg-clip-text text-transparent">
-            {persona.heroHighlight}
-          </span>
+          <span>{persona.heroHighlight}</span>
         </h1>
 
-        <p className="max-w-2xl text-lg leading-relaxed text-white/70 sm:text-xl">
+        <p className="max-w-2xl text-lg leading-relaxed text-[var(--ink-600)] sm:text-xl">
           {persona.heroSub}
         </p>
 
         <div className="flex flex-wrap items-center justify-center gap-3">
           <a
             href="/auth/signup"
-            className="inline-flex items-center justify-center gap-2 rounded-full bg-white px-6 py-3 text-[15px] font-semibold text-[#0e0b1a] transition-transform duration-200 hover:-translate-y-0.5"
+            className="inline-flex items-center justify-center gap-2 rounded-full bg-[var(--accent)] px-6 py-3 text-[15px] font-semibold text-white shadow-[0_12px_30px_rgba(255,136,123,0.4)] transition-transform duration-200 hover:-translate-y-0.5"
           >
             Demander une démo
             <Arrow size={17} />
           </a>
           <a
             href="#fonctionnalites"
-            className="inline-flex items-center justify-center gap-2 rounded-full border border-white/25 bg-white/5 px-6 py-3 text-[15px] font-medium text-white transition-colors duration-200 hover:bg-white/15"
+            className="inline-flex items-center justify-center gap-2 rounded-full border border-[var(--ink-200)] bg-white px-6 py-3 text-[15px] font-medium text-[var(--ink-900)] transition-colors duration-200 hover:bg-[var(--ink-50)]"
           >
             Voir les fonctionnalités
           </a>
         </div>
 
-        <div className="mt-2 flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-xs text-white/55">
+        <div className="mt-2 flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-xs text-[var(--ink-500)]">
           {TRUST.map(({ text }) => (
             <span key={text}>{text}</span>
           ))}

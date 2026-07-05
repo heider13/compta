@@ -1163,3 +1163,43 @@ section[id] { scroll-margin-top: 80px; }
 @media (prefers-reduced-motion: reduce) {
   .orbit-layer, .orbit-layer-2, .orbit-node > .orbit-keep { animation: none; }
 }
+
+/* ─── Animations façon Brevo (float des cartes, reveal au scroll, pop) ─── */
+@keyframes bp-float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-11px); }
+}
+@keyframes bp-float-slow {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-7px); }
+}
+@keyframes bp-pulse-ring {
+  0% { box-shadow: 0 0 0 0 rgba(11,153,110,0.45); }
+  70% { box-shadow: 0 0 0 12px rgba(11,153,110,0); }
+  100% { box-shadow: 0 0 0 0 rgba(11,153,110,0); }
+}
+.bp-float { animation: bp-float 5.5s ease-in-out infinite; }
+.bp-float-slow { animation: bp-float-slow 7.5s ease-in-out infinite; }
+.bp-pulse-ring { animation: bp-pulse-ring 2.2s ease-out infinite; }
+
+/* Scroll-reveal : état initial masqué + transition, la classe .is-in révèle */
+.bp-reveal {
+  opacity: 0;
+  transform: translateY(22px);
+  transition: opacity 0.6s cubic-bezier(0.22,1,0.36,1), transform 0.6s cubic-bezier(0.22,1,0.36,1);
+  transition-delay: var(--bp-delay, 0ms);
+}
+.bp-reveal.is-in { opacity: 1; transform: translateY(0); }
+
+@media (prefers-reduced-motion: reduce) {
+  .bp-float, .bp-float-slow, .bp-pulse-ring { animation: none; }
+  .bp-reveal { opacity: 1; transform: none; transition: none; }
+}
+
+/* Animation d'entrée du panneau d'onglet (TabShowcase) — rejoué à chaque onglet */
+@keyframes bp-tabin {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.bp-tabin { animation: bp-tabin 0.35s cubic-bezier(0.22,1,0.36,1); }
+@media (prefers-reduced-motion: reduce) { .bp-tabin { animation: none; } }
