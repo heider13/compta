@@ -166,6 +166,21 @@ const WizardCreation = ({ setRoute, dossierId: initialDossierId, onCreated, demo
 
       {step === 0 && (
         <Section title="Identité du déclarant">
+          <window.WC.AiPrefill formeJuridique="AE" onPrefill={(d) => {
+            const dir = d.dirigeant || {};
+            if (dir.nom) setIdent({ nomNaissance: dir.nom.toUpperCase() });
+            if (dir.prenoms?.length) setIdent({ prenoms: dir.prenoms });
+            if (dir.dateNaissance) setIdent({ dateDeNaissance: dir.dateNaissance });
+            if (dir.sexe) setIdent({ sexe: dir.sexe });
+            if (dir.nationalite) setIdent({ codeNationalite: dir.nationalite });
+            if (dir.lieuNaissance) setLieuNaissance({ commune: dir.lieuNaissance });
+            if (d.siege?.voie) setIdentAdresse({ voie: d.siege.voie });
+            if (d.siege?.codePostal) setIdentAdresse({ codePostal: d.siege.codePostal });
+            if (d.siege?.commune) setIdentAdresse({ commune: d.siege.commune });
+            if (d.codeApe) setEtabActivite({ codeApe: d.codeApe });
+            if (d.objet) setEtabActivite({ descriptionDetaillee: d.objet });
+            if (d.dateDebutActivite) setEtabActivite({ dateDebutActivite: d.dateDebutActivite });
+          }} />
           <window.WC.IdentityOcrUpload onExtracted={(f) => {
             const patch = {};
             if (f.nom) patch.nomNaissance = f.nom.toUpperCase();

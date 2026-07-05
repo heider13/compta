@@ -8,7 +8,7 @@
 const express = require('express');
 const router = express.Router();
 
-const { searchLegalChunks, streamAnswer, draftDocument, DOC_TYPES } = require('../lib/ai');
+const { searchLegalChunks, streamAnswer, draftDocument, DOC_TYPES, prefillFormality } = require('../lib/ai');
 const { getSupabaseAdmin } = require('../lib/db');
 const {
   Document, Packer, Paragraph, TextRun, HeadingLevel, AlignmentType,
@@ -258,5 +258,28 @@ router.post(
 router.get('/doc-types', (req, res) => {
   res.json({ types: Object.entries(DOC_TYPES).map(([id, label]) => ({ id, label })) });
 });
+
+// POST /api/ai/prefill  {formeJuridique?, brief} → JSON normalisé pour le wizard
+router.post(
+  '/prefill',
+  asyncRoute(async (req, res) => {
+    const { formeJuridique, brief } = req.body || {};
+    if (!brief || typeof brief !== 'string' || brief.length > 4000) {
+      return res.status(400).json({ error: 'invalid_brief' });
+    }
+    const { data, refused } = await prefillFormality({ formeJuridique, brief });
+    if (refused) return res.status(422).json({ error: 'refusal' });
+    if (!data) return res.status(502).json({ error: 'extraction_failed' });
+    try {
+      const supa = getSupabaseAdmin();
+      await supa.from('audit_logs').insert({
+        organization_id: req.currentOrgId, user_id: req.user.id,
+        action: 'ai.formality.prefilled', resource_type: 'ai_prefill', resource_id: null,
+        metadata: { forme: data.formeJuridique, manquants: (data.champsManquants || []).length },
+      });
+    } catch {}
+    res.json({ data });
+  }),
+);
 
 module.exports = router;

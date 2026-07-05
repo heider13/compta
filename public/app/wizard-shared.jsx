@@ -314,7 +314,67 @@ const IdentityOcrUpload = ({ onExtracted, label = 'Scanner une pièce d\'identit
   );
 };
 
+// ─── Pré-remplissage IA de la formalité ────────────────────────────────
+// L'utilisateur décrit l'opération en langage naturel ; l'agent extrait un
+// JSON normalisé que le wizard mappe dans son état via onPrefill(data).
+// Affiché en tête du wizard pour minimiser la saisie manuelle.
+const AiPrefill = ({ formeJuridique, onPrefill }) => {
+  const [brief, setBrief] = React.useState('');
+  const [state, setState] = React.useState({ status: 'idle', message: null });
+
+  const run = async () => {
+    if (!brief.trim() || state.status === 'loading') return;
+    setState({ status: 'loading', message: "L'agent analyse votre description…" });
+    try {
+      const res = await window.ComptaAPI.apiFetch('/api/ai/prefill', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ formeJuridique, brief }),
+      });
+      const data = res.data || {};
+      onPrefill(data);
+      const manque = (data.champsManquants || []).length;
+      setState({
+        status: 'done',
+        message: `✓ Champs pré-remplis.${manque ? ' À compléter : ' + data.champsManquants.slice(0, 6).join(', ') + '.' : ''} Vérifiez avant de continuer.`,
+      });
+    } catch (e) {
+      setState({ status: 'error', message: e.message || 'Analyse impossible.' });
+    }
+  };
+
+  return (
+    <div style={{
+      marginBottom: 20, padding: 16, borderRadius: 12,
+      background: 'linear-gradient(135deg, var(--accent-soft, #ECE6FF), #F5F2FF)',
+      border: '1px solid var(--accent, #5B36D6)',
+    }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8, fontSize: 13, fontWeight: 700, color: 'var(--accent-ink, #4827B0)' }}>
+        ✨ Pré-remplissage par l'IA
+        <span style={{ fontWeight: 400, color: 'var(--ink-500)' }}>— décrivez l'opération, l'agent remplit</span>
+      </div>
+      <textarea
+        value={brief}
+        onChange={(e) => setBrief(e.target.value)}
+        rows={3}
+        placeholder="Ex : Créer une SASU pour Jean Dupont, capital 1000 €, activité de conseil en informatique, siège au 12 rue de la Paix 75002 Paris, président Jean Dupont."
+        style={{ width: '100%', padding: 10, border: '1px solid var(--ink-200)', borderRadius: 8, fontFamily: 'inherit', fontSize: 13, resize: 'vertical' }}
+      />
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 8 }}>
+        <button type="button" className="btn btn-accent btn-sm" onClick={run} disabled={state.status === 'loading' || !brief.trim()}>
+          {state.status === 'loading' ? '⏳ Analyse…' : 'Remplir avec l\'IA'}
+        </button>
+        {state.message && (
+          <span style={{ fontSize: 12, color: state.status === 'error' ? '#b42318' : state.status === 'done' ? 'var(--status-green, #137333)' : 'var(--ink-600)' }}>
+            {state.message}
+          </span>
+        )}
+      </div>
+    </div>
+  );
+};
+
 window.WC = {
   Section, Row, FieldText, FieldTextarea, FieldDate, FieldSelect, FieldCheckbox,
-  RecapBlock, ProgressBar, Nav, DocumentUploadList, RgsWarning, IdentityOcrUpload,
+  RecapBlock, ProgressBar, Nav, DocumentUploadList, RgsWarning, IdentityOcrUpload, AiPrefill,
 };

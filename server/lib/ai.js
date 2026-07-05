@@ -161,6 +161,97 @@ async function draftDocument({ docType, brief, chunks = [] }) {
   return { title: label, markdown: text, refused: msg.stop_reason === 'refusal', usage: msg.usage };
 }
 
+// ─── Agent de pré-remplissage de formalité ───────────────────────
+// À partir d'un brief en langage naturel, extrait un JSON normalisé que
+// chaque wizard mappe dans sa structure (même pattern que l'OCR).
+
+const PREFILL_SCHEMA = {
+  type: 'object',
+  additionalProperties: false,
+  properties: {
+    formeJuridique: { type: 'string', description: 'AE, SASU, SAS, EURL, SARL, SCI, HOLDING ou vide' },
+    denomination: { type: 'string' },
+    sigle: { type: 'string' },
+    objet: { type: 'string', description: "Objet social / description de l'activité" },
+    capitalEuros: { type: 'number', description: 'Capital social en euros (0 si inconnu)' },
+    dureeAnnees: { type: 'integer' },
+    codeApe: { type: 'string', description: 'Code APE/NAF si déductible (ex 7022Z), sinon vide' },
+    dateDebutActivite: { type: 'string', description: 'YYYY-MM-DD ou vide' },
+    siege: {
+      type: 'object', additionalProperties: false,
+      properties: {
+        voie: { type: 'string' }, codePostal: { type: 'string' }, commune: { type: 'string' },
+      },
+      required: ['voie', 'codePostal', 'commune'],
+    },
+    dirigeant: {
+      type: 'object', additionalProperties: false,
+      properties: {
+        nom: { type: 'string' }, prenoms: { type: 'array', items: { type: 'string' } },
+        dateNaissance: { type: 'string', description: 'YYYY-MM-DD ou vide' },
+        lieuNaissance: { type: 'string' }, sexe: { type: 'string', description: 'M ou F' },
+        nationalite: { type: 'string', description: 'code ISO3 ex FRA' },
+        role: { type: 'string', description: 'PRESIDENT, GERANT, etc.' },
+      },
+      required: ['nom', 'prenoms', 'dateNaissance', 'lieuNaissance', 'sexe', 'nationalite', 'role'],
+    },
+    associes: {
+      type: 'array',
+      items: {
+        type: 'object', additionalProperties: false,
+        properties: {
+          nom: { type: 'string' }, prenoms: { type: 'array', items: { type: 'string' } },
+          apportEuros: { type: 'number' }, pourcentage: { type: 'number' },
+        },
+        required: ['nom', 'prenoms', 'apportEuros', 'pourcentage'],
+      },
+    },
+    capitalVariable: { type: 'boolean' },
+    champsManquants: {
+      type: 'array', items: { type: 'string' },
+      description: 'Libellés des informations clés absentes du brief, à demander au professionnel',
+    },
+  },
+  required: ['formeJuridique', 'denomination', 'objet', 'capitalEuros', 'dirigeant', 'associes', 'champsManquants'],
+};
+
+const PREFILL_SYSTEM = `Tu es un agent de saisie de formalités juridiques INPI. À partir de la description d'une opération par un professionnel, tu extrais les informations structurées pour pré-remplir une liasse.
+
+<regles>
+- N'invente JAMAIS de données non déductibles (nom, date de naissance, adresse précise, SIREN). Laisse le champ vide et ajoute-le à "champsManquants".
+- Déduis le code APE/NAF le plus probable de l'activité décrite quand c'est raisonnable ; sinon laisse vide.
+- Capital : si non précisé, mets 0 et signale-le dans champsManquants.
+- Durée société : 99 ans par défaut si non précisé.
+- Le rôle du dirigeant dépend de la forme : PRESIDENT pour SAS/SASU, GERANT pour SARL/EURL/SCI.
+- Sexe/nationalité du dirigeant : ne déduis le sexe du prénom que si évident ; nationalité FRA par défaut seulement si le contexte l'indique clairement, sinon vide.
+- Sois exhaustif sur champsManquants : tout ce qu'il faudra saisir à la main.
+</regles>`;
+
+async function prefillFormality({ formeJuridique, brief }) {
+  const client = getAnthropic();
+  const msg = await client.messages.create({
+    model: CLAUDE_MODEL,
+    max_tokens: 2048,
+    thinking: { type: 'adaptive' },
+    system: [{ type: 'text', text: PREFILL_SYSTEM, cache_control: { type: 'ephemeral' } }],
+    output_config: { format: { type: 'json_schema', schema: PREFILL_SCHEMA } },
+    messages: [{
+      role: 'user',
+      content: `Forme juridique visée : ${formeJuridique || 'à déduire du texte'}.\n\nDescription de l'opération :\n${brief}\n\nExtrais les informations structurées.`,
+    }],
+  });
+  const text = (msg.content || []).filter((b) => b.type === 'text').map((b) => b.text).join('');
+  let data;
+  try {
+    data = JSON.parse(text);
+  } catch {
+    const m = text.match(/\{[\s\S]*\}/);
+    data = m ? JSON.parse(m[0]) : null;
+  }
+  return { data, refused: msg.stop_reason === 'refusal', usage: msg.usage };
+}
+
 module.exports = {
-  embed, searchLegalChunks, streamAnswer, draftDocument, DOC_TYPES, CLAUDE_MODEL,
+  embed, searchLegalChunks, streamAnswer, draftDocument, DOC_TYPES,
+  prefillFormality, CLAUDE_MODEL,
 };
