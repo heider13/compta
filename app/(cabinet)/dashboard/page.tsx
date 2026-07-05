@@ -217,7 +217,7 @@ export default async function CabinetDashboardPage() {
         </Button>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="grid gap-4 [grid-template-columns:repeat(auto-fit,minmax(210px,1fr))]">
         {kpis.map((kpi) => {
           const inner = (
             <Card className="h-full transition-shadow hover:shadow-md">
