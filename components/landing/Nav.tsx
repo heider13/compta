@@ -49,7 +49,7 @@ export function Nav() {
           <span
             className={cn(
               'text-[19px] font-semibold tracking-tight transition-colors',
-              scrolled ? 'text-[var(--violet-900)]' : 'text-white',
+              scrolled ? 'text-[var(--violet-900)]' : '!text-white',
             )}
           >
             compta
@@ -65,7 +65,7 @@ export function Nav() {
                 'text-sm font-medium transition-colors duration-150',
                 scrolled
                   ? 'text-[var(--ink-600)] hover:text-[var(--violet-900)]'
-                  : 'text-white/80 hover:text-white',
+                  : '!text-white/80 hover:!text-white',
               )}
             >
               {l.label}
@@ -80,7 +80,7 @@ export function Nav() {
               'inline-flex items-center justify-center rounded-full px-4 py-2 text-sm font-medium transition-colors',
               scrolled
                 ? 'border border-[var(--ink-200)] text-[var(--ink-900)] hover:bg-[var(--ink-50)]'
-                : 'border border-white/25 text-white hover:bg-white/10',
+                : 'border border-white/25 !text-white hover:bg-white/10',
             )}
           >
             Se connecter
@@ -89,7 +89,7 @@ export function Nav() {
             href="/auth/signup"
             className={cn(
               'inline-flex items-center justify-center gap-1.5 rounded-full px-4 py-2 text-sm font-semibold transition-transform hover:-translate-y-0.5',
-              scrolled ? 'bg-[var(--accent)] text-[#080331]' : 'bg-white text-[#0e0b1a]',
+              scrolled ? 'bg-[var(--accent)] text-[#080331]' : 'bg-white !text-[#0e0b1a]',
             )}
           >
             <span className="hidden sm:inline">Demander une démo</span>
