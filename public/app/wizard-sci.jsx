@@ -187,7 +187,7 @@ const WizardSCI = ({ setRoute, dossierId: initialDossierId, onCreated, demoMode 
 
       {step === 0 && (
         <W.Section title="La SCI" subtitle="Identité de la société civile immobilière.">
-          <W.AiPrefill formeJuridique="SCI" onPrefill={(d) => {
+          <W.AiLaunchpad formeJuridique="SCI" onPrefill={(d) => {
             if (d.denomination) setEntreprise({ denomination: d.denomination.toUpperCase() });
             if (d.sigle) setDescPM({ sigle: d.sigle });
             if (d.objet) setEntreprise({ objet: d.objet });

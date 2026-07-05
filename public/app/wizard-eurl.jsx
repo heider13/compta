@@ -229,7 +229,7 @@ const WizardEURL = ({ setRoute, dossierId: initialDossierId, onCreated, demoMode
 
       {step === 0 && (
         <W.Section title="Société (EURL)" subtitle="Entreprise Unipersonnelle à Responsabilité Limitée — un associé unique, gérant, parts sociales.">
-          <W.AiPrefill formeJuridique="EURL" onPrefill={(d) => {
+          <W.AiLaunchpad formeJuridique="EURL" onPrefill={(d) => {
             if (d.denomination) setEntreprise({ denomination: d.denomination.toUpperCase() });
             if (d.sigle) setDescription({ sigle: d.sigle });
             if (d.objet) setEntreprise({ objet: d.objet });

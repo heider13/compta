@@ -229,7 +229,7 @@ const WizardSASU = ({ setRoute, dossierId: initialDossierId, onCreated, demoMode
 
       {step === 0 && (
         <W.Section title="Société (SASU)" subtitle="Société par Actions Simplifiée Unipersonnelle — un associé unique, président, actions.">
-          <W.AiPrefill formeJuridique="SASU" onPrefill={(d) => {
+          <W.AiLaunchpad formeJuridique="SASU" onPrefill={(d) => {
             if (d.denomination) setEntreprise({ denomination: d.denomination.toUpperCase() });
             if (d.sigle) setDescription({ sigle: d.sigle });
             if (d.objet) setEntreprise({ objet: d.objet });

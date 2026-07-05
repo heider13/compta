@@ -402,6 +402,111 @@ const DocExtractUpload = ({ label, docType, onExtracted }) => {
   );
 };
 
+// ─── Rampe de lancement IA (hero du wizard) ────────────────────────────
+// Remplace la saisie « façon formulaire INPI » par une entrée simple et
+// naturelle : on décrit son projet (ou on dépose un document), l'IA prépare
+// tout le dossier. Met en avant les modules IA du parcours (lecture des
+// pièces, génération des statuts, signature, assistant). Réutilise les mêmes
+// mappers onPrefill / onDocExtract que les composants IA existants.
+const AI_MODULES = [
+  { icon: '🔍', label: 'Lecture des pièces', hint: "Scan automatique des cartes d'identité" },
+  { icon: '📄', label: 'Statuts générés', hint: 'Rédaction automatique de vos statuts' },
+  { icon: '✍️', label: 'Signature en ligne', hint: 'Signature électronique sécurisée' },
+  { icon: '🏛️', label: 'Dépôt automatique', hint: 'Transmission au registre officiel' },
+];
+
+const AiLaunchpad = ({ formeJuridique, onPrefill, docType, onDocExtract, placeholder }) => {
+  const [brief, setBrief] = React.useState('');
+  const [state, setState] = React.useState({ status: 'idle', message: null });
+
+  const run = async () => {
+    if (!brief.trim() || state.status === 'loading') return;
+    setState({ status: 'loading', message: "L'IA prépare votre dossier…" });
+    try {
+      const res = await window.ComptaAPI.apiFetch('/api/ai/prefill', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ formeJuridique, brief }),
+      });
+      const data = res.data || {};
+      onPrefill(data);
+      const manque = (data.champsManquants || []).length;
+      setState({
+        status: 'done',
+        message: `✓ C'est prêt !${manque ? ' Il reste à préciser : ' + data.champsManquants.slice(0, 5).join(', ') + '.' : ' Vérifiez et continuez.'}`,
+      });
+    } catch (e) {
+      const hint = e.status === 503 ? " (assistant IA momentanément indisponible)" : '';
+      setState({ status: 'error', message: (e.data?.detail || e.message || 'Analyse impossible.') + hint });
+    }
+  };
+
+  return (
+    <div style={{
+      marginBottom: 22, padding: '22px 22px 18px', borderRadius: 16,
+      background: 'linear-gradient(135deg, var(--accent-soft, #ECE6FF), #F7F4FF 60%, #FFFFFF)',
+      border: '1px solid var(--accent, #5B36D6)',
+      boxShadow: '0 10px 30px rgba(91,54,214,0.10)',
+    }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, fontWeight: 700, color: 'var(--accent-ink, #4827B0)', letterSpacing: 0.3 }}>
+        <span style={{ fontSize: 16 }}>✨</span> ASSISTANT IA
+      </div>
+      <h3 style={{ margin: '8px 0 4px', fontSize: 20, lineHeight: 1.2 }}>
+        Décrivez votre projet. L'IA s'occupe du reste.
+      </h3>
+      <p style={{ margin: 0, fontSize: 13.5, color: 'var(--ink-600)' }}>
+        Pas besoin de connaître les formulaires officiels — écrivez simplement, en une phrase,
+        ce que vous voulez faire. On remplit le dossier pour vous.
+      </p>
+
+      <textarea
+        value={brief}
+        onChange={(e) => setBrief(e.target.value)}
+        rows={3}
+        placeholder={placeholder || "Ex : Je crée ma société de conseil, capital 1000 €, à Paris, je suis le dirigeant. Elle s'appellera ACME."}
+        style={{ width: '100%', marginTop: 14, padding: '12px 14px', border: '1px solid var(--ink-200)', borderRadius: 10, fontFamily: 'inherit', fontSize: 14, resize: 'vertical', background: 'white' }}
+      />
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 10, flexWrap: 'wrap' }}>
+        <button type="button" className="btn btn-accent" onClick={run} disabled={state.status === 'loading' || !brief.trim()}>
+          {state.status === 'loading' ? '⏳ Préparation…' : '✨ Préparer mon dossier'}
+        </button>
+        {state.message && (
+          <span style={{ fontSize: 12.5, fontWeight: 500, color: state.status === 'error' ? '#b42318' : state.status === 'done' ? 'var(--status-green, #137333)' : 'var(--ink-600)' }}>
+            {state.message}
+          </span>
+        )}
+      </div>
+
+      {/* Dépôt de document (modification / comptes) — l'IA lit le PV ou les statuts */}
+      {onDocExtract && (
+        <div style={{ marginTop: 14, paddingTop: 14, borderTop: '1px dashed var(--accent, #5B36D6)' }}>
+          <DocExtractUpload
+            label="Ou déposez un document — l'IA le lit pour vous (PV, statuts…)"
+            docType={docType}
+            onExtracted={onDocExtract}
+          />
+        </div>
+      )}
+
+      {/* Vitrine des modules IA du parcours — rassure et met en avant l'automatisation */}
+      <div style={{ display: 'flex', gap: 8, marginTop: 16, flexWrap: 'wrap' }}>
+        {AI_MODULES.map((m) => (
+          <div key={m.label} title={m.hint} style={{
+            display: 'flex', alignItems: 'center', gap: 6, padding: '6px 10px',
+            background: 'rgba(255,255,255,0.7)', border: '1px solid var(--ink-150)',
+            borderRadius: 999, fontSize: 12, color: 'var(--ink-700)', fontWeight: 500,
+          }}>
+            <span>{m.icon}</span>{m.label}
+          </div>
+        ))}
+      </div>
+      <div style={{ marginTop: 10, fontSize: 11.5, color: 'var(--ink-500)' }}>
+        Ces étapes sont automatisées tout au long de votre parcours. Vous n'avez qu'à vérifier et valider.
+      </div>
+    </div>
+  );
+};
+
 // ─── Pré-remplissage IA de la formalité ────────────────────────────────
 // L'utilisateur décrit l'opération en langage naturel ; l'agent extrait un
 // JSON normalisé que le wizard mappe dans son état via onPrefill(data).
@@ -465,5 +570,5 @@ const AiPrefill = ({ formeJuridique, onPrefill }) => {
 window.WC = {
   Section, Row, FieldText, FieldTextarea, FieldDate, FieldSelect, FieldCheckbox,
   RecapBlock, ProgressBar, Nav, DocumentUploadList, RgsWarning, IdentityOcrUpload, AiPrefill,
-  DocExtractUpload,
+  DocExtractUpload, AiLaunchpad,
 };

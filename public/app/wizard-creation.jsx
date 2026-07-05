@@ -166,7 +166,7 @@ const WizardCreation = ({ setRoute, dossierId: initialDossierId, onCreated, demo
 
       {step === 0 && (
         <Section title="Identité du déclarant">
-          <window.WC.AiPrefill formeJuridique="AE" onPrefill={(d) => {
+          <window.WC.AiLaunchpad formeJuridique="AE" onPrefill={(d) => {
             const dir = d.dirigeant || {};
             if (dir.nom) setIdent({ nomNaissance: dir.nom.toUpperCase() });
             if (dir.prenoms?.length) setIdent({ prenoms: dir.prenoms });

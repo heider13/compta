@@ -229,7 +229,7 @@ const WizardSAS = ({ setRoute, dossierId: initialDossierId, onCreated, demoMode 
 
       {step === 0 && (
         <W.Section title="Société (SAS)" subtitle="Société par Actions Simplifiée — plusieurs associés possibles, président, actions.">
-          <W.AiPrefill formeJuridique="SAS" onPrefill={(d) => {
+          <W.AiLaunchpad formeJuridique="SAS" onPrefill={(d) => {
             if (d.denomination) setEntreprise({ denomination: d.denomination.toUpperCase() });
             if (d.sigle) setDescription({ sigle: d.sigle });
             if (d.objet) setEntreprise({ objet: d.objet });

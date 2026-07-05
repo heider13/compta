@@ -131,6 +131,80 @@ async function validateDossier(formData: FormData) {
   );
 }
 
+// Auto-pilote : enchaîne automatiquement les étapes SÛRES (génération de
+// statuts, validation interne pour un admin) et s'arrête net dès qu'une étape
+// exige une intervention humaine ou une action irréversible/sortante
+// (signature envoyée à un tiers, dépôt INPI) — jamais déclenchées sans un clic
+// explicite de l'utilisateur.
+async function autoPilot(formData: FormData) {
+  'use server';
+  const dossierId = String(formData.get('dossierId') ?? '');
+  const supabase = await createClient();
+  const { data: sessionData } = await supabase.auth.getSession();
+  const token = sessionData.session?.access_token;
+  if (!token) redirect('/auth/login');
+  const { data: d } = await supabase
+    .from('dossiers')
+    .select('organization_id')
+    .eq('id', dossierId)
+    .maybeSingle();
+  const headers: Record<string, string> = {
+    Authorization: `Bearer ${token}`,
+    ...(d?.organization_id ? { 'x-organization-id': d.organization_id } : {}),
+  };
+  const post = (path: string, body: unknown) =>
+    fetch(`${VPS_BACKEND_URL}${path}`, {
+      method: 'POST',
+      headers: { ...headers, 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+      cache: 'no-store',
+    });
+
+  let advanced = 0;
+  let stopped = 'done';
+  try {
+    for (let i = 0; i < 6; i++) {
+      const pres = await fetch(`${VPS_BACKEND_URL}/api/dossiers/${dossierId}/pipeline`, {
+        headers,
+        cache: 'no-store',
+      });
+      if (!pres.ok) { stopped = 'error'; break; }
+      const pipe = (await pres.json()) as Pipeline;
+      if (pipe.progress.complete || !pipe.next) { stopped = 'done'; break; }
+      if (pipe.next.waiting) { stopped = 'waiting_signature'; break; }
+      const kind = pipe.next.action?.kind;
+      if (kind === 'generate-doc') {
+        const r = await post(`/api/dossiers/${dossierId}/generate-doc`, { docType: 'STATUTS' });
+        if (!r.ok) { stopped = 'error'; break; }
+        advanced++;
+        continue;
+      }
+      if (kind === 'validate' && pipe.isAdmin) {
+        const r = await post(`/api/admin/dossiers/${dossierId}/validate`, { sendToInpi: false });
+        if (!r.ok) { stopped = 'error'; break; }
+        advanced++;
+        continue;
+      }
+      // Étapes qui exigent une main humaine ou une action sortante → on s'arrête.
+      stopped =
+        kind === 'wizard'
+          ? 'needs_input'
+          : kind === 'sign-request' || kind === 'sign-status'
+            ? 'needs_signature'
+            : kind === 'submit-inpi'
+              ? 'needs_inpi_confirm'
+              : kind === 'validate'
+                ? 'needs_admin'
+                : 'blocked';
+      break;
+    }
+  } catch (err) {
+    if (err instanceof Error && err.message === 'NEXT_REDIRECT') throw err;
+    stopped = 'error';
+  }
+  redirect(`/dossiers/${dossierId}/orchestrator?auto=${advanced}&stopped=${stopped}`);
+}
+
 // ─── Rendu d'une étape-agent ─────────────────────────────
 function StepNode({
   step,
@@ -332,6 +406,17 @@ const OK_MSG: Record<string, string> = {
   depot: 'Formalité transmise à l’INPI.',
 };
 
+const STOP_MSG: Record<string, string> = {
+  done: 'Toutes les étapes automatisables ont été exécutées.',
+  needs_input: 'À vous de jouer : complétez les informations et les pièces du dossier.',
+  needs_signature: 'Prêt à signer : renseignez le signataire pour lancer la signature.',
+  waiting_signature: 'Signature en cours — en attente du signataire.',
+  needs_inpi_confirm: 'Prêt à déposer : confirmez le dépôt à l’INPI (action définitive).',
+  needs_admin: 'En attente de validation par un administrateur du cabinet.',
+  blocked: 'Étape bloquée — vérifiez le dossier.',
+  error: 'Une étape a échoué — réessayez ou vérifiez le dossier.',
+};
+
 export default async function OrchestratorPage({
   params,
   searchParams,
@@ -374,6 +459,8 @@ export default async function OrchestratorPage({
 
   const okFlag = typeof sp.ok === 'string' ? sp.ok : null;
   const errorCode = typeof sp.error === 'string' ? sp.error : null;
+  const autoCount = typeof sp.auto === 'string' ? parseInt(sp.auto, 10) || 0 : null;
+  const stoppedCode = typeof sp.stopped === 'string' ? sp.stopped : null;
 
   return (
     <div className="mx-auto w-full max-w-4xl space-y-6 p-4 sm:p-6">
@@ -425,6 +512,16 @@ export default async function OrchestratorPage({
           Impossible de charger la pipeline (<span className="font-mono text-xs">{fetchError}</span>).
         </div>
       )}
+      {stoppedCode && (
+        <div className="flex items-start gap-2 rounded-lg border border-primary/30 bg-primary/5 px-4 py-3 text-sm">
+          <Sparkles className="mt-0.5 size-4 shrink-0 text-primary" />
+          <span>
+            <strong>Auto-pilote : </strong>
+            {autoCount ? `${autoCount} étape${autoCount > 1 ? 's' : ''} exécutée${autoCount > 1 ? 's' : ''} automatiquement. ` : ''}
+            {STOP_MSG[stoppedCode] ?? ''}
+          </span>
+        </div>
+      )}
 
       {pipeline && (
         <>
@@ -453,6 +550,21 @@ export default async function OrchestratorPage({
                   style={{ width: `${pipeline.progress.percent}%` }}
                 />
               </div>
+
+              {!pipeline.progress.complete && (
+                <div className="mt-4 flex flex-wrap items-center gap-3">
+                  <form action={autoPilot}>
+                    <input type="hidden" name="dossierId" value={id} />
+                    <Button type="submit" size="sm">
+                      <Sparkles className="mr-1 size-4" /> Lancer l’auto-pilote
+                    </Button>
+                  </form>
+                  <span className="text-xs text-muted-foreground">
+                    L’IA enchaîne les étapes automatisables et s’arrête dès qu’une décision
+                    vous revient (signature, dépôt).
+                  </span>
+                </div>
+              )}
             </CardContent>
           </Card>
 

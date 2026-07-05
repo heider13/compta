@@ -224,7 +224,7 @@ const WizardHolding = ({ setRoute, dossierId: initialDossierId, onCreated, demoM
 
       {step === 1 && (
         <W.Section title={`La holding (${formeSJ})`} subtitle="Identité de la société holding à créer.">
-          <W.AiPrefill formeJuridique={formeSJ} onPrefill={(d) => {
+          <W.AiLaunchpad formeJuridique={formeSJ} onPrefill={(d) => {
             if (d.denomination) setEntreprise({ denomination: d.denomination.toUpperCase() });
             if (d.sigle) setDescPM({ sigle: d.sigle });
             if (d.objet) setEntreprise({ objet: d.objet });

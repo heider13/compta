@@ -185,7 +185,7 @@ const WizardSARL = ({ setRoute, dossierId: initialDossierId, onCreated, demoMode
 
       {step === 0 && (
         <W.Section title="La société" subtitle="Identité de la SARL à créer.">
-          <W.AiPrefill formeJuridique="SARL" onPrefill={(d) => {
+          <W.AiLaunchpad formeJuridique="SARL" onPrefill={(d) => {
             if (d.denomination) setEntreprise({ denomination: d.denomination.toUpperCase() });
             if (d.sigle) setDescPM({ sigle: d.sigle });
             if (d.objet) setEntreprise({ objet: d.objet });
