@@ -122,7 +122,7 @@ export function Hero() {
               Plateforme d&apos;automatisation propulsée par l&apos;IA
             </span>
 
-            <h1 className="mt-6 font-[Sora] text-[clamp(2.3rem,5vw,3.9rem)] font-bold leading-[1.05] tracking-[-0.02em] text-white">
+            <h1 className="mt-6 font-[Sora] text-[clamp(2.3rem,5vw,3.9rem)] font-bold leading-[1.05] tracking-[-0.02em] !text-white [&>span]:!text-transparent">
               Les formalités juridiques
               <br />
               que vous pensiez chronophages.

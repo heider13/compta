@@ -47,7 +47,7 @@ function PersonaHero({ persona }: { persona: PersonaContent }) {
           {persona.eyebrow}
         </span>
 
-        <h1 className="font-[Sora] text-[clamp(2.3rem,5.4vw,3.8rem)] font-bold leading-[1.06] tracking-[-0.02em] text-white">
+        <h1 className="font-[Sora] text-[clamp(2.3rem,5.4vw,3.8rem)] font-bold leading-[1.06] tracking-[-0.02em] !text-white [&>span]:!text-transparent">
           {persona.heroLines[0]}
           <br />
           {persona.heroLines[1]}
