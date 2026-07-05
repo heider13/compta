@@ -251,7 +251,120 @@ async function prefillFormality({ formeJuridique, brief }) {
   return { data, refused: msg.stop_reason === 'refusal', usage: msg.usage };
 }
 
+// ─── Extraction structurée d'un document juridique déposé ──────────
+// (PV d'assemblée générale, statuts, traité de cession…) → données de formalité.
+const DOC_EXTRACT_SCHEMA = {
+  type: 'object', additionalProperties: false,
+  properties: {
+    documentType: { type: 'string', description: 'statuts | pv_ag | traite_cession | rapport | autre' },
+    societe: {
+      type: 'object', additionalProperties: false,
+      properties: {
+        denomination: { type: 'string' }, sigle: { type: 'string' },
+        formeJuridique: { type: 'string' }, siren: { type: 'string', description: '9 chiffres ou vide' },
+        capitalEuros: { type: 'number' },
+      },
+      required: ['denomination', 'sigle', 'formeJuridique', 'siren', 'capitalEuros'],
+    },
+    dateActe: { type: 'string', description: "Date de l'acte/assemblée, YYYY-MM-DD ou vide" },
+    lieu: { type: 'string' },
+    decisions: {
+      type: 'array',
+      description: 'Décisions/résolutions votées ou clauses clés du document',
+      items: {
+        type: 'object', additionalProperties: false,
+        properties: {
+          type: { type: 'string', description: 'TRANSFERT_SIEGE, CHANGEMENT_DIRIGEANT, AUGMENTATION_CAPITAL, REDUCTION_CAPITAL, CHANGEMENT_OBJET, CHANGEMENT_DENOMINATION, APPROBATION_COMPTES, AFFECTATION_RESULTAT, CESSION_PARTS, DISSOLUTION, AUTRE' },
+          resume: { type: 'string', description: 'Résumé en une phrase' },
+        },
+        required: ['type', 'resume'],
+      },
+    },
+    nouveauSiege: {
+      type: 'object', additionalProperties: false,
+      description: "Renseigné uniquement en cas de transfert de siège",
+      properties: {
+        voie: { type: 'string' }, codePostal: { type: 'string' }, commune: { type: 'string' },
+      },
+      required: ['voie', 'codePostal', 'commune'],
+    },
+    dirigeants: {
+      type: 'array',
+      description: 'Dirigeants nommés, démissionnaires ou maintenus',
+      items: {
+        type: 'object', additionalProperties: false,
+        properties: {
+          nom: { type: 'string' }, prenoms: { type: 'array', items: { type: 'string' } },
+          fonction: { type: 'string', description: 'PRESIDENT, GERANT, DG, etc.' },
+          sens: { type: 'string', description: 'NOMINATION, DEMISSION, MAINTIEN' },
+        },
+        required: ['nom', 'prenoms', 'fonction', 'sens'],
+      },
+    },
+    capital: {
+      type: 'object', additionalProperties: false,
+      description: "Renseigné uniquement en cas de modification du capital",
+      properties: {
+        ancienEuros: { type: 'number' }, nouveauEuros: { type: 'number' },
+      },
+      required: ['ancienEuros', 'nouveauEuros'],
+    },
+    exercice: {
+      type: 'object', additionalProperties: false,
+      description: "Renseigné pour une approbation des comptes",
+      properties: {
+        dateCloture: { type: 'string', description: 'YYYY-MM-DD ou vide' },
+        resultatEuros: { type: 'number' },
+        affectation: { type: 'string', description: 'ex: report à nouveau, réserves, dividendes' },
+      },
+      required: ['dateCloture', 'resultatEuros', 'affectation'],
+    },
+    champsManquants: {
+      type: 'array', items: { type: 'string' },
+      description: 'Informations attendues mais absentes/illisibles dans le document',
+    },
+  },
+  required: ['documentType', 'societe', 'dateActe', 'lieu', 'decisions', 'dirigeants', 'champsManquants'],
+};
+
+const DOC_EXTRACT_SYSTEM = `Tu es un agent d'analyse de documents juridiques d'entreprise (procès-verbaux d'assemblée générale, statuts, traités de cession, rapports de gérance). On te fournit le TEXTE BRUT d'un document (issu d'un PDF, d'un scan OCR ou d'un Word) déposé par un formaliste. Tu en extrais les informations structurées utiles à la préparation d'une formalité INPI.
+
+<regles>
+- N'invente JAMAIS. Si une information n'apparaît pas clairement dans le texte, laisse le champ vide (ou 0 pour un montant) et ajoute-la à "champsManquants".
+- Le texte peut être bruité (OCR imparfait) : corrige les coquilles évidentes mais ne devine pas les chiffres (SIREN, capital, montants) si le doute est réel.
+- "decisions" : liste chaque résolution/décision votée dans un PV, ou les clauses structurantes de statuts. Classe chacune par type.
+- Ne remplis "nouveauSiege" qu'en cas de transfert de siège, "capital" qu'en cas de modification de capital, "exercice" que pour une approbation des comptes. Sinon laisse ces objets absents.
+- "dirigeants" : indique le sens (NOMINATION / DEMISSION / MAINTIEN) pour chaque personne citée en cette qualité.
+- Sois précis et concis dans les résumés.
+</regles>`;
+
+async function extractDocument({ text, docTypeHint }) {
+  const client = getAnthropic();
+  // Plafonne l'entrée pour maîtriser les tokens (un PV/statuts tient largement).
+  const clipped = String(text || '').slice(0, 24000);
+  const msg = await client.messages.create({
+    model: CLAUDE_MODEL,
+    max_tokens: 3072,
+    thinking: { type: 'adaptive' },
+    system: [{ type: 'text', text: DOC_EXTRACT_SYSTEM, cache_control: { type: 'ephemeral' } }],
+    output_config: { format: { type: 'json_schema', schema: DOC_EXTRACT_SCHEMA } },
+    messages: [{
+      role: 'user',
+      content: `Type de document supposé : ${docTypeHint || 'à déduire'}.\n\nTEXTE DU DOCUMENT :\n"""\n${clipped}\n"""\n\nExtrais les informations structurées.`,
+    }],
+  });
+  const out = (msg.content || []).filter((b) => b.type === 'text').map((b) => b.text).join('');
+  let data;
+  try {
+    data = JSON.parse(out);
+  } catch {
+    const m = out.match(/\{[\s\S]*\}/);
+    data = m ? JSON.parse(m[0]) : null;
+  }
+  return { data, refused: msg.stop_reason === 'refusal', usage: msg.usage };
+}
+
 module.exports = {
   embed, searchLegalChunks, streamAnswer, draftDocument, DOC_TYPES,
-  prefillFormality, CLAUDE_MODEL,
+  prefillFormality, extractDocument, CLAUDE_MODEL,
 };

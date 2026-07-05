@@ -14,9 +14,12 @@ const router = express.Router();
 
 const { extractIdentity } = require('../lib/ocr');
 const { isPdf, pdfToPngPages } = require('../lib/pdf');
+const { extractText } = require('../lib/text-extract');
+const { extractDocument } = require('../lib/ai');
 const { getSupabaseAdmin } = require('../lib/db');
 
 const MAX_BASE64_LENGTH = 14_000_000; // ≈10 Mo binaire
+const MAX_DOC_BASE64_LENGTH = 28_000_000; // ≈20 Mo pour les PV/statuts
 
 function asyncRoute(fn) {
   return (req, res, next) => fn(req, res, next).catch(next);
@@ -94,6 +97,109 @@ router.post(
     }
 
     res.json(result);
+  }),
+);
+
+// ─── POST /api/ocr/document ───────────────────────────────
+// Analyse d'un document juridique (PV d'AG, statuts…) au format PDF, image ou
+// Word. Extraction du texte (couche texte / OCR / unzip docx) puis extraction
+// structurée par l'IA.
+//
+// Entrée : { fileBase64, filename?, docType? }
+// Sortie : { source, documentType, fields, textPreview, refused }
+router.post(
+  '/document',
+  asyncRoute(async (req, res) => {
+    const { fileBase64, filename, docType } = req.body || {};
+    if (!fileBase64 || typeof fileBase64 !== 'string') {
+      return res.status(400).json({ error: 'missing_fields', required: ['fileBase64'] });
+    }
+    if (fileBase64.length > MAX_DOC_BASE64_LENGTH) {
+      return res.status(413).json({ error: 'file_too_large', max_size_mb: 20 });
+    }
+
+    const cleaned = fileBase64.replace(/^data:[^;]+;base64,/, '');
+    let buffer;
+    try {
+      buffer = Buffer.from(cleaned, 'base64');
+    } catch {
+      return res.status(400).json({ error: 'invalid_base64' });
+    }
+    if (buffer.length < 512) {
+      return res.status(400).json({ error: 'file_too_small' });
+    }
+
+    // 1. Extraction du texte (multi-format).
+    let extracted;
+    try {
+      extracted = await extractText(buffer);
+    } catch (e) {
+      return res.status(e.status || 422).json({
+        error: e.code || 'extract_failed',
+        detail: e.message,
+      });
+    }
+    const text = (extracted.text || '').trim();
+    if (text.length < 40) {
+      return res.status(422).json({
+        error: 'no_text',
+        detail:
+          "Aucun texte exploitable n'a pu être extrait. Si le document est un scan, vérifiez sa netteté.",
+        source: extracted.source,
+      });
+    }
+
+    // 2. Extraction structurée par l'IA.
+    let ai;
+    try {
+      ai = await extractDocument({ text, docTypeHint: docType });
+    } catch (e) {
+      const missingKey = /api key|ANTHROPIC/i.test(e.message || '');
+      return res.status(missingKey ? 503 : 502).json({
+        error: missingKey ? 'ai_unavailable' : 'ai_failed',
+        detail: missingKey
+          ? "Le service d'analyse IA n'est pas configuré (clé Anthropic)."
+          : String(e.message).slice(0, 300),
+        source: extracted.source,
+        textPreview: text.slice(0, 400),
+      });
+    }
+
+    // Audit sans contenu : on trace la méthode, pas les données du document.
+    try {
+      const supa = getSupabaseAdmin();
+      await supa.from('audit_logs').insert({
+        organization_id: req.currentOrgId,
+        user_id: req.user.id,
+        action: 'ocr.document.extract',
+        resource_type: 'ocr',
+        resource_id: null,
+        metadata: {
+          source: extracted.source,
+          filename: filename || null,
+          documentType: ai.data?.documentType || null,
+        },
+      });
+    } catch {
+      // best-effort
+    }
+
+    if (ai.refused || !ai.data) {
+      return res.status(422).json({
+        error: 'extraction_failed',
+        detail: "L'IA n'a pas pu structurer ce document.",
+        source: extracted.source,
+        textPreview: text.slice(0, 400),
+      });
+    }
+
+    res.json({
+      source: extracted.source,
+      documentType: ai.data.documentType || docType || null,
+      fields: ai.data,
+      textPreview: text.slice(0, 400),
+      refused: false,
+    });
   }),
 );
 

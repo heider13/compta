@@ -314,6 +314,94 @@ const IdentityOcrUpload = ({ onExtracted, label = 'Scanner une pièce d\'identit
   );
 };
 
+// ─── Analyse d'un document déposé (PV d'AG, statuts…) ──────────────────
+// Le formaliste dépose un PDF / image / Word ; l'agent en extrait les données
+// structurées (décisions, dirigeants, capital, siège…) via /api/ocr/document.
+// onExtracted(fields) reçoit l'objet structuré pour pré-remplir le wizard.
+const DocExtractUpload = ({ label, docType, onExtracted }) => {
+  const [state, setState] = React.useState({ status: 'idle', message: null, result: null });
+  const inputRef = React.useRef(null);
+
+  const onPick = async (e) => {
+    const file = e.target.files && e.target.files[0];
+    if (!file) return;
+    if (file.size > 20 * 1024 * 1024) {
+      setState({ status: 'error', message: 'Fichier trop lourd (max 20 Mo).', result: null });
+      return;
+    }
+    setState({ status: 'loading', message: `Analyse de « ${file.name} »… (10-30 s)`, result: null });
+    try {
+      const base64 = await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+      const res = await window.ComptaAPI.apiFetch('/api/ocr/document', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ fileBase64: base64, filename: file.name, docType: docType || undefined }),
+      });
+      const fields = res.fields || {};
+      const nbDecisions = (fields.decisions || []).length;
+      const typeLabel = { statuts: 'Statuts', pv_ag: "PV d'assemblée", traite_cession: 'Traité de cession' }[res.documentType] || 'Document';
+      if (onExtracted) onExtracted(fields, res);
+      setState({
+        status: 'done',
+        result: fields,
+        message: `✓ ${typeLabel} analysé (${{ 'pdf-text': 'PDF', 'pdf-ocr': 'PDF scanné OCR', 'image-ocr': 'image OCR', docx: 'Word' }[res.source] || res.source})${nbDecisions ? ` — ${nbDecisions} décision(s) détectée(s)` : ''}. Vérifiez les champs.`,
+      });
+    } catch (err) {
+      const detail = err.data?.detail || err.message || 'Analyse impossible.';
+      const hint = err.status === 503 ? ' (service IA non configuré — rechargez le crédit Anthropic)' : '';
+      setState({ status: 'error', message: detail + hint, result: null });
+    } finally {
+      if (inputRef.current) inputRef.current.value = '';
+    }
+  };
+
+  const r = state.result;
+  return (
+    <div style={{
+      marginBottom: 20, padding: 16, borderRadius: 12,
+      background: 'linear-gradient(135deg, var(--accent-soft, #ECE6FF), #F5F2FF)',
+      border: '1px solid var(--accent, #5B36D6)',
+    }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8, fontSize: 13, fontWeight: 700, color: 'var(--accent-ink, #4827B0)' }}>
+        📎 {label || 'Analyser un document (PV, statuts…)'}
+        <span style={{ fontWeight: 400, color: 'var(--ink-500)' }}>— PDF, image ou Word</span>
+      </div>
+      <label className="btn btn-accent btn-sm" style={{ cursor: 'pointer', display: 'inline-flex' }}>
+        {state.status === 'loading' ? '⏳ Analyse…' : 'Déposer un document'}
+        <input
+          ref={inputRef}
+          type="file"
+          accept=".pdf,.png,.jpg,.jpeg,.docx,application/pdf,image/png,image/jpeg,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+          style={{ display: 'none' }}
+          disabled={state.status === 'loading'}
+          onChange={onPick}
+        />
+      </label>
+      {state.message && (
+        <div style={{
+          marginTop: 8, fontSize: 12, padding: '8px 10px', borderRadius: 6,
+          background: state.status === 'error' ? '#FEE2E2' : state.status === 'done' ? 'rgba(19,115,51,0.08)' : 'var(--ink-50)',
+          color: state.status === 'error' ? '#b42318' : state.status === 'done' ? 'var(--status-green, #137333)' : 'var(--ink-600)',
+        }}>
+          {state.message}
+        </div>
+      )}
+      {r && (r.decisions || []).length > 0 && (
+        <ul style={{ margin: '10px 0 0', paddingLeft: 18, fontSize: 12, color: 'var(--ink-700)' }}>
+          {r.decisions.slice(0, 6).map((d, i) => (
+            <li key={i}><strong>{d.type}</strong> — {d.resume}</li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+};
+
 // ─── Pré-remplissage IA de la formalité ────────────────────────────────
 // L'utilisateur décrit l'opération en langage naturel ; l'agent extrait un
 // JSON normalisé que le wizard mappe dans son état via onPrefill(data).
@@ -377,4 +465,5 @@ const AiPrefill = ({ formeJuridique, onPrefill }) => {
 window.WC = {
   Section, Row, FieldText, FieldTextarea, FieldDate, FieldSelect, FieldCheckbox,
   RecapBlock, ProgressBar, Nav, DocumentUploadList, RgsWarning, IdentityOcrUpload, AiPrefill,
+  DocExtractUpload,
 };

@@ -141,6 +141,16 @@ const WizardComptes = ({ setRoute, dossierId: initialDossierId, onCreated, demoM
 
       {step === 0 && (
         <W.Section title="Société & exercice clos" subtitle="Identifie la société et l'exercice comptable à déposer.">
+          <W.DocExtractUpload
+            label="Analyser le PV d'approbation des comptes"
+            docType="pv_ag"
+            onExtracted={(f) => {
+              if (f.societe?.siren) setEnt({ siren: String(f.societe.siren).replace(/\D/g, '').slice(0, 9) });
+              if (f.societe?.denomination) setEnt({ denomination: f.societe.denomination });
+              if (f.exercice?.dateCloture) set({ exerciceClos: f.exercice.dateCloture });
+              if (f.dateActe) set({ dateAssemblee: f.dateActe });
+            }}
+          />
           <W.Row>
             <W.FieldText label="SIREN *" value={ent.siren} onChange={v => setEnt({ siren: v.replace(/\s/g, '').replace(/\D/g, '').slice(0, 9) })} mono maxLength={9} placeholder="123456789" />
             <W.FieldText label="Dénomination sociale *" value={ent.denomination} onChange={v => setEnt({ denomination: v })} placeholder="Ex: ACME SAS" />

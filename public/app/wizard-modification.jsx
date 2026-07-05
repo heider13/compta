@@ -144,6 +144,29 @@ const WizardModification = ({ setRoute, dossierId: initialDossierId, onCreated }
 
       {step === 0 && (
         <W.Section title="Identification de l'entreprise" subtitle="Renseigne le SIREN et le nom de l'entrepreneur — l'INPI les utilisera pour récupérer l'état actuel.">
+          <W.DocExtractUpload
+            label="Analyser le PV d'assemblée (ou l'acte de modification)"
+            docType="pv_ag"
+            onExtracted={(f) => {
+              if (f.societe?.siren) setSiren(String(f.societe.siren).replace(/\s/g, ''));
+              if (f.societe?.denomination) setEntName(f.societe.denomination);
+              const decisions = f.decisions || [];
+              const find = (t) => decisions.find((d) => d.type === t);
+              if (find('TRANSFERT_SIEGE')) {
+                setModType('ADRESSE');
+                const s = f.nouveauSiege || {};
+                if (s.voie) setDetails('adresse', { voie: s.voie });
+                if (s.codePostal) setDetails('adresse', { codePostal: s.codePostal });
+                if (s.commune) setDetails('adresse', { commune: s.commune });
+              } else if (find('CHANGEMENT_OBJET')) {
+                setModType('ACTIVITE');
+                setDetails('activite', { descriptionDetaillee: find('CHANGEMENT_OBJET').resume });
+              } else if (find('CHANGEMENT_DENOMINATION')) {
+                setModType('DENOMINATION');
+                setDetails('denomination', { nomCommercial: f.societe?.denomination || find('CHANGEMENT_DENOMINATION').resume });
+              }
+            }}
+          />
           <W.Row>
             <W.FieldText label="SIREN *" value={idPrev.siren} onChange={v => setSiren(v.replace(/\s/g, ''))} mono maxLength={9} placeholder="123456789" />
             <W.FieldText label="Dénomination / nom" value={state.previousFormality.companyName} onChange={setEntName} placeholder="DUPONT Jean" />

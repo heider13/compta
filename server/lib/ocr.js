@@ -294,8 +294,19 @@ async function extractIdentity(imageBuffer) {
   };
 }
 
+// OCR texte générique (documents libres : PV d'AG, statuts scannés…).
+// Réutilise le worker chaud, sans whitelist MRZ. Retourne le texte brut.
+async function recognizeText(imageBuffer) {
+  const worker = await getWorker();
+  // Garantit qu'aucune whitelist MRZ résiduelle ne filtre les caractères.
+  await worker.setParameters({ tessedit_char_whitelist: '' });
+  const { data } = await worker.recognize(imageBuffer);
+  return { text: data?.text || '', confidence: data?.confidence ?? null };
+}
+
 module.exports = {
   extractIdentity,
+  recognizeText,
   terminate,
   // Exposés pour les tests unitaires (parsing pur, sans OCR).
   _internals: { parseTd1, parseTd3, parseOldFrenchCni, parseHeuristic, extractMrzLines, mrzDateToIso },
