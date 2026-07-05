@@ -1,6 +1,5 @@
 import { Nav } from '@/components/landing/Nav';
 import { Hero } from '@/components/landing/Hero';
-import { LogoBand } from '@/components/landing/LogoBand';
 import { Metrics } from '@/components/landing/Metrics';
 import { PersonaSelector } from '@/components/landing/PersonaSelector';
 import { InteractiveDemo } from '@/components/landing/InteractiveDemo';
@@ -16,7 +15,6 @@ export default function LandingPage() {
     <div className="landing-theme">
       <Nav />
       <Hero />
-      <LogoBand />
       <Metrics />
       <PersonaSelector />
       <InteractiveDemo />

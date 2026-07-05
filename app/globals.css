@@ -1144,3 +1144,22 @@ section[id] { scroll-margin-top: 80px; }
   opacity: 0;
   animation: demo-click-pulse 0.7s ease-out both;
 }
+
+/* ---------- Hero constellation orbitale (landing) ---------- */
+@keyframes orbit-rot { to { transform: rotate(360deg); } }
+@keyframes orbit-rot-rev { to { transform: rotate(-360deg); } }
+@keyframes orbit-pulse {
+  0%, 100% { opacity: 0.5; transform: scale(1); }
+  50% { opacity: 1; transform: scale(1.06); }
+}
+.orbit-layer { animation: orbit-rot 90s linear infinite; }
+.orbit-layer-2 { animation: orbit-rot 60s linear infinite reverse; }
+.orbit-node > .orbit-keep { animation: orbit-rot-rev 90s linear infinite; }
+.orbit-layer-2 .orbit-node > .orbit-keep { animation: orbit-rot 60s linear infinite; }
+.orbit-ring {
+  position: absolute; inset: 0; margin: auto;
+  border-radius: 50%; border: 1px solid rgba(255,255,255,0.12);
+}
+@media (prefers-reduced-motion: reduce) {
+  .orbit-layer, .orbit-layer-2, .orbit-node > .orbit-keep { animation: none; }
+}
