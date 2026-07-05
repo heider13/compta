@@ -143,7 +143,7 @@ const WizardModification = ({ setRoute, dossierId: initialDossierId, onCreated }
       {error && <div style={{ color: '#b42318', padding: 12, marginBottom: 12, fontSize: 13, background: '#FEE2E2', borderRadius: 8 }}>{error}</div>}
 
       {step === 0 && (
-        <W.Section title="Identification de l'entreprise" subtitle="Renseigne le SIREN et le nom de l'entrepreneur — l'INPI les utilisera pour récupérer l'état actuel.">
+        <W.Section title="Votre entreprise" subtitle="Indiquez le SIREN et le nom de l'entrepreneur. Vous avez le PV ou l'acte de modification ? Déposez-le : l'assistant pré-remplit le dossier pour vous.">
           <W.DocExtractUpload
             label="Analyser le PV d'assemblée (ou l'acte de modification)"
             docType="pv_ag"
@@ -176,7 +176,7 @@ const WizardModification = ({ setRoute, dossierId: initialDossierId, onCreated }
       )}
 
       {step === 1 && (
-        <W.Section title="Type de modification" subtitle="Une seule modification par dossier. Pour plusieurs, dépose plusieurs formalités.">
+        <W.Section title="Que souhaitez-vous modifier ?" subtitle="Une seule modification à la fois. Besoin d'en faire plusieurs ? Créez simplement un dossier pour chacune.">
           <div style={{ display: 'grid', gap: 8 }}>
             {MODIF_TYPES.map(t => (
               <label key={t.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: 12, border: `1px solid ${state._modType === t.id ? 'var(--accent)' : 'var(--ink-200)'}`, borderRadius: 8, cursor: 'pointer', background: state._modType === t.id ? 'rgba(91, 54, 214, 0.05)' : 'white' }}>
@@ -201,7 +201,7 @@ const WizardModification = ({ setRoute, dossierId: initialDossierId, onCreated }
 
       {step === 2 && state._modType === 'ACTIVITE' && (
         <W.Section title="Nouvelle activité">
-          <W.FieldText label="Code APE/NAF *" value={state._details.activite.codeApe} onChange={v => setDetails('activite', { codeApe: v.toUpperCase().replace(/\s/g, '') })} mono maxLength={5} />
+          <W.FieldText label="Activité — code APE *" value={state._details.activite.codeApe} onChange={v => setDetails('activite', { codeApe: v.toUpperCase().replace(/\s/g, '') })} mono maxLength={5} placeholder="Ex : 62.01Z" />
           <W.FieldTextarea label="Description détaillée *" value={state._details.activite.descriptionDetaillee} onChange={v => setDetails('activite', { descriptionDetaillee: v })} />
         </W.Section>
       )}
@@ -246,7 +246,7 @@ const WizardModification = ({ setRoute, dossierId: initialDossierId, onCreated }
       )}
 
       {step === 4 && (
-        <W.Section title="Récapitulatif" subtitle={`Dossier ${reference || ''} — soumission pour validation interne avant envoi INPI.`}>
+        <W.Section title="Récapitulatif" subtitle={`Dossier ${reference || ''} — on vérifie tout avec vous avant l'envoi officiel.`}>
           <W.RecapBlock label="Entreprise" rows={[
             ['SIREN', idPrev.siren || '—'],
             ['Nom', state.previousFormality.companyName || idPrev.nomNaissance || '—'],

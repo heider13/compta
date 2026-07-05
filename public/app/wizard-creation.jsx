@@ -165,7 +165,7 @@ const WizardCreation = ({ setRoute, dossierId: initialDossierId, onCreated, demo
       {error && <div style={{ color: '#b42318', padding: 12, marginBottom: 12, fontSize: 13, background: '#FEE2E2', borderRadius: 8 }}>{error}</div>}
 
       {step === 0 && (
-        <Section title="Identité du déclarant">
+        <Section title="Faisons connaissance" subtitle="Vos informations personnelles. Déjà pré-rempli si vous avez utilisé l'assistant — vérifiez simplement.">
           <window.WC.AiLaunchpad formeJuridique="AE" onPrefill={(d) => {
             const dir = d.dirigeant || {};
             if (dir.nom) setIdent({ nomNaissance: dir.nom.toUpperCase() });
@@ -216,7 +216,7 @@ const WizardCreation = ({ setRoute, dossierId: initialDossierId, onCreated, demo
       )}
 
       {step === 1 && (
-        <Section title="Domicile personnel" subtitle="Adresse où vous résidez. Cette adresse peut servir d'adresse d'établissement.">
+        <Section title="Où habitez-vous ?" subtitle="Votre adresse personnelle. Elle pourra aussi servir d'adresse pour votre activité.">
           <FieldText label="N° et voie *" value={ident.blocAdresse.adresse.voie} onChange={v => setIdentAdresse({ voie: v })} />
           <FieldText label="Complément (bât, étage…)" value={ident.blocAdresse.adresse.complement} onChange={v => setIdentAdresse({ complement: v })} />
           <Row>
@@ -233,10 +233,10 @@ const WizardCreation = ({ setRoute, dossierId: initialDossierId, onCreated, demo
       )}
 
       {step === 2 && (
-        <Section title="Activité">
-          <FieldText label="Code APE/NAF *" value={etab.activites[0].codeApe} onChange={v => setEtabActivite({ codeApe: v.toUpperCase().replace(/\s/g, '') })} mono maxLength={5} placeholder="6202A" />
+        <Section title="Votre activité" subtitle="Décrivez ce que vous faites — l'assistant a peut-être déjà tout rempli.">
+          <FieldText label="Activité — code APE *" value={etab.activites[0].codeApe} onChange={v => setEtabActivite({ codeApe: v.toUpperCase().replace(/\s/g, '') })} mono maxLength={5} placeholder="Ex: 6202A — l'IA le déduit de votre description" />
           <div>
-            <label className="auth-label" style={{ display: 'block', marginBottom: 6 }}>Description détaillée de l'activité *</label>
+            <label className="auth-label" style={{ display: 'block', marginBottom: 6 }}>Que faites-vous concrètement ? *</label>
             <textarea
               value={etab.activites[0].descriptionDetaillee}
               onChange={e => setEtabActivite({ descriptionDetaillee: e.target.value })}
@@ -283,7 +283,7 @@ const WizardCreation = ({ setRoute, dossierId: initialDossierId, onCreated, demo
       )}
 
       {step === 5 && (
-        <Section title="Récapitulatif" subtitle={`Ton dossier ${reference || ''} sera soumis à l'admin pour validation interne avant envoi à l'INPI.`}>
+        <Section title="On y est presque !" subtitle={`Un dernier coup d'œil à votre dossier ${reference || ''}. Notre équipe le vérifie puis s'occupe de tout — vous n'avez rien d'autre à faire.`}>
           <RecapBlock label="Identité"
             rows={[
               ['Nom de naissance', ident.nomNaissance],

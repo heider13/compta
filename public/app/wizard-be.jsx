@@ -244,13 +244,13 @@ const WizardBE = ({ setRoute, dossierId: initialDossierId, onCreated, demoMode =
   return (
     <div style={{ maxWidth: 820 }}>
       <div style={{ padding: 14, background: '#FEF3C7', borderLeft: '3px solid #F59E0B', borderRadius: 8, marginBottom: 16, fontSize: 13 }}>
-        <strong>⚠ Dépôt des bénéficiaires effectifs obligatoire.</strong> Toutes les sociétés doivent déposer la liste de leurs BE au RBE (Registre des Bénéficiaires Effectifs). À mettre à jour à chaque modification de l'actionnariat (sous 30 jours).
+        <strong>⚠ La liste des bénéficiaires effectifs est obligatoire.</strong> Toute société doit déclarer les personnes qui la détiennent ou la contrôlent réellement, et tenir cette liste à jour dans les 30 jours suivant tout changement.
       </div>
       <W.ProgressBar steps={STEPS_BE} current={step} onStepClick={async (i) => { try { await saveDraft(); } catch {} setStep(i); }} />
       {error && <div style={{ color: '#b42318', padding: 12, marginBottom: 12, fontSize: 13, background: '#FEE2E2', borderRadius: 8 }}>{error}</div>}
 
       {step === 0 && (
-        <W.Section title="Société" subtitle="Identifie la société pour laquelle tu déposes la liste des bénéficiaires effectifs.">
+        <W.Section title="Votre société" subtitle="Indiquez la société concernée par cette déclaration.">
           <W.Row>
             <W.FieldText label="SIREN *" value={ent.siren} onChange={v => setEntreprise({ siren: v.replace(/\s/g, '').replace(/\D/g, '').slice(0, 9) })} mono maxLength={9} placeholder="123456789" />
             <W.FieldText label="Dénomination sociale *" value={ent.denomination} onChange={v => setEntreprise({ denomination: v })} placeholder="Ex: ACME SAS" />
@@ -260,7 +260,7 @@ const WizardBE = ({ setRoute, dossierId: initialDossierId, onCreated, demoMode =
       )}
 
       {step === 1 && (
-        <W.Section title="Bénéficiaires effectifs" subtitle="Toute personne (physique ou morale) détenant directement ou indirectement plus de 25 % du capital ou des droits de vote, ou exerçant un contrôle équivalent.">
+        <W.Section title="Les bénéficiaires effectifs" subtitle="Ce sont les personnes qui possèdent ou contrôlent réellement la société : plus de 25 % du capital ou des droits de vote, ou un contrôle équivalent.">
           {benefs.map((b, i) => (
             <div key={i} style={{ border: '1px solid var(--ink-200)', borderRadius: 10, padding: 14, marginBottom: 6 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
@@ -396,13 +396,13 @@ const WizardBE = ({ setRoute, dossierId: initialDossierId, onCreated, demoMode =
       )}
 
       {step === 4 && (
-        <W.Section title="Soumission" subtitle="Confirme l'envoi pour validation interne avant transmission au RBE/INPI.">
+        <W.Section title="Dernière étape" subtitle="Confirmez l'envoi : on vérifie tout avec vous avant de transmettre officiellement.">
           <div style={{ padding: 14, background: 'var(--ink-50)', borderRadius: 10, fontSize: 13 }}>
-            <strong>Tu es sur le point de soumettre le dépôt des bénéficiaires effectifs.</strong>
+            <strong>Vous êtes sur le point d'envoyer votre déclaration de bénéficiaires effectifs.</strong>
             <ul style={{ marginTop: 8, paddingLeft: 18 }}>
               <li>{benefs.length} bénéficiaire(s) déclaré(s)</li>
               <li>Société : {ent.denomination} (SIREN {ent.siren})</li>
-              <li>L'admin validera puis transmettra à l'INPI (RBE)</li>
+              <li>Notre équipe vérifie votre dossier, puis le transmet officiellement pour vous</li>
             </ul>
           </div>
         </W.Section>

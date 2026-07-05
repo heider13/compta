@@ -207,7 +207,7 @@ const WizardHolding = ({ setRoute, dossierId: initialDossierId, onCreated, demoM
       {error && <div style={{ color: '#b42318', padding: 12, marginBottom: 12, fontSize: 13, background: '#FEE2E2', borderRadius: 8 }}>{error}</div>}
 
       {step === 0 && (
-        <W.Section title="Forme juridique sous-jacente" subtitle="Une holding n'est pas une forme juridique en soi. Choisis la forme qui portera l'activité de holding.">
+        <W.Section title="Choisissez la forme de votre holding" subtitle="Une holding est une société qui en détient d'autres. Première étape : choisissez la forme qui lui servira de base.">
           <div style={{ display: 'grid', gap: 8 }}>
             {FORMES_SOUS_JACENTES.map(f => (
               <label key={f.id} style={{ display: 'flex', alignItems: 'flex-start', gap: 12, padding: 14, border: `1px solid ${formeSJ === f.id ? 'var(--accent)' : 'var(--ink-200)'}`, borderRadius: 8, cursor: 'pointer', background: formeSJ === f.id ? 'rgba(91, 54, 214, 0.05)' : 'white' }}>
@@ -223,7 +223,7 @@ const WizardHolding = ({ setRoute, dossierId: initialDossierId, onCreated, demoM
       )}
 
       {step === 1 && (
-        <W.Section title={`La holding (${formeSJ})`} subtitle="Identité de la société holding à créer.">
+        <W.Section title={`Votre holding (${formeSJ})`} subtitle="Les infos de base de votre société. Déjà pré-rempli si vous avez utilisé l'assistant — vérifiez simplement.">
           <W.AiLaunchpad formeJuridique={formeSJ} onPrefill={(d) => {
             if (d.denomination) setEntreprise({ denomination: d.denomination.toUpperCase() });
             if (d.sigle) setDescPM({ sigle: d.sigle });
@@ -266,7 +266,7 @@ const WizardHolding = ({ setRoute, dossierId: initialDossierId, onCreated, demoM
       )}
 
       {step === 2 && (
-        <W.Section title="Siège social" subtitle="Adresse administrative de la holding.">
+        <W.Section title="L'adresse de votre holding" subtitle="L'adresse officielle de la société. Ça peut être chez vous.">
           <W.FieldText label="N° et voie *" value={etab.adresse.voie} onChange={v => setEtabAdresse({ voie: v })} />
           <W.Row>
             <W.FieldText label="Code postal *" value={etab.adresse.codePostal} onChange={v => setEtabAdresse({ codePostal: v })} mono maxLength={5} />
@@ -277,7 +277,7 @@ const WizardHolding = ({ setRoute, dossierId: initialDossierId, onCreated, demoM
       )}
 
       {step === 3 && (
-        <W.Section title="Objet de la holding" subtitle="Précise le type d'activité financière et patrimoniale.">
+        <W.Section title="Le rôle de votre holding" subtitle="Ce que votre holding va faire : détenir des sociétés, gérer un patrimoine, ou les deux.">
           <div style={{ display: 'grid', gap: 8 }}>
             {[
               { id: 'PARTICIPATION', label: 'Prise de participation (holding animatrice)' },
@@ -290,9 +290,9 @@ const WizardHolding = ({ setRoute, dossierId: initialDossierId, onCreated, demoM
               </label>
             ))}
           </div>
-          <W.FieldTextarea label="Objet social (texte des statuts) *" value={entreprise.objet} onChange={v => setEntreprise({ objet: v })} rows={4} />
+          <W.FieldTextarea label="Objet social (le texte qui figurera dans vos statuts) *" value={entreprise.objet} onChange={v => setEntreprise({ objet: v })} rows={4} />
           <W.Row>
-            <W.FieldText label="Code APE/NAF *" value={etab.activites[0].codeApe} onChange={v => setEtabActivite({ codeApe: v.toUpperCase().replace(/\s/g, '') })} mono maxLength={5} placeholder="6420Z" />
+            <W.FieldText label="Activité — code APE *" value={etab.activites[0].codeApe} onChange={v => setEtabActivite({ codeApe: v.toUpperCase().replace(/\s/g, '') })} mono maxLength={5} placeholder="Ex: 6420Z — l'IA le déduit de votre description" />
             <W.FieldDate label="Date de début d'activité *" value={etab.activites[0].dateDebutActivite} onChange={v => setEtabActivite({ dateDebutActivite: v })} />
           </W.Row>
           <W.FieldTextarea label="Description détaillée de l'activité" value={etab.activites[0].descriptionDetaillee} onChange={v => setEtabActivite({ descriptionDetaillee: v })} rows={2} />
@@ -300,7 +300,7 @@ const WizardHolding = ({ setRoute, dossierId: initialDossierId, onCreated, demoM
       )}
 
       {step === 4 && (
-        <W.Section title={`Dirigeant — ${ROLE_LABEL(formeSJ)}`} subtitle={`Le ${ROLE_LABEL(formeSJ).toLowerCase()} représente légalement la holding.`}>
+        <W.Section title={`Le dirigeant — ${ROLE_LABEL(formeSJ)}`} subtitle={`La personne qui dirige la société — c'est souvent vous. Scannez une pièce d'identité, on remplit le reste.`}>
           {pouvoirs.map((p, i) => {
             const d = p.individu;
             return (
@@ -340,7 +340,7 @@ const WizardHolding = ({ setRoute, dossierId: initialDossierId, onCreated, demoM
       )}
 
       {step === 5 && (
-        <W.Section title={formeSJ === 'SASU' ? 'Associé unique' : 'Associé(s)'} subtitle={formeSJ === 'SASU' ? 'Une SASU n\'a qu\'un seul associé.' : `Minimum ${minAssocies} associé(s) pour une holding en ${formeSJ}.`}>
+        <W.Section title={formeSJ === 'SASU' ? "L'associé unique" : 'Les associés'} subtitle={formeSJ === 'SASU' ? 'Une SASU ne compte qu\'un seul associé — souvent vous.' : `Les personnes ou sociétés qui possèdent la holding — au moins ${minAssocies}.`}>
           {associes.map((a, i) => (
             <div key={i} style={{ border: '1px solid var(--ink-200)', borderRadius: 10, padding: 14, display: 'grid', gap: 12 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -391,23 +391,23 @@ const WizardHolding = ({ setRoute, dossierId: initialDossierId, onCreated, demoM
 
       {step === 6 && (
         <>
-          <W.Section title="Pièces jointes" subtitle="Documents requis pour l'immatriculation de la holding.">
+          <W.Section title="Vos documents" subtitle="Les quelques pièces à joindre. Glissez-les ici, on s'occupe du classement.">
             {demoMode ? (
               <div style={{ padding: 14, background: 'var(--ink-50)', borderRadius: 8, fontSize: 13, color: 'var(--ink-600)' }}>
-                Upload des pièces disponible après création du compte. <span className="pill" style={{ fontSize: 10 }}>DÉMO</span>
+                Vous pourrez ajouter vos documents juste après avoir créé votre compte. <span className="pill" style={{ fontSize: 10 }}>DÉMO</span>
               </div>
             ) : (
               <W.DocumentUploadList dossierId={dossierId} documents={documents} setDocuments={setDocuments} required={[
-                { typeDocument: 'PJ_04', label: `Statuts signés (${formeSJ})` },
+                { typeDocument: 'PJ_04', label: `Statuts signés de la société (${formeSJ})` },
                 { typeDocument: 'PJ_01', label: `Pièce d'identité du ${ROLE_LABEL(formeSJ).toLowerCase()}` },
-                { typeDocument: 'PJ_02', label: "Justificatif de siège social" },
-                { typeDocument: 'PJ_06', label: "Attestation de dépôt des fonds" },
+                { typeDocument: 'PJ_02', label: "Justificatif du local (bail, facture ou attestation)" },
+                { typeDocument: 'PJ_06', label: "Attestation de dépôt du capital (banque)" },
                 { typeDocument: 'PJ_07', label: "Liste des bénéficiaires effectifs" },
               ]} />
             )}
           </W.Section>
 
-          <W.Section title="Récapitulatif" subtitle={`Dossier ${reference || ''} — création holding (${formeSJ}) pour validation interne avant envoi INPI.`}>
+          <W.Section title="On y est presque" subtitle={`Vérifiez votre dossier ${reference || ''} en un coup d'œil. Notre équipe le relit et se charge des démarches pour vous.`}>
             <W.RecapBlock label="Forme & société" rows={[
               ['Forme sous-jacente', formeSJ],
               ['Dénomination', entreprise.denomination],

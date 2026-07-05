@@ -140,7 +140,8 @@ const WizardComptes = ({ setRoute, dossierId: initialDossierId, onCreated, demoM
       {error && <div style={{ color: '#b42318', padding: 12, marginBottom: 12, fontSize: 13, background: '#FEE2E2', borderRadius: 8 }}>{error}</div>}
 
       {step === 0 && (
-        <W.Section title="Société & exercice clos" subtitle="Identifie la société et l'exercice comptable à déposer.">
+        <W.Section title="Société & exercice" subtitle="Indiquez la société et l'exercice à déposer. Vous avez le PV d'approbation ? Déposez-le : l'assistant remplit les dates et la société pour vous.">
+
           <W.DocExtractUpload
             label="Analyser le PV d'approbation des comptes"
             docType="pv_ag"
@@ -169,7 +170,7 @@ const WizardComptes = ({ setRoute, dossierId: initialDossierId, onCreated, demoM
       )}
 
       {step === 1 && (
-        <W.Section title="Options de confidentialité" subtitle="Options réservées aux TPE et PME selon les seuils en vigueur. Si vous ne savez pas, laissez décoché.">
+        <W.Section title="Options de confidentialité" subtitle="Réservées aux petites entreprises selon leur taille. Dans le doute, laissez décoché : vous ne risquez rien.">
           <W.FieldCheckbox label="Option de confidentialité globale des comptes (TPE)" checked={content.optionConfidentialite} onChange={v => set({ optionConfidentialite: v })} />
           <W.FieldCheckbox label="Option de confidentialité du compte de résultat (PME)" checked={content.optionConfidentialiteCompteResultat} onChange={v => set({ optionConfidentialiteCompteResultat: v })} />
           <div style={{ fontSize: 12, color: 'var(--ink-500)' }}>
@@ -192,7 +193,7 @@ const WizardComptes = ({ setRoute, dossierId: initialDossierId, onCreated, demoM
       )}
 
       {step === 3 && (
-        <W.Section title="Récapitulatif" subtitle={`Dossier ${reference || ''} — soumission pour validation interne avant transmission INPI.`}>
+        <W.Section title="Récapitulatif" subtitle={`Dossier ${reference || ''} — on vérifie tout avec vous avant l'envoi officiel.`}>
           <W.RecapBlock label="Société" rows={[
             ['SIREN', ent.siren || '—'],
             ['Dénomination', ent.denomination || '—'],

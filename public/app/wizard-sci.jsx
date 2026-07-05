@@ -186,7 +186,7 @@ const WizardSCI = ({ setRoute, dossierId: initialDossierId, onCreated, demoMode 
       {error && <div style={{ color: '#b42318', padding: 12, marginBottom: 12, fontSize: 13, background: '#FEE2E2', borderRadius: 8 }}>{error}</div>}
 
       {step === 0 && (
-        <W.Section title="La SCI" subtitle="Identité de la société civile immobilière.">
+        <W.Section title="Votre SCI" subtitle="Votre société pour gérer un ou plusieurs biens immobiliers. Déjà pré-rempli si vous avez utilisé l'assistant — vérifiez simplement.">
           <W.AiLaunchpad formeJuridique="SCI" onPrefill={(d) => {
             if (d.denomination) setEntreprise({ denomination: d.denomination.toUpperCase() });
             if (d.sigle) setDescPM({ sigle: d.sigle });
@@ -231,7 +231,7 @@ const WizardSCI = ({ setRoute, dossierId: initialDossierId, onCreated, demoMode 
       )}
 
       {step === 1 && (
-        <W.Section title="Siège social" subtitle="Adresse administrative de la SCI.">
+        <W.Section title="L'adresse de votre SCI" subtitle="L'adresse officielle de la société. Ça peut être chez vous.">
           <W.FieldText label="N° et voie *" value={etab.adresse.voie} onChange={v => setEtabAdresse({ voie: v })} />
           <W.Row>
             <W.FieldText label="Code postal *" value={etab.adresse.codePostal} onChange={v => setEtabAdresse({ codePostal: v })} mono maxLength={5} />
@@ -242,20 +242,20 @@ const WizardSCI = ({ setRoute, dossierId: initialDossierId, onCreated, demoMode 
       )}
 
       {step === 2 && (
-        <W.Section title="Objet immobilier" subtitle="Description précise de l'activité et du patrimoine immobilier de la SCI.">
+        <W.Section title="Vos biens immobiliers" subtitle="Ce que votre SCI va gérer : logements, locaux, immeubles… Déjà pré-rempli si vous avez utilisé l'assistant — vérifiez simplement.">
           <W.FieldTextarea label="Objet social *" value={entreprise.objet} onChange={v => setEntreprise({ objet: v })} rows={4} />
-          <W.FieldTextarea label="Description du patrimoine cible" value={pm._patrimoineDescription || ''} onChange={v => setPmField('_patrimoineDescription', v)} rows={3} placeholder="Ex: Immeuble d'habitation 5 lots à Paris 11e, locaux commerciaux à Lyon…" />
+          <W.FieldTextarea label="Les biens concernés" value={pm._patrimoineDescription || ''} onChange={v => setPmField('_patrimoineDescription', v)} rows={3} placeholder="Ex: Immeuble d'habitation 5 lots à Paris 11e, locaux commerciaux à Lyon…" />
           <W.Row>
-            <W.FieldText label="Code APE/NAF" value={etab.activites[0].codeApe} onChange={v => setEtabActivite({ codeApe: v.toUpperCase().replace(/\s/g, '') })} mono maxLength={5} placeholder="6820A" />
+            <W.FieldText label="Activité — code APE" value={etab.activites[0].codeApe} onChange={v => setEtabActivite({ codeApe: v.toUpperCase().replace(/\s/g, '') })} mono maxLength={5} placeholder="Ex: 6820A — l'IA le déduit de votre description" />
             <W.FieldDate label="Date de début d'activité *" value={etab.activites[0].dateDebutActivite} onChange={v => setEtabActivite({ dateDebutActivite: v })} />
           </W.Row>
           <W.FieldTextarea label="Description détaillée de l'activité" value={etab.activites[0].descriptionDetaillee} onChange={v => setEtabActivite({ descriptionDetaillee: v })} rows={2} />
-          <W.FieldCheckbox label="Apport en nature immobilier (acte requis)" checked={!!pm._apportNatureImmo} onChange={v => setPmField('_apportNatureImmo', v)} />
+          <W.FieldCheckbox label="J'apporte un bien immobilier à la société (un acte notarié sera nécessaire)" checked={!!pm._apportNatureImmo} onChange={v => setPmField('_apportNatureImmo', v)} />
         </W.Section>
       )}
 
       {step === 3 && (
-        <W.Section title="Gérant(s)" subtitle="Un gérant minimum. Souvent un des associés.">
+        <W.Section title="Le ou les gérants" subtitle="La ou les personnes qui gèrent la SCI. Au moins une, souvent l'un des associés. Scannez une pièce d'identité, on remplit le reste.">
           {pouvoirs.map((p, i) => {
             const g = p.individu;
             return (
@@ -299,7 +299,7 @@ const WizardSCI = ({ setRoute, dossierId: initialDossierId, onCreated, demoMode 
       )}
 
       {step === 4 && (
-        <W.Section title="Associés" subtitle="Minimum 2 associés. Les parts sociales doivent totaliser 100 %.">
+        <W.Section title="Les associés" subtitle="Les personnes (ou sociétés) qui possèdent la SCI, au moins deux. L'ensemble des parts doit faire 100 %.">
           {associes.map((a, i) => (
             <div key={i} style={{ border: '1px solid var(--ink-200)', borderRadius: 10, padding: 14, display: 'grid', gap: 12 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -349,17 +349,17 @@ const WizardSCI = ({ setRoute, dossierId: initialDossierId, onCreated, demoMode 
       )}
 
       {step === 5 && (
-        <W.Section title="Pièces jointes" subtitle="Documents requis pour l'immatriculation de la SCI.">
+        <W.Section title="Vos documents" subtitle="Les quelques pièces à joindre. Glissez-les ici, on s'occupe du classement.">
           {demoMode ? (
             <div style={{ padding: 14, background: 'var(--ink-50)', borderRadius: 8, fontSize: 13, color: 'var(--ink-600)' }}>
-              Upload des pièces disponible après création du compte. <span className="pill" style={{ fontSize: 10 }}>DÉMO</span>
+              Vous pourrez ajouter vos documents juste après avoir créé votre compte. <span className="pill" style={{ fontSize: 10 }}>DÉMO</span>
             </div>
           ) : (
             <W.DocumentUploadList dossierId={dossierId} documents={documents} setDocuments={setDocuments} required={[
-              { typeDocument: 'PJ_04', label: "Statuts signés de la SCI" },
+              { typeDocument: 'PJ_04', label: "Statuts signés de la société" },
               { typeDocument: 'PJ_01', label: "Pièce d'identité du gérant" },
-              { typeDocument: 'PJ_02', label: "Justificatif de siège social" },
-              ...(pm._apportNatureImmo ? [{ typeDocument: 'PJ_SCI_01', label: "Acte d'apport en nature (apport immobilier)" }] : []),
+              { typeDocument: 'PJ_02', label: "Justificatif du local (bail, facture ou attestation)" },
+              ...(pm._apportNatureImmo ? [{ typeDocument: 'PJ_SCI_01', label: "Acte notarié d'apport du bien immobilier" }] : []),
               { typeDocument: 'PJ_07', label: "Liste des bénéficiaires effectifs" },
             ]} />
           )}
@@ -367,7 +367,7 @@ const WizardSCI = ({ setRoute, dossierId: initialDossierId, onCreated, demoMode 
       )}
 
       {step === 6 && (
-        <W.Section title="Récapitulatif" subtitle={`Dossier ${reference || ''} — création SCI pour validation interne avant envoi INPI.`}>
+        <W.Section title="On y est presque" subtitle={`Vérifiez votre dossier ${reference || ''} en un coup d'œil. Notre équipe le relit et se charge des démarches pour vous.`}>
           <W.RecapBlock label="Société" rows={[
             ['Dénomination', entreprise.denomination],
             ['Forme', 'SCI'],

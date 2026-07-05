@@ -184,7 +184,7 @@ const WizardSARL = ({ setRoute, dossierId: initialDossierId, onCreated, demoMode
       {error && <div style={{ color: '#b42318', padding: 12, marginBottom: 12, fontSize: 13, background: '#FEE2E2', borderRadius: 8 }}>{error}</div>}
 
       {step === 0 && (
-        <W.Section title="La société" subtitle="Identité de la SARL à créer.">
+        <W.Section title="Votre société" subtitle="Les infos de base de votre SARL. Déjà pré-rempli si vous avez utilisé l'assistant — vérifiez simplement.">
           <W.AiLaunchpad formeJuridique="SARL" onPrefill={(d) => {
             if (d.denomination) setEntreprise({ denomination: d.denomination.toUpperCase() });
             if (d.sigle) setDescPM({ sigle: d.sigle });
@@ -226,7 +226,7 @@ const WizardSARL = ({ setRoute, dossierId: initialDossierId, onCreated, demoMode
       )}
 
       {step === 1 && (
-        <W.Section title="Siège social" subtitle="Adresse du siège — souvent identique à l'établissement principal.">
+        <W.Section title="L'adresse de votre société" subtitle="Où votre société sera domiciliée. Souvent là où vous travaillez.">
           <W.FieldText label="N° et voie *" value={etab.adresse.voie} onChange={v => setEtabAdresse({ voie: v })} />
           <W.Row>
             <W.FieldText label="Code postal *" value={etab.adresse.codePostal} onChange={v => setEtabAdresse({ codePostal: v })} mono maxLength={5} />
@@ -237,15 +237,15 @@ const WizardSARL = ({ setRoute, dossierId: initialDossierId, onCreated, demoMode
       )}
 
       {step === 2 && (
-        <W.Section title="Activité principale">
-          <W.FieldText label="Code APE/NAF *" value={etab.activites[0].codeApe} onChange={v => setEtabActivite({ codeApe: v.toUpperCase().replace(/\s/g, '') })} mono maxLength={5} placeholder="6202A" />
+        <W.Section title="Votre activité" subtitle="Ce que votre société va faire au quotidien. Déjà pré-rempli si vous avez utilisé l'assistant — vérifiez simplement.">
+          <W.FieldText label="Activité — code APE *" value={etab.activites[0].codeApe} onChange={v => setEtabActivite({ codeApe: v.toUpperCase().replace(/\s/g, '') })} mono maxLength={5} placeholder="Ex: 6820A — l'IA le déduit de votre description" />
           <W.FieldTextarea label="Description détaillée de l'activité *" value={etab.activites[0].descriptionDetaillee} onChange={v => setEtabActivite({ descriptionDetaillee: v })} rows={3} placeholder="Ex: Conseil et prestations informatiques pour PME…" />
           <W.FieldDate label="Date de début d'activité *" value={etab.activites[0].dateDebutActivite} onChange={v => setEtabActivite({ dateDebutActivite: v })} />
         </W.Section>
       )}
 
       {step === 3 && (
-        <W.Section title="Gérant(s)" subtitle="Un gérant minimum. Peut être ou non associé de la société.">
+        <W.Section title="Le ou les gérants" subtitle="La ou les personnes qui dirigent la société. Au moins une. Scannez une pièce d'identité, on remplit le reste.">
           {pouvoirs.map((p, i) => {
             const g = p.individu;
             return (
@@ -289,7 +289,7 @@ const WizardSARL = ({ setRoute, dossierId: initialDossierId, onCreated, demoMode
       )}
 
       {step === 4 && (
-        <W.Section title="Associés" subtitle="2 à 100 associés (personnes physiques ou morales). Les parts sociales doivent totaliser 100 %.">
+        <W.Section title="Les associés" subtitle="Les personnes (ou sociétés) qui possèdent la SARL, de 2 à 100. L'ensemble des parts doit faire 100 %.">
           {associes.map((a, i) => (
             <div key={i} style={{ border: '1px solid var(--ink-200)', borderRadius: 10, padding: 14, display: 'grid', gap: 12 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -339,17 +339,17 @@ const WizardSARL = ({ setRoute, dossierId: initialDossierId, onCreated, demoMode
       )}
 
       {step === 5 && (
-        <W.Section title="Pièces jointes" subtitle="Documents requis pour l'immatriculation de la SARL.">
+        <W.Section title="Vos documents" subtitle="Les quelques pièces à joindre. Glissez-les ici, on s'occupe du classement.">
           {demoMode ? (
             <div style={{ padding: 14, background: 'var(--ink-50)', borderRadius: 8, fontSize: 13, color: 'var(--ink-600)' }}>
-              Upload des pièces disponible après création du compte. <span className="pill" style={{ fontSize: 10 }}>DÉMO</span>
+              Vous pourrez ajouter vos documents juste après avoir créé votre compte. <span className="pill" style={{ fontSize: 10 }}>DÉMO</span>
             </div>
           ) : (
             <W.DocumentUploadList dossierId={dossierId} documents={documents} setDocuments={setDocuments} required={[
-              { typeDocument: 'PJ_01', label: "Pièce d'identité du gérant (CNI, passeport)" },
-              { typeDocument: 'PJ_02', label: "Justificatif de siège social (bail, attestation…)" },
-              { typeDocument: 'PJ_04', label: "Statuts signés de la SARL" },
-              { typeDocument: 'PJ_06', label: "Attestation de dépôt des fonds (capital numéraire)" },
+              { typeDocument: 'PJ_01', label: "Pièce d'identité du gérant (carte d'identité ou passeport)" },
+              { typeDocument: 'PJ_02', label: "Justificatif du local (bail, facture ou attestation)" },
+              { typeDocument: 'PJ_04', label: "Statuts signés de la société" },
+              { typeDocument: 'PJ_06', label: "Attestation de dépôt du capital (banque)" },
               { typeDocument: 'PJ_07', label: "Liste des bénéficiaires effectifs" },
             ]} />
           )}
@@ -357,7 +357,7 @@ const WizardSARL = ({ setRoute, dossierId: initialDossierId, onCreated, demoMode
       )}
 
       {step === 6 && (
-        <W.Section title="Récapitulatif" subtitle={`Dossier ${reference || ''} — création SARL pour validation interne avant envoi INPI.`}>
+        <W.Section title="On y est presque" subtitle={`Vérifiez votre dossier ${reference || ''} en un coup d'œil. Notre équipe le relit et se charge des démarches pour vous.`}>
           <W.RecapBlock label="Société" rows={[
             ['Dénomination', entreprise.denomination],
             ['Forme', 'SARL'],

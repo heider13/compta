@@ -228,7 +228,7 @@ const WizardEURL = ({ setRoute, dossierId: initialDossierId, onCreated, demoMode
       {error && <div style={{ color: '#b42318', padding: 12, marginBottom: 12, fontSize: 13, background: '#FEE2E2', borderRadius: 8 }}>{error}</div>}
 
       {step === 0 && (
-        <W.Section title="Société (EURL)" subtitle="Entreprise Unipersonnelle à Responsabilité Limitée — un associé unique, gérant, parts sociales.">
+        <W.Section title="Votre société" subtitle="Une EURL : vous êtes seul aux commandes, à la fois associé unique et gérant. Déjà pré-rempli si vous avez utilisé l'assistant — vérifiez simplement.">
           <W.AiLaunchpad formeJuridique="EURL" onPrefill={(d) => {
             if (d.denomination) setEntreprise({ denomination: d.denomination.toUpperCase() });
             if (d.sigle) setDescription({ sigle: d.sigle });
@@ -271,7 +271,7 @@ const WizardEURL = ({ setRoute, dossierId: initialDossierId, onCreated, demoMode
       )}
 
       {step === 1 && (
-        <W.Section title="Siège social" subtitle="Adresse du siège de la société.">
+        <W.Section title="L'adresse de votre société" subtitle="Où votre société sera domiciliée. Ça peut être chez vous.">
           <W.FieldText label="N° et voie *" value={etab.adresse.voie} onChange={v => setEtabAdresse({ voie: v })} />
           <W.FieldText label="Complément (bât, étage…)" value={etab.adresse.complement} onChange={v => setEtabAdresse({ complement: v })} />
           <W.Row>
@@ -280,14 +280,14 @@ const WizardEURL = ({ setRoute, dossierId: initialDossierId, onCreated, demoMode
           </W.Row>
           <W.FieldCheckbox label="Siège au domicile du gérant" checked={etab.caracteristiques.indicateurExerciceADomicile} onChange={v => setEtabCarac({ indicateurExerciceADomicile: v })} />
           <W.DocumentUploadList dossierId={dossierId} documents={documents} setDocuments={setDocuments} demoMode={demoMode} required={[
-            { typeDocument: 'PJ_02', label: "Justificatif de jouissance du siège (bail, attestation hébergement)" },
+            { typeDocument: 'PJ_02', label: "Justificatif du local (bail, facture ou attestation d'hébergement)" },
           ]} />
         </W.Section>
       )}
 
       {step === 2 && (
-        <W.Section title="Activité principale">
-          <W.FieldText label="Code APE/NAF *" value={etab.activites[0].codeApe} onChange={v => setEtabActivite({ codeApe: v.toUpperCase().replace(/\s/g, '') })} mono maxLength={5} placeholder="7022Z" />
+        <W.Section title="Votre activité" subtitle="Ce que votre société va faire au quotidien. Déjà pré-rempli si vous avez utilisé l'assistant — vérifiez simplement.">
+          <W.FieldText label="Activité — code APE *" value={etab.activites[0].codeApe} onChange={v => setEtabActivite({ codeApe: v.toUpperCase().replace(/\s/g, '') })} mono maxLength={5} placeholder="Ex: 6820A — l'IA le déduit de votre description" />
           <W.FieldTextarea label="Description détaillée de l'activité *" value={etab.activites[0].descriptionDetaillee} onChange={v => setEtabActivite({ descriptionDetaillee: v })} rows={3} placeholder="Ex: Conseil en gestion d'entreprise…" />
           <W.Row>
             <W.FieldDate label="Date de début d'activité *" value={etab.activites[0].dateDebutActivite} onChange={v => setEtabActivite({ dateDebutActivite: v })} />
@@ -298,7 +298,7 @@ const WizardEURL = ({ setRoute, dossierId: initialDossierId, onCreated, demoMode
       )}
 
       {step === 3 && (
-        <W.Section title="Gérant de l'EURL" subtitle="Le gérant représente légalement la société. Souvent l'associé unique.">
+        <W.Section title="Le gérant" subtitle="La personne qui dirige la société — c'est souvent vous. Scannez une pièce d'identité, on remplit le reste.">
           <W.IdentityOcrUpload label="Scanner la pièce d'identité du gérant" onExtracted={(f) => {
             const patch = {};
             if (f.nom) patch.nomNaissance = f.nom.toUpperCase();
@@ -348,7 +348,7 @@ const WizardEURL = ({ setRoute, dossierId: initialDossierId, onCreated, demoMode
       )}
 
       {step === 4 && (
-        <W.Section title="Associé unique" subtitle="Une EURL n'a qu'un seul associé, détenant 100 % des parts sociales.">
+        <W.Section title="L'associé unique" subtitle="Dans une EURL, une seule personne détient la totalité de la société — 100 % des parts.">
           <W.FieldCheckbox label="Le gérant est aussi l'associé unique" checked={!!pm.composition._gerantEstAssocie} onChange={setGerantEstAssocie} />
           {!pm.composition._gerantEstAssocie && (
             <>
@@ -384,19 +384,19 @@ const WizardEURL = ({ setRoute, dossierId: initialDossierId, onCreated, demoMode
       )}
 
       {step === 5 && (
-        <W.Section title="Pièces justificatives">
+        <W.Section title="Vos documents" subtitle="Les quelques pièces à joindre. Glissez-les ici, on s'occupe du classement.">
           <W.DocumentUploadList dossierId={dossierId} documents={documents} setDocuments={setDocuments} demoMode={demoMode} required={[
-            { typeDocument: 'PJ_01', label: "Pièce d'identité du gérant (CNI, passeport)" },
-            { typeDocument: 'PJ_04', label: "Statuts signés de l'EURL" },
-            { typeDocument: 'PJ_06', label: "Attestation de dépôt des fonds (capital)" },
-            { typeDocument: 'PJ_05', label: "Acte de nomination du gérant (si pas dans statuts)" },
+            { typeDocument: 'PJ_01', label: "Pièce d'identité du gérant (carte d'identité ou passeport)" },
+            { typeDocument: 'PJ_04', label: "Statuts signés de la société" },
+            { typeDocument: 'PJ_06', label: "Attestation de dépôt du capital (banque)" },
+            { typeDocument: 'PJ_05', label: "Nomination du gérant (si elle n'est pas dans les statuts)" },
             { typeDocument: 'PJ_07', label: "Liste des bénéficiaires effectifs" },
           ]} />
         </W.Section>
       )}
 
       {step === 6 && (
-        <W.Section title="Récapitulatif" subtitle={`Ton dossier ${reference || ''} sera soumis à l'admin pour validation interne avant envoi à l'INPI.`}>
+        <W.Section title="On y est presque" subtitle={`Vérifiez votre dossier ${reference || ''} en un coup d'œil. Notre équipe le relit et se charge des démarches pour vous.`}>
           <W.RecapBlock label="Société" rows={[
             ['Dénomination', ent.denomination],
             ['Sigle', dsc.sigle || '—'],

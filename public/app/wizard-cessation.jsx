@@ -459,7 +459,7 @@ const WizardCessation = ({ setRoute, dossierId: initialDossierId, onCreated }) =
       <div className="page-head">
         <div>
           <h1>Radiation / Cessation d'activité</h1>
-          <p>Auto-entrepreneur — Formulaire INPI Guichet Unique (étape {step} / {CESSATION_STEPS.length})</p>
+          <p>Auto-entrepreneur — on vous accompagne pas à pas (étape {step} / {CESSATION_STEPS.length})</p>
         </div>
       </div>
 
@@ -485,9 +485,9 @@ const WizardCessation = ({ setRoute, dossierId: initialDossierId, onCreated }) =
         {/* ─── Étape 1 ─── */}
         {step === 1 && (
           <div className="app-card" style={{ padding: 24, marginBottom: 16 }}>
-            <h3 style={{ fontSize: 16, marginBottom: 4 }}>Identification de l'entreprise à radier</h3>
+            <h3 style={{ fontSize: 16, marginBottom: 4 }}>Votre entreprise</h3>
             <p style={{ fontSize: 13, color: 'var(--ink-500)', marginBottom: 18 }}>
-              Saisie manuelle ; l'intégration Pappers (récupération auto depuis le SIREN) viendra plus tard.
+              Indiquez le SIREN et le nom : ce sont les seules infos nécessaires pour retrouver l'entreprise.
             </p>
             <div style={{ display: 'grid', gap: 14 }}>
               <CField
@@ -564,7 +564,7 @@ const WizardCessation = ({ setRoute, dossierId: initialDossierId, onCreated }) =
           <div className="app-card" style={{ padding: 24, marginBottom: 16 }}>
             <h3 style={{ fontSize: 16, marginBottom: 4 }}>Motif et date de cessation</h3>
             <p style={{ fontSize: 13, color: 'var(--ink-500)', marginBottom: 18 }}>
-              La date est la date d'effet de la radiation au RNE.
+              Indiquez la date à laquelle l'activité s'arrête, et pourquoi.
             </p>
             <div style={{ display: 'grid', gap: 14 }}>
               <div>

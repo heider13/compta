@@ -228,7 +228,7 @@ const WizardSAS = ({ setRoute, dossierId: initialDossierId, onCreated, demoMode 
       {error && <div style={{ color: '#b42318', padding: 12, marginBottom: 12, fontSize: 13, background: '#FEE2E2', borderRadius: 8 }}>{error}</div>}
 
       {step === 0 && (
-        <W.Section title="Société (SAS)" subtitle="Société par Actions Simplifiée — plusieurs associés possibles, président, actions.">
+        <W.Section title="Votre société (SAS)" subtitle="À plusieurs autour d'un projet : un ou plusieurs associés, un président. Déjà pré-rempli si vous avez utilisé l'assistant — vérifiez simplement.">
           <W.AiLaunchpad formeJuridique="SAS" onPrefill={(d) => {
             if (d.denomination) setEntreprise({ denomination: d.denomination.toUpperCase() });
             if (d.sigle) setDescription({ sigle: d.sigle });
@@ -293,9 +293,9 @@ const WizardSAS = ({ setRoute, dossierId: initialDossierId, onCreated, demoMode 
       )}
 
       {step === 2 && (
-        <W.Section title="Activité principale">
-          <W.FieldText label="Code APE/NAF *" value={etab.activites[0].codeApe} onChange={v => setEtabActivite({ codeApe: v.toUpperCase().replace(/\s/g, '') })} mono maxLength={5} placeholder="7022Z" />
-          <W.FieldTextarea label="Description détaillée de l'activité *" value={etab.activites[0].descriptionDetaillee} onChange={v => setEtabActivite({ descriptionDetaillee: v })} rows={3} placeholder="Ex: Édition de logiciels SaaS…" />
+        <W.Section title="Votre activité" subtitle="Décrivez ce que fait la société — l'assistant a peut-être déjà tout rempli.">
+          <W.FieldText label="Activité — code APE *" value={etab.activites[0].codeApe} onChange={v => setEtabActivite({ codeApe: v.toUpperCase().replace(/\s/g, '') })} mono maxLength={5} placeholder="Ex: 6202A — l'IA le déduit de votre description" />
+          <W.FieldTextarea label="Que fait la société ? *" value={etab.activites[0].descriptionDetaillee} onChange={v => setEtabActivite({ descriptionDetaillee: v })} rows={3} placeholder="Ex: Édition de logiciels SaaS…" />
           <W.Row>
             <W.FieldDate label="Date de début d'activité *" value={etab.activites[0].dateDebutActivite} onChange={v => setEtabActivite({ dateDebutActivite: v })} />
             <W.FieldCheckbox label="Activité ambulante" checked={etab.activites[0].indicateurAmbulant} onChange={v => setEtabActivite({ indicateurAmbulant: v })} />
@@ -425,7 +425,7 @@ const WizardSAS = ({ setRoute, dossierId: initialDossierId, onCreated, demoMode 
       )}
 
       {step === 6 && (
-        <W.Section title="Récapitulatif" subtitle={`Ton dossier ${reference || ''} sera soumis à l'admin pour validation interne avant envoi à l'INPI.`}>
+        <W.Section title="On y est presque !" subtitle={`Un dernier coup d'œil à votre dossier ${reference || ''}. Notre équipe le vérifie puis s'occupe de tout — vous n'avez rien d'autre à faire.`}>
           <W.RecapBlock label="Société" rows={[
             ['Dénomination', ent.denomination],
             ['Sigle', dsc.sigle || '—'],
