@@ -83,34 +83,38 @@ function Constellation() {
 
 export function Hero() {
   return (
-    <section className="px-3 pt-3 sm:px-5">
-      <div className="relative overflow-hidden rounded-[28px] sm:rounded-[36px]">
-        {/* Fond : violet profond + halo ambré (coin haut-gauche) + magenta */}
-        <div className="absolute inset-0 bg-[#0e0b1a]" />
-        <div
-          aria-hidden="true"
-          className="absolute inset-0"
-          style={{
-            background:
-              'radial-gradient(ellipse 620px 520px at 8% 2%, rgba(255,190,140,0.55), transparent 55%),' +
-              'radial-gradient(ellipse 900px 700px at 60% 30%, rgba(117,81,232,0.45), transparent 60%),' +
-              'radial-gradient(ellipse 700px 600px at 95% 100%, rgba(234,66,253,0.25), transparent 60%)',
-          }}
-        />
-        {/* grille discrète */}
-        <div
-          aria-hidden="true"
-          className="absolute inset-0 opacity-[0.06]"
-          style={{
-            backgroundImage:
-              'linear-gradient(rgba(255,255,255,0.6) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.6) 1px, transparent 1px)',
-            backgroundSize: '54px 54px',
-            maskImage: 'radial-gradient(ellipse 80% 80% at 50% 40%, black 30%, transparent 80%)',
-            WebkitMaskImage: 'radial-gradient(ellipse 80% 80% at 50% 40%, black 30%, transparent 80%)',
-          }}
-        />
+    <section className="relative overflow-hidden bg-[#0e0b1a]">
+      {/* Fond : violet profond + halo ambré (coin haut-gauche) + magenta */}
+      <div
+        aria-hidden="true"
+        className="absolute inset-0"
+        style={{
+          background:
+            'radial-gradient(ellipse 720px 620px at 6% -6%, rgba(255,190,140,0.55), transparent 55%),' +
+            'radial-gradient(ellipse 1000px 800px at 60% 25%, rgba(117,81,232,0.42), transparent 62%),' +
+            'radial-gradient(ellipse 800px 700px at 98% 100%, rgba(234,66,253,0.22), transparent 62%)',
+        }}
+      />
+      {/* grille discrète */}
+      <div
+        aria-hidden="true"
+        className="absolute inset-0 opacity-[0.05]"
+        style={{
+          backgroundImage:
+            'linear-gradient(rgba(255,255,255,0.6) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.6) 1px, transparent 1px)',
+          backgroundSize: '54px 54px',
+          maskImage: 'radial-gradient(ellipse 80% 80% at 50% 40%, black 30%, transparent 80%)',
+          WebkitMaskImage: 'radial-gradient(ellipse 80% 80% at 50% 40%, black 30%, transparent 80%)',
+        }}
+      />
+      {/* fondu vers le bas pour enchaîner avec les sections claires */}
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-x-0 bottom-0 h-24"
+        style={{ background: 'linear-gradient(to bottom, transparent, #0e0b1a)' }}
+      />
 
-        <div className="relative mx-auto grid max-w-6xl items-center gap-10 px-6 py-16 sm:px-10 lg:grid-cols-2 lg:py-24">
+      <div className="relative mx-auto grid max-w-6xl items-center gap-10 px-6 pb-16 pt-28 sm:px-10 lg:grid-cols-2 lg:pb-24 lg:pt-32">
           {/* Colonne texte */}
           <div className="text-center lg:text-left">
             <span className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-3.5 py-1.5 text-xs font-semibold text-white/85 backdrop-blur">
@@ -162,15 +166,14 @@ export function Hero() {
           <div className="hidden lg:block">
             <Constellation />
           </div>
-        </div>
+      </div>
 
-        {/* Bande logos / registres officiels */}
-        <div className="relative border-t border-white/10 px-6 py-5 sm:px-10">
-          <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-center gap-x-8 gap-y-2 text-xs font-semibold tracking-wide text-white/45 sm:justify-between">
-            {['INPI Guichet Unique', 'Registre National', 'Yousign', 'Légifrance', 'Stripe'].map((s) => (
-              <span key={s}>{s}</span>
-            ))}
-          </div>
+      {/* Bande logos / registres officiels */}
+      <div className="relative border-t border-white/10 px-6 py-5 sm:px-10">
+        <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-center gap-x-8 gap-y-2 text-xs font-semibold tracking-wide text-white/45 sm:justify-between">
+          {['INPI Guichet Unique', 'Registre National', 'Yousign', 'Légifrance', 'Stripe'].map((s) => (
+            <span key={s}>{s}</span>
+          ))}
         </div>
       </div>
     </section>
