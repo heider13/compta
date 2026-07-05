@@ -2,6 +2,7 @@ import { Nav } from '@/components/landing/Nav';
 import { Hero } from '@/components/landing/Hero';
 import { ProductSuite } from '@/components/landing/ProductSuite';
 import { TabShowcase } from '@/components/landing/TabShowcase';
+import { FormalityTypes } from '@/components/landing/FormalityTypes';
 import { Metrics } from '@/components/landing/Metrics';
 import { PersonaSelector } from '@/components/landing/PersonaSelector';
 import { InteractiveDemo } from '@/components/landing/InteractiveDemo';
@@ -22,6 +23,7 @@ export default function LandingPage() {
       <Hero />
       <ProductSuite />
       <TabShowcase />
+      <FormalityTypes />
       <Metrics />
       <PersonaSelector />
       <InteractiveDemo />
