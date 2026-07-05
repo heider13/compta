@@ -223,72 +223,99 @@ def ingest_jurisprudence_ce(query, max_results, token=None):
 
 
 # ─── BOFiP (open data DGFiP, archive stock, sans clé) ─────────────
-def _bofip_latest_stock_url():
-    """Trouve l'URL de l'archive stock BOFiP la plus récente (contenu en vigueur).
-    Le champ `telechargement` du record open data porte l'URL directe
-    (ex : https://bofip.impots.gouv.fr/opendata/stock/6)."""
+def _bofip_archive_urls():
+    """Liste toutes les archives BOFiP open data (stock + flux), triées par
+    date décroissante. Le stock officiel est parfois vide côté serveur : on
+    agrège aussi les flux hebdomadaires, qui portent la doctrine récente."""
     api = ("https://data.economie.gouv.fr/api/records/1.0/search/"
-           "?dataset=bofip-impots&rows=50")
+           "?dataset=bofip-impots&rows=100")
     with urllib.request.urlopen(api, timeout=60) as r:
         recs = json.loads(r.read()).get("records", [])
-    stocks = [
-        rec for rec in recs
-        if (rec.get("fields", {}).get("type") == "stock"
-            or "stock" in (rec.get("fields", {}).get("nom_du_fichier") or ""))
-    ]
-    if not stocks:
-        raise RuntimeError("Aucune archive stock BOFiP trouvée")
-    stocks.sort(key=lambda x: x["fields"].get("date_de_fin", ""), reverse=True)
-    f = stocks[0]["fields"]
-    url = f.get("telechargement")
-    if not url:
-        raise RuntimeError("Champ 'telechargement' absent du record stock BOFiP")
-    return url, f["nom_du_fichier"]
+    out = []
+    for rec in recs:
+        f = rec.get("fields", {})
+        url = f.get("telechargement")
+        if url:
+            out.append((url, f.get("nom_du_fichier", ""), f.get("type", ""),
+                        f.get("date_de_fin", "")))
+    out.sort(key=lambda x: x[3], reverse=True)
+    return out
+
+
+# document.xml BOFiP : identifiant BOI dans <IdentifiantJuridique> ou dérivé
+# du chemin ; texte dans les balises de contenu.
+def _parse_bofip_xml(xml_bytes, path):
+    raw = xml_bytes.decode("utf-8", "replace")
+    m_id = re.search(r"<Identifiant[^>]*>([^<]+)</Identifiant", raw)
+    boi = None
+    if m_id:
+        boi = m_id.group(1).strip()
+    if not boi:
+        # chemin : .../{SERIE}/{num}-PGP/{date}/document.xml
+        parts = [p for p in path.split("/") if p]
+        pgp = next((p for p in parts if p.endswith("-PGP")), None)
+        serie = parts[parts.index(pgp) - 1] if pgp and pgp in parts else ""
+        boi = f"BOI-{serie}-{pgp}" if pgp else path
+    m_t = re.search(r"<Titre[^>]*>([^<]+)</Titre", raw) or re.search(r"<title[^>]*>([^<]+)</title", raw)
+    title = html.unescape(m_t.group(1)).strip() if m_t else boi
+    text = strip_html(raw)
+    return boi, title, text
 
 
 def ingest_bofip_stock(prefix_filter=None, max_docs=None):
-    """Télécharge l'archive stock BOFiP et ingère les documents HTML.
-    prefix_filter : liste de préfixes BOI à garder (ex ['BOI-TVA','BOI-IS']).
-    """
+    """Ingère les documents BOFiP depuis les archives open data (stock + flux).
+    prefix_filter : préfixes de série BOI à garder (ex ['BOI-TVA','BOI-IS'])."""
     import tarfile
     import io
-    import tempfile
 
-    url, name = _bofip_latest_stock_url()
-    print(f"Téléchargement {name} …")
-    req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0 (ComptaBot)"})
-    with urllib.request.urlopen(req, timeout=600) as r:
-        blob = r.read()
-    print(f"  {len(blob) // (1024*1024)} Mo, extraction…")
-
+    archives = _bofip_archive_urls()
+    print(f"{len(archives)} archives BOFiP disponibles")
     total = count = 0
-    with tarfile.open(fileobj=io.BytesIO(blob), mode="r:gz") as tar:
+    seen = set()
+
+    for url, name, atype, date in archives:
+        if max_docs and count >= max_docs:
+            break
+        try:
+            req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0 (ComptaBot)"})
+            with urllib.request.urlopen(req, timeout=600) as r:
+                blob = r.read()
+        except Exception as e:  # noqa: BLE001
+            print(f"  [skip] {name}: {e}")
+            continue
+        if len(blob) < 8000:  # stock cassé / archive vide
+            print(f"  [skip] {name}: {len(blob)} octets (vide)")
+            continue
+        print(f"  {name} ({atype}, {len(blob)//1024} Ko)…")
+        try:
+            tar = tarfile.open(fileobj=io.BytesIO(blob), mode="r:gz")
+        except Exception as e:  # noqa: BLE001
+            print(f"  [skip] {name}: archive illisible ({e})")
+            continue
         for member in tar:
-            if not member.isfile() or not member.name.endswith(".html"):
-                continue
-            boi = re.sub(r"\.html$", "", member.name.split("/")[-1])
-            if prefix_filter and not any(boi.startswith(p) for p in prefix_filter):
-                continue
             if max_docs and count >= max_docs:
                 break
+            if not member.isfile() or not member.name.endswith("document.xml"):
+                continue
             f = tar.extractfile(member)
             if not f:
                 continue
-            page = f.read().decode("utf-8", "replace")
-            m = re.search(r"<title>([^<]+)</title>", page)
-            title = html.unescape(m.group(1)).strip() if m else boi
-            text = strip_html(page)
-            if len(text) < 200:
+            boi, title, text = _parse_bofip_xml(f.read(), member.name)
+            if prefix_filter and not any(boi.startswith(p) for p in prefix_filter):
                 continue
+            if boi in seen or len(text) < 200:
+                continue
+            seen.add(boi)
             try:
                 total += store("bofip", boi, f"{title} ({boi})",
                                f"https://bofip.impots.gouv.fr/bofip/ext/{boi}",
-                               "doctrine_fiscale", None, text)
+                               "doctrine_fiscale", date or None, text)
                 count += 1
                 if count % 20 == 0:
-                    print(f"  … {count} documents BOFiP ingérés")
+                    print(f"    … {count} documents ingérés")
             except Exception as e:  # noqa: BLE001
-                print(f"  [err] {boi}: {e}")
+                print(f"    [err] {boi}: {e}")
+        tar.close()
     print(f"Terminé : {count} documents, {total} chunks")
 
 
