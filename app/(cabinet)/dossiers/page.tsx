@@ -112,7 +112,7 @@ export default async function DossiersPage({ searchParams }: { searchParams: Pro
         </div>
       </div>
 
-      <div className="grid gap-3.5 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="grid gap-3.5 [grid-template-columns:repeat(auto-fit,minmax(210px,1fr))]">
         <StatCard count={counts.enCours}      label="Formalités" sublabel="En cours"                tone="gray"   href="/dossiers?statut=AWAITING_VALIDATION" />
         <StatCard count={counts.enSignature}  label="Formalités" sublabel="En signature"            tone="violet" href="/dossiers?statut=SIGNATURE_PENDING" />
         <StatCard count={counts.enTraitement} label="Formalités" sublabel="En cours de traitement"  tone="amber"  href="/dossiers?statut=AMENDMENT_PENDING" />

@@ -108,7 +108,7 @@ export default async function AdminDashboardPage() {
         subtitle="Activité globale de la plateforme — tous cabinets confondus."
       />
 
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="grid gap-4 [grid-template-columns:repeat(auto-fit,minmax(210px,1fr))]">
         {kpis.map((kpi) => (
           <Link key={kpi.label} href={kpi.href} className="group">
             <Card className="h-full transition-shadow group-hover:shadow-md">
