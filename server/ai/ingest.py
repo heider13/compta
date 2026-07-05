@@ -76,7 +76,27 @@ def embed_passages(texts):
     return out
 
 
+def norm_date(v):
+    """Normalise une date PISTE/INPI (epoch millis, epoch s, ou ISO) → YYYY-MM-DD
+    ou None. Les colonnes date de Postgres refusent un entier epoch (400)."""
+    if v in (None, "", 0):
+        return None
+    if isinstance(v, (int, float)) or (isinstance(v, str) and v.isdigit()):
+        import datetime
+        ts = int(v)
+        if ts > 1e12:  # millisecondes
+            ts //= 1000
+        try:
+            return datetime.datetime.utcfromtimestamp(ts).date().isoformat()
+        except (ValueError, OSError):
+            return None
+    s = str(v)
+    m = re.match(r"(\d{4}-\d{2}-\d{2})", s)
+    return m.group(1) if m else None
+
+
 def store(source, source_id, title, url, doc_type, date_version, text):
+    date_version = norm_date(date_version)
     chunks = chunk_text(text)
     if not chunks:
         print(f"  [skip] {source_id} : texte vide")
