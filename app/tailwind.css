@@ -136,6 +136,8 @@
      (moins « grossier » que le sans-serif gras). */
   .app-shell {
     background-color: var(--app-canvas);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
   }
   .app-shell h1 {
     font-family: var(--font-display-app);
