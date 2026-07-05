@@ -5,31 +5,35 @@
 
 /* ─── Design tokens Compta — violet brand, style shadcn/ui ─── */
 :root {
-  --radius: 0.625rem;
+  --radius: 0.85rem;
+
+  /* Canvas légèrement teinté violet → les cartes blanches prennent du relief */
+  --app-canvas: #f5f3fb;
+  --font-display-app: 'Fraunces', 'Instrument Serif', Georgia, serif;
 
   --background: #ffffff;
-  --foreground: #0e0b1a;
+  --foreground: #17122a;
   --card: #ffffff;
-  --card-foreground: #0e0b1a;
+  --card-foreground: #17122a;
   --popover: #ffffff;
-  --popover-foreground: #0e0b1a;
+  --popover-foreground: #17122a;
 
   /* Brand : violet Compta */
   --primary: #5b36d6;
   --primary-foreground: #ffffff;
 
-  --secondary: #f2f0f6;
-  --secondary-foreground: #2d2842;
-  --muted: #f2f0f6;
-  --muted-foreground: #6b6680;
-  --accent: #ece6ff;
+  --secondary: #f3f1fa;
+  --secondary-foreground: #3a2f5c;
+  --muted: #f3f1fa;
+  --muted-foreground: #6c688a;
+  --accent: #ede7ff;
   --accent-foreground: #4827b0;
 
   --destructive: #dc2626;
   --destructive-foreground: #ffffff;
 
-  --border: #e8e6ee;
-  --input: #dcdae3;
+  --border: #e8e5f3;
+  --input: #ded9ec;
   --ring: #957af5;
 
   --chart-1: #5b36d6;
@@ -115,6 +119,7 @@
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) + 4px);
+  --font-serif: var(--font-display-app);
 }
 
 @layer base {
@@ -123,5 +128,28 @@
   }
   body {
     @apply bg-background text-foreground;
+  }
+
+  /* ─── Coquille de l'app cabinet : canvas teinté + titres élégants ───
+     Le canvas légèrement violet fait ressortir les cartes blanches ;
+     les titres de page passent en serif Fraunces, plus léger et raffiné
+     (moins « grossier » que le sans-serif gras). */
+  .app-shell {
+    background-color: var(--app-canvas);
+  }
+  .app-shell h1 {
+    font-family: var(--font-display-app);
+    font-weight: 500;
+    letter-spacing: -0.01em;
+  }
+  /* Titres secondaires (sections) : serif discret également */
+  .app-shell h2 {
+    font-family: var(--font-display-app);
+    font-weight: 500;
+    letter-spacing: -0.005em;
+  }
+  /* Titres de cartes : on garde le sans-serif, juste un poil resserré */
+  .app-shell [data-slot='card-title'] {
+    letter-spacing: -0.01em;
   }
 }

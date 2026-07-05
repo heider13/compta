@@ -89,7 +89,7 @@ export default async function CabinetLayout({
           userInitials={getInitials(userLabel)}
           plan={currentOrg.plan}
         />
-        <div className="flex-1">{children}</div>
+        <div className="app-shell flex-1">{children}</div>
       </SidebarInset>
       <FloatingAssistant />
     </SidebarProvider>
