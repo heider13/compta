@@ -22,14 +22,10 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
+import { StatCard } from '@/components/cabinet/dashboard/StatCard';
+import { BarChart } from '@/components/cabinet/dashboard/BarChart';
+import { Donut } from '@/components/cabinet/dashboard/Donut';
+import { InsightsCard } from '@/components/cabinet/dashboard/InsightsCard';
 
 export const dynamic = 'force-dynamic';
 
@@ -66,6 +62,18 @@ function startOfCurrentMonthIso(): string {
   return new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
 }
 
+function todayLabel(): string {
+  try {
+    return new Intl.DateTimeFormat('fr-FR', {
+      weekday: 'long',
+      day: 'numeric',
+      month: 'long',
+    }).format(new Date());
+  } catch {
+    return '';
+  }
+}
+
 export default async function CabinetDashboardPage() {
   const supabase = await createClient();
 
@@ -73,7 +81,7 @@ export default async function CabinetDashboardPage() {
     data: { user },
   } = await supabase.auth.getUser();
 
-  // Profil pour l'accueil "Bienvenue {prénom}"
+  // Profil pour l'accueil "Bonjour {prénom}"
   let firstName: string | null = null;
   if (user) {
     const { data: profile } = await supabase
@@ -88,62 +96,104 @@ export default async function CabinetDashboardPage() {
 
   const monthStart = startOfCurrentMonthIso();
 
-  // KPI counts (count: 'exact', head: true) — pas de payload
-  const [awaitingValidationRes, inProgressRes, clientsRes, validatedMonthRes] =
-    await Promise.all([
-      supabase
-        .from('dossiers')
-        .select('id', { count: 'exact', head: true })
-        .eq('statut', 'AWAITING_VALIDATION'),
-      supabase
-        .from('dossiers')
-        .select('id', { count: 'exact', head: true })
-        .in('statut', IN_PROGRESS_STATUSES),
-      supabase
-        .from('clients')
-        .select('id', { count: 'exact', head: true })
-        .is('archived_at', null),
-      supabase
-        .from('dossiers')
-        .select('id', { count: 'exact', head: true })
-        .eq('statut', 'VALIDATED')
-        .gte('updated_at', monthStart),
-    ]);
+  // KPI counts + répartition par type (count: 'exact', head: true) — pas de payload
+  const [
+    awaitingValidationRes,
+    inProgressRes,
+    clientsRes,
+    validatedMonthRes,
+    creationRes,
+    modificationRes,
+    radiationRes,
+    validatedTotalRes,
+  ] = await Promise.all([
+    supabase
+      .from('dossiers')
+      .select('id', { count: 'exact', head: true })
+      .eq('statut', 'AWAITING_VALIDATION'),
+    supabase
+      .from('dossiers')
+      .select('id', { count: 'exact', head: true })
+      .in('statut', IN_PROGRESS_STATUSES),
+    supabase
+      .from('clients')
+      .select('id', { count: 'exact', head: true })
+      .is('archived_at', null),
+    supabase
+      .from('dossiers')
+      .select('id', { count: 'exact', head: true })
+      .eq('statut', 'VALIDATED')
+      .gte('updated_at', monthStart),
+    supabase
+      .from('dossiers')
+      .select('id', { count: 'exact', head: true })
+      .eq('type_formalite', 'CREATION'),
+    supabase
+      .from('dossiers')
+      .select('id', { count: 'exact', head: true })
+      .eq('type_formalite', 'MODIFICATION'),
+    supabase
+      .from('dossiers')
+      .select('id', { count: 'exact', head: true })
+      .eq('type_formalite', 'RADIATION'),
+    supabase
+      .from('dossiers')
+      .select('id', { count: 'exact', head: true })
+      .eq('statut', 'VALIDATED'),
+  ]);
+
+  const awaitingValidation = awaitingValidationRes.count ?? 0;
+  const inProgress = inProgressRes.count ?? 0;
+  const clientsCount = clientsRes.count ?? 0;
+  const validatedMonth = validatedMonthRes.count ?? 0;
+  const validatedTotal = validatedTotalRes.count ?? 0;
 
   const kpis = [
     {
       label: 'Dossiers à valider',
-      value: awaitingValidationRes.count ?? 0,
+      value: awaitingValidation,
       hint: 'En attente de votre validation',
       icon: ClipboardCheck,
       href: '/dossiers',
-      iconClass: 'text-blue-600 bg-blue-50',
+      tileClass: 'text-[#ff887b] bg-[#fff3f1]',
     },
     {
       label: 'En cours',
-      value: inProgressRes.count ?? 0,
+      value: inProgress,
       hint: 'Tous statuts actifs',
       icon: FolderOpen,
       href: '/dossiers',
-      iconClass: 'text-primary bg-accent',
+      tileClass: 'text-primary bg-[#ede7ff]',
     },
     {
       label: 'Clients',
-      value: clientsRes.count ?? 0,
+      value: clientsCount,
       hint: 'Entreprises gérées',
       icon: Users,
       href: '/clients',
-      iconClass: 'text-muted-foreground bg-muted',
+      tileClass: 'text-blue-600 bg-blue-50',
     },
     {
       label: 'Validés ce mois',
-      value: validatedMonthRes.count ?? 0,
+      value: validatedMonth,
       hint: 'Formalités acceptées INPI',
       icon: CheckCircle2,
       href: null,
-      iconClass: 'text-green-600 bg-green-50',
+      tileClass: 'text-[#7551e8] bg-[#f3f1fa]',
     },
   ];
+
+  // Répartition des formalités par type (données réelles)
+  const formaliteBars = [
+    { label: 'Création', value: creationRes.count ?? 0, colorClass: 'bg-[#5b36d6]' },
+    { label: 'Modification', value: modificationRes.count ?? 0, colorClass: 'bg-[#957af5]' },
+    { label: 'Radiation', value: radiationRes.count ?? 0, colorClass: 'bg-[#ff887b]' },
+  ];
+
+  // Avancement : validés vs en cours (données réelles)
+  const avancementTotal = validatedTotal + inProgress;
+  const avancementPct =
+    avancementTotal > 0 ? Math.round((validatedTotal / avancementTotal) * 100) : 0;
 
   // Dossiers récents (5 derniers)
   const { data: recentData } = await supabase
@@ -176,9 +226,26 @@ export default async function CabinetDashboardPage() {
 
   return (
     <div className="mx-auto w-full max-w-7xl space-y-6 p-4 sm:p-6">
+      {/* Header */}
+      <div className="flex flex-wrap items-end justify-between gap-4">
+        <div className="min-w-0">
+          <h1>Bonjour {greetingName ? `${greetingName} ` : ''}👋</h1>
+          <p className="mt-1 text-sm text-muted-foreground first-letter:uppercase">
+            {todayLabel()} · Voici l&apos;activité de votre cabinet.
+          </p>
+        </div>
+        <Button asChild size="lg">
+          <Link href="/dossiers/new">
+            <Plus className="size-4" />
+            Nouveau dossier
+          </Link>
+        </Button>
+      </div>
+
+      {/* Bandeau INPI */}
       {inpiNotConfigured && (
-        <Card className="border-amber-300 bg-amber-50">
-          <CardContent className="flex flex-wrap items-center gap-4 py-4">
+        <Card className="gap-0 border-amber-300 bg-amber-50 py-0">
+          <CardContent className="flex flex-wrap items-center gap-4 p-4">
             <span className="grid size-10 shrink-0 place-items-center rounded-lg bg-amber-400/80 text-amber-950">
               <AlertTriangle className="size-5" />
             </span>
@@ -201,53 +268,72 @@ export default async function CabinetDashboardPage() {
         </Card>
       )}
 
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Tableau de bord</h1>
-          <p className="text-sm text-muted-foreground">
-            Bienvenue{greetingName ? ` ${greetingName}` : ''}. Voici l&apos;activité de
-            votre cabinet.
-          </p>
-        </div>
-        <Button asChild>
-          <Link href="/dossiers/new">
-            <Plus className="size-4" />
-            Nouveau dossier
-          </Link>
-        </Button>
-      </div>
-
+      {/* KPI row */}
       <div className="grid gap-4 [grid-template-columns:repeat(auto-fit,minmax(210px,1fr))]">
-        {kpis.map((kpi) => {
-          const inner = (
-            <Card className="h-full transition-shadow hover:shadow-md">
-              <CardContent className="flex items-start justify-between gap-3 pt-5">
-                <div className="space-y-1">
-                  <p className="text-sm text-muted-foreground">{kpi.label}</p>
-                  <p className="text-3xl font-semibold tracking-tight">{kpi.value}</p>
-                  <p className="text-xs text-muted-foreground">{kpi.hint}</p>
-                </div>
-                <span className={`grid size-10 shrink-0 place-items-center rounded-lg ${kpi.iconClass}`}>
-                  <kpi.icon className="size-5" />
-                </span>
-              </CardContent>
-            </Card>
-          );
-          return kpi.href ? (
-            <Link key={kpi.label} href={kpi.href} className="block">
-              {inner}
-            </Link>
-          ) : (
-            <div key={kpi.label}>{inner}</div>
-          );
-        })}
+        {kpis.map((kpi) => (
+          <div key={kpi.label} className="min-w-0">
+            <StatCard
+              label={kpi.label}
+              value={kpi.value}
+              hint={kpi.hint}
+              icon={kpi.icon}
+              href={kpi.href}
+              tileClass={kpi.tileClass}
+            />
+          </div>
+        ))}
       </div>
 
-      <div className="grid gap-5 lg:grid-cols-[1.4fr_1fr]">
+      {/* Bento grid */}
+      <div className="grid gap-5 lg:grid-cols-3">
+        {/* Répartition des formalités */}
+        <Card className="min-w-0">
+          <CardHeader>
+            <CardTitle className="text-base">Répartition des formalités</CardTitle>
+            <CardDescription>Par type, tous dossiers confondus</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <BarChart items={formaliteBars} />
+          </CardContent>
+        </Card>
+
+        {/* Donut — Avancement */}
+        <Card className="min-w-0">
+          <CardHeader>
+            <CardTitle className="text-base">Avancement</CardTitle>
+            <CardDescription>Validés vs en cours</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-5">
+            <Donut
+              value={validatedTotal}
+              total={avancementTotal}
+              centerText={`${avancementPct}%`}
+              centerSub="validés"
+            />
+            <div className="flex items-center justify-center gap-5 text-sm">
+              <span className="flex items-center gap-2">
+                <span className="size-2.5 rounded-full bg-[#5b36d6]" />
+                <span className="text-muted-foreground">Validés</span>
+                <span className="font-semibold tabular-nums">{validatedTotal}</span>
+              </span>
+              <span className="flex items-center gap-2">
+                <span className="size-2.5 rounded-full bg-[#ede7ff]" />
+                <span className="text-muted-foreground">En cours</span>
+                <span className="font-semibold tabular-nums">{inProgress}</span>
+              </span>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Insights IA */}
+        <div className="min-w-0">
+          <InsightsCard awaitingValidation={awaitingValidation} inProgress={inProgress} />
+        </div>
+
         {/* Dossiers récents */}
-        <Card>
+        <Card className="min-w-0 lg:col-span-2">
           <CardHeader className="flex-row items-center justify-between space-y-0">
-            <div>
+            <div className="min-w-0">
               <CardTitle className="text-base">Dossiers récents</CardTitle>
               <CardDescription>Les 5 dernières formalités mises à jour</CardDescription>
             </div>
@@ -264,50 +350,42 @@ export default async function CabinetDashboardPage() {
                 Aucun dossier pour l&apos;instant.
               </p>
             ) : (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Référence</TableHead>
-                    <TableHead>Client</TableHead>
-                    <TableHead className="hidden md:table-cell">Type</TableHead>
-                    <TableHead>Statut</TableHead>
-                    <TableHead className="hidden text-right sm:table-cell">Maj</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {recentDossiers.map((d) => (
-                    <TableRow key={d.id}>
-                      <TableCell className="font-mono text-xs text-muted-foreground">
-                        <Link href={`/dossiers/${d.id}`} className="hover:underline">
-                          {d.reference ?? '—'}
-                        </Link>
-                      </TableCell>
-                      <TableCell className="max-w-40 truncate font-medium">
-                        <Link href={`/dossiers/${d.id}`} className="hover:underline">
+              <ul className="divide-y divide-border">
+                {recentDossiers.map((d) => (
+                  <li key={d.id}>
+                    <Link
+                      href={`/dossiers/${d.id}`}
+                      className="flex items-center gap-3 rounded-lg px-2 py-3 transition-colors hover:bg-[#f5f3fb]"
+                    >
+                      <span className="hidden shrink-0 font-mono text-xs text-muted-foreground sm:block sm:w-24">
+                        {d.reference ?? '—'}
+                      </span>
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate font-medium text-foreground">
                           {d.client_name}
-                        </Link>
-                      </TableCell>
-                      <TableCell className="hidden text-sm text-muted-foreground md:table-cell">
-                        {typeFormaliteLabel(d.type_formalite)}
-                      </TableCell>
-                      <TableCell>
+                        </span>
+                        <span className="block truncate text-xs text-muted-foreground">
+                          {typeFormaliteLabel(d.type_formalite)}
+                        </span>
+                      </span>
+                      <span className="shrink-0">
                         <StatusBadge statut={d.statut} />
-                      </TableCell>
-                      <TableCell className="hidden text-right text-xs text-muted-foreground sm:table-cell">
+                      </span>
+                      <span className="hidden shrink-0 text-right text-xs text-muted-foreground sm:block sm:w-20">
                         {formatRelative(d.updated_at ?? d.created_at)}
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+                      </span>
+                    </Link>
+                  </li>
+                ))}
+              </ul>
             )}
           </CardContent>
         </Card>
 
         {/* Tâches à traiter */}
-        <Card>
+        <Card className="min-w-0">
           <CardHeader className="flex-row items-center justify-between space-y-0">
-            <div>
+            <div className="min-w-0">
               <CardTitle className="text-base">Tâches à traiter</CardTitle>
               <CardDescription>Les vôtres et les non assignées</CardDescription>
             </div>
@@ -321,7 +399,7 @@ export default async function CabinetDashboardPage() {
           <CardContent className="space-y-1">
             {tasks.length === 0 ? (
               <p className="py-10 text-center text-sm text-muted-foreground">
-                Aucune tâche à traiter. Bon travail !
+                Aucune tâche. Bon travail !
               </p>
             ) : (
               tasks.map((t) => {
@@ -330,7 +408,7 @@ export default async function CabinetDashboardPage() {
                   <Link
                     key={t.id}
                     href={dossier ? `/dossiers/${dossier.id}` : '/tasks'}
-                    className="flex items-start gap-3 rounded-lg px-2 py-2.5 transition-colors hover:bg-muted"
+                    className="flex items-start gap-3 rounded-lg px-2 py-2.5 transition-colors hover:bg-[#f5f3fb]"
                   >
                     <span className="mt-0.5 grid size-5 shrink-0 place-items-center rounded-full border border-border" />
                     <span className="min-w-0 flex-1">
