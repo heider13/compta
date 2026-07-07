@@ -23,8 +23,11 @@ router.get(
       return res.json({ configured: false });
     }
     try {
-      const balance = await pappers.getBalance();
-      res.json({ configured: true, balance });
+      const [balance, formes] = await Promise.all([
+        pappers.getBalance().catch((e) => ({ error: e.message })),
+        pappers.getFormesJuridiques().catch(() => null),
+      ]);
+      res.json({ configured: true, balance, formesJuridiques: formes });
     } catch (e) {
       res.status(e.status || 502).json({
         configured: true,
