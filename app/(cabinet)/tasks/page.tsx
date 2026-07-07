@@ -1,12 +1,13 @@
 import Link from 'next/link';
 import { revalidatePath } from 'next/cache';
-import { Check, ClipboardList } from 'lucide-react';
+import { AlertTriangle, Check, CheckCircle2, ClipboardList, ListTodo } from 'lucide-react';
 import { createClient } from '@/lib/supabase/server';
 import { formatDate } from '@/lib/utils/format';
 import { getInitials } from '@/lib/types';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { StatCard } from '@/components/cabinet/dashboard/StatCard';
 import { cn } from '@/lib/utils';
 
 export const dynamic = 'force-dynamic';
@@ -77,9 +78,9 @@ function groupTasks(tasks: TaskRow[]): TaskGroup[] {
   }
 
   return [
-    { key: 'overdue', title: 'En retard', badgeClass: 'border-red-200 bg-red-50 text-red-700', items: overdue },
-    { key: 'today', title: "Aujourd'hui", badgeClass: 'border-amber-200 bg-amber-50 text-amber-700', items: todayList },
-    { key: 'upcoming', title: 'À venir', badgeClass: 'border-blue-200 bg-blue-50 text-blue-700', items: upcoming },
+    { key: 'overdue', title: 'En retard', badgeClass: 'border-amber-300 bg-amber-50 text-amber-800', items: overdue },
+    { key: 'today', title: "Aujourd'hui", badgeClass: 'border-primary/30 bg-[#ede7ff] text-primary', items: todayList },
+    { key: 'upcoming', title: 'À venir', badgeClass: 'border-[#957af5]/40 bg-[#f3f1fa] text-[#5b36d6]', items: upcoming },
     { key: 'done', title: 'Terminées', badgeClass: 'border-border bg-muted text-muted-foreground', items: done },
   ];
 }
@@ -149,15 +150,59 @@ export default async function TasksPage() {
 
   const groups = groupTasks(tasks);
   const activeCount = tasks.filter((t) => !t.done).length;
+  const overdueCount = groups.find((g) => g.key === 'overdue')?.items.length ?? 0;
+  const doneCount = groups.find((g) => g.key === 'done')?.items.length ?? 0;
+
+  const stats = [
+    {
+      label: 'À faire',
+      value: activeCount,
+      hint: 'Tâches actives',
+      icon: ListTodo,
+      tileClass: 'text-primary bg-[#ede7ff]',
+    },
+    {
+      label: 'En retard',
+      value: overdueCount,
+      hint: 'À traiter en priorité',
+      icon: AlertTriangle,
+      tileClass: 'text-[#ff887b] bg-[#fff3f1]',
+    },
+    {
+      label: 'Terminées',
+      value: doneCount,
+      hint: 'Tâches clôturées',
+      icon: CheckCircle2,
+      tileClass: 'text-[#7551e8] bg-[#f3f1fa]',
+    },
+  ];
 
   return (
-    <div className="mx-auto w-full max-w-5xl space-y-6 p-4 sm:p-6">
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Tâches</h1>
-        <p className="text-sm text-muted-foreground">
-          {activeCount} {activeCount > 1 ? 'tâches actives' : 'tâche active'} sur{' '}
-          {tasks.length}
-        </p>
+    <div className="mx-auto w-full max-w-7xl space-y-6 p-4 sm:p-6">
+      {/* Header */}
+      <div className="flex flex-wrap items-end justify-between gap-4">
+        <div className="min-w-0">
+          <h1>Tâches</h1>
+          <p className="mt-1 text-sm text-muted-foreground">
+            {activeCount} {activeCount > 1 ? 'tâches à traiter' : 'tâche à traiter'}
+            {tasks.length > 0 ? ` · ${tasks.length} au total` : ''}
+          </p>
+        </div>
+      </div>
+
+      {/* Stat row */}
+      <div className="grid gap-4 [grid-template-columns:repeat(auto-fit,minmax(210px,1fr))]">
+        {stats.map((stat) => (
+          <div key={stat.label} className="min-w-0">
+            <StatCard
+              label={stat.label}
+              value={stat.value}
+              hint={stat.hint}
+              icon={stat.icon}
+              tileClass={stat.tileClass}
+            />
+          </div>
+        ))}
       </div>
 
       {error && (
@@ -191,7 +236,10 @@ export default async function TasksPage() {
                   const dossier = t.dossiers;
                   const isOverdue = group.key === 'overdue';
                   return (
-                    <div key={t.id} className="flex items-center gap-3 px-5 py-3.5">
+                    <div
+                      key={t.id}
+                      className="flex items-center gap-3 px-5 py-3.5 transition-colors hover:bg-[#f5f3fb]"
+                    >
                       {/* Toggle done — Server Action, bouton-case custom */}
                       <form action={toggleTaskAction} className="shrink-0">
                         <input type="hidden" name="id" value={t.id} />
@@ -243,9 +291,9 @@ export default async function TasksPage() {
                             className={cn(
                               'text-[11px]',
                               isOverdue
-                                ? 'border-red-200 bg-red-50 text-red-700'
+                                ? 'border-amber-300 bg-amber-50 text-amber-800'
                                 : group.key === 'today'
-                                  ? 'border-amber-200 bg-amber-50 text-amber-700'
+                                  ? 'border-primary/30 bg-[#ede7ff] text-primary'
                                   : 'border-border bg-muted text-muted-foreground',
                             )}
                           >

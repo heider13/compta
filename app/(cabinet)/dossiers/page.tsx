@@ -1,23 +1,38 @@
 import Link from 'next/link';
-import { Plus } from 'lucide-react';
+import {
+  CheckCircle2,
+  ClipboardCheck,
+  FolderOpen,
+  Loader2,
+  Plus,
+} from 'lucide-react';
 import { createClient } from '@/lib/supabase/server';
-import { StatCard } from '@/components/cabinet/StatCard';
+import { StatCard } from '@/components/cabinet/dashboard/StatCard';
 import { FilterBar } from '@/components/cabinet/FilterBar';
 import { StatusBadge } from '@/components/cabinet/StatusBadge';
-import { formatDate, typeFormaliteLabel, formeJuridiqueLabel } from '@/lib/utils/format';
+import {
+  formatDate,
+  formatRelative,
+  typeFormaliteLabel,
+  formeJuridiqueLabel,
+} from '@/lib/utils/format';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
 import { cn } from '@/lib/utils';
 
 export const dynamic = 'force-dynamic';
+
+const IN_PROGRESS_STATUSES = [
+  'DRAFT',
+  'AWAITING_VALIDATION',
+  'INTERNAL_AMENDMENT_PENDING',
+  'VALIDATED_INTERNAL',
+  'RECEIVED',
+  'VALIDATION_PENDING',
+  'AMENDMENT_PENDING',
+  'SIGNATURE_PENDING',
+  'PAYMENT_PENDING',
+];
 
 const TYPE_OPTIONS = [
   { value: 'CREATION',     label: 'Création' },
@@ -82,26 +97,63 @@ export default async function DossiersPage({ searchParams }: { searchParams: Pro
 
   const { data: all } = await supabase.from('dossiers').select('statut');
   const allRows = all ?? [];
+  const total = allRows.length;
   const counts = {
-    enCours: allRows.filter((d) => ['DRAFT', 'AWAITING_VALIDATION', 'INTERNAL_AMENDMENT_PENDING', 'VALIDATED_INTERNAL'].includes(d.statut)).length,
-    enSignature: allRows.filter((d) => d.statut === 'SIGNATURE_PENDING').length,
-    enTraitement: allRows.filter((d) => ['RECEIVED', 'VALIDATION_PENDING', 'AMENDMENT_PENDING'].includes(d.statut)).length,
-    enAttente: allRows.filter((d) => d.statut === 'PAYMENT_PENDING').length,
+    aValider: allRows.filter((d) => d.statut === 'AWAITING_VALIDATION').length,
+    enCours: allRows.filter((d) => IN_PROGRESS_STATUSES.includes(d.statut)).length,
+    valides: allRows.filter((d) => d.statut === 'VALIDATED').length,
   };
 
+  const stats = [
+    {
+      label: 'Tous les dossiers',
+      value: total,
+      hint: 'Toutes formalités confondues',
+      icon: FolderOpen,
+      href: '/dossiers',
+      tileClass: 'text-primary bg-[#ede7ff]',
+    },
+    {
+      label: 'À valider',
+      value: counts.aValider,
+      hint: 'En attente de validation',
+      icon: ClipboardCheck,
+      href: '/dossiers?statut=AWAITING_VALIDATION',
+      tileClass: 'text-[#ff887b] bg-[#fff3f1]',
+    },
+    {
+      label: 'En cours',
+      value: counts.enCours,
+      hint: 'Tous statuts actifs',
+      icon: Loader2,
+      href: '/dossiers',
+      tileClass: 'text-[#7551e8] bg-[#f3f1fa]',
+    },
+    {
+      label: 'Validés',
+      value: counts.valides,
+      hint: 'Acceptés par l’INPI',
+      icon: CheckCircle2,
+      href: '/dossiers?statut=VALIDATED',
+      tileClass: 'text-[#5b36d6] bg-[#ede7ff]',
+    },
+  ];
+
+  const isFiltered = Boolean(sp.type || sp.statut || sp.forme || sp.q);
   const view: 'table' | 'kanban' = sp.view === 'kanban' ? 'kanban' : 'table';
 
   return (
     <div className="mx-auto w-full max-w-7xl space-y-6 p-4 sm:p-6">
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Dossiers</h1>
-          <p className="text-sm text-muted-foreground">
+      {/* Header */}
+      <div className="flex flex-wrap items-end justify-between gap-4">
+        <div className="min-w-0">
+          <h1>Dossiers</h1>
+          <p className="mt-1 text-sm text-muted-foreground">
             {rows.length} dossier{rows.length > 1 ? 's' : ''}
-            {(sp.type || sp.statut || sp.forme || sp.q) ? ' (filtré)' : ''}.
+            {isFiltered ? ' (filtré)' : ''} · toutes vos formalités
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <ViewToggle current={view} />
           <Button asChild>
             <Link href="/dossiers/new">
@@ -112,23 +164,37 @@ export default async function DossiersPage({ searchParams }: { searchParams: Pro
         </div>
       </div>
 
-      <div className="grid gap-3.5 [grid-template-columns:repeat(auto-fit,minmax(210px,1fr))]">
-        <StatCard count={counts.enCours}      label="Formalités" sublabel="En cours"                tone="gray"   href="/dossiers?statut=AWAITING_VALIDATION" />
-        <StatCard count={counts.enSignature}  label="Formalités" sublabel="En signature"            tone="violet" href="/dossiers?statut=SIGNATURE_PENDING" />
-        <StatCard count={counts.enTraitement} label="Formalités" sublabel="En cours de traitement"  tone="amber"  href="/dossiers?statut=AMENDMENT_PENDING" />
-        <StatCard count={counts.enAttente}    label="Formalités" sublabel="En attente du greffe"    tone="orange" href="/dossiers?statut=PAYMENT_PENDING" />
+      {/* Stat row */}
+      <div className="grid gap-4 [grid-template-columns:repeat(auto-fit,minmax(210px,1fr))]">
+        {stats.map((s) => (
+          <div key={s.label} className="min-w-0">
+            <StatCard
+              label={s.label}
+              value={s.value}
+              hint={s.hint}
+              icon={s.icon}
+              href={s.href}
+              tileClass={s.tileClass}
+            />
+          </div>
+        ))}
       </div>
 
-      <FilterBar
-        searchPlaceholder="Rechercher par client…"
-        filters={[
-          { key: 'type', label: 'Type', options: TYPE_OPTIONS },
-          { key: 'statut', label: 'Statut', options: STATUT_OPTIONS },
-          { key: 'forme', label: 'Forme jur.', options: FORME_OPTIONS },
-        ]}
-      />
+      {/* Filtres */}
+      <Card className="py-0">
+        <CardContent className="p-3">
+          <FilterBar
+            searchPlaceholder="Rechercher par client…"
+            filters={[
+              { key: 'type', label: 'Type', options: TYPE_OPTIONS },
+              { key: 'statut', label: 'Statut', options: STATUT_OPTIONS },
+              { key: 'forme', label: 'Forme jur.', options: FORME_OPTIONS },
+            ]}
+          />
+        </CardContent>
+      </Card>
 
-      {view === 'table' ? <TableView rows={rows} /> : <KanbanView rows={rows} />}
+      {view === 'table' ? <ListView rows={rows} /> : <KanbanView rows={rows} />}
     </div>
   );
 }
@@ -151,7 +217,7 @@ function ViewToggle({ current }: { current: 'table' | 'kanban' }) {
   );
 }
 
-function TableView({ rows }: { rows: DossierRow[] }) {
+function ListView({ rows }: { rows: DossierRow[] }) {
   if (rows.length === 0) {
     return (
       <Card>
@@ -166,41 +232,41 @@ function TableView({ rows }: { rows: DossierRow[] }) {
     );
   }
   return (
-    <Card className="overflow-hidden py-0">
-      <Table>
-        <TableHeader>
-          <TableRow className="hover:bg-transparent">
-            <TableHead className="w-36">Référence</TableHead>
-            <TableHead>Client</TableHead>
-            <TableHead>Type</TableHead>
-            <TableHead>Forme</TableHead>
-            <TableHead>Statut</TableHead>
-            <TableHead className="w-28 text-right">MAJ</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
+    <Card className="min-w-0">
+      <CardContent className="p-2 sm:p-3">
+        <ul className="divide-y divide-border">
           {rows.map((d) => (
-            <TableRow key={d.id} className="relative">
-              <TableCell className="font-mono text-xs text-muted-foreground">
-                {/* Lien plein-rang : couvre toute la ligne via l'overlay */}
-                <Link href={`/dossiers/${d.id}`} className="absolute inset-0" aria-label={d.client_name} />
-                {d.reference}
-              </TableCell>
-              <TableCell className="font-medium">{d.client_name}</TableCell>
-              <TableCell className="text-muted-foreground">{typeFormaliteLabel(d.type_formalite)}</TableCell>
-              <TableCell className="text-muted-foreground">
-                {formeJuridiqueLabel(d.forme_juridique || undefined) || '—'}
-              </TableCell>
-              <TableCell>
-                <StatusBadge statut={d.statut} />
-              </TableCell>
-              <TableCell className="text-right font-mono text-xs text-muted-foreground">
-                {formatDate(d.updated_at)}
-              </TableCell>
-            </TableRow>
+            <li key={d.id}>
+              <Link
+                href={`/dossiers/${d.id}`}
+                className="flex items-center gap-3 rounded-lg px-2 py-3 no-underline transition-colors hover:bg-[#f5f3fb]"
+              >
+                <span className="hidden shrink-0 font-mono text-xs text-muted-foreground sm:block sm:w-28">
+                  {d.reference ?? '—'}
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate font-medium text-foreground">
+                    {d.client_name}
+                  </span>
+                  <span className="block truncate text-xs text-muted-foreground">
+                    {typeFormaliteLabel(d.type_formalite)}
+                    {d.forme_juridique && ` · ${formeJuridiqueLabel(d.forme_juridique)}`}
+                  </span>
+                </span>
+                <span className="shrink-0">
+                  <StatusBadge statut={d.statut} />
+                </span>
+                <span
+                  className="hidden shrink-0 text-right font-mono text-xs text-muted-foreground sm:block sm:w-24"
+                  title={formatDate(d.updated_at)}
+                >
+                  {formatRelative(d.updated_at)}
+                </span>
+              </Link>
+            </li>
           ))}
-        </TableBody>
-      </Table>
+        </ul>
+      </CardContent>
     </Card>
   );
 }
@@ -219,7 +285,7 @@ function KanbanView({ rows }: { rows: DossierRow[] }) {
       {columns.map((col) => {
         const items = rows.filter((r) => col.statuts.includes(r.statut));
         return (
-          <div key={col.id} className="min-h-52 rounded-xl bg-muted/60 p-3">
+          <div key={col.id} className="min-w-0 min-h-52 rounded-xl bg-muted/60 p-3">
             <div className="mb-2.5 flex items-center justify-between px-1">
               <span className="text-xs font-semibold text-foreground/80">{col.title}</span>
               <span className="rounded-full bg-card px-2 py-0.5 text-[11px] font-medium text-muted-foreground">
@@ -231,7 +297,7 @@ function KanbanView({ rows }: { rows: DossierRow[] }) {
                 <Link
                   key={d.id}
                   href={`/dossiers/${d.id}`}
-                  className="block rounded-lg border bg-card p-3 no-underline transition-shadow hover:shadow-md"
+                  className="block min-w-0 rounded-lg border bg-card p-3 no-underline transition-shadow hover:shadow-md"
                 >
                   <p className="mb-1 text-xs font-medium text-foreground">{d.client_name}</p>
                   <p className="font-mono text-[11px] text-muted-foreground">{d.reference}</p>

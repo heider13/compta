@@ -91,22 +91,27 @@ export default function DocumentsPage() {
   ];
 
   return (
-    <div className="mx-auto w-full max-w-6xl space-y-6 p-4 sm:p-6">
-      <div className="flex items-center gap-3">
-        <span className="grid size-10 place-items-center rounded-xl bg-accent text-primary">
-          <FileText className="size-5" />
-        </span>
-        <div>
-          <h1 className="text-xl font-semibold tracking-tight">Rédaction de documents</h1>
-          <p className="text-xs text-muted-foreground">
-            Décrivez le besoin, l&apos;IA rédige un projet complet appuyé sur le droit français.
-          </p>
+    <div className="mx-auto w-full max-w-7xl space-y-6 p-4 sm:p-6">
+      {/* Header */}
+      <div className="flex flex-wrap items-end justify-between gap-4">
+        <div className="flex min-w-0 items-center gap-3">
+          <span className="grid size-11 shrink-0 place-items-center rounded-xl bg-[#ede7ff] text-primary">
+            <FileText className="size-5" />
+          </span>
+          <div className="min-w-0">
+            <h1>Rédaction de documents</h1>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Génération de documents juridiques par l&apos;IA, appuyée sur le droit français.
+            </p>
+          </div>
         </div>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-[380px_1fr]">
-        <Card className="h-fit">
-          <CardHeader><CardTitle className="text-base">Votre demande</CardTitle></CardHeader>
+      <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)]">
+        <Card className="h-fit min-w-0">
+          <CardHeader>
+            <CardTitle className="text-base">Votre demande</CardTitle>
+          </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-1.5">
               <Label htmlFor="docType">Type de document</Label>
@@ -114,7 +119,7 @@ export default function DocumentsPage() {
                 id="docType"
                 value={docType}
                 onChange={(e) => setDocType(e.target.value)}
-                className="border-input flex h-10 w-full rounded-md border bg-muted/40 px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+                className="border-input flex h-10 w-full rounded-md border bg-[#f3f1fa] px-3 text-sm outline-none transition-colors focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/30"
               >
                 {selectTypes.map((t) => <option key={t.id} value={t.id}>{t.label}</option>)}
               </select>
@@ -143,11 +148,11 @@ export default function DocumentsPage() {
           </CardContent>
         </Card>
 
-        <Card className="min-h-[400px]">
-          <CardHeader className="flex-row items-center justify-between">
-            <CardTitle className="text-base">{result ? result.title : 'Aperçu'}</CardTitle>
+        <Card className="min-h-[400px] min-w-0">
+          <CardHeader className="flex-row items-center justify-between space-y-0">
+            <CardTitle className="min-w-0 truncate text-base">{result ? result.title : 'Aperçu'}</CardTitle>
             {result && (
-              <Button size="sm" variant="outline" onClick={downloadDocx}>
+              <Button size="sm" variant="outline" onClick={downloadDocx} className="shrink-0">
                 <Download className="size-4" /> Télécharger .docx
               </Button>
             )}
@@ -155,17 +160,19 @@ export default function DocumentsPage() {
           <CardContent>
             {!result && !busy && (
               <div className="grid place-items-center py-16 text-center text-sm text-muted-foreground">
-                <Sparkles className="mb-3 size-8 text-primary/40" />
+                <span className="mb-3 grid size-12 place-items-center rounded-full bg-[#ede7ff] text-primary">
+                  <Sparkles className="size-6" />
+                </span>
                 Le document généré s&apos;affichera ici.
               </div>
             )}
             {busy && (
-              <div className="grid place-items-center py-16 text-muted-foreground">
+              <div className="grid place-items-center py-16 text-primary">
                 <Loader2 className="size-6 animate-spin" />
               </div>
             )}
             {result && (
-              <pre className="max-h-[70vh] overflow-y-auto whitespace-pre-wrap rounded-lg bg-muted/30 p-4 font-sans text-sm leading-relaxed">
+              <pre className="max-h-[70vh] overflow-y-auto whitespace-pre-wrap rounded-lg bg-[#f5f3fb] p-4 font-sans text-sm leading-relaxed text-foreground">
                 {result.markdown}
               </pre>
             )}
