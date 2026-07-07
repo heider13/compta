@@ -11,8 +11,10 @@ import {
   Building2,
   ExternalLink,
   FileText,
+  History,
   Landmark,
   Loader2,
+  MessageSquare,
   Paperclip,
   Percent,
   Receipt,
@@ -27,6 +29,13 @@ import { createClient } from '@/lib/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Markdown } from '@/components/ui/markdown';
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from '@/components/ui/sheet';
 import { cn } from '@/lib/utils';
 
 type Attachment = { name: string; summary: string; text: string };
@@ -35,6 +44,7 @@ const VPS = process.env.NEXT_PUBLIC_VPS_BACKEND_URL ?? 'https://vps-84ac2579.vps
 
 type Source = { n: number; title: string; url: string | null; source: string; source_label?: string; source_id: string };
 type Msg = { role: 'user' | 'assistant'; content: string; sources?: Source[]; attachmentName?: string };
+type Conversation = { id: string; title: string | null; created_at?: string; updated_at?: string };
 
 // Bibliothèque de tâches — chaque carte pré-remplit le composer avec un point
 // de départ que l'utilisateur peut ajuster avant d'envoyer.
@@ -106,6 +116,22 @@ function greeting(): string {
   return 'Bonsoir';
 }
 
+// Date relative courte pour l'historique des conversations.
+function shortDate(iso?: string): string {
+  if (!iso) return '';
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return '';
+  const now = new Date();
+  const diffMs = now.getTime() - d.getTime();
+  const day = 86400000;
+  if (diffMs < 60000) return "à l'instant";
+  if (diffMs < 3600000) return `il y a ${Math.floor(diffMs / 60000)} min`;
+  if (diffMs < day && now.getDate() === d.getDate()) return `il y a ${Math.floor(diffMs / 3600000)} h`;
+  if (diffMs < 2 * day) return 'hier';
+  if (diffMs < 7 * day) return `il y a ${Math.floor(diffMs / day)} j`;
+  return d.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' });
+}
+
 export default function AssistantPage() {
   const [messages, setMessages] = useState<Msg[]>([]);
   const [input, setInput] = useState('');
@@ -115,6 +141,9 @@ export default function AssistantPage() {
   const [firstName, setFirstName] = useState<string>('');
   const [attachment, setAttachment] = useState<Attachment | null>(null);
   const [attaching, setAttaching] = useState(false);
+  const [conversations, setConversations] = useState<Conversation[]>([]);
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const [loadingConversation, setLoadingConversation] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -140,6 +169,66 @@ export default function AssistantPage() {
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, busy]);
+
+  // Charge la liste des conversations (mêmes en-têtes d'auth que ask()).
+  async function fetchConversations() {
+    try {
+      const supabase = createClient();
+      const token = (await supabase.auth.getSession()).data.session?.access_token;
+      if (!token) return;
+      const res = await fetch(`${VPS}/api/ai/conversations`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) return;
+      const data = (await res.json().catch(() => ({}))) as { items?: Conversation[] };
+      setConversations(Array.isArray(data.items) ? data.items : []);
+    } catch {
+      /* silencieux */
+    }
+  }
+
+  useEffect(() => {
+    void fetchConversations();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Ouvre une conversation existante : récupère ses messages et bascule
+  // l'écran en vue conversation.
+  async function loadConversation(id: string) {
+    setError(null);
+    setLoadingConversation(true);
+    try {
+      const supabase = createClient();
+      const token = (await supabase.auth.getSession()).data.session?.access_token;
+      if (!token) throw new Error('Session expirée — reconnectez-vous.');
+      const res = await fetch(`${VPS}/api/ai/conversations/${id}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error((body as { detail?: string }).detail || `Erreur ${res.status}`);
+      }
+      const data = (await res.json()) as {
+        conversation?: { id: string; title: string | null };
+        messages?: { role: 'user' | 'assistant'; content: string; citations?: Source[] }[];
+      };
+      const loaded: Msg[] = (data.messages ?? []).map((m) => ({
+        role: m.role,
+        content: m.content,
+        sources: Array.isArray(m.citations) ? m.citations : undefined,
+      }));
+      setConversationId(data.conversation?.id ?? id);
+      setMessages(loaded);
+      setInput('');
+      setAttachment(null);
+      setHistoryOpen(false);
+      requestAnimationFrame(() => bottomRef.current?.scrollIntoView({ behavior: 'auto' }));
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Chargement de la conversation impossible.');
+    } finally {
+      setLoadingConversation(false);
+    }
+  }
 
   function pickTask(prompt: string) {
     setInput(prompt);
@@ -245,6 +334,7 @@ export default function AssistantPage() {
             patchLast((m) => ({ ...m, content: m.content + data.text }));
           } else if (type === 'done') {
             setConversationId(data.conversation_id);
+            void fetchConversations();
           } else if (type === 'error') {
             throw new Error(data.detail || data.error);
           }
@@ -337,18 +427,97 @@ export default function AssistantPage() {
     </form>
   );
 
+  // Panneau latéral « Historique » — réutilisé sur l'accueil et en
+  // vue conversation. Contrôlé par historyOpen.
+  const renderHistory = () => (
+    <Sheet open={historyOpen} onOpenChange={setHistoryOpen}>
+      <SheetTrigger asChild>
+        <Button variant="outline" size="sm" className="gap-1.5">
+          <History className="size-4" />
+          Historique
+        </Button>
+      </SheetTrigger>
+      <SheetContent side="right" className="w-full p-0 sm:max-w-sm">
+        <SheetHeader className="border-b">
+          <SheetTitle className="flex items-center gap-2 font-serif text-base">
+            <span className="grid size-7 place-items-center rounded-lg bg-accent text-primary">
+              <History className="size-4" />
+            </span>
+            Historique des conversations
+          </SheetTitle>
+        </SheetHeader>
+        <div className="min-h-0 flex-1 overflow-y-auto p-2">
+          {conversations.length === 0 ? (
+            <p className="px-3 py-8 text-center text-sm text-muted-foreground">
+              Aucune conversation pour l'instant.
+            </p>
+          ) : (
+            <ul className="space-y-0.5">
+              {conversations.map((c) => {
+                const active = c.id === conversationId;
+                return (
+                  <li key={c.id}>
+                    <button
+                      type="button"
+                      onClick={() => loadConversation(c.id)}
+                      disabled={loadingConversation}
+                      className={cn(
+                        'flex w-full items-start gap-2.5 rounded-xl px-3 py-2.5 text-left transition-colors hover:bg-[#f5f3fb] disabled:opacity-60',
+                        active && 'bg-accent',
+                      )}
+                    >
+                      <span
+                        className={cn(
+                          'mt-0.5 grid size-7 shrink-0 place-items-center rounded-lg',
+                          active ? 'bg-[#ede7ff] text-[#5b36d6]' : 'bg-muted text-muted-foreground',
+                        )}
+                      >
+                        <MessageSquare className="size-3.5" />
+                      </span>
+                      <span className="min-w-0 flex-1">
+                        <span className="flex items-center gap-2">
+                          <span
+                            className={cn(
+                              'truncate text-sm font-medium text-foreground',
+                              active && 'text-primary',
+                            )}
+                          >
+                            {c.title || 'Conversation'}
+                          </span>
+                          {active && (
+                            <span className="size-1.5 shrink-0 rounded-full bg-[#ff887b]" aria-hidden />
+                          )}
+                        </span>
+                        <span className="mt-0.5 block truncate text-xs text-muted-foreground">
+                          {shortDate(c.updated_at || c.created_at)}
+                        </span>
+                      </span>
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </div>
+      </SheetContent>
+    </Sheet>
+  );
+
   // ─── Écran d'accueil (aucun message) — façon Ordalie ─────
   if (messages.length === 0) {
     return (
       <div className="mx-auto w-full max-w-3xl px-4 py-10 sm:px-6 sm:py-14">
-        <div className="mb-7">
-          <h1 className="font-serif text-3xl font-medium tracking-tight text-foreground sm:text-4xl">
-            {greeting()}
-            {firstName ? ` ${firstName}` : ''},
-          </h1>
-          <p className="mt-1 text-lg text-muted-foreground">
-            quelle question souhaitez-vous éclaircir&nbsp;?
-          </p>
+        <div className="mb-7 flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <h1 className="font-serif text-3xl font-medium tracking-tight text-foreground sm:text-4xl">
+              {greeting()}
+              {firstName ? ` ${firstName}` : ''},
+            </h1>
+            <p className="mt-1 text-lg text-muted-foreground">
+              quelle question souhaitez-vous éclaircir&nbsp;?
+            </p>
+          </div>
+          <div className="shrink-0 pt-1">{renderHistory()}</div>
         </div>
 
         {renderComposer(true)}
@@ -412,18 +581,20 @@ export default function AssistantPage() {
         <div className="min-w-0">
           <h1 className="font-serif text-lg font-medium tracking-tight">Assistant fiscal &amp; juridique</h1>
         </div>
-        <Button
-          variant="ghost"
-          size="sm"
-          className="ml-auto"
-          onClick={() => {
-            setMessages([]);
-            setConversationId(null);
-            setInput('');
-          }}
-        >
-          Nouvelle conversation
-        </Button>
+        <div className="ml-auto flex items-center gap-2">
+          {renderHistory()}
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => {
+              setMessages([]);
+              setConversationId(null);
+              setInput('');
+            }}
+          >
+            Nouvelle conversation
+          </Button>
+        </div>
       </div>
 
       <div className="flex-1 space-y-4 overflow-y-auto pb-4">
