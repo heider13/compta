@@ -33,8 +33,8 @@ export default async function EditDossierPage({ params }: { params: Promise<{ id
   }
 
   return (
-    <div className="mx-auto w-full max-w-7xl p-4 sm:p-6">
-      <nav className="mb-4">
+    <div className="mx-auto w-full max-w-3xl space-y-6 p-4 sm:p-6">
+      <nav>
         <Link
           href={`/dossiers/${id}`}
           className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"
@@ -44,9 +44,9 @@ export default async function EditDossierPage({ params }: { params: Promise<{ id
         </Link>
       </nav>
 
-      <div className="mb-6">
-        <h1 className="text-2xl font-semibold tracking-tight">Modifier le dossier</h1>
-        <p className="text-sm text-muted-foreground">
+      <div>
+        <h1>Modifier le dossier</h1>
+        <p className="mt-1 text-sm text-muted-foreground">
           Métadonnées de pilotage. Le contenu INPI s&apos;édite via{' '}
           <a
             href={`/app.html?route=nouveau&type=${dossier.forme_juridique || dossier.type_formalite}&d=${id}`}
@@ -58,10 +58,10 @@ export default async function EditDossierPage({ params }: { params: Promise<{ id
         </p>
       </div>
 
-      <form action={action} className="max-w-2xl space-y-4">
+      <form action={action} className="space-y-6">
         <Card>
           <CardContent className="grid gap-4 pt-6">
-            <div className="space-y-1.5">
+            <div className="min-w-0 space-y-1.5">
               <Label htmlFor="client_id">Client lié</Label>
               <select id="client_id" name="client_id" defaultValue={dossier.client_id || ''} className={selectClass}>
                 <option value="">— Aucun —</option>
@@ -70,7 +70,7 @@ export default async function EditDossierPage({ params }: { params: Promise<{ id
                 ))}
               </select>
             </div>
-            <div className="space-y-1.5">
+            <div className="min-w-0 space-y-1.5">
               <Label htmlFor="priority">Priorité</Label>
               <select id="priority" name="priority" defaultValue={dossier.priority || 'normal'} className={selectClass}>
                 <option value="low">Basse</option>
@@ -79,7 +79,7 @@ export default async function EditDossierPage({ params }: { params: Promise<{ id
                 <option value="urgent">Urgente</option>
               </select>
             </div>
-            <div className="space-y-1.5">
+            <div className="min-w-0 space-y-1.5">
               <Label htmlFor="internal_due_date">Échéance interne</Label>
               <Input
                 id="internal_due_date"
@@ -88,7 +88,7 @@ export default async function EditDossierPage({ params }: { params: Promise<{ id
                 defaultValue={dossier.internal_due_date || ''}
               />
             </div>
-            <div className="space-y-1.5">
+            <div className="min-w-0 space-y-1.5">
               <Label htmlFor="assigned_to">Assigné à</Label>
               <select id="assigned_to" name="assigned_to" defaultValue={dossier.assigned_to || ''} className={selectClass}>
                 <option value="">— Aucun —</option>
@@ -102,7 +102,7 @@ export default async function EditDossierPage({ params }: { params: Promise<{ id
                 })}
               </select>
             </div>
-            <div className="space-y-1.5">
+            <div className="min-w-0 space-y-1.5">
               <Label htmlFor="tags">Tags (séparés par virgule)</Label>
               <Input id="tags" name="tags" defaultValue={(dossier.tags || []).join(', ')} placeholder="urgent, vip" />
             </div>

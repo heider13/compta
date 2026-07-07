@@ -175,7 +175,7 @@ export default async function DossierDetailPage({
   const canSubmit = ['DRAFT', 'INTERNAL_AMENDMENT_PENDING'].includes(dossier.statut);
 
   return (
-    <div className="mx-auto w-full max-w-7xl space-y-6 p-4 sm:p-6">
+    <div className="mx-auto w-full max-w-6xl space-y-6 p-4 sm:p-6">
       <nav className="flex items-center gap-1.5 text-sm text-muted-foreground">
         <Link href="/dossiers" className="hover:text-foreground">
           Dossiers
@@ -184,17 +184,33 @@ export default async function DossierDetailPage({
         <span className="font-mono text-xs">{dossier.reference}</span>
       </nav>
 
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight">{dossier.client_name}</h1>
-          <p className="text-sm text-muted-foreground">
-            {typeFormaliteLabel(dossier.type_formalite)}
-            {dossier.forme_juridique && ` · ${formeJuridiqueLabel(dossier.forme_juridique)}`}
-            {' · '}
-            <span className="font-mono text-xs">{dossier.reference}</span>
-          </p>
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div className="min-w-0">
+          <h1>{dossier.client_name}</h1>
+          <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-muted-foreground">
+            <span>
+              {typeFormaliteLabel(dossier.type_formalite)}
+              {dossier.forme_juridique && ` · ${formeJuridiqueLabel(dossier.forme_juridique)}`}
+              {' · '}
+              <span className="font-mono text-xs">{dossier.reference}</span>
+            </span>
+            <StatusBadge statut={dossier.statut} />
+          </div>
         </div>
-        <StatusBadge statut={dossier.statut} />
+        <div className="flex flex-wrap items-center gap-2">
+          <Button asChild size="lg">
+            <Link href={`/dossiers/${id}/orchestrator`}>
+              <Sparkles className="size-4" />
+              Orchestrateur IA
+            </Link>
+          </Button>
+          <Button asChild variant="outline">
+            <Link href={`/dossiers/${id}/edit`}>
+              <SquarePen className="size-4" />
+              Modifier
+            </Link>
+          </Button>
+        </div>
       </div>
 
       {typeof sp.doc_error === 'string' && (
@@ -206,18 +222,18 @@ export default async function DossierDetailPage({
         </div>
       )}
       {sp.doc === 'ok' && (
-        <div className="flex items-center gap-2 rounded-lg border border-green-300 bg-green-50 px-4 py-3 text-sm text-green-800">
+        <div className="flex items-center gap-2 rounded-lg border border-primary/30 bg-[#ede7ff] px-4 py-3 text-sm text-primary">
           <CheckCircle2 className="size-4 shrink-0" />
           Statuts générés — le document apparaît dans les pièces jointes du dossier.
         </div>
       )}
 
-      <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_320px]">
-        <div className="space-y-5">
+      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
+        <div className="min-w-0 space-y-6">
           {dossier.inpi_reference && (
             <Card className="border-amber-300 bg-amber-50/70">
               <CardHeader>
-                <CardTitle className="text-amber-900">Frais légaux INPI</CardTitle>
+                <CardTitle className="text-base text-amber-900">Frais légaux INPI</CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
                 <div className="flex flex-wrap items-baseline gap-6">
@@ -260,7 +276,7 @@ export default async function DossierDetailPage({
           {client && (
             <Card>
               <CardHeader>
-                <CardTitle>Client</CardTitle>
+                <CardTitle className="text-base">Client</CardTitle>
               </CardHeader>
               <CardContent className="flex flex-wrap items-baseline gap-3">
                 <Link
@@ -278,7 +294,7 @@ export default async function DossierDetailPage({
 
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
+              <CardTitle className="flex items-center gap-2 text-base">
                 <Paperclip className="size-4 text-muted-foreground" />
                 Pièces jointes ({documents?.length ?? 0})
               </CardTitle>
@@ -305,7 +321,7 @@ export default async function DossierDetailPage({
 
           <Card>
             <CardHeader>
-              <CardTitle>Observations ({observations?.length ?? 0})</CardTitle>
+              <CardTitle className="text-base">Observations ({observations?.length ?? 0})</CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
               {(observations ?? []).map((o) => (
@@ -342,7 +358,7 @@ export default async function DossierDetailPage({
 
           <Card>
             <CardHeader>
-              <CardTitle>Tâches ({tasks?.length ?? 0})</CardTitle>
+              <CardTitle className="text-base">Tâches ({tasks?.length ?? 0})</CardTitle>
             </CardHeader>
             <CardContent className="space-y-1.5">
               {(tasks ?? []).length === 0 && (
@@ -376,24 +392,12 @@ export default async function DossierDetailPage({
           </Card>
         </div>
 
-        <aside className="space-y-5">
+        <aside className="min-w-0 space-y-6">
           <Card>
             <CardHeader>
-              <CardTitle>Actions</CardTitle>
+              <CardTitle className="text-base">Actions</CardTitle>
             </CardHeader>
             <CardContent className="space-y-2.5">
-              <Button asChild className="w-full">
-                <Link href={`/dossiers/${id}/orchestrator`}>
-                  <Sparkles className="size-4" />
-                  Orchestrateur IA
-                </Link>
-              </Button>
-              <Button asChild variant="outline" className="w-full">
-                <Link href={`/dossiers/${id}/edit`}>
-                  <SquarePen className="size-4" />
-                  Modifier
-                </Link>
-              </Button>
               {canSubmit && (
                 <form action={async () => { 'use server'; await submitToAdmin(id); }}>
                   <Button type="submit" className="w-full">
@@ -432,26 +436,28 @@ export default async function DossierDetailPage({
             </CardContent>
           </Card>
 
-          <Card className="py-0">
-            <CardHeader className="pt-6">
-              <CardTitle>Informations</CardTitle>
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Informations</CardTitle>
             </CardHeader>
-            <CardContent className="px-0 pb-2">
-              <InfoRow label="Référence" value={<span className="font-mono text-xs">{dossier.reference}</span>} />
-              <InfoRow label="Type" value={typeFormaliteLabel(dossier.type_formalite)} />
-              <InfoRow label="Forme jur." value={formeJuridiqueLabel(dossier.forme_juridique)} />
-              {dossier.siren && (
-                <InfoRow label="SIREN" value={<span className="font-mono text-xs">{dossier.siren}</span>} />
-              )}
-              <InfoRow label="Priorité" value={dossier.priority || 'normal'} />
-              {dossier.internal_due_date && (
-                <InfoRow label="Échéance interne" value={formatDate(dossier.internal_due_date)} />
-              )}
-              {dossier.inpi_reference && (
-                <InfoRow label="ID INPI" value={<span className="font-mono text-xs">{dossier.inpi_reference}</span>} />
-              )}
-              <InfoRow label="Créé le" value={formatDate(dossier.created_at)} />
-              <InfoRow label="MAJ" value={formatDate(dossier.updated_at)} last />
+            <CardContent>
+              <dl className="grid grid-cols-[auto_1fr] items-center gap-x-4 gap-y-3 text-sm">
+                <InfoRow label="Référence" value={<span className="font-mono text-xs">{dossier.reference}</span>} />
+                <InfoRow label="Type" value={typeFormaliteLabel(dossier.type_formalite)} />
+                <InfoRow label="Forme jur." value={formeJuridiqueLabel(dossier.forme_juridique)} />
+                {dossier.siren && (
+                  <InfoRow label="SIREN" value={<span className="font-mono text-xs">{dossier.siren}</span>} />
+                )}
+                <InfoRow label="Priorité" value={dossier.priority || 'normal'} />
+                {dossier.internal_due_date && (
+                  <InfoRow label="Échéance interne" value={formatDate(dossier.internal_due_date)} />
+                )}
+                {dossier.inpi_reference && (
+                  <InfoRow label="ID INPI" value={<span className="font-mono text-xs">{dossier.inpi_reference}</span>} />
+                )}
+                <InfoRow label="Créé le" value={formatDate(dossier.created_at)} />
+                <InfoRow label="MAJ" value={formatDate(dossier.updated_at)} />
+              </dl>
             </CardContent>
           </Card>
         </aside>
@@ -463,21 +469,14 @@ export default async function DossierDetailPage({
 function InfoRow({
   label,
   value,
-  last,
 }: {
   label: string;
   value: React.ReactNode;
-  last?: boolean;
 }) {
   return (
-    <div
-      className={cn(
-        'flex items-center justify-between gap-3 px-6 py-2.5 text-sm',
-        !last && 'border-b',
-      )}
-    >
-      <span className="text-muted-foreground">{label}</span>
-      <span className="text-right font-medium">{value}</span>
-    </div>
+    <>
+      <dt className="text-muted-foreground">{label}</dt>
+      <dd className="text-right font-medium">{value}</dd>
+    </>
   );
 }

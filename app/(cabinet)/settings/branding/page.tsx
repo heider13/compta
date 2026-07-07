@@ -35,29 +35,30 @@ export default async function BrandingPage({ searchParams }: { searchParams: Pro
   }
 
   return (
-    <div className="mx-auto w-full max-w-2xl px-4 py-8">
-      <header className="mb-6">
-        <h1 className="text-2xl font-semibold tracking-tight">Marque blanche</h1>
+    <div className="mx-auto w-full max-w-3xl space-y-6 p-4 sm:p-6">
+      {/* Header */}
+      <div className="min-w-0">
+        <h1>Marque blanche</h1>
         <p className="mt-1 text-sm text-muted-foreground">
           Personnalisez l&apos;apparence de l&apos;espace pour vos clients.
         </p>
-      </header>
+      </div>
 
       {sp.saved && (
-        <div className="mb-4 rounded-lg border border-green-300 bg-green-50 px-4 py-3 text-sm text-green-800">
+        <div className="rounded-lg border border-[#957af5]/40 bg-[#ede7ff] px-4 py-3 text-sm text-[#2b1769]">
           Préférences enregistrées.
         </div>
       )}
       {sp.e && (
         <div
           role="alert"
-          className="mb-4 rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive"
+          className="rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive"
         >
           {sp.e}
         </div>
       )}
 
-      <form action={action}>
+      <form action={action} className="space-y-4">
         <Card>
           <CardHeader>
             <CardTitle className="text-base">Identité du cabinet</CardTitle>
@@ -77,7 +78,7 @@ export default async function BrandingPage({ searchParams }: { searchParams: Pro
             </div>
 
             <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
-              <div className="space-y-1.5">
+              <div className="min-w-0 space-y-1.5">
                 <Label htmlFor="primary_color_picker">Couleur principale</Label>
                 <div className="flex items-center gap-2">
                   <input
@@ -95,7 +96,7 @@ export default async function BrandingPage({ searchParams }: { searchParams: Pro
                   />
                 </div>
               </div>
-              <div className="space-y-1.5">
+              <div className="min-w-0 space-y-1.5">
                 <Label htmlFor="secondary_color">Couleur secondaire (soft)</Label>
                 <Input
                   id="secondary_color"
@@ -134,7 +135,7 @@ export default async function BrandingPage({ searchParams }: { searchParams: Pro
           </CardContent>
         </Card>
 
-        <div className="mt-4 flex justify-end">
+        <div className="flex justify-end">
           <Button type="submit">Enregistrer</Button>
         </div>
       </form>

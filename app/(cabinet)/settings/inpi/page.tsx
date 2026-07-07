@@ -38,14 +38,22 @@ export default async function InpiSettingsPage({
   const isReconfig = status?.configured ?? false;
 
   return (
-    <div className="mx-auto w-full max-w-2xl px-4 py-8">
-      <nav className="mb-5 flex items-center gap-1.5 text-sm text-muted-foreground">
-        <Link href="/dashboard" className="hover:text-foreground">
-          Tableau de bord
-        </Link>
-        <span>›</span>
-        <span className="text-foreground">Connexion INPI</span>
-      </nav>
+    <div className="mx-auto w-full max-w-3xl space-y-6 p-4 sm:p-6">
+      {/* Header */}
+      <div className="flex flex-wrap items-end justify-between gap-4">
+        <div className="min-w-0">
+          <h1>Connexion INPI</h1>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Reliez votre compte du Guichet Unique pour déposer vos formalités au registre.
+          </p>
+        </div>
+        <Button variant="ghost" size="sm" asChild>
+          <Link href="/dashboard">
+            <ArrowLeft className="size-4" />
+            Tableau de bord
+          </Link>
+        </Button>
+      </div>
 
       <Card>
         <CardHeader>
@@ -54,7 +62,7 @@ export default async function InpiSettingsPage({
               <Lock className="size-5" aria-hidden="true" />
             </div>
             <div className="space-y-1.5">
-              <CardTitle className="text-xl">Connexion à votre compte INPI</CardTitle>
+              <CardTitle className="text-base">Connexion à votre compte INPI</CardTitle>
               <CardDescription className="leading-relaxed">
                 Vos identifiants du Guichet Unique sont nécessaires pour déposer les
                 formalités au registre. Ils sont chiffrés et stockés dans votre cabinet
@@ -77,8 +85,8 @@ export default async function InpiSettingsPage({
           )}
 
           {isReconfig && (
-            <div className="flex items-start gap-3 rounded-lg border border-green-300 bg-green-50 px-4 py-3 text-sm text-green-800">
-              <CheckCircle2 className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
+            <div className="flex items-start gap-3 rounded-lg border border-[#957af5]/40 bg-[#ede7ff] px-4 py-3 text-sm text-[#2b1769]">
+              <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-primary" aria-hidden="true" />
               <p>
                 <strong className="font-semibold">Compte INPI connecté</strong>
                 {status?.username ? ` — ${status.username}` : ''}

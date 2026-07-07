@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeft, PenLine } from 'lucide-react';
+import { ArrowLeft, ChevronRight, PenLine } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { SirenSearch } from '@/components/cabinet/SirenSearch';
 import {
@@ -166,10 +166,22 @@ export default function NewClientPage() {
   }
 
   return (
-    <div className="mx-auto w-full max-w-3xl space-y-6 p-4 sm:p-6">
+    <div className="mx-auto w-full max-w-4xl space-y-6 p-4 sm:p-6">
+      {/* Fil d'ariane */}
+      <nav
+        aria-label="Fil d'ariane"
+        className="flex min-w-0 items-center gap-1.5 text-sm text-muted-foreground"
+      >
+        <Link href="/clients" className="transition-colors hover:text-foreground">
+          Clients
+        </Link>
+        <ChevronRight className="size-3.5 shrink-0" aria-hidden="true" />
+        <span className="font-medium text-foreground">Nouveau client</span>
+      </nav>
+
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Nouveau client</h1>
+        <div className="min-w-0">
+          <h1 className="truncate">Nouveau client</h1>
           <p className="text-sm text-muted-foreground">
             Étape {step === 'search' ? '1' : '2'} sur 2 —{' '}
             {step === 'search' ? 'recherche par SIREN' : 'informations complémentaires'}

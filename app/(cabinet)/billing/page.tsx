@@ -81,7 +81,7 @@ function formatDateFr(input: string | number | null): string {
 function statusBadge(status: Invoice['status']): { label: string; className: string } {
   switch (status) {
     case 'paid':
-      return { label: 'Payée', className: 'bg-green-100 text-green-800' };
+      return { label: 'Payée', className: 'bg-[#ede7ff] text-[#2b1769]' };
     case 'overdue':
       return { label: 'En retard', className: 'bg-red-100 text-red-800' };
     case 'sent':
@@ -191,10 +191,10 @@ export default async function BillingPage() {
   const stripeConfigured = isStripeConfigured();
 
   return (
-    <div className="mx-auto w-full max-w-6xl space-y-6 p-4 sm:p-6">
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Facturation</h1>
-        <p className="text-sm text-muted-foreground">
+    <div className="mx-auto w-full max-w-5xl space-y-6 p-4 sm:p-6">
+      <div className="min-w-0">
+        <h1>Facturation</h1>
+        <p className="mt-1 text-sm text-muted-foreground">
           Gérez votre abonnement Compta et consultez l&apos;historique de
           facturation de votre cabinet.
         </p>
@@ -233,16 +233,16 @@ export default async function BillingPage() {
       {sub.hasActiveSubscription ? (
         <Card>
           <CardHeader className="flex-row items-center justify-between space-y-0">
-            <CardTitle>Abonnement</CardTitle>
-            <Badge className="bg-green-600 text-white hover:bg-green-600">Plan actif</Badge>
+            <CardTitle className="text-base">Abonnement</CardTitle>
+            <Badge className="bg-primary text-primary-foreground hover:bg-primary">Plan actif</Badge>
           </CardHeader>
           <CardContent className="space-y-5">
             <div className="grid gap-5 sm:grid-cols-3">
-              <div>
+              <div className="min-w-0">
                 <p className="text-xs text-muted-foreground">Plan</p>
                 <p className="text-lg font-semibold">{planLabel(sub.plan)}</p>
               </div>
-              <div>
+              <div className="min-w-0">
                 <p className="text-xs text-muted-foreground">Statut</p>
                 <p className="text-lg font-semibold">
                   {sub.status === 'trialing'
@@ -252,7 +252,7 @@ export default async function BillingPage() {
                       : (sub.status ?? '—')}
                 </p>
               </div>
-              <div>
+              <div className="min-w-0">
                 <p className="text-xs text-muted-foreground">
                   {sub.cancelAtPeriodEnd ? 'Fin de l’abonnement' : 'Prochain renouvellement'}
                 </p>
@@ -288,43 +288,49 @@ export default async function BillingPage() {
               Sans engagement. Annulable à tout moment depuis le portail client.
             </p>
           </div>
-          <div className="grid gap-4 pt-3 lg:grid-cols-3">
-            <PlanCard
-              planId="cabinet"
-              name={PLANS.cabinet.name}
-              description={PLANS.cabinet.description}
-              price={`${PLANS.cabinet.amount} €`}
-              priceSuffix=" / mois HT"
-              features={PLANS.cabinet.features}
-              // Dans cette branche : pas d'abonnement actif → aucun plan n'est "current"
-              disabled={!stripeConfigured || !PLANS.cabinet.priceId}
-            />
-            <PlanCard
-              planId="pro"
-              name={PLANS.pro.name}
-              description={PLANS.pro.description}
-              price={`${PLANS.pro.amount} €`}
-              priceSuffix=" / mois HT"
-              features={PLANS.pro.features}
-              accent
-              highlight="Le plus choisi"
-              disabled={!stripeConfigured || !PLANS.pro.priceId}
-            />
-            <PlanCard
-              planId="enterprise"
-              name="Enterprise"
-              description="Pour les groupes et legaltechs avec besoins API."
-              price="Sur devis"
-              features={[
-                'Collaborateurs illimités',
-                'API publique + webhooks',
-                'Sous-domaine personnalisé',
-                'SLA contractuel 99,9 %',
-                'Onboarding dédié',
-                'SSO (SAML, OIDC)',
-              ]}
-              mode="contact"
-            />
+          <div className="grid gap-5 pt-3 [grid-template-columns:repeat(auto-fit,minmax(240px,1fr))]">
+            <div className="min-w-0">
+              <PlanCard
+                planId="cabinet"
+                name={PLANS.cabinet.name}
+                description={PLANS.cabinet.description}
+                price={`${PLANS.cabinet.amount} €`}
+                priceSuffix=" / mois HT"
+                features={PLANS.cabinet.features}
+                // Dans cette branche : pas d'abonnement actif → aucun plan n'est "current"
+                disabled={!stripeConfigured || !PLANS.cabinet.priceId}
+              />
+            </div>
+            <div className="min-w-0">
+              <PlanCard
+                planId="pro"
+                name={PLANS.pro.name}
+                description={PLANS.pro.description}
+                price={`${PLANS.pro.amount} €`}
+                priceSuffix=" / mois HT"
+                features={PLANS.pro.features}
+                accent
+                highlight="Le plus choisi"
+                disabled={!stripeConfigured || !PLANS.pro.priceId}
+              />
+            </div>
+            <div className="min-w-0">
+              <PlanCard
+                planId="enterprise"
+                name="Enterprise"
+                description="Pour les groupes et legaltechs avec besoins API."
+                price="Sur devis"
+                features={[
+                  'Collaborateurs illimités',
+                  'API publique + webhooks',
+                  'Sous-domaine personnalisé',
+                  'SLA contractuel 99,9 %',
+                  'Onboarding dédié',
+                  'SSO (SAML, OIDC)',
+                ]}
+                mode="contact"
+              />
+            </div>
           </div>
         </section>
       )}
@@ -332,7 +338,7 @@ export default async function BillingPage() {
       {/* ─── Tableau des factures ──────────────────────────────────── */}
       <Card>
         <CardHeader className="flex-row items-center justify-between space-y-0">
-          <CardTitle>Factures</CardTitle>
+          <CardTitle className="text-base">Factures</CardTitle>
           <span className="text-xs text-muted-foreground">Facturation Compta → cabinet</span>
         </CardHeader>
         <CardContent>

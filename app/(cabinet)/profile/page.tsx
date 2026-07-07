@@ -63,7 +63,7 @@ export default async function ProfilePage({ searchParams }: { searchParams: Prom
   const initials = (profile?.first_name?.[0] || '?') + (profile?.last_name?.[0] || '');
 
   return (
-    <div className="mx-auto w-full max-w-5xl space-y-6 p-4 sm:p-6">
+    <div className="mx-auto w-full max-w-3xl space-y-6 p-4 sm:p-6">
       <div className="flex items-center gap-3">
         <Avatar className="size-10">
           <AvatarFallback className="bg-accent font-semibold text-accent-foreground">
@@ -106,7 +106,7 @@ export default async function ProfilePage({ searchParams }: { searchParams: Prom
       </nav>
 
       {sp.saved && (
-        <div className="rounded-lg border border-green-300 bg-green-50 px-4 py-3 text-sm text-green-800">
+        <div className="rounded-lg border border-[#957af5]/40 bg-[#ede7ff] px-4 py-3 text-sm text-[#2b1769]">
           Modifications enregistrées.
         </div>
       )}
@@ -121,7 +121,7 @@ export default async function ProfilePage({ searchParams }: { searchParams: Prom
 
       <div className="grid gap-5 lg:grid-cols-[1.4fr_1fr]">
         {/* Informations personnelles */}
-        <Card>
+        <Card className="min-w-0">
           <CardHeader>
             <CardTitle className="text-base">Informations personnelles</CardTitle>
             <CardDescription>Votre identité au sein du cabinet.</CardDescription>
@@ -146,7 +146,7 @@ export default async function ProfilePage({ searchParams }: { searchParams: Prom
         </Card>
 
         {/* Mot de passe */}
-        <Card className="h-fit">
+        <Card className="h-fit min-w-0">
           <CardHeader>
             <CardTitle className="text-base">Mot de passe</CardTitle>
             <CardDescription>8 caractères minimum.</CardDescription>

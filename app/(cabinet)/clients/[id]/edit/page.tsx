@@ -3,7 +3,7 @@
 import { use, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Archive, Loader2 } from 'lucide-react';
+import { Archive, ChevronRight, Loader2 } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import {
   FORMES_JURIDIQUES,
@@ -186,7 +186,7 @@ export default function EditClientPage({ params }: PageProps) {
 
   if (loading) {
     return (
-      <div className="mx-auto w-full max-w-3xl p-4 sm:p-6">
+      <div className="mx-auto w-full max-w-4xl p-4 sm:p-6">
         <div className="flex items-center gap-2 rounded-xl border border-border bg-card px-6 py-10 text-sm text-muted-foreground">
           <Loader2 className="size-4 animate-spin" />
           Chargement…
@@ -196,9 +196,9 @@ export default function EditClientPage({ params }: PageProps) {
   }
   if (!form) {
     return (
-      <div className="mx-auto w-full max-w-3xl space-y-4 p-4 sm:p-6">
+      <div className="mx-auto w-full max-w-4xl space-y-4 p-4 sm:p-6">
         <div className="flex items-center justify-between">
-          <h1 className="text-2xl font-semibold tracking-tight">Modifier le client</h1>
+          <h1>Modifier le client</h1>
           <Button variant="ghost" asChild>
             <Link href="/clients">← Retour</Link>
           </Button>
@@ -214,10 +214,29 @@ export default function EditClientPage({ params }: PageProps) {
   }
 
   return (
-    <div className="mx-auto w-full max-w-3xl space-y-6 p-4 sm:p-6">
+    <div className="mx-auto w-full max-w-4xl space-y-6 p-4 sm:p-6">
+      {/* Fil d'ariane */}
+      <nav
+        aria-label="Fil d'ariane"
+        className="flex min-w-0 items-center gap-1.5 text-sm text-muted-foreground"
+      >
+        <Link href="/clients" className="transition-colors hover:text-foreground">
+          Clients
+        </Link>
+        <ChevronRight className="size-3.5 shrink-0" aria-hidden="true" />
+        <Link
+          href={`/clients/${id}`}
+          className="truncate transition-colors hover:text-foreground"
+        >
+          {form.denomination}
+        </Link>
+        <ChevronRight className="size-3.5 shrink-0" aria-hidden="true" />
+        <span className="font-medium text-foreground">Modifier</span>
+      </nav>
+
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Modifier le client</h1>
+        <div className="min-w-0">
+          <h1 className="truncate">Modifier le client</h1>
           <p className="text-sm text-muted-foreground">{form.denomination}</p>
         </div>
         <div className="flex gap-2">

@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { ArrowRight, Mail, Pencil, Phone, Plus } from 'lucide-react';
+import { ArrowRight, ChevronRight, Mail, Pencil, Phone, Plus } from 'lucide-react';
 import { createClient } from '@/lib/supabase/server';
 import {
   formatAdresse,
@@ -75,17 +75,29 @@ export default async function ClientDetailPage({ params }: PageProps) {
     : [];
 
   return (
-    <div className="mx-auto w-full max-w-7xl space-y-6 p-4 sm:p-6">
+    <div className="mx-auto w-full max-w-6xl space-y-6 p-4 sm:p-6">
+      {/* Fil d'ariane */}
+      <nav
+        aria-label="Fil d'ariane"
+        className="flex min-w-0 items-center gap-1.5 text-sm text-muted-foreground"
+      >
+        <Link href="/clients" className="transition-colors hover:text-foreground">
+          Clients
+        </Link>
+        <ChevronRight className="size-3.5 shrink-0" aria-hidden="true" />
+        <span className="truncate font-medium text-foreground">{c.denomination}</span>
+      </nav>
+
       {/* En-tête */}
-      <div className="flex flex-wrap items-center justify-between gap-4">
-        <div className="flex items-center gap-4">
-          <Avatar className="size-12">
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div className="flex min-w-0 items-center gap-4">
+          <Avatar className="size-12 shrink-0">
             <AvatarFallback className="bg-accent text-base font-semibold text-accent-foreground">
               {getInitials(c.denomination)}
             </AvatarFallback>
           </Avatar>
-          <div>
-            <h1 className="text-2xl font-semibold tracking-tight">{c.denomination}</h1>
+          <div className="min-w-0">
+            <h1 className="truncate">{c.denomination}</h1>
             <div className="mt-1 flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
               <span className="font-mono">SIREN {formatSiren(c.siren)}</span>
               {c.forme_juridique && (
@@ -97,7 +109,7 @@ export default async function ClientDetailPage({ params }: PageProps) {
             </div>
           </div>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <Button variant="outline" asChild>
             <Link href={`/clients/${c.id}/edit`}>
               <Pencil className="size-4" />
@@ -113,8 +125,8 @@ export default async function ClientDetailPage({ params }: PageProps) {
         </div>
       </div>
 
-      <div className="grid gap-5 lg:grid-cols-[1.6fr_1fr]">
-        <div className="space-y-5">
+      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
+        <div className="min-w-0 space-y-6">
           {/* Informations */}
           <Card>
             <CardHeader className="pb-2">
@@ -191,7 +203,7 @@ export default async function ClientDetailPage({ params }: PageProps) {
         </div>
 
         {/* Contact */}
-        <Card className="h-fit">
+        <Card className="h-fit min-w-0">
           <CardHeader className="pb-2">
             <CardTitle className="text-base">Contact</CardTitle>
           </CardHeader>

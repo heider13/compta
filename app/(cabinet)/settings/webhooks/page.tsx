@@ -7,10 +7,12 @@ import { Button } from '@/components/ui/button';
 import {
   Card,
   CardContent,
+  CardDescription,
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 
 const EVENTS = [
   'dossier.created',
@@ -40,10 +42,11 @@ export default async function WebhooksPage({ searchParams }: { searchParams: Pro
   }
 
   return (
-    <div className="mx-auto w-full max-w-5xl space-y-6 p-4 sm:p-6">
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Webhooks</h1>
-        <p className="text-sm text-muted-foreground">
+    <div className="mx-auto w-full max-w-3xl space-y-6 p-4 sm:p-6">
+      {/* Header */}
+      <div className="min-w-0">
+        <h1>Webhooks</h1>
+        <p className="mt-1 text-sm text-muted-foreground">
           Recevez les événements de Compta sur vos endpoints. Signés HMAC-SHA256 via{' '}
           <code className="rounded bg-muted px-1.5 py-0.5 font-mono text-xs">
             X-Compta-Signature
@@ -64,21 +67,28 @@ export default async function WebhooksPage({ searchParams }: { searchParams: Pro
       <Card>
         <CardHeader>
           <CardTitle className="text-base">Nouveau webhook</CardTitle>
+          <CardDescription>
+            Renseignez une URL et choisissez les événements à recevoir.
+          </CardDescription>
         </CardHeader>
         <CardContent>
           <form action={action} className="space-y-4">
-            <Input
-              name="url"
-              type="url"
-              required
-              placeholder="https://votre-app.com/webhooks/compta"
-            />
+            <div className="space-y-1.5">
+              <Label htmlFor="webhook_url">URL de l&apos;endpoint</Label>
+              <Input
+                id="webhook_url"
+                name="url"
+                type="url"
+                required
+                placeholder="https://votre-app.com/webhooks/compta"
+              />
+            </div>
             {/* Checkboxes natives : le form est une Server Action (POST FormData). */}
             <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
               {EVENTS.map((e) => (
                 <label
                   key={e}
-                  className="flex cursor-pointer items-center gap-2.5 rounded-lg border px-3 py-2 text-sm transition-colors hover:bg-muted/50 has-[:checked]:border-primary/50 has-[:checked]:bg-accent/50"
+                  className="flex min-w-0 cursor-pointer items-center gap-2.5 rounded-lg border px-3 py-2 text-sm transition-colors hover:bg-muted/50 has-[:checked]:border-primary/50 has-[:checked]:bg-accent/50"
                 >
                   <input
                     type="checkbox"
@@ -86,7 +96,7 @@ export default async function WebhooksPage({ searchParams }: { searchParams: Pro
                     value={e}
                     className="size-4 accent-[var(--primary)]"
                   />
-                  <span className="font-mono text-xs">{e}</span>
+                  <span className="truncate font-mono text-xs">{e}</span>
                 </label>
               ))}
             </div>
@@ -104,12 +114,13 @@ export default async function WebhooksPage({ searchParams }: { searchParams: Pro
             <WebhookIcon className="size-4 text-muted-foreground" aria-hidden="true" />
             Webhooks configurés
           </CardTitle>
+          <CardDescription>Vos endpoints et leur état de livraison.</CardDescription>
         </CardHeader>
         <CardContent>
           {!webhooks?.length ? (
             <p className="py-8 text-center text-sm text-muted-foreground">Aucun webhook.</p>
           ) : (
-            <div className="divide-y">
+            <div className="divide-y divide-border">
               {webhooks.map((w) => (
                 <div key={w.id} className="space-y-2 py-4 first:pt-0 last:pb-0">
                   <div className="flex flex-wrap items-center justify-between gap-3">
@@ -137,7 +148,7 @@ export default async function WebhooksPage({ searchParams }: { searchParams: Pro
                       variant="secondary"
                       className={
                         w.active
-                          ? 'bg-green-100 font-normal text-green-800'
+                          ? 'bg-accent font-normal text-primary'
                           : 'bg-muted font-normal text-muted-foreground'
                       }
                     >

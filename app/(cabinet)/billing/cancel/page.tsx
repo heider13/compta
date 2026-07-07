@@ -11,10 +11,10 @@ export const dynamic = 'force-dynamic';
 
 export default function BillingCancelPage() {
   return (
-    <div className="mx-auto w-full max-w-xl p-6">
+    <div className="mx-auto w-full max-w-3xl p-4 sm:p-6">
       <Card className="mt-10">
         <CardContent className="flex flex-col items-center py-10 text-center">
-          <span className="mb-5 grid size-16 place-items-center rounded-full bg-muted text-muted-foreground">
+          <span className="mb-5 grid size-16 place-items-center rounded-2xl bg-muted text-muted-foreground">
             <XCircle className="size-9" aria-hidden="true" />
           </span>
           <h1 className="text-2xl font-semibold tracking-tight">Paiement annulé</h1>

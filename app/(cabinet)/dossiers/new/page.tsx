@@ -74,7 +74,7 @@ export default async function NewDossierPage() {
             <div className="mx-auto mb-4 grid size-16 place-items-center rounded-full bg-accent">
               <Users className="size-8 text-primary" />
             </div>
-            <h1 className="text-2xl font-normal tracking-tight">
+            <h1>
               Organisez votre <strong className="font-semibold">opération</strong>
             </h1>
             <p className="mb-7 mt-1.5 text-sm text-muted-foreground">
@@ -82,7 +82,7 @@ export default async function NewDossierPage() {
             </p>
 
             <div className="mb-4 grid gap-4 text-left sm:grid-cols-2">
-              <div className="space-y-1.5">
+              <div className="min-w-0 space-y-1.5">
                 <label htmlFor="client_id" className="text-xs font-medium text-foreground/80">
                   Société cliente
                 </label>
@@ -101,7 +101,7 @@ export default async function NewDossierPage() {
                   + Ajouter une société
                 </Link>
               </div>
-              <div className="space-y-1.5">
+              <div className="min-w-0 space-y-1.5">
                 <label htmlFor="assigned_to" className="text-xs font-medium text-foreground/80">
                   Collaborateur en charge
                 </label>
@@ -137,7 +137,7 @@ export default async function NewDossierPage() {
                       // clavier, le label entier est cliquable.
                       <label
                         key={it.id}
-                        className="flex cursor-pointer items-center gap-2 rounded-md border bg-card px-3 py-2 text-[13px] transition-colors hover:border-primary/50 has-[:checked]:border-primary has-[:checked]:bg-accent has-[:checked]:font-medium"
+                        className="flex min-w-0 cursor-pointer items-center gap-2 rounded-md border bg-card px-3 py-2 text-[13px] transition-colors hover:border-primary/50 has-[:checked]:border-primary has-[:checked]:bg-accent has-[:checked]:font-medium"
                       >
                         <input
                           type="radio"
