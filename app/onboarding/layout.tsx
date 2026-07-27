@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 import Link from 'next/link';
+import { Logo } from '@/components/brand/Logo';
 
 // Layout dédié à l'onboarding : pas de nav globale, juste un logo en haut et un footer minimal.
 // Server Component (statique).
@@ -30,9 +31,8 @@ export default function OnboardingLayout({ children }: { children: ReactNode }) 
             height: 68,
           }}
         >
-          <Link href="/" className="logo" aria-label="Compta">
-            <span className="logo-mark">C</span>
-            <span style={{ fontSize: 19 }}>compta</span>
+          <Link href="/" className="inline-flex items-center no-underline" aria-label="Legaly AI">
+            <Logo size={28} textClassName="text-[19px]" />
           </Link>
           <span className="pill violet">Configuration du cabinet</span>
         </div>
@@ -59,7 +59,7 @@ export default function OnboardingLayout({ children }: { children: ReactNode }) 
           color: 'var(--ink-500)',
         }}
       >
-        <span>© 2026 Compta SAS · Mandataire INPI agréé · </span>
+        <span>© 2026 Legaly AI SAS · Mandataire INPI agréé · </span>
         <a href="#" style={{ color: 'var(--ink-600)' }}>
           Besoin d&apos;aide ?
         </a>

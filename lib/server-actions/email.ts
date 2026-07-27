@@ -17,7 +17,7 @@ async function getOrgContext() {
     .single();
   const { data: profile } = await supabase.from('profiles').select('first_name, last_name').eq('id', user.id).single();
   const o = data?.organizations as { name?: string } | undefined;
-  return { orgId: data?.organization_id, cabinetName: o?.name || 'Compta', inviterName: `${profile?.first_name || ''} ${profile?.last_name || ''}`.trim() || 'Un collègue' };
+  return { orgId: data?.organization_id, cabinetName: o?.name || 'Legaly AI', inviterName: `${profile?.first_name || ''} ${profile?.last_name || ''}`.trim() || 'Un collègue' };
 }
 
 export async function sendInvitationEmail(formData: FormData) {

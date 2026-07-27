@@ -43,7 +43,7 @@ export function PlanCard({
   accent = false,
   isCurrent = false,
   mode = 'subscribe',
-  contactEmail = 'contact@compta.app',
+  contactEmail = 'contact@legaly.ai',
   disabled = false,
 }: PlanCardProps) {
   return (
@@ -102,7 +102,7 @@ export function PlanCard({
 
         {mode === 'contact' && (
           <Button variant={accent ? 'default' : 'outline'} className="mb-6 w-full" asChild>
-            <a href={`mailto:${contactEmail}?subject=Demande%20de%20devis%20Enterprise%20-%20Compta`}>
+            <a href={`mailto:${contactEmail}?subject=Demande%20de%20devis%20Enterprise%20-%20Legaly%20AI`}>
               Nous contacter
               <ArrowRight className="size-4" />
             </a>

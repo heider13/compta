@@ -114,7 +114,7 @@ export function FloatingAssistant() {
               <Bot className="size-4" />
             </span>
             <div className="flex-1">
-              <p className="text-sm font-semibold">Assistant Compta</p>
+              <p className="text-sm font-semibold">Assistant Legaly AI</p>
               <p className="text-[11px] text-sidebar-foreground/60">Fiscal · comptable · juridique</p>
             </div>
             <Link href="/assistant" aria-label="Ouvrir en plein écran" className="rounded p-1 hover:bg-white/10">

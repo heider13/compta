@@ -11,7 +11,7 @@
 //   - client.updated
 //
 // Sécurité : chaque payload est signé HMAC-SHA256 avec le `secret` du webhook.
-//   Header de la requête sortante : `X-Compta-Signature: <hex>`
+//   Header de la requête sortante : `X-Legaly-Signature: <hex>`
 //
 // Fiabilité MVP : timeout 5s, 1 retry après 30s en cas d'échec (status >=400 ou réseau).
 // Sur prod, à remplacer par une vraie queue (BullMQ + Redis) avec back-off exponentiel.
@@ -42,7 +42,7 @@ async function postSigned(url, secret, bodyString) {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'X-Compta-Signature': signature,
+        'X-Legaly-Signature': signature,
         'User-Agent': 'Compta-Webhooks/1.0',
       },
       body: bodyString,

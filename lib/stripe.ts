@@ -38,7 +38,7 @@ export function getStripe(): Stripe {
     ...(apiVersion ? { apiVersion } : {}),
     typescript: true,
     appInfo: {
-      name: 'Compta',
+      name: 'Legaly AI',
       version: '0.1.0',
     },
   });

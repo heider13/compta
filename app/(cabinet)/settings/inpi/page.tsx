@@ -79,7 +79,7 @@ export default async function InpiSettingsPage({
               <p>
                 <strong className="font-semibold">Configuration requise.</strong> Tant que
                 vos identifiants INPI ne sont pas renseignés, vous ne pouvez pas déposer de
-                formalité depuis Compta.
+                formalité depuis Legaly AI.
               </p>
             </div>
           )}

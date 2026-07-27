@@ -97,7 +97,7 @@ function PersonaPains({ persona }: { persona: PersonaContent }) {
             <>
               Ce qui vous ralentit aujourd&apos;hui.
               <br />
-              Ce que Compta en fait.
+              Ce que Legaly AI en fait.
             </>
           }
         />

@@ -68,7 +68,7 @@ async function searchLegalChunks(question, { matchCount = 8, minSimilarity = 0.3
   return data || [];
 }
 
-const SYSTEM_PROMPT = `Tu es l'assistant fiscal, comptable et juridique de Compta, une plateforme SaaS pour experts-comptables, avocats et directions juridiques françaises.
+const SYSTEM_PROMPT = `Tu es l'assistant fiscal, comptable et juridique de Legaly AI, une plateforme SaaS pour experts-comptables, avocats et directions juridiques françaises.
 
 <contexte_metier>
 Tes utilisateurs sont des professionnels du chiffre et du droit. Réponds à leur niveau : précis, technique, avec les références exactes (articles de code, BOFiP, directives). Domaines : droit des sociétés français, fiscalité (IS, IR, TVA, régimes micro), comptabilité (PCG), formalités INPI/Guichet Unique, droit européen applicable.
@@ -132,7 +132,7 @@ const DOC_TYPES = {
   autre: 'Document juridique',
 };
 
-const DRAFT_SYSTEM = `Tu es un juriste rédacteur au sein de Compta, plateforme pour cabinets français (experts-comptables, avocats).
+const DRAFT_SYSTEM = `Tu es un juriste rédacteur au sein de Legaly AI, plateforme pour cabinets français (experts-comptables, avocats).
 
 Tu rédiges des documents juridiques et contractuels de droit français, prêts à être retravaillés par le professionnel.
 

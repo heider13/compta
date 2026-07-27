@@ -302,7 +302,7 @@ export default async function AdminDossierDetailPage({
                 >
                   <div className="mb-1 flex justify-between text-xs text-muted-foreground">
                     <strong>
-                      {o.author_role === 'admin' ? 'Admin Compta' : author || 'Client'}
+                      {o.author_role === 'admin' ? 'Admin Legaly AI' : author || 'Client'}
                     </strong>
                     <span className="font-mono">
                       {new Date(o.created_at).toLocaleString('fr-FR')}

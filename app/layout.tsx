@@ -3,7 +3,7 @@ import './globals.css';
 import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
-  title: 'Compta — Plateforme de formalités juridiques pour cabinets',
+  title: 'Legaly AI — Plateforme de formalités juridiques pour cabinets',
   description:
     "SaaS B2B pour experts-comptables, avocats, formalistes et cabinets de conseil. Toutes les formalités juridiques d'entreprise en un endroit, connecté à l'INPI Guichet Unique.",
   metadataBase: new URL('https://compta-navy.vercel.app'),

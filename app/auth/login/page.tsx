@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { Logo } from '@/components/brand/Logo';
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { Button } from '@/components/ui/button';
@@ -49,11 +50,8 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
           aria-hidden="true"
           className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_500px_400px_at_80%_10%,rgba(117,81,232,0.25),transparent_60%),radial-gradient(ellipse_400px_300px_at_10%_90%,rgba(149,122,245,0.15),transparent_60%)]"
         />
-        <Link href="/" className="relative flex items-center gap-2.5 text-white no-underline">
-          <span className="grid size-9 place-items-center rounded-lg bg-primary text-lg font-bold text-white">
-            C
-          </span>
-          <span className="text-xl font-semibold tracking-tight">compta</span>
+        <Link href="/" className="relative flex items-center no-underline" aria-label="Legaly AI">
+          <Logo size={32} onDark textClassName="text-xl" />
         </Link>
 
         <div className="relative max-w-md">
@@ -73,7 +71,7 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
         </div>
 
         <p className="relative text-xs text-sidebar-foreground/60">
-          © {new Date().getFullYear()} Compta — plateforme de formalités pour cabinets.
+          © {new Date().getFullYear()} Legaly AI — plateforme de formalités pour cabinets.
         </p>
       </aside>
 
@@ -81,11 +79,8 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
       <section className="flex items-center justify-center bg-muted/40 p-6">
         <Card className="w-full max-w-md border-border/60 shadow-lg">
           <CardHeader className="space-y-1 text-center">
-            <Link href="/" className="mx-auto mb-2 flex items-center gap-2 no-underline lg:hidden">
-              <span className="grid size-8 place-items-center rounded-lg bg-primary text-base font-bold text-white">
-                C
-              </span>
-              <span className="text-lg font-semibold text-foreground">compta</span>
+            <Link href="/" className="mx-auto mb-2 flex items-center no-underline lg:hidden" aria-label="Legaly AI">
+              <Logo size={28} textClassName="text-lg" />
             </Link>
             <CardTitle className="text-2xl">Content de vous revoir</CardTitle>
             <CardDescription>Connectez-vous à votre cabinet.</CardDescription>

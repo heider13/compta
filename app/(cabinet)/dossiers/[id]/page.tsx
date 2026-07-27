@@ -252,7 +252,7 @@ export default async function DossierDetailPage({
                 </div>
                 <p className="text-sm leading-relaxed text-amber-900/80">
                   Le paiement des frais légaux (greffe, JAL, etc.) se fait directement sur le
-                  portail officiel INPI Guichet Unique — Compta ne perçoit pas ces frais.
+                  portail officiel INPI Guichet Unique — Legaly AI ne perçoit pas ces frais.
                   Connectez-vous avec les identifiants INPI du cabinet
                   {inpiEnv === 'demo' ? ' (environnement démo)' : ''} pour régler.
                 </p>

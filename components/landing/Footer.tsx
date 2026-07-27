@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { Shield } from '@/components/icons';
+import { Logo } from '@/components/brand/Logo';
 import { Container } from './ui';
 
 const COLUMNS: Array<{ title: string; links: Array<{ label: string; href: string }> }> = [
@@ -47,11 +48,8 @@ export function Footer() {
       <Container>
         <div className="grid gap-10 md:grid-cols-[1.4fr_1fr_1fr_1fr_1fr]">
           <div>
-            <Link href="/" className="inline-flex items-center gap-2.5 text-white no-underline">
-              <span className="grid size-9 place-items-center rounded-lg bg-[var(--accent)] text-lg font-bold text-[#080331]">
-                C
-              </span>
-              <span className="text-2xl font-semibold tracking-tight">compta</span>
+            <Link href="/" className="inline-flex items-center no-underline" aria-label="Legaly AI">
+              <Logo size={34} onDark textClassName="text-2xl" />
             </Link>
             <p className="mt-4 max-w-[280px] text-sm leading-relaxed text-white/60">
               La plateforme tout-en-un de formalités juridiques pour cabinets professionnels.
@@ -89,7 +87,7 @@ export function Footer() {
         </div>
 
         <div className="mt-12 flex flex-wrap items-center justify-between gap-2 border-t border-white/10 pt-6 text-xs text-white/45">
-          <span>© 2026 Compta SAS · 12 rue de la Paix, 75002 Paris</span>
+          <span>© 2026 Legaly AI SAS · 12 rue de la Paix, 75002 Paris</span>
           <span>RCS Paris 921 384 502 · Mandataire INPI agréé</span>
         </div>
       </Container>

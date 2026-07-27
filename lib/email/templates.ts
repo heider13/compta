@@ -13,12 +13,12 @@ function layout(title: string, body: string): string {
 <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#FAFAFC;padding:40px 16px;"><tr><td align="center">
 <table width="600" cellpadding="0" cellspacing="0" border="0" style="background:#fff;border-radius:14px;border:1px solid #E5E7EB;overflow:hidden;max-width:600px;">
 <tr><td style="padding:24px 32px;border-bottom:1px solid #E5E7EB;">
-<span style="display:inline-block;width:28px;height:28px;background:#5B36D6;color:#fff;border-radius:8px;text-align:center;line-height:28px;font-weight:600;">C</span>
-<span style="margin-left:10px;font-size:18px;font-weight:600;letter-spacing:-0.02em;">compta</span>
+<span style="display:inline-block;width:28px;height:28px;background:#5B36D6;color:#fff;border-radius:8px;text-align:center;line-height:28px;font-weight:600;">L</span>
+<span style="margin-left:10px;font-size:18px;font-weight:600;letter-spacing:-0.02em;">legaly AI</span>
 </td></tr>
 <tr><td style="padding:32px;font-size:15px;line-height:1.55;color:#374151;">${body}</td></tr>
 <tr><td style="padding:20px 32px;background:#FAFAFC;border-top:1px solid #E5E7EB;font-size:12px;color:#6B7280;">
-Compta — La plateforme de formalités juridiques pour cabinets professionnels.
+Legaly AI — La plateforme de formalités juridiques pour cabinets professionnels.
 </td></tr>
 </table></td></tr></table></body></html>`;
 }
@@ -32,13 +32,13 @@ function btn(label: string, url: string): string {
 }
 
 export function cabinetInvitation(p: { cabinetName: string; inviterName: string; acceptUrl: string }): EmailContent {
-  const subject = `${p.inviterName} vous invite à rejoindre ${p.cabinetName} sur Compta`;
+  const subject = `${p.inviterName} vous invite à rejoindre ${p.cabinetName} sur Legaly AI`;
   const body = `<h2 style="margin:0 0 12px;font-size:22px;letter-spacing:-0.02em;">Vous avez reçu une invitation</h2>
-<p>${escape(p.inviterName)} vous invite à rejoindre le cabinet <strong>${escape(p.cabinetName)}</strong> sur Compta.</p>
-<p>Compta est la plateforme tout-en-un pour la gestion des formalités juridiques d'entreprise via le Guichet Unique INPI.</p>
+<p>${escape(p.inviterName)} vous invite à rejoindre le cabinet <strong>${escape(p.cabinetName)}</strong> sur Legaly AI.</p>
+<p>Legaly AI est la plateforme tout-en-un pour la gestion des formalités juridiques d'entreprise via le Guichet Unique INPI.</p>
 <p style="margin:28px 0;">${btn("Accepter l'invitation", p.acceptUrl)}</p>
 <p style="font-size:13px;color:#6B7280;">Le lien expire dans 7 jours.</p>`;
-  return { subject, html: layout(subject, body), text: `${p.inviterName} vous invite à rejoindre ${p.cabinetName} sur Compta. Lien : ${p.acceptUrl}` };
+  return { subject, html: layout(subject, body), text: `${p.inviterName} vous invite à rejoindre ${p.cabinetName} sur Legaly AI. Lien : ${p.acceptUrl}` };
 }
 
 export function dossierSubmitted(p: { clientName: string; dossierRef: string; formaliteType: string; viewUrl: string }): EmailContent {

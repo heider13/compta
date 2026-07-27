@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { ChevronDown } from 'lucide-react';
 import { Arrow } from '@/components/icons';
+import { Logo } from '@/components/brand/Logo';
 import { MODULE_LIST } from '@/lib/landing/modules';
 import { PERSONA_LIST } from '@/lib/landing/personas';
 import { Container } from './ui';
@@ -42,23 +43,12 @@ export function Nav() {
       onMouseLeave={() => setOpen(null)}
     >
       <Container className="flex h-16 items-center justify-between gap-4">
-        <Link href="/" className="flex items-center gap-2 no-underline" aria-label="Compta">
-          <span
-            className={cn(
-              'grid size-7 place-items-center rounded-lg text-sm font-bold transition-colors',
-              solid ? 'bg-[var(--accent)] text-white' : 'bg-white text-[#0e0b1a]',
-            )}
-          >
-            C
-          </span>
-          <span
-            className={cn(
-              'text-[19px] font-semibold tracking-tight transition-colors',
-              solid ? 'text-[var(--violet-900)]' : '!text-white',
-            )}
-          >
-            compta
-          </span>
+        <Link href="/" className="flex items-center no-underline" aria-label="Legaly AI">
+          <Logo
+            size={28}
+            onDark={!solid}
+            textClassName={cn('text-[19px] transition-colors', !solid && '!text-white')}
+          />
         </Link>
 
         {/* Menu central */}

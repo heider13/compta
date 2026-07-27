@@ -46,7 +46,7 @@ export function FormalityTypes() {
           }
           lead={
             <>
-              Compta couvre l&apos;intégralité du cycle de vie des sociétés françaises
+              Legaly AI couvre l&apos;intégralité du cycle de vie des sociétés françaises
               disponibles via le Guichet Unique. Aucune dépendance à des outils tiers.
             </>
           }

@@ -59,7 +59,7 @@ export default async function AdminLayout({
             Back-office
           </Badge>
           <span className="hidden text-sm text-muted-foreground sm:inline">
-            Compta SAS · {user.email}
+            Legaly AI SAS · {user.email}
           </span>
           <div className="ml-auto flex items-center gap-2">
             <Button asChild variant="ghost" size="sm">

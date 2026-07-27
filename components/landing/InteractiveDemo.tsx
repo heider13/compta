@@ -64,8 +64,8 @@ function AppShell({ title, children }: { title: string; children: React.ReactNod
     <div className="flex h-full">
       <div className="hidden w-36 shrink-0 flex-col gap-1 bg-[#14102a] p-3 sm:flex">
         <div className="mb-3 flex items-center gap-1.5">
-          <span className="grid size-5 place-items-center rounded bg-[#7551e8] text-[10px] font-bold text-white">C</span>
-          <span className="text-[11px] font-semibold text-white">Compta</span>
+          <span className="grid size-5 place-items-center rounded bg-[#7551e8] text-[10px] font-bold text-white">L</span>
+          <span className="text-[11px] font-semibold text-white">Legaly AI</span>
         </div>
         {nav.map((n, i) => (
           <div
@@ -244,11 +244,11 @@ function SceneDepot() {
 // ─── Chapitres ───────────────────────────────────────────────────
 
 const SCENES = [
-  { label: 'Scanner la CNI', url: 'app.compta.fr/dossiers/nouveau', view: <SceneScan /> },
-  { label: 'Vérifier', url: 'app.compta.fr/dossiers/nouveau', view: <SceneForm /> },
-  { label: 'Générer les statuts', url: 'app.compta.fr/dossiers/D-2481', view: <SceneStatuts /> },
-  { label: 'Signer', url: 'app.compta.fr/dossiers/D-2481/sign', view: <SceneSign /> },
-  { label: 'Déposer à l’INPI', url: 'app.compta.fr/dashboard', view: <SceneDepot /> },
+  { label: 'Scanner la CNI', url: 'app.legaly.ai/dossiers/nouveau', view: <SceneScan /> },
+  { label: 'Vérifier', url: 'app.legaly.ai/dossiers/nouveau', view: <SceneForm /> },
+  { label: 'Générer les statuts', url: 'app.legaly.ai/dossiers/D-2481', view: <SceneStatuts /> },
+  { label: 'Signer', url: 'app.legaly.ai/dossiers/D-2481/sign', view: <SceneSign /> },
+  { label: 'Déposer à l’INPI', url: 'app.legaly.ai/dashboard', view: <SceneDepot /> },
 ];
 
 export function InteractiveDemo() {

@@ -200,7 +200,7 @@ function markdownToDocx(title, markdown) {
       children.push(new Paragraph({ alignment: AlignmentType.JUSTIFIED, spacing: { after: 100 }, children: runs }));
     }
   }
-  return new Document({ creator: 'Compta', title, sections: [{ children }] });
+  return new Document({ creator: 'Legaly AI', title, sections: [{ children }] });
 }
 
 router.post(

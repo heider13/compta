@@ -272,7 +272,7 @@ async function generateStatuts(rawData) {
     throw err;
   }
   const doc = new Document({
-    creator: 'Compta',
+    creator: 'Legaly AI',
     title: `Statuts — ${d.denomination}`,
     sections: [{ children: buildChildren(d) }],
   });

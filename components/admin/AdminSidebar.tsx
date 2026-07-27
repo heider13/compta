@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { LogoMark } from '@/components/brand/Logo';
 import { usePathname } from 'next/navigation';
 import {
   ArrowUpRight,
@@ -61,11 +62,11 @@ export function AdminSidebar({ userLabel, userInitials, signOutAction }: AdminSi
     <Sidebar collapsible="icon">
       <SidebarHeader>
         <div className="flex items-center gap-2.5 px-2 py-1.5">
-          <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-sidebar-primary font-semibold text-sidebar-primary-foreground">
-            C
-          </div>
+          <LogoMark size={30} onDark className="shrink-0" />
           <div className="flex min-w-0 items-center gap-2 group-data-[collapsible=icon]:hidden">
-            <span className="truncate text-sm font-semibold text-sidebar-foreground">Compta</span>
+            <span className="truncate text-sm font-semibold text-sidebar-foreground">
+              legaly&nbsp;<span className="text-[#ff887b]">AI</span>
+            </span>
             <Badge className="bg-sidebar-primary text-[10px] tracking-wider text-sidebar-primary-foreground">
               ADMIN
             </Badge>

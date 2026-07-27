@@ -36,7 +36,7 @@ export default async function ApiKeysPage({ searchParams }: { searchParams: Prom
       <div className="min-w-0">
         <h1>Clés API</h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          Pour intégrer Compta dans vos outils internes ou ceux de vos partenaires. Base URL :{' '}
+          Pour intégrer Legaly AI dans vos outils internes ou ceux de vos partenaires. Base URL :{' '}
           <code className="rounded bg-muted px-1.5 py-0.5 font-mono text-xs">
             https://vps-84ac2579.vps.ovh.net/v1/
           </code>

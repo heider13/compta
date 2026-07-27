@@ -34,7 +34,7 @@ export function Testimonials() {
     <section className="bg-[var(--ink-50)] py-20 sm:py-24">
       <Container>
         <SectionHead
-          eyebrow="Ils utilisent Compta"
+          eyebrow="Ils utilisent Legaly AI"
           title={
             <>
               Conçu avec les professionnels
@@ -74,7 +74,7 @@ export function Testimonials() {
           <div className="mx-auto max-w-2xl rounded-[20px] border border-[var(--ink-150)] bg-white px-6 py-9 text-center shadow-[0_20px_50px_rgba(8,3,49,0.08)] sm:px-10">
             <Eyebrow className="mb-3.5">Programme pilote</Eyebrow>
             <h3 className="mb-2.5 text-[22px] tracking-tight">
-              Les premiers cabinets testent Compta en avant-première.
+              Les premiers cabinets testent Legaly AI en avant-première.
             </h3>
             <p className="mx-auto mb-5.5 max-w-lg text-[15px] leading-relaxed text-[var(--ink-600)]">
               Rejoignez le programme pilote : onboarding personnalisé, accès direct à

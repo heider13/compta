@@ -47,9 +47,9 @@ export default async function WebhooksPage({ searchParams }: { searchParams: Pro
       <div className="min-w-0">
         <h1>Webhooks</h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          Recevez les événements de Compta sur vos endpoints. Signés HMAC-SHA256 via{' '}
+          Recevez les événements de Legaly AI sur vos endpoints. Signés HMAC-SHA256 via{' '}
           <code className="rounded bg-muted px-1.5 py-0.5 font-mono text-xs">
-            X-Compta-Signature
+            X-Legaly-Signature
           </code>
           .
         </p>
@@ -80,7 +80,7 @@ export default async function WebhooksPage({ searchParams }: { searchParams: Pro
                 name="url"
                 type="url"
                 required
-                placeholder="https://votre-app.com/webhooks/compta"
+                placeholder="https://votre-app.com/webhooks/legaly"
               />
             </div>
             {/* Checkboxes natives : le form est une Server Action (POST FormData). */}

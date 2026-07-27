@@ -26,7 +26,7 @@ export const PERSONAS: Record<string, PersonaContent> = {
   'experts-comptables': {
     slug: 'experts-comptables',
     nom: 'Experts-comptables',
-    metaTitle: 'Compta pour experts-comptables — formalités juridiques industrialisées',
+    metaTitle: 'Legaly AI pour experts-comptables — formalités juridiques industrialisées',
     metaDescription:
       "Créations, modifications et radiations de sociétés pour tout votre portefeuille clients : OCR, liasse INPI préremplie, statuts générés, dépôt direct au Guichet Unique.",
     eyebrow: 'Pour les cabinets d’expertise comptable',
@@ -43,7 +43,7 @@ export const PERSONAS: Record<string, PersonaContent> = {
       {
         pain: 'La ressaisie entre vos outils et le Guichet Unique',
         solution:
-          "Compta dépose directement via l'API officielle INPI avec le compte du cabinet. Plus d'allers-retours entre votre dossier de travail et le portail.",
+          "Legaly AI dépose directement via l'API officielle INPI avec le compte du cabinet. Plus d'allers-retours entre votre dossier de travail et le portail.",
       },
       {
         pain: 'Déléguer aux juniors sans perdre le contrôle',
@@ -62,7 +62,7 @@ export const PERSONAS: Record<string, PersonaContent> = {
   avocats: {
     slug: 'avocats',
     nom: 'Avocats',
-    metaTitle: 'Compta pour avocats — vos actes, nos formalités',
+    metaTitle: 'Legaly AI pour avocats — vos actes, nos formalités',
     metaDescription:
       "Statuts en .docx éditable, signature électronique avancée eIDAS intégrée, dépôt INPI direct : consacrez vos heures au conseil, pas aux formulaires.",
     eyebrow: 'Pour les avocats et cabinets d’affaires',
@@ -74,7 +74,7 @@ export const PERSONAS: Record<string, PersonaContent> = {
       {
         pain: 'Les générateurs de statuts figés dévalorisent vos actes',
         solution:
-          'Compta génère une base complète en .docx que vous retravaillez librement — clauses spécifiques, pactes, conventions. Le document reste un acte d’avocat.',
+          'Legaly AI génère une base complète en .docx que vous retravaillez librement — clauses spécifiques, pactes, conventions. Le document reste un acte d’avocat.',
       },
       {
         pain: 'La signature qualifiée, parcours du combattant',
@@ -98,7 +98,7 @@ export const PERSONAS: Record<string, PersonaContent> = {
   'directions-juridiques': {
     slug: 'directions-juridiques',
     nom: 'Directions juridiques',
-    metaTitle: 'Compta pour directions juridiques — pilotez toutes vos entités',
+    metaTitle: 'Legaly AI pour directions juridiques — pilotez toutes vos entités',
     metaDescription:
       'Formalités de toutes vos entités (holdings, filiales) sur un seul écran : conformité BE et comptes annuels, traçabilité complète, API et webhooks pour votre SI.',
     eyebrow: 'Pour les directions juridiques et legal ops',

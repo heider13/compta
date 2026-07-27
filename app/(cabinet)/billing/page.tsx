@@ -195,7 +195,7 @@ export default async function BillingPage() {
       <div className="min-w-0">
         <h1>Facturation</h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          Gérez votre abonnement Compta et consultez l&apos;historique de
+          Gérez votre abonnement Legaly AI et consultez l&apos;historique de
           facturation de votre cabinet.
         </p>
       </div>
@@ -339,7 +339,7 @@ export default async function BillingPage() {
       <Card>
         <CardHeader className="flex-row items-center justify-between space-y-0">
           <CardTitle className="text-base">Factures</CardTitle>
-          <span className="text-xs text-muted-foreground">Facturation Compta → cabinet</span>
+          <span className="text-xs text-muted-foreground">Facturation Legaly AI → cabinet</span>
         </CardHeader>
         <CardContent>
           {invoices.length === 0 ? (
@@ -375,7 +375,7 @@ export default async function BillingPage() {
                         {inv.number ?? inv.stripe_invoice_id ?? '—'}
                       </TableCell>
                       <TableCell>
-                        Abonnement Compta
+                        Abonnement Legaly AI
                         {inv.due_date ? ` — échéance ${formatDateFr(inv.due_date)}` : ''}
                       </TableCell>
                       <TableCell className="text-right font-medium">
@@ -409,7 +409,7 @@ export default async function BillingPage() {
 
       <p className="text-center text-xs text-muted-foreground">
         Une question ?{' '}
-        <Link href="mailto:support@compta.app" className="font-medium text-primary hover:underline">
+        <Link href="mailto:support@legaly.ai" className="font-medium text-primary hover:underline">
           Contactez le support
         </Link>
       </p>

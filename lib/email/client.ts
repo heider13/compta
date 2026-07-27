@@ -14,7 +14,7 @@ const RESEND_API = 'https://api.resend.com/emails';
 
 export async function sendEmail(params: SendEmailParams): Promise<{ id: string | null; mocked: boolean }> {
   const apiKey = process.env.RESEND_API_KEY;
-  const defaultFrom = process.env.RESEND_FROM || 'Compta <onboarding@resend.dev>';
+  const defaultFrom = process.env.RESEND_FROM || 'Legaly AI <onboarding@resend.dev>';
 
   if (!apiKey) {
     console.warn('[email] RESEND_API_KEY absente, email mock :', params.subject, '->', params.to);
