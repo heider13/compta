@@ -96,7 +96,8 @@ export function CabinetSidebar({ orgName, userLabel, userInitials }: CabinetSide
           <LogoMark size={30} onDark className="shrink-0" />
           <div className="grid min-w-0 group-data-[collapsible=icon]:hidden">
             <span className="truncate text-sm font-semibold text-sidebar-foreground">
-              legaly&nbsp;<span className="text-[#ff887b]">AI</span>
+              <span className="font-bold text-[#ff887b]">L</span>egaly&nbsp;
+              <span className="font-bold text-[#ff887b]">AI</span>
             </span>
             <span className="truncate text-xs text-sidebar-foreground/60">{orgName}</span>
           </div>

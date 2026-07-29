@@ -65,7 +65,8 @@ export function AdminSidebar({ userLabel, userInitials, signOutAction }: AdminSi
           <LogoMark size={30} onDark className="shrink-0" />
           <div className="flex min-w-0 items-center gap-2 group-data-[collapsible=icon]:hidden">
             <span className="truncate text-sm font-semibold text-sidebar-foreground">
-              legaly&nbsp;<span className="text-[#ff887b]">AI</span>
+              <span className="font-bold text-[#ff887b]">L</span>egaly&nbsp;
+              <span className="font-bold text-[#ff887b]">AI</span>
             </span>
             <Badge className="bg-sidebar-primary text-[10px] tracking-wider text-sidebar-primary-foreground">
               ADMIN
