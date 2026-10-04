@@ -203,7 +203,7 @@ export function HeroAgent() {
       />
 
       <div className="relative mx-auto w-full max-w-5xl px-4 pb-20 pt-36 text-center sm:px-6 sm:pt-40">
-        <p className="inline-flex items-center gap-2 font-mono text-[11px] uppercase tracking-[0.28em] text-[var(--ink-500)] sm:text-xs">
+        <p className="inline-flex items-center gap-2 font-mono !text-[11px] uppercase tracking-[0.28em] !text-[var(--ink-500)] sm:text-xs">
           Connecté au
           <span className="rounded-full bg-[var(--violet-600)] px-2 py-0.5 text-white">Guichet unique</span>
           INPI
@@ -219,7 +219,7 @@ export function HeroAgent() {
           </span>
         </h1>
 
-        <p className="!mx-auto !mt-6 max-w-xl font-mono text-sm leading-relaxed !text-[var(--ink-500)] sm:text-[15px]">
+        <p className="!mx-auto !mt-6 max-w-xl text-base leading-relaxed !text-[var(--ink-600)] sm:text-lg">
           Création, modification, cessation, régularisation.
           <br className="hidden sm:block" /> De la conversation au brouillon INPI — vous validez, signez, payez.
         </p>
@@ -286,7 +286,7 @@ export function HeroAgent() {
           ))}
         </div>
 
-        <p className="!mt-6 font-mono text-[13px] !text-[var(--ink-500)]">
+        <p className="!mt-6 font-mono !text-[13px] !text-[var(--ink-500)]">
           Vous êtes un cabinet ?{' '}
           <a href="/auth/signup" className="inline-flex items-center gap-1 text-[var(--violet-900)] underline-offset-4 hover:underline">
             Créer un compte <Arrow size={14} />
@@ -358,7 +358,7 @@ function DemoPlayer({ demande, scenario }: { demande: string; scenario: Scenario
             <span>{String(scene + 1).padStart(2, '0')} / {String(scenes.length).padStart(2, '0')}</span>
           </div>
 
-          <div className="relative aspect-[16/10] bg-[var(--ink-50)] sm:aspect-[16/9]">
+          <div className="relative min-h-[320px] bg-[var(--ink-50)] sm:min-h-[340px]">
             <div key={current} className="absolute inset-0 grid place-items-center p-5 sm:p-8 animate-[heroSceneIn_.5s_ease-out]">
               <Scene k={current} scenario={scenario} demande={demande} t={elapsed / SCENE_MS} />
             </div>
@@ -379,15 +379,15 @@ function DemoPlayer({ demande, scenario }: { demande: string; scenario: Scenario
             >
               {fini ? <RotateCcw className="size-4" /> : playing ? <Pause className="size-4" /> : <Play className="size-4" />}
             </button>
-            <div className="flex flex-1 gap-1 overflow-x-auto">
+            <div className="flex flex-1 flex-wrap gap-1">
               {scenes.map((s, i) => (
                 <button
                   key={s.key}
                   type="button"
                   onClick={() => goTo(i)}
                   className={cn(
-                    'flex shrink-0 items-center gap-1.5 rounded-md px-2 py-1 font-mono text-[11px] transition-colors',
-                    i === scene ? 'bg-white text-[var(--violet-900)]' : i < scene ? 'text-[#ffbe8c]' : 'text-white/45 hover:text-white',
+                    'flex shrink-0 items-center gap-1.5 rounded-md px-2 py-1 font-mono !text-[11px] transition-colors',
+                    i === scene ? 'bg-white !text-[var(--violet-900)]' : i < scene ? '!text-[#ffbe8c]' : '!text-white/50 hover:!text-white',
                   )}
                 >
                   {i < scene ? <Check className="size-3.5" /> : <s.icon className="size-3.5" />}
@@ -401,7 +401,7 @@ function DemoPlayer({ demande, scenario }: { demande: string; scenario: Scenario
 
       {fini && (
         <div className="mt-6 flex flex-col items-center gap-3 text-center">
-          <p className="font-mono text-[13px] text-[var(--ink-500)]">Brouillon prêt sur le Guichet unique. Il ne reste qu’à relire, signer et payer.</p>
+          <p className="font-mono !text-[13px] !text-[var(--ink-500)]">Brouillon prêt sur le Guichet unique. Il ne reste qu’à relire, signer et payer.</p>
           <a
             href="/auth/signup"
             className="inline-flex items-center gap-2 rounded-full bg-[var(--accent)] px-6 py-3 text-[15px] font-semibold text-white shadow-[0_12px_30px_rgba(255,136,123,0.4)] transition-transform hover:-translate-y-0.5"
@@ -423,17 +423,17 @@ const visible = (i: number, n: number, t: number) => t > (i + 0.4) / (n + 1);
 
 function Scene({ k, scenario, demande, t }: { k: string; scenario: Scenario; demande: string; t: number }) {
   const card = 'w-full max-w-md rounded-lg border border-[var(--ink-150)] bg-[white] p-4 text-left shadow-[0_10px_30px_rgba(43,23,105,0.10)] sm:p-5';
-  const head = 'mb-3 font-mono text-[11px] uppercase tracking-[0.18em] text-[var(--violet-600)]';
-  const line = 'flex items-center gap-2.5 py-1.5 text-[13px] text-[var(--violet-900)] transition-opacity duration-300';
+  const head = 'mb-3 font-mono !text-[11px] uppercase tracking-[0.18em] !text-[var(--violet-600)]';
+  const line = 'flex items-center gap-2.5 py-1.5 text-[13px] !text-[var(--violet-900)] transition-opacity duration-300';
 
   if (k === 'conversation') {
     const q = ['Quelle date de décision ?', 'Qui signe les actes ?', 'Des pièces à joindre ?'];
     return (
       <div className={card}>
         <p className={head}>L’agent recueille les informations</p>
-        <p className="mb-2 rounded-md bg-[var(--violet-600)] px-3 py-2 font-mono text-[12px] text-white">{demande}</p>
+        <p className="mb-2 rounded-md bg-[var(--violet-600)] px-3 py-2 font-mono !text-[12px] !text-white">{demande}</p>
         {q.map((x, i) => (
-          <p key={x} className={cn(line, 'font-mono text-[12px]', visible(i, q.length, t) ? 'opacity-100' : 'opacity-0')}>
+          <p key={x} className={cn(line, 'font-mono !text-[12px]', visible(i, q.length, t) ? 'opacity-100' : 'opacity-0')}>
             <MessageSquare className="size-3.5 text-[var(--violet-600)]" /> {x}
           </p>
         ))}
@@ -472,13 +472,13 @@ function Scene({ k, scenario, demande, t }: { k: string; scenario: Scenario; dem
             )}
           >
             <FileText className="mb-2 size-4 text-[var(--violet-600)]" />
-            <p className="text-[12px] font-medium leading-snug text-[var(--violet-900)]">{x}</p>
+            <p className="!text-[12px] font-medium leading-snug !text-[var(--violet-900)]">{x}</p>
             <div className="mt-2 space-y-1">
               <div className="h-1 w-full rounded bg-[var(--ink-100)]" />
               <div className="h-1 w-4/5 rounded bg-[var(--ink-100)]" />
               <div className="h-1 w-3/5 rounded bg-[var(--ink-100)]" />
             </div>
-            <p className="mt-2 font-mono text-[10px] uppercase tracking-wider text-[var(--ink-400)]">.docx éditable</p>
+            <p className="mt-2 font-mono !text-[10px] uppercase tracking-wider !text-[var(--ink-400)]">.docx éditable</p>
           </div>
         ))}
       </div>
@@ -490,7 +490,7 @@ function Scene({ k, scenario, demande, t }: { k: string; scenario: Scenario; dem
     return (
       <div className={card}>
         <p className={head}>{scenario.annonce.type}</p>
-        <p className="min-h-[3.5rem] text-[13px] leading-relaxed text-[var(--violet-900)]" style={SERIF}>
+        <p className="min-h-[3.5rem] !text-[13px] leading-relaxed !text-[var(--violet-900)]" style={SERIF}>
           {scenario.annonce.extrait.slice(0, n)}
           <span className="ml-0.5 inline-block h-4 w-px animate-pulse bg-[var(--violet-900)] align-middle" />
         </p>
@@ -515,7 +515,7 @@ function Scene({ k, scenario, demande, t }: { k: string; scenario: Scenario; dem
             <span className={cn('font-mono text-[12px] text-[var(--violet-900)] transition-opacity duration-300', visible(i, champs.length, t) ? 'opacity-100' : 'opacity-0')}>{v}</span>
           </div>
         ))}
-        <p className={cn('mt-3 inline-flex items-center gap-2 rounded-md bg-[var(--accent-soft)] px-2.5 py-1 font-mono text-[11px] text-[var(--accent-ink)] transition-opacity', t > 0.8 ? 'opacity-100' : 'opacity-0')}>
+        <p className={cn('mt-3 inline-flex items-center gap-2 rounded-md bg-[var(--accent-soft)] px-2.5 py-1 font-mono !text-[11px] !text-[var(--accent-ink)] transition-opacity', t > 0.8 ? 'opacity-100' : 'opacity-0')}>
           <Check className="size-3.5" /> Brouillon créé · en attente de signature
         </p>
       </div>
@@ -525,7 +525,7 @@ function Scene({ k, scenario, demande, t }: { k: string; scenario: Scenario; dem
   return (
     <div className={card}>
       <p className={head}>À vous de jouer</p>
-      <p className="mb-4 text-[13px] text-[var(--violet-900)]">L’agent ne signe et ne paie jamais : vous gardez la main sur chaque formalité.</p>
+      <p className="mb-4 !text-[13px] !text-[var(--violet-900)]">L’agent ne signe et ne paie jamais : vous gardez la main sur chaque formalité.</p>
       <div className="grid gap-2 sm:grid-cols-3">
         {['Relire', 'Signer', 'Payer'].map((x, i) => (
           <span
@@ -539,7 +539,7 @@ function Scene({ k, scenario, demande, t }: { k: string; scenario: Scenario; dem
           </span>
         ))}
       </div>
-      <p className="mt-3 font-mono text-[11px] text-[var(--ink-400)]">Paiement par vos moyens ou par délégation de paiement.</p>
+      <p className="mt-3 font-mono !text-[11px] !text-[var(--ink-400)]">Paiement par vos moyens ou par délégation de paiement.</p>
     </div>
   );
 }
