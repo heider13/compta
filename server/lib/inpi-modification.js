@@ -565,7 +565,7 @@ OPERATIONS.dissolution = async (next, { liquidateur, liquidateurExistant, lieuLi
 };
 
 // Clôture de la liquidation : disparition de la personne morale et radiation.
-OPERATIONS.clotureLiquidation = async (next, { dateEffet, dateDissolution, evenementCessation }) => {
+OPERATIONS.clotureLiquidation = async (next, { dateEffet, dateDissolution, evenementCessation, deplacerEtablissement = true }) => {
   if (evenementCessation) next.evenementCessation = evenementCessation;
   const p = pm(next);
   const ep = p.etablissementPrincipal;
@@ -576,6 +576,12 @@ OPERATIONS.clotureLiquidation = async (next, { dateEffet, dateDissolution, evene
       is27PMFermetureEtablissementTriggered: true,
     };
     for (const a of ep.activites || []) a.statutFormalite = 'M';
+    // Comme pour la mise en sommeil (validée) : l'établissement passe en établissement fermé
+    if (deplacerEtablissement) {
+      ep.descriptionEtablissement = { ...ep.descriptionEtablissement, rolePourEntreprise: '1', indicateurEtablissementPrincipal: false, dateFinActivite: dateEffet };
+      p.autresEtablissements = [...(p.autresEtablissements || []), ep];
+      delete p.etablissementPrincipal;
+    }
   }
   p.detailCessationEntreprise = {
     ...(p.detailCessationEntreprise || {}),
