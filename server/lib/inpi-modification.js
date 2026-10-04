@@ -115,6 +115,9 @@ async function baseModification(orgId, siren) {
   // marque « non présent au RNE » (…Present = false) ce qui reste absent.
   completerPersonnes(next[bloc], gu?.[bloc]);
   marquerAbsents(next[bloc]);
+  // Hors création, chaque dirigeant / bénéficiaire porte un statut : 4 = inchangé.
+  for (const p of next[bloc]?.composition?.pouvoirs || []) if (!p.statutPourLaFormalite) p.statutPourLaFormalite = '4';
+  for (const b of next[bloc]?.beneficiairesEffectifs || []) if (!b.statutPourLaFormalite) b.statutPourLaFormalite = '4';
 
   const m = await mandataireBlocks(client);
   next.declarant = m.declarant;
