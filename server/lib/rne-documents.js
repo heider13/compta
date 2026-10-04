@@ -27,7 +27,7 @@ function libelleActe(a) {
   const t = a.typeRdd;
   const types = Array.isArray(t) ? t.map((x) => x?.typeActe || x?.decision || x).filter((x) => typeof x === 'string') : (typeof t === 'string' ? [t] : []);
   const decisions = Array.isArray(t) ? t.map((x) => x?.decision).filter(Boolean) : [];
-  return { libelle: types[0] || a.nomDocument || 'Acte', types, decisions };
+  return { libelle: a.libelle || types[0] || a.nomDocument || 'Acte', types, decisions, liasse: a.numNat || null };
 }
 
 // Siège : SIRET de l'établissement siège d'après la fiche RNE.
