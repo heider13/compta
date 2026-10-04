@@ -25,7 +25,7 @@ const {
 const { SUPPORTED_FORMES } = require('./doc-generator');
 const inpi = require('../inpi');
 const { getFormalitySummary, downloadAttachment } = require('./inpi-formality');
-const { buildCreationLiasse, createDraftWithPieces, PIECES } = require('./inpi-liasse');
+const { buildCreationLiasse, buildEILiasse, createDraftWithPieces, PIECES, PIECES_EI } = require('./inpi-liasse');
 const rne = require('./inpi-rne');
 const { BUCKET } = require('./dossier-docs');
 const knowledge = require('./knowledge');
@@ -92,6 +92,8 @@ const PERSONNE = {
   type: 'object',
   properties: {
     numeroSecu: { type: 'string', description: 'N° de sécurité sociale (15 chiffres) — exigé pour un gérant de SARL/EURL/SCI et un entrepreneur individuel' },
+    email: { type: 'string' },
+    telephone: { type: 'string' },
     situationMatrimoniale: { type: 'string', enum: ['CELIBATAIRE', 'MARIE', 'PACSE', 'DIVORCE', 'VEUF'] },
     codePostalNaissance: { type: 'string' },
     nom: { type: 'string' },
@@ -141,6 +143,16 @@ const TOOLS = [
           type: 'object',
           description: 'Société de domiciliation (si siège domicilié)',
           properties: { denomination: { type: 'string' }, siren: { type: 'string' } },
+        },
+        regimeMicro: {
+          type: 'object',
+          description: "Micro-entreprise : options du régime micro",
+          properties: {
+            periodicite: { type: 'string', enum: ['MENSUELLE', 'TRIMESTRIELLE'], description: 'Déclaration et paiement des cotisations' },
+            versementLiberatoire: { type: 'boolean', description: "Versement libératoire de l'impôt sur le revenu" },
+            acre: { type: 'boolean', description: 'Demande ACRE' },
+            activiteSalarieeSimultanee: { type: 'boolean' },
+          },
         },
         annonceLegale: {
           type: 'object',
@@ -220,7 +232,7 @@ const TOOLS = [
             type: 'object',
             properties: {
               document_id: { type: 'string' },
-              categorie: { type: 'string', enum: Object.keys(PIECES) },
+              categorie: { type: 'string', enum: [...new Set([...Object.keys(PIECES), ...Object.keys(PIECES_EI)])] },
             },
             required: ['document_id', 'categorie'],
           },
@@ -290,7 +302,7 @@ Objectif : préparer la formalité de A à Z pour que le formaliste n'ait plus q
 4. Présente le récapitulatif : pièces qui seront déposées, pièces manquantes ou non signées, champs que le formaliste devra compléter. Demande une confirmation explicite (« Je crée le brouillon sur votre Guichet unique ? »).
 5. Seulement si le dernier message du professionnel confirme clairement, appelle creer_brouillon_inpi avec confirme=true.
 6. Indique ensuite les étapes restantes du formaliste sur le Guichet unique : compléter les champs signalés, vérifier, valider, signer électroniquement, payer (carte ou délégation de paiement au client).
-La création de brouillon ne concerne que les créations de SASU, SAS, EURL, SARL et SCI. Pour une modification ou une cessation, prépare les documents et guide le formaliste pour la saisie.
+La création de brouillon couvre les créations de SASU, SAS, EURL, SARL, SCI et d'entreprise individuelle (micro-entreprise : formeJuridique AE ; pas d'annonce légale ni de statuts, mais n° de sécurité sociale, situation matrimoniale, options du régime micro et pièce d'identité). Pour une modification ou une cessation, prépare les documents et guide le formaliste pour la saisie.
 </depot_inpi>
 
 <regularisations_inpi>
@@ -629,18 +641,24 @@ async function toolBrouillon(supa, ctx, input) {
   const introuvables = [];
   for (const w of wanted) {
     const d = byId.get(String(w.document_id));
-    if (!d || !PIECES[w.categorie]) introuvables.push(String(w.document_id));
+    if (!d || !(PIECES[w.categorie] || PIECES_EI[w.categorie])) introuvables.push(String(w.document_id));
     else plan.push({ doc: d, categorie: w.categorie });
   }
   const categories = new Set(plan.map((p) => p.categorie));
   const forme = String(data.formeJuridique || '').toUpperCase();
-  const attendues = ['STATUTS', 'NON_CONDAMNATION', 'IDENTITE_DIRIGEANT', 'DEPOT_FONDS', 'ATTESTATION_PARUTION', 'MANDAT']
+  const attendues = ['AE', 'EI'].includes(forme)
+    ? ['IDENTITE_DIRIGEANT', 'JUSTIFICATIF_SIEGE', 'MANDAT']
+    : ['STATUTS', 'NON_CONDAMNATION', 'IDENTITE_DIRIGEANT', 'DEPOT_FONDS', 'ATTESTATION_PARUTION', 'MANDAT']
     .concat(['SAS', 'SASU', 'HOLDING'].includes(forme) ? ['LISTE_SOUSCRIPTEURS'] : [])
     .concat(categories.has('ATTESTATION_HEBERGEMENT') ? [] : ['JUSTIFICATIF_SIEGE']);
-  const manquantes = attendues.filter((c) => !categories.has(c)).map((c) => PIECES[c].label);
+  const carte = ['AE', 'EI'].includes(forme) ? PIECES_EI : PIECES;
+  const manquantes = attendues.filter((c) => !categories.has(c)).map((c) => carte[c].label);
 
   const client = inpi.forOrg(ctx.orgId);
-  const { payload, aCompleter, bloquants } = await buildCreationLiasse(data, dossier, client);
+  const estEI = ['AE', 'EI'].includes(forme);
+  const { payload, aCompleter, bloquants } = estEI
+    ? await buildEILiasse(data, dossier, client)
+    : await buildCreationLiasse(data, dossier, client);
 
   if (!input.confirme) {
     await supa.from('dossiers').update({ metadata: { ...meta, inpi_dry_run_at: new Date().toISOString() } }).eq('id', dossier.id);
@@ -648,7 +666,7 @@ async function toolBrouillon(supa, ctx, input) {
       result: {
         apercu: true,
         rien_envoye: true,
-        pieces_deposees: plan.map((p) => ({ document: p.doc.name, categorie: PIECES[p.categorie].label })),
+        pieces_deposees: plan.map((p) => ({ document: p.doc.name, categorie: (PIECES_EI[p.categorie] && ['AE', 'EI'].includes(forme) ? PIECES_EI : PIECES)[p.categorie]?.label || p.categorie })),
         pieces_manquantes: manquantes,
         documents_introuvables: introuvables,
         beneficiaires_effectifs_declares_dans_la_liasse: (payload.content.personneMorale.beneficiairesEffectifs || []).length,
