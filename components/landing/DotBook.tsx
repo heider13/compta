@@ -17,8 +17,8 @@ const ease = (t: number) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 
 const clamp = (v: number, a = 0, b = 1) => Math.max(a, Math.min(b, v));
 
 const PAGES = 9; // couverture gauche + feuillets + couverture droite
-const COLS = 13; // points dans la largeur d'une page
-const ROWS = 17; // points dans la hauteur
+const COLS = 16; // points dans la largeur d'une page
+const ROWS = 20; // points dans la hauteur
 const OPEN_MS = 2600;
 const FLIP_MS = 2400;
 const PAUSE_MS = 900;
@@ -52,12 +52,12 @@ export function DotBook({ className }: { className?: string }) {
     // Angle de chaque page autour du dos (axe vertical) : 0 = à droite, π = à gauche.
     function pageAngles(t: number): number[] {
       const open = reduced ? 1 : ease(clamp(t / OPEN_MS));
-      const closed = Math.PI * 0.52; // livre fermé, presque de face
-      const left = Math.PI * 0.94;
-      const right = Math.PI * 0.06;
+      const closed = Math.PI * 0.5; // livre fermé, debout
+      const left = Math.PI * 0.985;
+      const right = Math.PI * 0.015;
       const angles: number[] = [];
       const mid = Math.floor((PAGES - 1) / 2);
-      const spread = Math.PI * 0.035;
+      const spread = Math.PI * 0.012;
       for (let i = 0; i < PAGES; i++) {
         // moitié des feuillets empilée à gauche, l'autre à droite
         const fanned = i <= mid ? left - i * spread : right + (PAGES - 1 - i) * spread;
@@ -82,10 +82,10 @@ export function DotBook({ className }: { className?: string }) {
       ctx!.clearRect(0, 0, w, h);
 
       const size = Math.min(w, h * 1.15);
-      const pageW = size * 0.36;
-      const pageH = size * 0.52;
-      const yaw = reduced ? -0.35 : -0.35 + Math.sin(t / 5200) * 0.32; // rotation lente
-      const pitch = -0.38; // vu légèrement d'en haut
+      const pageW = size * 0.4;
+      const pageH = size * 0.5;
+      const yaw = reduced ? 0.18 : Math.sin(t / 6000) * 0.28; // rotation lente
+      const pitch = -0.95; // vu d'en haut, comme un livre posé sur une table
       const cy = Math.cos(yaw), sy = Math.sin(yaw), cp = Math.cos(pitch), sp = Math.sin(pitch);
       const focal = size * 1.9;
       const angles = pageAngles(t);
@@ -97,14 +97,15 @@ export function DotBook({ className }: { className?: string }) {
         for (let col = 0; col <= COLS; col++) {
           const u = col / COLS; // 0 au dos → 1 au bord
           // Légère courbure des feuillets près du dos
-          const bend = cover ? 0 : Math.sin(u * Math.PI) * 0.06 * pageW;
+          const bend = cover ? 0 : Math.sin(Math.min(1, u * 1.6) * Math.PI * 0.5) * (1 - u) * 0.22 * pageW;
           for (let row = 0; row <= ROWS; row++) {
             const v = row / ROWS;
             const edge = col === COLS || row === 0 || row === ROWS || col === 0;
             if (!cover && !edge && (col + row) % 2 === 1) continue; // feuillets plus aérés
             const r0 = u * pageW;
-            let x = Math.cos(a) * r0 - Math.sin(a) * bend;
-            let z = Math.sin(a) * r0 + Math.cos(a) * bend;
+            // Page dans le plan (x, z) autour du dos ; le bombé soulève la page près du dos
+            let x = Math.cos(a) * r0;
+            let z = Math.sin(a) * r0 + bend;
             let y = (v - 0.5) * pageH;
             // Rotation (lacet puis tangage)
             const x1 = x * cy + z * sy;
@@ -116,7 +117,7 @@ export function DotBook({ className }: { className?: string }) {
             // Couleur : côté gauche violet (comme le pan vertical du logo), droit rose → pêche
             const left = a > Math.PI / 2;
             const c = left ? mix(VIOLET_TOP, VIOLET_BOTTOM, v) : mix(PINK, PEACH, clamp(u * 0.8 + (1 - k) * 0.2));
-            dots.push({ x: w * 0.5 + x * s, y: h * 0.53 + y * s, z, c, r: (cover ? 1.55 : edge ? 1.35 : 1.1) * s });
+            dots.push({ x: w * 0.5 + x * s, y: h * 0.62 + y * s, z, c, r: (cover ? 1.55 : edge ? 1.35 : 1.1) * s });
           }
         }
       });

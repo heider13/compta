@@ -203,9 +203,6 @@ export function HeroAgent() {
         }}
       />
 
-      {/* Livre en points (écho au logo) qui s'ouvre et feuillette, derrière la zone de saisie */}
-      <DotBook className="pointer-events-none absolute right-[max(-60px,calc(50%-720px))] top-[430px] hidden h-[440px] w-[440px] lg:block" />
-
       <div className="relative mx-auto w-full max-w-5xl px-4 pb-20 pt-36 text-center sm:px-6 sm:pt-40">
         <p className="inline-flex items-center gap-2 font-mono !text-[11px] uppercase tracking-[0.28em] !text-[var(--ink-500)] sm:text-xs">
           Connecté au
@@ -296,6 +293,11 @@ export function HeroAgent() {
             Créer un compte <Arrow size={14} />
           </a>
         </p>
+
+        {/* Livre en points (écho au logo) qui s'ouvre et feuillette */}
+        {!demande && (
+          <DotBook className="pointer-events-none mx-auto -mb-16 mt-2 block h-[300px] w-full max-w-[680px] sm:h-[380px]" />
+        )}
 
         {demande && scenario && (
           <div ref={panelRef} className="scroll-mt-24">
