@@ -247,7 +247,10 @@ const OPERATIONS = {
         descriptionPersonne: { ...desc, formeSociale: tns ? '3' : '1' },
         ...(adr ? { adresseDomicile: adr } : {}),
       },
-      roleEntreprise: { PRESIDENT: '73', GERANT: '30', DG: '74' }[role] || role,
+      // Société civile (forme 65xx, ex. SCI 6540) : gérant = rôle 75 (relevé au RNE)
+      roleEntreprise: (role === 'GERANT' && String(p.identite?.entreprise?.formeJuridique || '').startsWith('65'))
+        ? '75'
+        : ({ PRESIDENT: '73', GERANT: '30', DG: '74' }[role] || role),
       statutPourLaFormalite: '1',
       typeDePersonne: 'INDIVIDU',
       beneficiaireEffectif: false,
