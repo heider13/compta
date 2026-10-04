@@ -65,11 +65,15 @@ function marquerAbsents(o) {
   if (Array.isArray(o)) return o.forEach(marquerAbsents);
   if (!o || typeof o !== 'object') return;
   const vide = (v) => v == null || v === '';
+  // « …Present = true » : valeur confidentielle détenue par le RNE, que le Guichet unique
+  // reprend lui-même (et ignore la nôtre) ; « false » : il prend la valeur envoyée.
+  // La fiche RNE peut arriver avec « true » sans que le Guichet unique ait la valeur :
+  // on fixe donc l'indicateur selon la présence RÉELLE de la valeur (écrasé).
   if ('codePostal' in o || 'codePays' in o) {
-    for (const c of CHAMPS_ADRESSE) if (o[`${c}Present`] == null) o[`${c}Present`] = !vide(o[c]);
+    for (const c of CHAMPS_ADRESSE) o[`${c}Present`] = !vide(o[c]);
   }
   if ('nom' in o && ('dateDeNaissance' in o || 'prenoms' in o)) {
-    for (const c of CHAMPS_PERSONNE) if (o[`${c}Present`] == null) o[`${c}Present`] = !vide(o[c]);
+    for (const c of CHAMPS_PERSONNE) o[`${c}Present`] = !vide(o[c]);
   }
   for (const k of Object.keys(o)) {
     if (k.endsWith('Present') && (o[k] == null)) {
