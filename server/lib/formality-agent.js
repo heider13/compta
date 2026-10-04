@@ -636,6 +636,7 @@ async function toolBrouillon(supa, ctx, input) {
         pieces_deposees: plan.map((p) => ({ document: p.doc.name, categorie: PIECES[p.categorie].label })),
         pieces_manquantes: manquantes,
         documents_introuvables: introuvables,
+        beneficiaires_effectifs_declares_dans_la_liasse: (payload.content.personneMorale.beneficiairesEffectifs || []).length,
         champs_a_completer_par_le_formaliste: aCompleter,
         bloquants_a_resoudre_avant_creation: bloquants,
         rappel: bloquants.length
@@ -680,6 +681,8 @@ async function toolBrouillon(supa, ctx, input) {
       formalite_inpi: formality.id,
       liasse: formality.liasseNumber || null,
       pieces_deposees: deposees,
+      statut_inpi: formality.status || null,
+      beneficiaires_effectifs_declares_dans_la_liasse: (payload.content.personneMorale.beneficiairesEffectifs || []).length,
       erreurs_depot: erreurs.concat(introuvables.map((n) => `${n} : introuvable`)),
       pieces_manquantes: manquantes,
       champs_a_completer_par_le_formaliste: aCompleter,
