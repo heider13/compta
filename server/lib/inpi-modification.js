@@ -26,6 +26,19 @@ function remplirVides(cible, source) {
   }
 }
 
+
+// Le RNE public tronque la date de naissance (AAAA-MM) : date complète reprise de
+// la liasse du cabinet ; forme sociale déduite du rôle si la valeur RNE est invalide.
+function corrigerPersonne(desc, src, role) {
+  if (!desc) return;
+  if (desc.dateDeNaissance && !/^\d{4}-\d{2}-\d{2}$/.test(desc.dateDeNaissance) && /^\d{4}-\d{2}-\d{2}$/.test(src?.dateDeNaissance || '')) {
+    desc.dateDeNaissance = src.dateDeNaissance;
+  }
+  if (role && !['0', '1', '3'].includes(String(desc.formeSociale ?? ''))) {
+    desc.formeSociale = ['0', '1', '3'].includes(String(src?.formeSociale ?? '')) ? String(src.formeSociale) : (String(role) === '30' ? '3' : '1');
+  }
+}
+
 function completerPersonnes(bloc, blocGu) {
   if (!bloc || !blocGu) return;
   const index = new Map();
@@ -34,10 +47,12 @@ function completerPersonnes(bloc, blocGu) {
   for (const p of bloc.composition?.pouvoirs || []) {
     const src = index.get(cle(p.individu?.descriptionPersonne));
     if (src) remplirVides(p.individu, src);
+    corrigerPersonne(p.individu?.descriptionPersonne, src?.descriptionPersonne, p.roleEntreprise);
   }
   for (const b of bloc.beneficiairesEffectifs || []) {
     const src = index.get(cle(b.beneficiaire?.descriptionPersonne));
     if (src) remplirVides(b.beneficiaire, src);
+    corrigerPersonne(b.beneficiaire?.descriptionPersonne, src?.descriptionPersonne, null);
   }
 }
 
