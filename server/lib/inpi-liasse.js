@@ -676,6 +676,11 @@ const PIECES_MODIF = {
   JUSTIFICATIF_SIEGE: { typeDocument: 'PJ_25', sousTypeDocument: 'PJPM0021', path: '.piecesJointes[0]', label: 'Justificatif du nouveau siège' },
   MANDAT: { typeDocument: 'PJ_51', sousTypeDocument: 'PJPM0034', path: '.piecesJointes[0]', label: 'Mandat / pouvoir au formaliste' },
   IDENTITE_MANDATAIRE: { typeDocument: 'PJ_11', sousTypeDocument: 'PJPM0035', path: '.piecesJointes[0]', label: "Pièce d'identité du mandataire" },
+  PV_CLOTURE_LIQUIDATION: { typeDocument: 'PJ_133', sousTypeDocument: '', path: '.piecesJointes[0]', label: 'Procès-verbal de clôture de liquidation' },
+  PV_CLOTURE_LIQUIDATION_ENREGISTRE: { typeDocument: 'PJ_134', sousTypeDocument: '', path: '.piecesJointes[0]', label: 'PV de clôture de liquidation enregistré aux impôts' },
+  COMPTE_LIQUIDATION: { typeDocument: 'PJ_82', sousTypeDocument: '', path: '.piecesJointes[0]', label: 'Compte de liquidation certifié par le liquidateur' },
+  RAPPORT_LIQUIDATEUR: { typeDocument: 'PJ_204', sousTypeDocument: '', path: '.piecesJointes[0]', label: 'Rapport du liquidateur' },
+  RECEPISSE_COMPTES_LIQUIDATION: { typeDocument: 'PJ_59', sousTypeDocument: '', path: '.piecesJointes[0]', label: 'Récépissé du dépôt des comptes de clôture de liquidation' },
 };
 
 // Dépôt de pièces (converties en PDF) sur une formalité existante.

@@ -246,7 +246,7 @@ const TOOLS = [
   {
     name: 'creer_modification_inpi',
     description:
-      "Prépare une MODIFICATION (ou une mise en sommeil / cessation d'EI) au Guichet unique à partir de la fiche RNE à jour de l'entreprise. Opérations : objet (12M : objet, codeApe), denomination (10M), siege (60M : adresse), nomination (35M : personne, role GERANT|PRESIDENT|DG), revocation (35M : nom du dirigeant sortant), beneficiaires (38F : ajouts [{personne, pourcentage}], retraits [noms]), miseEnSommeil (40M), cessationEI (41P), activiteAjout (61M/61P+24P : description, codeApe, formeExercice), activiteSuppression (62M/62P : codeApe), etablissementSecondaire (54M : adresse, description, codeApe), associes (17M : entrée/sortie d'associé, associeUnique), domicileEI (16P : adresse), complementEntreprise (pas un événement : objet social absent du RNE, par exemple repris d'une attestation d'immatriculation jointe), complementPersonne (pas un événement : complète un dirigeant existant dont le RNE n'a pas toutes les données — nom, dateNaissance, lieuNaissance, codePostalNaissance, paysNaissance, adresse — à demander au formaliste quand l'aperçu les signale). Pour une entreprise dont le RNE ne contient pas toutes les données des personnes inscrites (fréquent pour les entreprises anciennes ou reprises d'un autre cabinet), l'aperçu les liste en bloquants : les demander au formaliste puis les ajouter avec complementPersonne. Chaque opération peut avoir une dateEffet (YYYY-MM-DD). D'abord confirme=false (aperçu, rien n'est envoyé), puis confirme=true UNIQUEMENT après confirmation explicite du professionnel : crée le BROUILLON et dépose les pièces. Ne valide, ne signe et ne paie jamais. Catégories de pièces : " +
+      "Prépare une MODIFICATION (ou une mise en sommeil / cessation d'EI) au Guichet unique à partir de la fiche RNE à jour de l'entreprise. Opérations : objet (12M : objet, codeApe), denomination (10M), siege (60M : adresse), nomination (35M : personne, role GERANT|PRESIDENT|DG), revocation (35M : nom du dirigeant sortant), beneficiaires (38F : ajouts [{personne, pourcentage}], retraits [noms]), miseEnSommeil (40M), cessationEI (41P), activiteAjout (61M/61P+24P : description, codeApe, formeExercice), activiteSuppression (62M/62P : codeApe), etablissementSecondaire (54M : adresse, description, codeApe), associes (17M : entrée/sortie d'associé, associeUnique), domicileEI (16P : adresse), dissolution (dissolution anticipée : liquidateurExistant ou liquidateur, lieuLiquidation, typeDissolution), clotureLiquidation (clôture et radiation : dateEffet, dateDissolution), complementEntreprise (pas un événement : objet social absent du RNE, par exemple repris d'une attestation d'immatriculation jointe), complementPersonne (pas un événement : complète un dirigeant existant dont le RNE n'a pas toutes les données — nom, dateNaissance, lieuNaissance, codePostalNaissance, paysNaissance, adresse — à demander au formaliste quand l'aperçu les signale). Pour une entreprise dont le RNE ne contient pas toutes les données des personnes inscrites (fréquent pour les entreprises anciennes ou reprises d'un autre cabinet), l'aperçu les liste en bloquants : les demander au formaliste puis les ajouter avec complementPersonne. Chaque opération peut avoir une dateEffet (YYYY-MM-DD). D'abord confirme=false (aperçu, rien n'est envoyé), puis confirme=true UNIQUEMENT après confirmation explicite du professionnel : crée le BROUILLON et dépose les pièces. Ne valide, ne signe et ne paie jamais. Catégories de pièces : " +
       Object.entries(PIECES_MODIF).map(([k, v]) => `${k} (${v.label})`).join(', ') + '.',
     eager_input_streaming: true,
     input_schema: {
@@ -259,7 +259,12 @@ const TOOLS = [
           items: {
             type: 'object',
             properties: {
-              type: { type: 'string', enum: ['objet', 'denomination', 'siege', 'nomination', 'revocation', 'beneficiaires', 'miseEnSommeil', 'cessationEI', 'activiteAjout', 'activiteSuppression', 'etablissementSecondaire', 'associes', 'domicileEI', 'complementPersonne', 'complementEntreprise'] },
+              type: { type: 'string', enum: ['objet', 'denomination', 'siege', 'nomination', 'revocation', 'beneficiaires', 'miseEnSommeil', 'cessationEI', 'activiteAjout', 'activiteSuppression', 'etablissementSecondaire', 'associes', 'domicileEI', 'complementPersonne', 'complementEntreprise', 'dissolution', 'clotureLiquidation'] },
+              liquidateurExistant: { type: 'string', description: 'dissolution : nom du dirigeant en place désigné liquidateur' },
+              liquidateur: PERSONNE,
+              lieuLiquidation: PERSONNE.properties.adresse,
+              typeDissolution: { type: 'string', enum: ['1', '2'], description: '1 avec liquidation, 2 sans liquidation (TUP)' },
+              dateDissolution: { type: 'string' },
               prenom: { type: 'string', description: 'complementPersonne : prénom (si plusieurs personnes portent le même nom)' }, sexe: { type: 'string', enum: ['M', 'F'] }, dateNaissance: { type: 'string' }, lieuNaissance: { type: 'string' }, codePostalNaissance: { type: 'string' }, paysNaissance: { type: 'string' }, nationalite: { type: 'string' },
               description: { type: 'string', description: "Activité (activiteAjout, etablissementSecondaire)" },
               formeExercice: { type: 'string', enum: ['COMMERCIALE', 'ARTISANALE', 'ARTISANALE_REGLEMENTEE', 'LIBERALE', 'CIVILE'] },
@@ -820,7 +825,7 @@ async function toolModification(supa, ctx, input) {
   const operations = Array.isArray(input.operations) ? input.operations : [];
   if (!operations.length) throw new Error('Aucune opération de modification indiquée.');
   const siren = String(input.siren || '').replace(/\D/g, '');
-  const typeFormalite = operations.some((o) => ['miseEnSommeil', 'cessationEI'].includes(o.type)) ? 'R' : 'M';
+  const typeFormalite = operations.some((o) => ['miseEnSommeil', 'cessationEI', 'dissolution', 'clotureLiquidation'].includes(o.type)) ? 'R' : 'M';
 
   // Bloquants connus avant tout envoi
   const bloquants = [];

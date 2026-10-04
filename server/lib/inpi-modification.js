@@ -499,6 +499,88 @@ OPERATIONS.domicileEI = async (next, { adresse, dateEffet, deplacerEntreprise = 
   return ['16P'];
 };
 
+// ─── Dissolution et liquidation (codes de la spécification officielle) ───
+// Rôle liquidateur : 40 ; typeDissolution : 1 avec liquidation, 2 sans (TUP).
+
+// Dissolution anticipée : la société subsiste pour sa liquidation (immatriculation
+// maintenue), les fonctions des dirigeants prennent fin, un liquidateur est nommé.
+OPERATIONS.dissolution = async (next, { liquidateur, liquidateurExistant, lieuLiquidation, typeDissolution = '1', dateEffet }) => {
+  const p = pm(next);
+  // Fin des fonctions des dirigeants en place
+  for (const x of p.composition?.pouvoirs || []) {
+    if (['1', '3'].includes(x.statutPourLaFormalite)) continue;
+    Object.assign(x, { statutPourLaFormalite: '3', is34Or35MSuppressionTriggered: true, dateEffet34Or35M: dateEffet });
+  }
+  // Liquidateur : un dirigeant existant (par nom) ou une nouvelle personne
+  let ind = null;
+  if (liquidateurExistant) {
+    const src = (p.composition?.pouvoirs || []).find((x) => String(x.individu?.descriptionPersonne?.nom || '').toUpperCase() === String(liquidateurExistant).toUpperCase());
+    if (!src) throw new Error(`Dirigeant « ${liquidateurExistant} » introuvable pour être liquidateur.`);
+    ind = JSON.parse(JSON.stringify(src.individu));
+    delete ind.voletSocial;
+  } else if (liquidateur) {
+    const desc = await personneInpi(liquidateur, [], 'Liquidateur');
+    const adr = await adresseInpi(liquidateur.adresse, [], 'Adresse du liquidateur');
+    ind = { descriptionPersonne: desc, ...(adr ? { adresseDomicile: adr } : {}) };
+  }
+  if (!ind) throw new Error('Liquidateur à désigner (liquidateurExistant ou liquidateur).');
+  if (ind.descriptionPersonne) ind.descriptionPersonne.formeSociale = '0';
+  p.composition.pouvoirs.push({
+    individu: ind,
+    roleEntreprise: '40',
+    statutPourLaFormalite: '1',
+    typeDePersonne: 'INDIVIDU',
+    beneficiaireEffectif: false,
+    indicateurSecondRoleEntreprise: false,
+    dateEffet34Or35M: dateEffet,
+    is34Or35MAdjonctionTriggered: true,
+  });
+  p.composition.isModificationPouvoir = true;
+  const lieu = lieuLiquidation ? await adresseInpi(lieuLiquidation, [], 'Lieu de liquidation') : null;
+  p.detailCessationEntreprise = {
+    ...(p.detailCessationEntreprise || {}),
+    maintienRcs: false, maintienRm: false,
+    indicateurMaintienImmatriculationRegistre: true,
+    indicateurDissolution: true,
+    typeDissolution,
+    dateDissolutionDisparition: dateEffet,
+    indicateurDisparitionPM: false,
+    dateDissolutionDisparitionFromRNE: false,
+    indicateurLocationTerresTVA: false,
+    ...(lieu ? { lieuDeLiquidation: lieu } : {}),
+  };
+  activitesInchangees(next);
+  return ['dissolution'];
+};
+
+// Clôture de la liquidation : disparition de la personne morale et radiation.
+OPERATIONS.clotureLiquidation = async (next, { dateEffet, dateDissolution }) => {
+  const p = pm(next);
+  const ep = p.etablissementPrincipal;
+  if (ep) {
+    ep.descriptionEtablissement = { ...(ep.descriptionEtablissement || {}), statutPourFormalite: '2', destinationEtablissement: 'C', dateEffetFermeture: dateEffet };
+    for (const a of ep.activites || []) a.statutFormalite = 'M';
+  }
+  p.detailCessationEntreprise = {
+    ...(p.detailCessationEntreprise || {}),
+    maintienRcs: false, maintienRm: false,
+    indicateurMaintienImmatriculationRegistre: false,
+    indicateurDissolution: true,
+    typeDissolution: '1',
+    dateDissolutionDisparition: dateDissolution || dateEffet,
+    indicateurDisparitionPM: true,
+    indicateurDisparitionPMClotureLiquidation: true,
+    indicateurDisparitionPMTransmissionUniversellePatrimoine: false,
+    dateClotureLiquidation: dateEffet,
+    dateCessationTotaleActivite: dateEffet,
+    dateRadiation: dateEffet,
+    dateDissolutionDisparitionFromRNE: false,
+    indicateurLocationTerresTVA: false,
+  };
+  next.natureCessationEntreprise = { dateRadiation: dateEffet };
+  return ['clôture de liquidation'];
+};
+
 // Complément des données de l'entreprise absentes du RNE (ex. objet social repris d'une
 // attestation d'immatriculation), sans modification déclarée.
 OPERATIONS.complementEntreprise = async (next, { objet }) => {
