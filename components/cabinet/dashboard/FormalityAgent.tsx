@@ -1,16 +1,17 @@
 'use client';
 
 // Agent Formalités — en tête du tableau de bord.
-// Le professionnel décrit l'opération en langage naturel ; l'agent (backend
-// /api/agent/formalite, SSE) pose les questions manquantes, crée le dossier,
-// génère les statuts et les actes annexes. Signature et dépôt INPI restent
-// des actions humaines depuis la page du dossier.
+// Le professionnel décrit l'opération en langage naturel et peut joindre ses
+// documents (pièces d'identité, statuts, PV d'AG, annonces légales…) ; l'agent
+// (backend /api/agent/formalite, SSE) les lit, pose les questions manquantes,
+// crée le dossier, génère les statuts et les actes annexes. Signature et dépôt
+// INPI restent des actions humaines depuis la page du dossier.
 
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import {
   AlertCircle, ArrowRight, Bot, CheckCircle2, FileText, FolderPlus, Loader2,
-  PenLine, RotateCcw, Send, Sparkles, Workflow,
+  Paperclip, PenLine, RotateCcw, Send, Sparkles, Upload, Workflow, X,
 } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { Button } from '@/components/ui/button';
@@ -21,6 +22,19 @@ import { cn } from '@/lib/utils';
 const VPS = process.env.NEXT_PUBLIC_VPS_BACKEND_URL ?? 'https://0dao73k.cserverhost.cloud';
 const STORAGE_KEY = 'legaly_formality_agent_v1';
 
+const ACCEPT = '.pdf,.png,.jpg,.jpeg,.webp,.docx';
+const MIME_BY_EXT: Record<string, string> = {
+  pdf: 'application/pdf',
+  png: 'image/png',
+  jpg: 'image/jpeg',
+  jpeg: 'image/jpeg',
+  webp: 'image/webp',
+  docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+};
+const MAX_FILES = 5;
+const MAX_FILE_BYTES = 8 * 1024 * 1024;
+const MAX_TOTAL_BYTES = 10 * 1024 * 1024;
+
 type ToolEvent = {
   id: string;
   name: string;
@@ -29,12 +43,12 @@ type ToolEvent = {
   detail?: string;
   href?: string | null;
   docHref?: string;
-  kind?: 'dossier' | 'document' | 'pipeline';
+  kind?: 'dossier' | 'document' | 'pipeline' | 'piece';
   dossier?: { id: string; reference: string; denomination: string };
 };
 
 type Item =
-  | { type: 'user'; text: string }
+  | { type: 'user'; text: string; files?: string[] }
   | { type: 'assistant'; text: string }
   | { type: 'tool'; event: ToolEvent };
 
@@ -43,6 +57,8 @@ type SavedState = {
   items: Item[];
   dossier: ToolEvent['dossier'] | null;
 };
+
+type PendingFile = { name: string; mime: string; size: number; data: string };
 
 const EXAMPLES = [
   {
@@ -65,6 +81,7 @@ const EXAMPLES = [
 
 const CAPABILITIES = [
   { icon: FolderPlus, label: 'Création du dossier' },
+  { icon: Upload, label: 'Lecture de vos documents' },
   { icon: FileText, label: 'Statuts générés' },
   { icon: PenLine, label: 'Actes annexes' },
   { icon: Workflow, label: 'Suivi jusqu’au dépôt' },
@@ -93,14 +110,35 @@ function clearSaved() {
   } catch {}
 }
 
+function mimeOf(file: File): string | null {
+  const ext = file.name.split('.').pop()?.toLowerCase() ?? '';
+  return MIME_BY_EXT[ext] ?? null;
+}
+
+function readBase64(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result).split(',')[1] ?? '');
+    reader.onerror = () => reject(new Error(`Lecture impossible : ${file.name}`));
+    reader.readAsDataURL(file);
+  });
+}
+
+function formatSize(bytes: number) {
+  return bytes < 1024 * 1024 ? `${Math.max(1, Math.round(bytes / 1024))} Ko` : `${(bytes / 1024 / 1024).toFixed(1)} Mo`;
+}
+
 export function FormalityAgent() {
   const [items, setItems] = useState<Item[]>([]);
   const [history, setHistory] = useState<unknown[]>([]);
   const [dossier, setDossier] = useState<ToolEvent['dossier'] | null>(null);
   const [input, setInput] = useState('');
+  const [files, setFiles] = useState<PendingFile[]>([]);
+  const [dragging, setDragging] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     const saved = loadSaved();
@@ -116,29 +154,66 @@ export function FormalityAgent() {
     if (el) el.scrollTop = el.scrollHeight;
   }, [items, busy]);
 
-  const documents = items
+  const toolEvents = items
     .filter((i): i is { type: 'tool'; event: ToolEvent } => i.type === 'tool')
-    .map((i) => i.event)
-    .filter((e) => e.kind === 'document' && e.status === 'done');
+    .map((i) => i.event);
+  const documents = toolEvents.filter((e) => e.kind === 'document' && e.status === 'done');
+  const pieces = toolEvents.filter((e) => e.kind === 'piece' && e.status === 'done');
+
+  async function addFiles(list: FileList | File[]) {
+    setError(null);
+    const next = [...files];
+    for (const file of Array.from(list)) {
+      const mime = mimeOf(file);
+      if (!mime) {
+        setError(`Format non pris en charge : ${file.name}. Formats acceptés : PDF, image (JPG, PNG, WebP) ou Word (.docx).`);
+        continue;
+      }
+      if (file.size > MAX_FILE_BYTES) {
+        setError(`${file.name} dépasse 8 Mo.`);
+        continue;
+      }
+      if (next.length >= MAX_FILES) {
+        setError(`${MAX_FILES} documents maximum par message.`);
+        break;
+      }
+      if (next.reduce((s, f) => s + f.size, 0) + file.size > MAX_TOTAL_BYTES) {
+        setError('10 Mo maximum au total par message : envoyez le reste au message suivant.');
+        break;
+      }
+      try {
+        next.push({ name: file.name, mime, size: file.size, data: await readBase64(file) });
+      } catch (e) {
+        setError(e instanceof Error ? e.message : 'Lecture impossible.');
+      }
+    }
+    setFiles(next);
+  }
 
   function reset() {
     if (busy) return;
     setItems([]);
     setHistory([]);
     setDossier(null);
+    setFiles([]);
     setError(null);
     clearSaved();
   }
 
   async function send(text: string) {
     const question = text.trim();
-    if (!question || busy) return;
+    if ((!question && files.length === 0) || busy) return;
+    const attachments = files;
     setBusy(true);
     setError(null);
     setInput('');
+    setFiles([]);
 
     // Copie locale : l'état React n'est relu qu'à la fin du tour.
-    let localItems: Item[] = [...items, { type: 'user', text: question }];
+    let localItems: Item[] = [
+      ...items,
+      { type: 'user', text: question, files: attachments.map((f) => f.name) },
+    ];
     let localDossier = dossier;
     setItems(localItems);
 
@@ -178,7 +253,12 @@ export function FormalityAgent() {
       const res = await fetch(`${VPS}/api/agent/formalite`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ input: question, messages: history, dossier_id: localDossier?.id ?? null }),
+        body: JSON.stringify({
+          input: question,
+          messages: history,
+          dossier_id: localDossier?.id ?? null,
+          attachments: attachments.map(({ name, mime, data }) => ({ name, mime, data })),
+        }),
       });
       if (!res.ok || !res.body) {
         const b = await res.json().catch(() => ({}));
@@ -222,9 +302,84 @@ export function FormalityAgent() {
   }
 
   const started = items.length > 0;
+  const canSend = !busy && (input.trim().length > 0 || files.length > 0);
+
+  const fileChips = files.length > 0 && (
+    <div className="flex flex-wrap gap-1.5">
+      {files.map((f, i) => (
+        <span key={`${f.name}-${i}`} className="flex max-w-full items-center gap-1.5 rounded-md border bg-[#f7f5fd] py-1 pl-2 pr-1 text-xs">
+          <FileText className="size-3.5 shrink-0 text-primary" />
+          <span className="min-w-0 truncate">{f.name}</span>
+          <span className="shrink-0 text-muted-foreground">{formatSize(f.size)}</span>
+          <button
+            type="button"
+            onClick={() => setFiles(files.filter((_, j) => j !== i))}
+            aria-label={`Retirer ${f.name}`}
+            className="rounded p-0.5 text-muted-foreground hover:bg-muted hover:text-foreground"
+          >
+            <X className="size-3" />
+          </button>
+        </span>
+      ))}
+    </div>
+  );
+
+  const attachButton = (
+    <Button
+      type="button"
+      variant="ghost"
+      size="icon"
+      onClick={() => fileInputRef.current?.click()}
+      disabled={busy}
+      aria-label="Joindre des documents"
+      title="Joindre des documents (PDF, images, Word)"
+    >
+      <Paperclip className="size-4" />
+    </Button>
+  );
 
   return (
-    <Card className="gap-0 overflow-hidden border-[#d9cffb] py-0 shadow-sm">
+    <Card
+      className={cn(
+        'relative gap-0 overflow-hidden border-[#d9cffb] py-0 shadow-sm',
+        dragging && 'ring-[3px] ring-primary/30',
+      )}
+      onDragOver={(e) => {
+        if (busy) return;
+        e.preventDefault();
+        setDragging(true);
+      }}
+      onDragLeave={(e) => {
+        if (!e.currentTarget.contains(e.relatedTarget as Node)) setDragging(false);
+      }}
+      onDrop={(e) => {
+        e.preventDefault();
+        setDragging(false);
+        if (!busy && e.dataTransfer.files.length) addFiles(e.dataTransfer.files);
+      }}
+    >
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept={ACCEPT}
+        multiple
+        className="hidden"
+        onChange={(e) => {
+          if (e.target.files) addFiles(e.target.files);
+          e.target.value = '';
+        }}
+      />
+
+      {dragging && (
+        <div className="pointer-events-none absolute inset-0 z-10 grid place-items-center bg-[#f3efff]/90">
+          <div className="flex flex-col items-center gap-2 text-primary">
+            <Upload className="size-8" />
+            <p className="text-sm font-semibold">Déposez vos documents</p>
+            <p className="text-xs text-muted-foreground">Pièces d&apos;identité, statuts, PV, annonces légales… (PDF, images, Word)</p>
+          </div>
+        </div>
+      )}
+
       {/* En-tête */}
       <div className="flex flex-wrap items-center gap-3 border-b border-[#ece6ff] bg-gradient-to-r from-[#f3efff] via-[#f8f6ff] to-white px-5 py-4">
         <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-primary text-primary-foreground shadow-sm">
@@ -233,7 +388,7 @@ export function FormalityAgent() {
         <div className="min-w-0 flex-1">
           <p className="text-[15px] font-semibold text-foreground">Agent Formalités</p>
           <p className="text-xs text-muted-foreground">
-            Décrivez l&apos;opération : l&apos;agent crée le dossier, rédige les statuts et tous les actes.
+            Décrivez l&apos;opération ou joignez vos documents : l&apos;agent crée le dossier, rédige les statuts et tous les actes.
           </p>
         </div>
         {started && (
@@ -252,7 +407,7 @@ export function FormalityAgent() {
                 e.preventDefault();
                 send(input);
               }}
-              className="rounded-xl border bg-card p-2 shadow-xs focus-within:border-primary/60 focus-within:ring-[3px] focus-within:ring-primary/15"
+              className="space-y-2 rounded-xl border bg-card p-2 shadow-xs focus-within:border-primary/60 focus-within:ring-[3px] focus-within:ring-primary/15"
             >
               <textarea
                 value={input}
@@ -264,12 +419,18 @@ export function FormalityAgent() {
                   }
                 }}
                 rows={3}
-                placeholder="Ex : Je crée une SASU de conseil pour Marie Martin, capital 2 000 €, siège 10 rue de Rivoli 75001 Paris…"
+                placeholder="Ex : Je crée une SASU de conseil pour Marie Martin, capital 2 000 €, siège 10 rue de Rivoli 75001 Paris… Vous pouvez aussi joindre sa pièce d'identité ou un PV d'AG."
                 className="w-full resize-none bg-transparent px-2 py-1.5 text-sm outline-none placeholder:text-muted-foreground"
               />
+              {fileChips && <div className="px-1">{fileChips}</div>}
               <div className="flex items-center justify-between gap-2 px-1">
-                <span className="text-[11px] text-muted-foreground">Entrée pour envoyer · Maj+Entrée pour aller à la ligne</span>
-                <Button type="submit" size="sm" disabled={!input.trim()}>
+                <div className="flex min-w-0 items-center gap-1">
+                  {attachButton}
+                  <span className="hidden truncate text-[11px] text-muted-foreground sm:inline">
+                    Joindre ou glisser des documents · Entrée pour envoyer
+                  </span>
+                </div>
+                <Button type="submit" size="sm" disabled={!canSend}>
                   Lancer l&apos;agent
                   <ArrowRight className="size-4" />
                 </Button>
@@ -320,25 +481,29 @@ export function FormalityAgent() {
                   e.preventDefault();
                   send(input);
                 }}
-                className="flex items-end gap-2 border-t bg-muted/30 px-4 py-3"
+                className="space-y-2 border-t bg-muted/30 px-4 py-3"
               >
-                <textarea
-                  value={input}
-                  onChange={(e) => setInput(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' && !e.shiftKey) {
-                      e.preventDefault();
-                      send(input);
-                    }
-                  }}
-                  rows={1}
-                  placeholder="Répondez à l'agent ou précisez votre demande…"
-                  disabled={busy}
-                  className="max-h-32 min-h-10 flex-1 resize-none rounded-md border bg-card px-3 py-2 text-sm outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/40 disabled:opacity-60"
-                />
-                <Button type="submit" size="icon" disabled={busy || !input.trim()} aria-label="Envoyer">
-                  {busy ? <Loader2 className="size-4 animate-spin" /> : <Send className="size-4" />}
-                </Button>
+                {fileChips}
+                <div className="flex items-end gap-2">
+                  {attachButton}
+                  <textarea
+                    value={input}
+                    onChange={(e) => setInput(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && !e.shiftKey) {
+                        e.preventDefault();
+                        send(input);
+                      }
+                    }}
+                    rows={1}
+                    placeholder="Répondez à l'agent, précisez votre demande ou joignez un document…"
+                    disabled={busy}
+                    className="max-h-32 min-h-10 flex-1 resize-none rounded-md border bg-card px-3 py-2 text-sm outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/40 disabled:opacity-60"
+                  />
+                  <Button type="submit" size="icon" disabled={!canSend} aria-label="Envoyer">
+                    {busy ? <Loader2 className="size-4 animate-spin" /> : <Send className="size-4" />}
+                  </Button>
+                </div>
               </form>
             </div>
 
@@ -356,30 +521,8 @@ export function FormalityAgent() {
                 )}
               </div>
 
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                  Documents produits {documents.length > 0 && `(${documents.length})`}
-                </p>
-                {documents.length === 0 ? (
-                  <p className="mt-2 text-xs text-muted-foreground">Aucun document pour l&apos;instant.</p>
-                ) : (
-                  <ul className="mt-2 space-y-1.5">
-                    {documents.map((d) => (
-                      <li key={d.id}>
-                        <a
-                          href={d.href ?? d.docHref ?? '#'}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="flex items-center gap-2 rounded-md px-2 py-1.5 text-xs transition-colors hover:bg-[#f0ecfd]"
-                        >
-                          <FileText className="size-3.5 shrink-0 text-primary" />
-                          <span className="min-w-0 flex-1 truncate">{d.label}</span>
-                        </a>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </div>
+              <SidebarList title="Documents produits" empty="Aucun document pour l'instant." events={documents} external />
+              {pieces.length > 0 && <SidebarList title="Pièces reçues" empty="" events={pieces} />}
 
               {dossier && (
                 <Button asChild size="sm" variant="outline" className="w-full">
@@ -400,13 +543,53 @@ export function FormalityAgent() {
   );
 }
 
+function SidebarList({ title, empty, events, external = false }: { title: string; empty: string; events: ToolEvent[]; external?: boolean }) {
+  return (
+    <div>
+      <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+        {title} {events.length > 0 && `(${events.length})`}
+      </p>
+      {events.length === 0 ? (
+        <p className="mt-2 text-xs text-muted-foreground">{empty}</p>
+      ) : (
+        <ul className="mt-2 space-y-1.5">
+          {events.map((d) => (
+            <li key={d.id}>
+              <a
+                href={d.href ?? d.docHref ?? '#'}
+                {...(external ? { target: '_blank', rel: 'noreferrer' } : {})}
+                className="flex items-center gap-2 rounded-md px-2 py-1.5 text-xs transition-colors hover:bg-[#f0ecfd]"
+              >
+                <FileText className="size-3.5 shrink-0 text-primary" />
+                <span className="min-w-0 flex-1 truncate">{d.kind === 'piece' ? d.detail : d.label}</span>
+              </a>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
 function ItemView({ item }: { item: Item }) {
   if (item.type === 'user') {
     return (
-      <div className="flex justify-end">
-        <p className="max-w-[85%] whitespace-pre-wrap rounded-2xl rounded-br-sm bg-primary px-3.5 py-2 text-sm text-primary-foreground">
-          {item.text}
-        </p>
+      <div className="flex flex-col items-end gap-1.5">
+        {item.files && item.files.length > 0 && (
+          <div className="flex max-w-[85%] flex-wrap justify-end gap-1.5">
+            {item.files.map((name, i) => (
+              <span key={`${name}-${i}`} className="flex min-w-0 items-center gap-1.5 rounded-md border bg-card px-2 py-1 text-xs">
+                <Paperclip className="size-3 shrink-0 text-primary" />
+                <span className="truncate">{name}</span>
+              </span>
+            ))}
+          </div>
+        )}
+        {item.text && (
+          <p className="max-w-[85%] whitespace-pre-wrap rounded-2xl rounded-br-sm bg-primary px-3.5 py-2 text-sm text-primary-foreground">
+            {item.text}
+          </p>
+        )}
       </div>
     );
   }

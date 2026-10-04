@@ -11,7 +11,9 @@
 // tour précédent (messages Anthropic, blocs thinking inclus, sans modification).
 // Le dossier courant est porté par ctx.dossierId (jamais par le modèle).
 
+const { toFile } = require('@anthropic-ai/sdk');
 const { getAnthropic, MODELS, draftDocument, searchLegalChunks } = require('./ai');
+const { extractText } = require('./text-extract');
 const { getSupabaseAdmin } = require('./db');
 const { buildPipeline } = require('./orchestrator');
 const { buildPersonneMorale } = require('./inpi-builder');
@@ -23,6 +25,26 @@ const {
 const { SUPPORTED_FORMES } = require('./doc-generator');
 
 const MAX_ITERATIONS = 12;
+
+// Pièces jointes acceptées dans le chat (lues par Claude).
+const ATTACHMENT_TYPES = {
+  'application/pdf': 'document',
+  'image/jpeg': 'image',
+  'image/png': 'image',
+  'image/webp': 'image',
+  'image/gif': 'image',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document': 'docx',
+};
+const DOCX_MAX_CHARS = 60000;
+
+// Tarifs ($ / million de tokens) pour l'estimation affichée dans les logs :
+// Opus 5.5 pour l'agent, Sonnet 5 pour la rédaction des actes (MODELS.balanced).
+const PRICES = { input: 4, output: 20, cacheWrite: 5, cacheRead: 0.2 };
+const DRAFT_PRICES = { input: 2, output: 10, cacheWrite: 2.5, cacheRead: 0.2 };
+
+function costUsd(u, p) {
+  return (u.input * p.input + u.output * p.output + u.cacheWrite * p.cacheWrite + u.cacheRead * p.cacheRead) / 1e6;
+}
 const CREATION_FORMES = ['SASU', 'SAS', 'EURL', 'SARL', 'SCI', 'HOLDING'];
 
 // ─── Actes annexes rédigés par l'IA ───────────────────────────────
@@ -150,6 +172,15 @@ const SYSTEM_PROMPT = `Tu es l'Agent Formalités de Legaly AI, plateforme franç
 - Modifications (transfert de siège, changement de dirigeant, d'objet, de dénomination, de capital…) et cessations (dissolution, radiation) : dossier + procès-verbal + annonce légale.
 - Tu ne signes rien, tu ne déposes rien à l'INPI et tu n'envoies rien à des tiers : la signature électronique, la validation interne et le dépôt se font par le professionnel depuis la page du dossier.
 </perimetre>
+
+<documents_joints>
+Le professionnel peut joindre des documents : pièces d'identité, statuts, procès-verbaux d'assemblée, Kbis, annonces légales, justificatifs de domicile, contrats de domiciliation, attestations de dépôt des fonds…
+- Lis-les attentivement et utilise-les comme source prioritaire : extrais les informations utiles (identité et date/lieu de naissance du dirigeant, dénomination, SIREN, capital, siège, décisions votées…) et enregistre-les avec enregistrer_dossier.
+- Dis brièvement ce que tu as trouvé dans chaque document, et signale ce qui est illisible, expiré, incohérent avec le reste du dossier ou contradictoire entre deux documents.
+- Pour une modification, un PV d'assemblée suffit souvent à identifier l'opération : déduis-la et fais-la confirmer.
+- Ne recopie jamais en entier dans tes réponses un numéro de pièce d'identité ou une donnée bancaire.
+- Les fichiers joints sont automatiquement rangés dans les pièces du dossier.
+</documents_joints>
 
 <methode>
 1. Comprends l'opération. Si la forme juridique n'est pas donnée, propose la plus adaptée en une phrase et demande confirmation.
@@ -367,6 +398,13 @@ async function toolActe(supa, ctx, input) {
 
   const draft = await draftDocument({ docType: 'autre', title: label, brief, chunks });
   if (draft.refused) throw new Error('Rédaction refusée par le modèle.');
+  if (ctx.draftUsage && draft.usage) {
+    ctx.draftUsage.calls += 1;
+    ctx.draftUsage.input += draft.usage.input_tokens || 0;
+    ctx.draftUsage.output += draft.usage.output_tokens || 0;
+    ctx.draftUsage.cacheWrite += draft.usage.cache_creation_input_tokens || 0;
+    ctx.draftUsage.cacheRead += draft.usage.cache_read_input_tokens || 0;
+  }
   const buffer = await Packer.toBuffer(markdownToDocx(label, draft.markdown));
   // Supabase Storage refuse les clés non ASCII (accents) : on translittère.
   const slug = (s, n) => String(s || '')
@@ -421,9 +459,44 @@ async function runTool(name, input, ctx) {
 
 // ─── Boucle de l'agent ────────────────────────────────────────────
 // emit(event, data) : 'text' {text} | 'tool' {id, name, status, label, ...} | 'dossier' {...}
-async function runAgentTurn({ history, input, ctx, emit }) {
+// Transforme les pièces jointes en blocs de contenu Claude.
+// PDF et images passent par l'API Files (envoyés une fois, référencés ensuite
+// par file_id : l'historique reste léger). Les .docx sont convertis en texte.
+async function attachmentBlocks(client, attachments) {
+  const blocks = [];
+  for (const a of attachments) {
+    const kind = ATTACHMENT_TYPES[a.mime];
+    if (kind === 'docx') {
+      const { text } = await extractText(a.buffer);
+      const clipped = String(text || '').slice(0, DOCX_MAX_CHARS);
+      blocks.push({
+        type: 'text',
+        text: `Contenu du document joint « ${a.name} » :\n"""\n${clipped || '(document vide ou illisible)'}\n"""`,
+      });
+      continue;
+    }
+    const uploaded = await client.files.upload({
+      file: await toFile(a.buffer, a.name, { type: a.mime }),
+    });
+    a.fileId = uploaded.id;
+    if (kind === 'document') {
+      blocks.push({ type: 'document', source: { type: 'file', file_id: uploaded.id }, title: a.name });
+    } else {
+      blocks.push({ type: 'text', text: `Image jointe : « ${a.name} »` });
+      blocks.push({ type: 'image', source: { type: 'file', file_id: uploaded.id } });
+    }
+  }
+  return blocks;
+}
+
+async function runAgentTurn({ history, input, attachments = [], ctx, emit }) {
   const client = getAnthropic();
-  const messages = [...history, { role: 'user', content: input }];
+  const docBlocks = attachments.length ? await attachmentBlocks(client, attachments) : [];
+  const userText = input || 'Voici des documents pour le dossier : analyse-les.';
+  const userContent = docBlocks.length ? [...docBlocks, { type: 'text', text: userText }] : userText;
+  const messages = [...history, { role: 'user', content: userContent }];
+  const usage = { calls: 0, input: 0, output: 0, cacheWrite: 0, cacheRead: 0 };
+  ctx.draftUsage = { calls: 0, input: 0, output: 0, cacheWrite: 0, cacheRead: 0 };
 
   for (let i = 0; i < MAX_ITERATIONS; i++) {
     const stream = client.beta.messages.stream({
@@ -433,6 +506,9 @@ async function runAgentTurn({ history, input, ctx, emit }) {
       output_config: { effort: 'high' },
       betas: ['server-side-fallback-2026-07-01'],
       fallbacks: 'default',
+      // Cache : prompt système + outils, et (top-level) tout l'historique jusqu'au
+      // dernier bloc — chaque appel de la boucle relit l'historique en cache.
+      cache_control: { type: 'ephemeral' },
       system: [{ type: 'text', text: SYSTEM_PROMPT, cache_control: { type: 'ephemeral' } }],
       tools: TOOLS,
       messages,
@@ -442,6 +518,12 @@ async function runAgentTurn({ history, input, ctx, emit }) {
     let message;
     try {
       message = await stream.finalMessage();
+      const u = message.usage || {};
+      usage.calls += 1;
+      usage.input += u.input_tokens || 0;
+      usage.output += u.output_tokens || 0;
+      usage.cacheWrite += u.cache_creation_input_tokens || 0;
+      usage.cacheRead += u.cache_read_input_tokens || 0;
     } catch (err) {
       if (err?.status) throw err; // erreur API typée : on remonte
       emit('text', { text: '\n' });
@@ -480,7 +562,12 @@ async function runAgentTurn({ history, input, ctx, emit }) {
     messages.push({ role: 'user', content: results });
   }
 
-  return { messages, dossierId: ctx.dossierId || null };
+  usage.agentCostUsd = Math.round(costUsd(usage, PRICES) * 1000) / 1000;
+  usage.drafts = ctx.draftUsage;
+  usage.draftsCostUsd = Math.round(costUsd(ctx.draftUsage, DRAFT_PRICES) * 1000) / 1000;
+  usage.costUsd = Math.round((usage.agentCostUsd + usage.draftsCostUsd) * 1000) / 1000;
+  console.log('[agent usage]', JSON.stringify(usage));
+  return { messages, dossierId: ctx.dossierId || null, usage };
 }
 
-module.exports = { runAgentTurn, ACTES };
+module.exports = { runAgentTurn, ACTES, ATTACHMENT_TYPES };
