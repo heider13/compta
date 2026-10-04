@@ -572,7 +572,7 @@ async function buildEILiasse(data, dossier, client) {
       },
       adresseEntreprise: {
         caracteristiques: {
-          diffusionDomiciliationAsEntrepriseAddress: 'N',
+          diffusionDomiciliationAsEntrepriseAddress: data.diffusionDomicile ?? 'N',
           ambulant: false,
           domiciliataire: false,
           indicateurDomicileEntrepreneur: domicile,
