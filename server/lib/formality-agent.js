@@ -870,7 +870,7 @@ async function runAgentTurn({ history, input, attachments = [], ctx, emit }) {
       } catch (e) {
         console.error('[agent tool]', tu.name, e.message);
         emit('tool', { id: tu.id, name: tu.name, status: 'error', label: TOOL_LABELS[tu.name] || tu.name, detail: e.message });
-        results.push({ type: 'tool_result', tool_use_id: tu.id, is_error: true, content: String(e.message).slice(0, 500) });
+        results.push({ type: 'tool_result', tool_use_id: tu.id, is_error: true, content: String(e.message).slice(0, 3000) });
       }
     }
     messages.push({ role: 'user', content: results });

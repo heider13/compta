@@ -280,6 +280,7 @@ async function buildCreationLiasse(data, dossier, client) {
   // Bloquants : refusés par l'API dès la création du brouillon.
   const bloquants = [];
   const cat = categorisation(data.codeApe);
+  if (!data.datePremiereCloture) bloquants.push('Date de clôture du premier exercice (exigée par le Guichet unique, à reprendre à l\'identique dans les statuts)');
   if (!data.codeApe) bloquants.push("Code APE de l'activité (nécessaire pour la catégorie d'activité exigée par le Guichet unique)");
   else if (!cat) bloquants.push(`Catégorie d'activité INPI inconnue pour le code APE ${data.codeApe} : préciser l'activité ou un code APE voisin`);
   else if (!cat.exacte) aCompleter.push(`Catégorie d'activité déduite du secteur (APE ${data.codeApe}) : à vérifier sur le Guichet unique`);
@@ -292,7 +293,16 @@ async function buildCreationLiasse(data, dossier, client) {
   const content = {
     succursaleOuFiliale: 'AVEC_ETABLISSEMENT',
     formeExerciceActivitePrincipale: formeExercice,
-    natureCreation: { formeJuridique: code, etablieEnFrance: true, formeJuridiqueInsee: code },
+    natureCreation: {
+      formeJuridique: code,
+      formeJuridiqueInsee: code,
+      societeEtrangere: false,
+      etablieEnFrance: true,
+      salarieEnFrance: false,
+      relieeEntrepriseAgricole: false,
+      entrepriseAgricole: false,
+      indicateurEtablissementFictif: false,
+    },
     personneMorale: {
       identite: {
         entreprise: {
@@ -306,6 +316,18 @@ async function buildCreationLiasse(data, dossier, client) {
           duree: Number(data.dureeAnnees) || 99,
           dateClotureExerciceSocial: `${dd || '31'}${mm || '12'}`,
           ...(data.datePremiereCloture ? { datePremiereCloture: data.datePremiereCloture } : {}),
+          ...(() => {
+            const fin = new Date(dateDebut);
+            fin.setFullYear(fin.getFullYear() + (Number(data.dureeAnnees) || 99));
+            return Number.isNaN(fin.getTime()) ? {} : { dateFinExistence: fin.toISOString().slice(0, 10) };
+          })(),
+          ess: false,
+          societeMission: false,
+          indicateurOrigineFusionScission: false,
+          depotDemandeAcre: false,
+          continuationAvecActifNetInferieurMoitieCapital: false,
+          reconstitutionCapitauxPropres: false,
+          isDureeIllimitee: false,
           montantCapital: capital,
           montantCapitalCentime: Math.round(capital * 100),
           deviseCapital: 'EUR',
@@ -314,6 +336,7 @@ async function buildCreationLiasse(data, dossier, client) {
           ...(unipersonnelle ? { indicateurAssocieUniqueDirigeant: true } : {}),
           ...(role === 'GERANT' ? { natureGerance: '1' } : {}),
         },
+        contratDAppuiDeclare: false,
         ...(mandataire.adresseCorrespondance ? { adresseCorrespondance: mandataire.adresseCorrespondance } : {}),
         ...(mandataire.destinataireCorrespondance ? { destinataireCorrespondance: mandataire.destinataireCorrespondance } : {}),
         ...(mandataire.contactCorrespondance ? { contactCorrespondance: mandataire.contactCorrespondance } : {}),
@@ -337,6 +360,8 @@ async function buildCreationLiasse(data, dossier, client) {
           statutPourLaFormalite: '1',
           dateEffet: dateDebut,
           typeDePersonne: 'INDIVIDU',
+          isRepresentantLegal: false,
+          indicateurSecondRoleEntreprise: false,
           beneficiaireEffectif: beneficiaires.some((b) => b.indexPouvoir === 0),
         }],
         modeSelectionPouvoirs: 0,
@@ -364,14 +389,28 @@ async function buildCreationLiasse(data, dossier, client) {
             ...(cat.codes[4] ? { precisionActivite: cat.codes[4] } : {}),
           } : {}),
           rolePrincipalPourEntreprise: true,
+          indicateurProlongement: false,
+          indicateurNonSedentaire: false,
+          indicateurArtisteAuteur: false,
+          indicateurMarinProfessionnel: false,
           ...(data.codeApe ? { codeApe: data.codeApe } : {}),
           origine: { typeOrigine: '1' },
         }],
         dateEffetOuvertureEtablissement: dateDebut,
+        effectifSalarie: { presenceSalarie: false, emploiPremierSalarie: false, employeurSalarieNonRegimeFr: false },
       },
       optionsFiscales: forme === 'SCI' || data.regimeImposition === 'IR' ? {} : { regimeImpositionBenefices: REGIME_IS },
       beneficiairesEffectifs: beneficiaires,
-      structureEntreprise: { indicateurPrincipalIdemSiege: true },
+      structureEntreprise: { indicateurPrincipalIdemSiege: true, aucuneActivite: false },
+      optionsFiscalesReferences: {
+        ...(cat ? { categorisationActiviteInitial: `${cat.codes[0]}${cat.codes[1]}${cat.codes[2] || '00'}${cat.codes[3] || '00'}` } : {}),
+        etablieEnFranceInitial: true,
+        societeEtrangereInitial: false,
+        entrepriseAgricoleInitial: false,
+        indicateurAssocieUniqueInitial: unipersonnelle,
+        ...(unipersonnelle ? { indicateurAssocieUniqueDirigeantInitial: true } : {}),
+        succursaleOuFilialeInitial: 'AVEC_ETABLISSEMENT',
+      },
     },
     ...(mandataire.declarant ? { declarant: mandataire.declarant } : {}),
   };
@@ -426,7 +465,18 @@ async function toPdf(buffer, mime, name) {
 // pieces : [{ categorie, nom, buffer, mime }]
 async function createDraftWithPieces(orgId, payload, pieces) {
   const client = inpi.forOrg(orgId);
-  const formality = await client.createFormality(payload);
+  let formality;
+  try {
+    formality = await client.createFormality(payload);
+  } catch (e) {
+    const v = e.payload?.violations;
+    if (Array.isArray(v) && v.length) {
+      const err = new Error(`Le Guichet unique refuse la liasse (${v.length} point(s)) : ${v.map((x) => `${x.propertyPath} → ${x.message}`).join(' | ')}`);
+      err.status = e.status;
+      throw err;
+    }
+    throw e;
+  }
   const deposees = [];
   const erreurs = [];
   for (const p of pieces) {
