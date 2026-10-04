@@ -23,6 +23,8 @@ const {
   generateStatutsForDossier, storeDossierDocument, signedUrl,
 } = require('./dossier-docs');
 const { SUPPORTED_FORMES } = require('./doc-generator');
+const inpi = require('../inpi');
+const { getFormalitySummary, downloadAttachment } = require('./inpi-formality');
 
 const MAX_ITERATIONS = 12;
 
@@ -58,6 +60,8 @@ const ACTES = {
   pv_decision: "Procès-verbal de décision des associés",
   annonce_modification: "Avis de modification (annonce légale)",
   pv_dissolution: 'Procès-verbal de dissolution anticipée',
+  reponse_greffe: 'Courrier de réponse à la demande de régularisation du greffe',
+  declaration_beneficiaires: 'Déclaration des bénéficiaires effectifs',
   autre: 'Document juridique',
 };
 
@@ -163,6 +167,29 @@ const TOOLS = [
     eager_input_streaming: true,
     input_schema: { type: 'object', properties: {} },
   },
+  {
+    name: 'lire_formalite_inpi',
+    description:
+      "Lit une formalité déposée au Guichet unique INPI : statut, société, observations, demandes de régularisation du greffe (en cours et passées, avec motifs et échéances) et liste des pièces jointes déposées. Sans paramètre, lit la formalité ouverte par le professionnel ; sinon recherche par nom de société ou numéro de liasse.",
+    eager_input_streaming: true,
+    input_schema: {
+      type: 'object',
+      properties: {
+        recherche: { type: 'string', description: 'Nom de société ou numéro de liasse (ex J00282806421)' },
+      },
+    },
+  },
+  {
+    name: 'lire_piece_inpi',
+    description:
+      "Télécharge et lit le contenu texte d'une pièce jointe d'une formalité INPI (identifiant donné par lire_formalite_inpi). À utiliser pour vérifier ce qui a déjà été déposé avant de préparer une régularisation.",
+    eager_input_streaming: true,
+    input_schema: {
+      type: 'object',
+      properties: { piece_id: { type: 'integer' } },
+      required: ['piece_id'],
+    },
+  },
 ];
 
 const SYSTEM_PROMPT = `Tu es l'Agent Formalités de Legaly AI, plateforme française pour cabinets d'experts-comptables, avocats et formalistes. Tu prends en charge une formalité juridique d'entreprise de bout en bout : tu recueilles les informations, tu crées le dossier, tu génères les statuts et tous les actes nécessaires, puis tu indiques au professionnel ce qu'il lui reste à faire.
@@ -181,6 +208,16 @@ Le professionnel peut joindre des documents : pièces d'identité, statuts, proc
 - Ne recopie jamais en entier dans tes réponses un numéro de pièce d'identité ou une donnée bancaire.
 - Les fichiers joints sont automatiquement rangés dans les pièces du dossier.
 </documents_joints>
+
+<regularisations_inpi>
+Pour une formalité déjà déposée au Guichet unique (régularisation demandée par le greffe, rejet, signature ou paiement en attente) :
+1. Appelle lire_formalite_inpi, puis lis avec lire_piece_inpi les pièces utiles pour comprendre la demande (pas toutes : seulement celles qui éclairent les motifs).
+2. Explique chaque demande en cours en langage clair : ce que le greffe reproche, ce qu'il faut fournir ou corriger, et l'échéance s'il y en a une.
+3. Enregistre le dossier de suivi avec enregistrer_dossier (typeFormalite de la formalité, dénomination, SIREN, operation = "Régularisation …").
+4. Prépare tout ce qui peut l'être : reponse_greffe (courrier répondant point par point), les actes demandés (PV, déclaration des bénéficiaires effectifs corrigée, attestation…), et liste les pièces que seul le client peut fournir (pièce d'identité, acte enregistré aux impôts, justificatif…).
+5. Pour un paiement à régulariser : indique le montant et qu'il se règle depuis l'espace Guichet unique.
+6. Termine par une check-list ; rappelle que le dépôt des pièces et la validation de la régularisation se font par le professionnel sur le Guichet unique.
+</regularisations_inpi>
 
 <methode>
 1. Comprends l'opération. Si la forme juridique n'est pas donnée, propose la plus adaptée en une phrase et demande confirmation.
@@ -268,6 +305,15 @@ function computeManquants(d) {
 
 // ─── Accès au dossier ─────────────────────────────────────────────
 async function loadDossier(supa, ctx) {
+  // Formalité INPI ouverte : on réutilise le dossier de suivi déjà lié s'il existe.
+  if (!ctx.dossierId && ctx.inpiFormalityId) {
+    const { data: linked } = await supa
+      .from('dossiers').select('id')
+      .eq('organization_id', ctx.orgId)
+      .eq('metadata->>inpi_formality_id', String(ctx.inpiFormalityId))
+      .limit(1).maybeSingle();
+    if (linked) ctx.dossierId = linked.id;
+  }
   if (!ctx.dossierId) return null;
   const { data: dossier } = await supa.from('dossiers').select('*').eq('id', ctx.dossierId).maybeSingle();
   if (!dossier) {
@@ -318,7 +364,11 @@ async function toolEnregistrer(supa, ctx, input) {
         reference: `CMP-${Date.now().toString(36).toUpperCase()}`,
         statut: 'DRAFT',
         assigned_to: ctx.userId,
-        metadata: { agent_data: data, created_by_agent: true },
+        metadata: {
+          agent_data: data,
+          created_by_agent: true,
+          ...(ctx.inpiFormalityId ? { inpi_formality_id: String(ctx.inpiFormalityId), inpi_liasse: ctx.inpiLiasse || null } : {}),
+        },
       })
       .select()
       .single();
@@ -438,11 +488,59 @@ async function toolEtat(supa, ctx) {
   };
 }
 
+// ─── Formalités INPI ──────────────────────────────────────────────
+async function findFormalityId(ctx, recherche) {
+  if (!recherche) return ctx.inpiFormalityId || null;
+  const q = String(recherche).trim().toLowerCase();
+  const client = inpi.forOrg(ctx.orgId);
+  for (let page = 1; page <= 10; page++) {
+    const r = await client.listFormalities({ page, itemsPerPage: 100, 'order[statusDate]': 'desc' });
+    const items = r?.['hydra:member'] || [];
+    const hit = items.find((f) =>
+      String(f.liasseNumber || '').toLowerCase() === q ||
+      String(f.companyName || f.nomDossier || '').toLowerCase().includes(q));
+    if (hit) return hit.id;
+    if (items.length < 100) break;
+  }
+  return null;
+}
+
+async function toolLireFormalite(ctx, input) {
+  const id = await findFormalityId(ctx, input.recherche);
+  if (!id) throw new Error(input.recherche ? `Aucune formalité INPI trouvée pour « ${input.recherche} ».` : 'Aucune formalité INPI ouverte.');
+  const s = await getFormalitySummary(ctx.orgId, id);
+  ctx.inpiFormalityId = String(s.id);
+  ctx.inpiLiasse = s.liasse;
+  const entreprise = s._content?.personneMorale?.identite?.entreprise || s._content?.personnePhysique?.identite?.entreprise || null;
+  const { _content, ...rest } = s;
+  return {
+    result: { ...rest, entreprise },
+    event: {
+      kind: 'inpi', label: `Formalité INPI lue — ${s.societe || s.liasse}`,
+      detail: `${s.typeLabel} · ${s.demandesEnCours.length} demande(s) du greffe en cours · ${s.pieces.length} pièce(s)`,
+      href: `/inpi/${s.id}`,
+    },
+  };
+}
+
+async function toolLirePiece(ctx, input) {
+  if (!ctx.inpiFormalityId) throw new Error("Appelle d'abord lire_formalite_inpi.");
+  const { buffer } = await downloadAttachment(ctx.orgId, ctx.inpiFormalityId, input.piece_id);
+  const { text, source } = await extractText(buffer);
+  const clipped = String(text || '').slice(0, 30000);
+  return {
+    result: { piece_id: input.piece_id, extraction: source, texte: clipped || '(aucun texte lisible)' },
+    event: { kind: 'inpi', label: 'Pièce INPI lue', detail: `n° ${input.piece_id}` },
+  };
+}
+
 const TOOL_LABELS = {
   enregistrer_dossier: 'Enregistrement du dossier',
   generer_statuts: 'Rédaction des statuts',
   rediger_acte: "Rédaction d'un acte",
   etat_dossier: "Lecture de l'avancement",
+  lire_formalite_inpi: 'Lecture de la formalité INPI',
+  lire_piece_inpi: "Lecture d'une pièce INPI",
 };
 
 async function runTool(name, input, ctx) {
@@ -453,6 +551,8 @@ async function runTool(name, input, ctx) {
     case 'generer_statuts': return toolStatuts(supa, ctx);
     case 'rediger_acte': return toolActe(supa, ctx, input);
     case 'etat_dossier': return toolEtat(supa, ctx);
+    case 'lire_formalite_inpi': return toolLireFormalite(ctx, input);
+    case 'lire_piece_inpi': return toolLirePiece(ctx, input);
     default: throw new Error(`Outil inconnu : ${name}`);
   }
 }
@@ -492,7 +592,10 @@ async function attachmentBlocks(client, attachments) {
 async function runAgentTurn({ history, input, attachments = [], ctx, emit }) {
   const client = getAnthropic();
   const docBlocks = attachments.length ? await attachmentBlocks(client, attachments) : [];
-  const userText = input || 'Voici des documents pour le dossier : analyse-les.';
+  // Date du jour dans le message (pas dans le prompt système, qui reste en cache) :
+  // indispensable pour juger délais et échéances.
+  const today = new Date().toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Europe/Paris' });
+  const userText = `[Date du jour : ${today}]\n${input || 'Voici des documents pour le dossier : analyse-les.'}`;
   const userContent = docBlocks.length ? [...docBlocks, { type: 'text', text: userText }] : userText;
   const messages = [...history, { role: 'user', content: userContent }];
   const usage = { calls: 0, input: 0, output: 0, cacheWrite: 0, cacheRead: 0 };

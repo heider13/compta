@@ -5,6 +5,7 @@
 // chargées (100 par page) puis filtrées côté client.
 
 import { useEffect, useMemo, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { AlertTriangle, CheckCircle2, FileDown, Hourglass, Landmark, Loader2, RefreshCw, Search, XCircle } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { StatusBadge } from '@/components/cabinet/StatusBadge';
@@ -68,6 +69,7 @@ async function authToken() {
 }
 
 export function InpiFormalities() {
+  const router = useRouter();
   const [items, setItems] = useState<Formality[]>([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -167,7 +169,7 @@ export function InpiFormalities() {
             Déposées à l&apos;INPI
           </h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            Toutes les formalités de votre compte mandataire au Guichet unique, en temps réel.
+            Toutes les formalités de votre compte mandataire au Guichet unique, en temps réel. Cliquez sur une ligne pour voir ses pièces et ses régularisations.
             {!loading && !error && ` ${total} formalité${total > 1 ? 's' : ''}.`}
           </p>
         </div>
@@ -273,7 +275,11 @@ export function InpiFormalities() {
               </thead>
               <tbody className="divide-y">
                 {visible.map((f) => (
-                  <tr key={String(f.id)} className={cn('hover:bg-[#f8f6fd]', TO_HANDLE.includes(f.status ?? '') && 'bg-[#fff8f6]')}>
+                  <tr
+                    key={String(f.id)}
+                    onClick={() => router.push(`/inpi/${f.id}`)}
+                    className={cn('cursor-pointer hover:bg-[#f8f6fd]', TO_HANDLE.includes(f.status ?? '') && 'bg-[#fff8f6]')}
+                  >
                     <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">{formatDate(f.statusDate)}</td>
                     <td className="max-w-64 px-4 py-3">
                       <span className="block truncate font-medium">{f.companyName || f.nomDossier || '(sans nom)'}</span>
@@ -288,7 +294,10 @@ export function InpiFormalities() {
                       <Button
                         variant="ghost"
                         size="sm"
-                        onClick={() => openSynthesis(f)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          openSynthesis(f);
+                        }}
                         disabled={downloading === f.id}
                         title="Synthèse PDF officielle de l'INPI"
                       >

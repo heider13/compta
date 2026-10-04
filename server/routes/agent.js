@@ -41,7 +41,7 @@ function parseAttachments(raw) {
 }
 
 router.post('/formalite', async (req, res) => {
-  const { input = '', messages = [], dossier_id = null } = req.body || {};
+  const { input = '', messages = [], dossier_id = null, inpi_formality_id = null } = req.body || {};
   let attachments;
   try {
     attachments = parseAttachments(req.body?.attachments);
@@ -72,6 +72,7 @@ router.post('/formalite', async (req, res) => {
     orgId: req.currentOrgId,
     isAdmin: req.profile?.role === 'admin',
     dossierId: typeof dossier_id === 'string' ? dossier_id : null,
+    inpiFormalityId: /^\d+$/.test(String(inpi_formality_id ?? '')) ? String(inpi_formality_id) : null,
   };
 
   try {

@@ -43,7 +43,7 @@ type ToolEvent = {
   detail?: string;
   href?: string | null;
   docHref?: string;
-  kind?: 'dossier' | 'document' | 'pipeline' | 'piece';
+  kind?: 'dossier' | 'document' | 'pipeline' | 'piece' | 'inpi';
   dossier?: { id: string; reference: string; denomination: string };
 };
 
@@ -87,26 +87,26 @@ const CAPABILITIES = [
   { icon: Workflow, label: 'Suivi jusqu’au dépôt' },
 ];
 
-function loadSaved(): SavedState | null {
+function loadSaved(key: string): SavedState | null {
   try {
-    const raw = window.localStorage.getItem(STORAGE_KEY);
+    const raw = window.localStorage.getItem(key);
     return raw ? (JSON.parse(raw) as SavedState) : null;
   } catch {
     return null;
   }
 }
 
-function save(state: SavedState) {
+function save(key: string, state: SavedState) {
   try {
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    window.localStorage.setItem(key, JSON.stringify(state));
   } catch {
     /* stockage indisponible : la session reste en mémoire */
   }
 }
 
-function clearSaved() {
+function clearSaved(key: string) {
   try {
-    window.localStorage.removeItem(STORAGE_KEY);
+    window.localStorage.removeItem(key);
   } catch {}
 }
 
@@ -128,7 +128,21 @@ function formatSize(bytes: number) {
   return bytes < 1024 * 1024 ? `${Math.max(1, Math.round(bytes / 1024))} Ko` : `${(bytes / 1024 / 1024).toFixed(1)} Mo`;
 }
 
-export function FormalityAgent() {
+// inpiFormality : agent ouvert sur une formalité déjà déposée au Guichet unique
+// (page /inpi/[id]) — conversation propre à la formalité, consacrée à sa
+// régularisation ou à son suivi.
+export function FormalityAgent({ inpiFormality }: { inpiFormality?: { id: string; label: string; aTraiter?: boolean } } = {}) {
+  const storageKey = inpiFormality ? `${STORAGE_KEY}_inpi_${inpiFormality.id}` : STORAGE_KEY;
+  const examples = inpiFormality
+    ? [
+        {
+          label: inpiFormality.aTraiter ? 'Analyser la régularisation demandée' : 'Analyser cette formalité',
+          text: inpiFormality.aTraiter
+            ? `Analyse la demande de régularisation du greffe pour la formalité ${inpiFormality.label}, lis les pièces utiles et prépare tout ce qu'il faut pour y répondre.`
+            : `Fais le point sur la formalité ${inpiFormality.label} : statut, pièces déposées et éventuelles actions à mener.`,
+        },
+      ]
+    : EXAMPLES;
   const [items, setItems] = useState<Item[]>([]);
   const [history, setHistory] = useState<unknown[]>([]);
   const [dossier, setDossier] = useState<ToolEvent['dossier'] | null>(null);
@@ -141,13 +155,13 @@ export function FormalityAgent() {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    const saved = loadSaved();
+    const saved = loadSaved(storageKey);
     if (saved) {
       setItems(saved.items ?? []);
       setHistory(saved.history ?? []);
       setDossier(saved.dossier ?? null);
     }
-  }, []);
+  }, [storageKey]);
 
   useEffect(() => {
     const el = scrollRef.current;
@@ -197,7 +211,7 @@ export function FormalityAgent() {
     setDossier(null);
     setFiles([]);
     setError(null);
-    clearSaved();
+    clearSaved(storageKey);
   }
 
   async function send(text: string) {
@@ -257,6 +271,7 @@ export function FormalityAgent() {
           input: question,
           messages: history,
           dossier_id: localDossier?.id ?? null,
+          inpi_formality_id: inpiFormality?.id ?? null,
           attachments: attachments.map(({ name, mime, data }) => ({ name, mime, data })),
         }),
       });
@@ -283,7 +298,7 @@ export function FormalityAgent() {
           else if (t === 'tool') upsertTool(payload as ToolEvent);
           else if (t === 'done') {
             setHistory(payload.messages);
-            save({ history: payload.messages, items: localItems, dossier: localDossier });
+            save(storageKey, { history: payload.messages, items: localItems, dossier: localDossier });
           } else if (t === 'error') {
             throw new Error(payload.detail || payload.error);
           }
@@ -386,9 +401,13 @@ export function FormalityAgent() {
           <Sparkles className="size-5" />
         </span>
         <div className="min-w-0 flex-1">
-          <p className="text-[15px] font-semibold text-foreground">Agent Formalités</p>
+          <p className="text-[15px] font-semibold text-foreground">
+            {inpiFormality ? 'Agent de régularisation' : 'Agent Formalités'}
+          </p>
           <p className="text-xs text-muted-foreground">
-            Décrivez l&apos;opération ou joignez vos documents : l&apos;agent crée le dossier, rédige les statuts et tous les actes.
+            {inpiFormality
+              ? "L'agent lit la formalité et ses pièces, explique la demande du greffe et prépare les documents de réponse."
+              : "Décrivez l'opération ou joignez vos documents : l'agent crée le dossier, rédige les statuts et tous les actes."}
           </p>
         </div>
         {started && (
@@ -438,7 +457,7 @@ export function FormalityAgent() {
             </form>
 
             <div className="flex flex-wrap gap-2">
-              {EXAMPLES.map((ex) => (
+              {examples.map((ex) => (
                 <button
                   key={ex.label}
                   type="button"
@@ -450,14 +469,14 @@ export function FormalityAgent() {
               ))}
             </div>
 
-            <div className="grid gap-2 [grid-template-columns:repeat(auto-fit,minmax(150px,1fr))]">
+            {!inpiFormality && <div className="grid gap-2 [grid-template-columns:repeat(auto-fit,minmax(150px,1fr))]">
               {CAPABILITIES.map(({ icon: Icon, label }) => (
                 <div key={label} className="flex min-w-0 items-center gap-2 rounded-lg bg-[#f7f5fd] px-3 py-2 text-xs text-foreground/80">
                   <Icon className="size-4 shrink-0 text-primary" />
                   <span className="truncate">{label}</span>
                 </div>
               ))}
-            </div>
+            </div>}
             {error && <ErrorLine message={error} />}
           </div>
         ) : (

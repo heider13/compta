@@ -15,6 +15,7 @@ const aiRoutes = require('./routes/ai');
 const orchestratorRoutes = require('./routes/orchestrator');
 const pappersAnnoncesRoutes = require('./routes/pappers-annonces');
 const agentRoutes = require('./routes/agent');
+const inpiFormalitiesRoutes = require('./routes/inpi-formalities');
 
 const app = express();
 app.set('trust proxy', 'loopback');
@@ -1016,6 +1017,7 @@ app.use('/api/dossiers', requireUser, requireOrg, orchestratorRoutes);
 app.use('/api/pappers-annonces', requireUser, requireOrg, pappersAnnoncesRoutes);
 app.use('/api/ai', requireUser, requireOrg, aiRoutes);
 app.use('/api/agent', requireUser, requireOrg, agentRoutes);
+app.use('/api/inpi', requireUser, requireOrg, inpiFormalitiesRoutes);
 
 app.use((err, req, res, _next) => {
   console.error(`[ERR] ${req.method} ${req.path}:`, err.message);
