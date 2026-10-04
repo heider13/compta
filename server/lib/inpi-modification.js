@@ -495,6 +495,14 @@ OPERATIONS.domicileEI = async (next, { adresse, dateEffet, deplacerEntreprise = 
   return ['16P'];
 };
 
+// Complément des données de l'entreprise absentes du RNE (ex. objet social repris d'une
+// attestation d'immatriculation), sans modification déclarée.
+OPERATIONS.complementEntreprise = async (next, { objet }) => {
+  const d = pm(next).identite.description;
+  if (objet && !d.objet) d.objet = objet;
+  return [];
+};
+
 // Complément des données d'un dirigeant existant (absentes du RNE), sans modification déclarée.
 OPERATIONS.complementPersonne = async (next, { nom, dateNaissance, lieuNaissance, codePostalNaissance, paysNaissance, nationalite, adresse }) => {
   const bloc = next.personneMorale || next.personnePhysique;
