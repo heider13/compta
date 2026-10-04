@@ -50,12 +50,13 @@ export function Nav({ surface = 'dark', announcement }: { surface?: 'dark' | 'li
           {announcement}
         </div>
       )}
-      <Container className="flex h-16 items-center justify-between gap-4">
+      <Container className="flex h-[72px] items-center justify-between gap-4">
         <Link href="/" className="flex items-center no-underline" aria-label="Legaly AI">
           <Logo
-            size={28}
+            size={40}
             onDark={onDark}
-            textClassName={cn('text-[19px] transition-colors', onDark && '!text-white')}
+            className="gap-2.5"
+            textClassName={cn('text-[26px] transition-colors', onDark && '!text-white')}
           />
         </Link>
 
