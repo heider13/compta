@@ -2,8 +2,7 @@
 
 // Livre en points (écho au logo Legaly : pages de gauche violettes, de droite
 // rose → pêche) posé à plat sur une table, vu de face et légèrement du dessus.
-// Il s'ouvre (couverture et pages basculent vers la gauche) puis feuillette en
-// boucle. Canvas 2D, projection perspective, aucune dépendance.
+// Il reste ouvert et feuillette en boucle. Canvas 2D, projection perspective, aucune dépendance.
 
 import { useEffect, useRef } from 'react';
 
@@ -20,8 +19,7 @@ const clamp = (v: number, a = 0, b = 1) => Math.max(a, Math.min(b, v));
 const PAGES = 9; // couverture gauche, feuillets, couverture droite (index 0 = couverture qui s'ouvre)
 const COLS = 24; // points dans la largeur d'une page (du dos vers le bord)
 const ROWS = 32; // points dans la longueur (le long du dos)
-const OPEN_DELAY = 400;
-const OPEN_MS = 2800;
+const FIRST_FLIP_MS = 1200; // premier feuilletage après l'affichage
 const FLIP_MS = 2200;
 const PAUSE_MS = 1100;
 const TILT = 0.92; // inclinaison de la caméra (rad) : vue de face, du dessus
@@ -59,15 +57,12 @@ export function DotBook({ className }: { className?: string }) {
     const STEP = 0.012; // écart entre feuillets d'une même pile
     function pageAngles(t: number): number[] {
       const angles: number[] = [];
+      // Livre toujours ouvert : une pile de feuillets à gauche, une à droite
       for (let i = 0; i < PAGES; i++) {
-        const closed = RIGHT + (PAGES - 1 - i) * STEP * 0.6; // livre fermé : tout empilé à droite
-        const open = i <= mid ? LEFT - i * STEP : RIGHT + (PAGES - 1 - i) * STEP;
-        // ouverture échelonnée : la couverture d'abord, puis les feuillets de gauche
-        const local = reduced ? 1 : ease(clamp((t - OPEN_DELAY - i * 120) / OPEN_MS));
-        angles.push(i <= mid ? closed + (open - closed) * local : open);
+        angles.push(i <= mid ? LEFT - i * STEP : RIGHT + (PAGES - 1 - i) * STEP);
       }
       // Feuilletage : la page du dessus de la pile de droite passe à gauche, en boucle
-      const flipStart = OPEN_DELAY + OPEN_MS + mid * 120 + 600;
+      const flipStart = FIRST_FLIP_MS;
       if (!reduced && t > flipStart) {
         const cycle = (t - flipStart) % (FLIP_MS + PAUSE_MS);
         const p = ease(clamp(cycle / FLIP_MS));
