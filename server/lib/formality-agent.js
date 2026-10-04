@@ -28,6 +28,7 @@ const { getFormalitySummary, downloadAttachment } = require('./inpi-formality');
 const { buildCreationLiasse, buildEILiasse, createDraftWithPieces, PIECES, PIECES_EI } = require('./inpi-liasse');
 const rne = require('./inpi-rne');
 const annonces = require('./annonces-legales');
+const rneDocs = require('./rne-documents');
 const { createModificationDraft, appliquerOperations, baseModification, donneesManquantes } = require('./inpi-modification');
 const { deposerPieces, PIECES_MODIF } = require('./inpi-liasse');
 const { BUCKET } = require('./dossier-docs');
@@ -325,6 +326,33 @@ const TOOLS = [
     },
   },
   {
+    name: 'lister_documents_rne',
+    description:
+      "Liste les documents publics déposés au RNE pour une entreprise (SIREN) : actes (statuts et statuts mis à jour, PV d'assemblée, décisions, certificats…) avec date de dépôt, et comptes annuels non confidentiels. À utiliser avant une modification pour retrouver les statuts en vigueur et les dernières décisions, au lieu de les demander au formaliste.",
+    eager_input_streaming: true,
+    input_schema: {
+      type: 'object',
+      properties: { siren: { type: 'string', description: '9 chiffres' } },
+      required: ['siren'],
+    },
+  },
+  {
+    name: 'lire_document_rne',
+    description:
+      "Télécharge un document du RNE (identifiant donné par lister_documents_rne) et en lit le texte (statuts en vigueur, PV…). ajouter_au_dossier=true le joint aussi aux pièces du dossier en cours (ex. statuts à jour pour une modification).",
+    eager_input_streaming: true,
+    input_schema: {
+      type: 'object',
+      properties: {
+        kind: { type: 'string', enum: ['acte', 'bilan'] },
+        id: { type: 'string' },
+        nom: { type: 'string', description: 'Nom du fichier si ajouté au dossier (ex « Statuts à jour - STRATEGY ASSOCIATES »)' },
+        ajouter_au_dossier: { type: 'boolean' },
+      },
+      required: ['kind', 'id'],
+    },
+  },
+  {
     name: 'lire_formalite_inpi',
     description:
       "Lit une formalité déposée au Guichet unique INPI : statut, société, observations, demandes de régularisation du greffe (en cours et passées, avec motifs et échéances) et liste des pièces jointes déposées. Sans paramètre, lit la formalité ouverte par le professionnel ; sinon recherche par nom de société ou numéro de liasse.",
@@ -374,7 +402,7 @@ Objectif : préparer la formalité de A à Z pour que le formaliste n'ait plus q
 4. Présente le récapitulatif : pièces qui seront déposées, pièces manquantes ou non signées, champs que le formaliste devra compléter. Demande une confirmation explicite (« Je crée le brouillon sur votre Guichet unique ? »).
 5. Seulement si le dernier message du professionnel confirme clairement, appelle creer_brouillon_inpi avec confirme=true.
 6. Indique ensuite les étapes restantes du formaliste sur le Guichet unique : compléter les champs signalés, vérifier, valider, signer électroniquement, payer (carte ou délégation de paiement au client).
-Pour une MODIFICATION (objet, dénomination, siège, dirigeant, bénéficiaires effectifs), une mise en sommeil ou la cessation d'une entreprise individuelle : lis d'abord la fiche RNE (lire_fiche_rne), rédige les actes (PV, statuts mis à jour) et l'annonce (rediger_annonce_legale avec le siren : modification, transfert_siege, dissolution, cloture_liquidation… ; pas d'annonce pour une mise en sommeil ni pour une entreprise individuelle), puis utilise creer_modification_inpi avec la même logique aperçu → confirmation → brouillon. Un changement de dirigeant associé au capital s'accompagne en général d'une mise à jour des bénéficiaires effectifs (opération beneficiaires).
+Pour une MODIFICATION (objet, dénomination, siège, dirigeant, bénéficiaires effectifs), une mise en sommeil ou la cessation d'une entreprise individuelle : lis d'abord la fiche RNE (lire_fiche_rne), puis les documents déposés (lister_documents_rne, et lire_document_rne sur les statuts les plus récents pour rédiger le PV et les statuts mis à jour à partir du texte en vigueur ; les joindre au dossier si utile), rédige les actes (PV, statuts mis à jour) et l'annonce (rediger_annonce_legale avec le siren : modification, transfert_siege, dissolution, cloture_liquidation… ; pas d'annonce pour une mise en sommeil ni pour une entreprise individuelle), puis utilise creer_modification_inpi avec la même logique aperçu → confirmation → brouillon. Un changement de dirigeant associé au capital s'accompagne en général d'une mise à jour des bénéficiaires effectifs (opération beneficiaires).
 La création de brouillon couvre les créations de SASU, SAS, EURL, SARL, SCI et d'entreprise individuelle (micro-entreprise : formeJuridique AE ; pas d'annonce légale ni de statuts, mais n° de sécurité sociale, situation matrimoniale, options du régime micro et pièce d'identité). Pour une modification ou une cessation, prépare les documents et guide le formaliste pour la saisie.
 </depot_inpi>
 
@@ -988,6 +1016,43 @@ async function toolAnnonce(supa, ctx, input) {
   };
 }
 
+async function toolListerDocsRne(ctx, input) {
+  const r = await rneDocs.listDocuments(ctx.orgId, input.siren);
+  return {
+    result: {
+      siren: r.siren, denomination: r.denomination,
+      actes: r.actes.slice(0, 60).map(({ id, libelle, decisions, dateDepot, confidentiel }) => ({ id, libelle, decisions, dateDepot, confidentiel })),
+      comptes_annuels: r.bilans.slice(0, 20).map(({ id, libelle, confidentiel }) => ({ id, libelle, confidentiel })),
+      ...(r.actes.length > 60 ? { note: `${r.actes.length} actes au total, les 60 plus récents sont listés` } : {}),
+    },
+    event: { kind: 'inpi', label: `Documents RNE — ${r.denomination || r.siren}`, detail: `${r.actes.length} acte(s) · ${r.bilans.length} compte(s) annuel(s)` },
+  };
+}
+
+async function toolLireDocRne(supa, ctx, input) {
+  const { buffer, contentType } = await rneDocs.downloadDocument(ctx.orgId, input.kind, input.id);
+  const { text, source } = await extractText(buffer);
+  let ajout = null;
+  let href;
+  if (input.ajouter_au_dossier) {
+    const dossier = await loadDossier(supa, ctx);
+    if (!dossier) throw new Error("Aucun dossier : appelle d'abord enregistrer_dossier pour y joindre le document.");
+    const base = String(input.nom || `Document RNE ${input.id}`).slice(0, 110);
+    const doc = await storeDossierDocument(supa, dossier, {
+      buffer, filename: /\.pdf$/i.test(base) ? base : `${base}.pdf`,
+      docType: input.kind === 'bilan' ? 'COMPTES_ANNUELS' : 'ACTE_RNE', userId: ctx.userId, mimeType: contentType,
+    });
+    href = await signedUrl(supa, doc.file_path);
+    ajout = { document: doc.name, docHref: dossierUrl(dossier) };
+  }
+  return {
+    result: { id: input.id, extraction: source, ajoute_aux_pieces: Boolean(ajout), texte: String(text || '').slice(0, 30000) || '(aucun texte lisible)' },
+    event: ajout
+      ? { kind: 'document', label: 'Document RNE ajouté au dossier', detail: ajout.document, href, docHref: ajout.docHref }
+      : { kind: 'inpi', label: 'Document RNE lu', detail: input.nom || input.id },
+  };
+}
+
 async function toolFicheRne(ctx, input) {
   const company = await rne.getCompany(ctx.orgId, input.siren);
   const fiche = rne.summarizeCompany(company);
@@ -1016,6 +1081,8 @@ const TOOL_LABELS = {
   creer_brouillon_inpi: 'Préparation du dépôt INPI',
   lire_fiche_rne: 'Lecture de la fiche RNE',
   rediger_annonce_legale: "Rédaction de l'annonce légale",
+  lister_documents_rne: 'Lecture des documents RNE',
+  lire_document_rne: "Lecture d'un document RNE",
   creer_modification_inpi: "Préparation de la modification INPI",
   lire_formalite_inpi: 'Lecture de la formalité INPI',
   lire_piece_inpi: "Lecture d'une pièce INPI",
@@ -1032,6 +1099,8 @@ async function runTool(name, input, ctx) {
     case 'creer_brouillon_inpi': return toolBrouillon(supa, ctx, input);
     case 'lire_fiche_rne': return toolFicheRne(ctx, input);
     case 'rediger_annonce_legale': return toolAnnonce(supa, ctx, input);
+    case 'lister_documents_rne': return toolListerDocsRne(ctx, input);
+    case 'lire_document_rne': return toolLireDocRne(supa, ctx, input);
     case 'creer_modification_inpi': return toolModification(supa, ctx, input);
     case 'lire_formalite_inpi': return toolLireFormalite(ctx, input);
     case 'lire_piece_inpi': return toolLirePiece(ctx, input);

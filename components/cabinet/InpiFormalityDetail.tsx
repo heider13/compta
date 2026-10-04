@@ -192,6 +192,13 @@ export function InpiFormalityDetail({ id }: { id: string }) {
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
+          {data.siren && (
+            <Button asChild variant="outline" size="sm">
+              <Link href={`/rne?siren=${data.siren}`}>
+                <FileText className="size-4" /> Documents RNE
+              </Link>
+            </Button>
+          )}
           <Button
             variant="outline"
             size="sm"
