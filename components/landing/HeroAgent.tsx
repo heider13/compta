@@ -374,7 +374,7 @@ function DemoPlayer({ demande, scenario }: { demande: string; scenario: Scenario
               onClick={() => {
                 if (fini) { setPos(0); setPlaying(true); } else setPlaying((p) => !p);
               }}
-              className="grid size-8 place-items-center rounded-md text-white hover:bg-white/10"
+              className="grid size-8 place-items-center rounded-md !text-white hover:bg-white/10"
               aria-label={fini ? 'Rejouer' : playing ? 'Pause' : 'Lecture'}
             >
               {fini ? <RotateCcw className="size-4" /> : playing ? <Pause className="size-4" /> : <Play className="size-4" />}
