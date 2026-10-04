@@ -38,10 +38,9 @@ export function Nav({ surface = 'dark', announcement }: { surface?: 'dark' | 'li
   return (
     <nav
       className={cn(
+        // En haut de page : barre intégrée au hero. Au défilement : pilule blanche détachée.
         'fixed inset-x-0 top-0 z-50 transition-all duration-300',
-        solid
-          ? 'border-b border-[var(--ink-100)] bg-white/90 shadow-[0_4px_20px_rgba(43,23,105,0.06)] backdrop-blur-md'
-          : 'border-b border-transparent bg-transparent',
+        scrolled ? 'px-3 pt-3 sm:px-4' : open !== null ? 'bg-white/95 shadow-[0_4px_20px_rgba(43,23,105,0.06)] backdrop-blur-md' : 'bg-transparent',
       )}
       onMouseLeave={() => setOpen(null)}
     >
@@ -50,7 +49,14 @@ export function Nav({ surface = 'dark', announcement }: { surface?: 'dark' | 'li
           {announcement}
         </div>
       )}
-      <Container className="flex h-[72px] items-center justify-between gap-4">
+      <Container
+        className={cn(
+          'flex items-center justify-between gap-4 transition-all duration-300',
+          scrolled
+            ? 'h-[64px] max-w-6xl rounded-full border border-[var(--ink-100)] bg-white/95 !px-4 shadow-[0_12px_40px_rgba(43,23,105,0.14)] backdrop-blur-md sm:!px-6'
+            : 'h-[72px]',
+        )}
+      >
         <Link href="/" className="flex items-center no-underline" aria-label="Legaly AI">
           <Logo
             size={40}
