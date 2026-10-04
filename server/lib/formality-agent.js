@@ -262,7 +262,7 @@ const TOOLS = [
               type: { type: 'string', enum: ['objet', 'denomination', 'siege', 'nomination', 'revocation', 'beneficiaires', 'miseEnSommeil', 'cessationEI', 'activiteAjout', 'activiteSuppression', 'etablissementSecondaire', 'associes', 'domicileEI', 'complementPersonne', 'complementEntreprise', 'dissolution', 'clotureLiquidation'] },
               liquidateurExistant: { type: 'string', description: 'dissolution : nom du dirigeant en place désigné liquidateur' },
               liquidateur: PERSONNE,
-              lieuLiquidation: PERSONNE.properties.adresse,
+              lieuLiquidation: { type: 'string', enum: ['S', 'L', 'A'], description: 'S siège, L adresse du liquidateur, A autre adresse' },
               typeDissolution: { type: 'string', enum: ['1', '2'], description: '1 avec liquidation, 2 sans liquidation (TUP)' },
               dateDissolution: { type: 'string' },
               prenom: { type: 'string', description: 'complementPersonne : prénom (si plusieurs personnes portent le même nom)' }, sexe: { type: 'string', enum: ['M', 'F'] }, dateNaissance: { type: 'string' }, lieuNaissance: { type: 'string' }, codePostalNaissance: { type: 'string' }, paysNaissance: { type: 'string' }, nationalite: { type: 'string' },

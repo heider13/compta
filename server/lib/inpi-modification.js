@@ -538,21 +538,21 @@ OPERATIONS.dissolution = async (next, { liquidateur, liquidateurExistant, lieuLi
     is34Or35MAdjonctionTriggered: true,
   });
   p.composition.isModificationPouvoir = true;
-  // Lieu de liquidation : texte (adresse en une ligne), pas un bloc adresse
-  const lieu = lieuLiquidation
-    ? (typeof lieuLiquidation === 'string' ? lieuLiquidation : [lieuLiquidation.voie, lieuLiquidation.codePostal, lieuLiquidation.commune].filter(Boolean).join(' '))
-    : null;
+  // Lieu de liquidation : code S (siège), L (adresse du liquidateur) ou A (autre adresse)
+  const lieu = ['S', 'L', 'A'].includes(lieuLiquidation) ? lieuLiquidation : 'S';
   p.detailCessationEntreprise = {
     ...(p.detailCessationEntreprise || {}),
     maintienRcs: false, maintienRm: false,
     indicateurMaintienImmatriculationRegistre: true,
+    // motifCessation (liste officielle) : 9 dissolution, 11 dissolution sans liquidation
+    motifCessation: typeDissolution === '2' ? '11' : '9',
     indicateurDissolution: true,
     typeDissolution,
     dateDissolutionDisparition: dateEffet,
     indicateurDisparitionPM: false,
     dateDissolutionDisparitionFromRNE: false,
     indicateurLocationTerresTVA: false,
-    ...(lieu ? { lieuDeLiquidation: lieu } : {}),
+    lieuDeLiquidation: lieu,
   };
   activitesInchangees(next);
   return ['dissolution'];
@@ -571,6 +571,8 @@ OPERATIONS.clotureLiquidation = async (next, { dateEffet, dateDissolution, evene
     ...(p.detailCessationEntreprise || {}),
     maintienRcs: false, maintienRm: false,
     indicateurMaintienImmatriculationRegistre: false,
+    // motifCessation 13 : disparition de l'entreprise (clôture de liquidation)
+    motifCessation: '13',
     indicateurDissolution: true,
     typeDissolution: '1',
     dateDissolutionDisparition: dateDissolution || dateEffet,
