@@ -12,6 +12,7 @@ import {
   RotateCcw, ScanLine, PenLine,
 } from 'lucide-react';
 import { Arrow } from '@/components/icons';
+import { DotBook } from './DotBook';
 import { cn } from '@/lib/utils';
 
 const SERIF = { fontFamily: "'Instrument Serif', 'Fraunces', Georgia, serif" };
@@ -202,6 +203,9 @@ export function HeroAgent() {
         }}
       />
 
+      {/* Livre en points (écho au logo) qui s'ouvre et feuillette, derrière la zone de saisie */}
+      <DotBook className="pointer-events-none absolute right-[max(-60px,calc(50%-720px))] top-[430px] hidden h-[440px] w-[440px] lg:block" />
+
       <div className="relative mx-auto w-full max-w-5xl px-4 pb-20 pt-36 text-center sm:px-6 sm:pt-40">
         <p className="inline-flex items-center gap-2 font-mono !text-[11px] uppercase tracking-[0.28em] !text-[var(--ink-500)] sm:text-xs">
           Connecté au
@@ -226,7 +230,7 @@ export function HeroAgent() {
 
         {/* Zone de saisie */}
         <form
-          className="mx-auto mt-10 max-w-3xl rounded-2xl border border-[var(--ink-150)] bg-white text-left shadow-[0_18px_50px_rgba(43,23,105,0.10)] transition-shadow focus-within:border-[var(--violet-300)] focus-within:shadow-[0_22px_60px_rgba(54,31,171,0.18)]"
+          className="relative z-10 mx-auto mt-10 max-w-3xl rounded-2xl border border-[var(--ink-150)] bg-white text-left shadow-[0_18px_50px_rgba(43,23,105,0.10)] transition-shadow focus-within:border-[var(--violet-300)] focus-within:shadow-[0_22px_60px_rgba(54,31,171,0.18)]"
           onSubmit={(e) => {
             e.preventDefault();
             lancer(value);

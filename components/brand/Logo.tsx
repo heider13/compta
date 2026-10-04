@@ -1,11 +1,19 @@
-// Marque Legaly AI — monogramme juridique : un « L » monumental blanc dont le
-// montant sert de pilier à une balance de la justice (fléau + plateaux corail),
-// posé dans une tuile violette dégradée. Wordmark « Legaly AI », L capital
-// corail — le L et le AI en corail se lisent ensemble : « L…AI » (l'IA).
+// Marque Legaly AI — un « L » formé de deux pans, comme un livre ouvert vu de
+// profil : pan vertical violet (dégradé lilas → violet nuit) et pan incliné
+// rose → pêche. Wordmark « Legaly » violet nuit, « AI » en dégradé rose → pêche.
 
+import { useId } from 'react';
 import { cn } from '@/lib/utils';
 
-// Pastille seule (favicon, avatars, petites surfaces).
+export const BRAND = {
+  violetFrom: '#9d6cf2',
+  violetTo: '#3b1a8f',
+  pinkFrom: '#ff5f9e',
+  peachTo: '#ffad7a',
+  ink: '#241143',
+};
+
+// Symbole seul (favicon, avatars, petites surfaces).
 export function LogoMark({
   size = 28,
   onDark = false,
@@ -15,41 +23,42 @@ export function LogoMark({
   onDark?: boolean;
   className?: string;
 }) {
-  // La tuile dégradée fonctionne telle quelle sur fond clair comme sombre ;
-  // onDark éclaircit légèrement le dégradé pour garder du relief sur les
-  // surfaces très sombres (sidebar, footer).
-  const from = onDark ? '#7551e8' : '#5b36d6';
-  const to = onDark ? '#957af5' : '#7551e8';
+  const id = useId().replace(/:/g, '');
+  // Sur fond très sombre, le bas du pan violet remonte un peu pour garder le contraste.
+  const violetTo = onDark ? '#5b36d6' : BRAND.violetTo;
   return (
-    <svg
-      width={size}
-      height={size}
-      viewBox="0 0 64 64"
-      fill="none"
-      aria-hidden="true"
-      className={className}
-    >
+    <svg width={size} height={size} viewBox="0 0 64 64" fill="none" aria-hidden="true" className={className}>
       <defs>
-        <linearGradient id="legaly-tile" x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0" stopColor={from} />
-          <stop offset="1" stopColor={to} />
+        <linearGradient id={`${id}-v`} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor={BRAND.violetFrom} />
+          <stop offset="1" stopColor={violetTo} />
+        </linearGradient>
+        <linearGradient id={`${id}-p`} x1="0" y1="1" x2="1" y2="0">
+          <stop offset="0" stopColor={BRAND.pinkFrom} />
+          <stop offset="1" stopColor={BRAND.peachTo} />
         </linearGradient>
       </defs>
-      <rect x="2" y="2" width="60" height="60" rx="15" fill="url(#legaly-tile)" />
-      {/* Balance de la justice : fléau, suspentes et plateaux en coupelle (corail) */}
-      <rect x="15" y="14" width="34" height="4" rx="2" fill="#ff887b" />
-      <rect x="17.2" y="18" width="1.6" height="5" fill="#ff887b" />
-      <rect x="45.2" y="18" width="1.6" height="5" fill="#ff887b" />
-      <path d="M12 23 A 6 6 0 0 0 24 23 Z" fill="#ff887b" />
-      <path d="M40 23 A 6 6 0 0 0 52 23 Z" fill="#ff887b" />
-      {/* L monumental (blanc) — son montant est le pilier de la balance */}
-      <rect x="28" y="14" width="8" height="34" rx="2" fill="#ffffff" />
-      <rect x="28" y="40" width="21" height="8" rx="2" fill="#ffffff" />
+      {/* Pan vertical (dos du livre) */}
+      <path
+        d="M11 12 L32 4 L32 50 L11 59 Z"
+        fill={`url(#${id}-v)`}
+        stroke={`url(#${id}-v)`}
+        strokeWidth="3.2"
+        strokeLinejoin="round"
+      />
+      {/* Pan incliné (page qui s'ouvre) */}
+      <path
+        d="M19 45 Q19 42 22 41 L52 30 L52 44 L24 56 Q19 58 19 53 Z"
+        fill={`url(#${id}-p)`}
+        stroke={`url(#${id}-p)`}
+        strokeWidth="3.2"
+        strokeLinejoin="round"
+      />
     </svg>
   );
 }
 
-// Logo complet : pastille + wordmark « Legaly AI » (L capital marqué).
+// Logo complet : symbole + wordmark « Legaly AI ».
 export function Logo({
   size = 26,
   onDark = false,
@@ -66,13 +75,13 @@ export function Logo({
       <LogoMark size={size} onDark={onDark} />
       <span
         className={cn(
-          'font-semibold leading-none tracking-tight',
-          onDark ? 'text-white' : 'text-[#2b1769]',
+          'font-[Sora] font-bold leading-none tracking-tight',
+          onDark ? 'text-white' : 'text-[#241143]',
           textClassName,
         )}
       >
-        <span className="font-bold text-[#ff887b]">L</span>egaly&nbsp;
-        <span className="font-bold text-[#ff887b]">AI</span>
+        Legaly{' '}
+        <span className="bg-gradient-to-r from-[#ff5f9e] to-[#ffad7a] bg-clip-text text-transparent">AI</span>
       </span>
     </span>
   );
