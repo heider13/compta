@@ -400,7 +400,8 @@ OPERATIONS.cessationEI = async (next, { dateEffet }) => {
 };
 
 // ─── Cas plus rares (indicateurs relevés sur les modifications validées) ───
-const { categorisation } = require('./inpi-liasse');
+const { categorisation, journalInpi } = require('./inpi-liasse');
+const journalPublicationInpi = (nom) => journalInpi(nom);
 const blocDe = (next) => next.personneMorale || next.personnePhysique;
 const estPP = (next) => !next.personneMorale && Boolean(next.personnePhysique);
 const FORME_EXERCICE_INPI = { COMMERCIALE: 'COMMERCIALE', ARTISANALE: 'ARTISANALE', ARTISANALE_REGLEMENTEE: 'ARTISANALE_REGLEMENTEE', LIBERALE: 'INDEPENDANTE', INDEPENDANTE: 'INDEPENDANTE', CIVILE: 'GESTION_DE_BIENS' };
@@ -506,7 +507,7 @@ OPERATIONS.domicileEI = async (next, { adresse, dateEffet, deplacerEntreprise = 
 
 // Dissolution anticipée : la société subsiste pour sa liquidation (immatriculation
 // maintenue), les fonctions des dirigeants prennent fin, un liquidateur est nommé.
-OPERATIONS.dissolution = async (next, { liquidateur, liquidateurExistant, lieuLiquidation, typeDissolution = '1', dateEffet }) => {
+OPERATIONS.dissolution = async (next, { liquidateur, liquidateurExistant, lieuLiquidation, typeDissolution = '1', annonce, dateEffet }) => {
   const p = pm(next);
   // Fin des fonctions des dirigeants en place
   for (const x of p.composition?.pouvoirs || []) {
@@ -531,6 +532,11 @@ OPERATIONS.dissolution = async (next, { liquidateur, liquidateurExistant, lieuLi
     individu: ind,
     roleEntreprise: '40',
     statutPourLaFormalite: '1',
+    // Adresse du liquidateur (S siège, L la sienne, A autre) et publicité de sa nomination
+    typeAdresseLiquidateur: ['S', 'L', 'A'].includes(lieuLiquidation) ? lieuLiquidation : 'S',
+    ...(annonce?.journal && annonce?.datePublication ? {
+      publication: { typePublication: 'Publication légale', datePublication: annonce.datePublication, ...journalPublicationInpi(annonce.journal) },
+    } : {}),
     typeDePersonne: 'INDIVIDU',
     beneficiaireEffectif: false,
     indicateurSecondRoleEntreprise: false,
@@ -564,7 +570,11 @@ OPERATIONS.clotureLiquidation = async (next, { dateEffet, dateDissolution, evene
   const p = pm(next);
   const ep = p.etablissementPrincipal;
   if (ep) {
-    ep.descriptionEtablissement = { ...(ep.descriptionEtablissement || {}), statutPourFormalite: '2', destinationEtablissement: 'C', dateEffetFermeture: dateEffet };
+    ep.descriptionEtablissement = {
+      ...(ep.descriptionEtablissement || {}),
+      statutPourFormalite: '2', destinationEtablissement: 'C', dateEffetFermeture: dateEffet,
+      is27PMFermetureEtablissementTriggered: true,
+    };
     for (const a of ep.activites || []) a.statutFormalite = 'M';
   }
   p.detailCessationEntreprise = {

@@ -9,7 +9,7 @@ const ORG = '00000000-0000-0000-0000-000000000001';
   const gerant = rne.summarizeCompany(await rne.getCompany(ORG, siren)).dirigeants[0]?.nom;
   const siege = { voie: '31 rue Chateauredon', codePostal: '13001', commune: 'Marseille' };
   const CAS = [
-    ['Dissolution anticipée (liquidation amiable)', ['R'], [{ type: 'dissolution', liquidateurExistant: gerant, lieuLiquidation: 'S', typeDissolution: '1' }]],
+    ['Dissolution anticipée (liquidation amiable)', ['M'], [{ type: 'dissolution', liquidateurExistant: gerant, lieuLiquidation: 'S', typeDissolution: '1', annonce: { journal: 'La Marseillaise', datePublication: '2026-10-01' } }]],
     ['Clôture de liquidation et radiation', ['R'], [{ type: 'clotureLiquidation' }]],
   ];
   for (const [label, types, ops] of CAS) {

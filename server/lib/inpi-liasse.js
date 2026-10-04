@@ -765,4 +765,4 @@ async function createDraftWithPieces(orgId, payload, pieces) {
   return { formality, deposees, erreurs };
 }
 
-module.exports = { deposerPieces, PIECES_MODIF, buildCreationLiasse, buildEILiasse, createDraftWithPieces, mandataireBlocks, adresseInpi, personneInpi, categorisation, toPdf, parseVoie, PIECES, PIECES_EI, FORME_CODES };
+module.exports = { journalInpi, deposerPieces, PIECES_MODIF, buildCreationLiasse, buildEILiasse, createDraftWithPieces, mandataireBlocks, adresseInpi, personneInpi, categorisation, toPdf, parseVoie, PIECES, PIECES_EI, FORME_CODES };

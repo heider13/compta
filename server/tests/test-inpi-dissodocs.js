@@ -1,8 +1,11 @@
-// Lecture seule : listes de codes contenant « Autre adresse », « Siège », « domicile du liquidateur ».
+// Lecture seule : tous les indicateurs d'événement is…Triggered de la spécification (nom → schéma).
 const fs = require('fs');
 const j = JSON.parse(fs.readFileSync('/opt/compta-proxy/data/gu-formalities-openapi.json', 'utf8'));
-const textes = new Set();
-(function walk(o) { if (Array.isArray(o)) return o.forEach(walk); if (o && typeof o === 'object') return Object.values(o).forEach(walk); if (typeof o === 'string' && /-> /.test(o)) textes.add(o); })(j);
-for (const t of textes) {
-  if (/Autre adresse|liquidat/i.test(t) && t.length < 1500) console.log('----\n' + t.replace(/<br\s*\/?>/g, '\n'));
+const out = new Map();
+for (const [nom, s] of Object.entries(j.components?.schemas || {})) for (const [k, v] of Object.entries(s?.properties || {})) {
+  if (/^is.*Triggered$/.test(k)) { const sch = nom.replace(/-\d+$/, ''); if (!out.has(k)) out.set(k, new Set()); out.get(k).add(sch + (v.description ? ` (${String(v.description).slice(0, 40)})` : '')); }
 }
+const cles = [...out.keys()].sort();
+console.log(cles.length, 'indicateurs');
+for (const k of cles) if (/4\d|3[6-9]|Dissol|Dispar|Liquid|Cess|Radi|Ferm|Transm|Sommeil/i.test(k)) console.log(`  ${k.padEnd(46)} ${[...out.get(k)].join(', ').slice(0, 110)}`);
+console.log('\nTous (compact) :', cles.join(' '));

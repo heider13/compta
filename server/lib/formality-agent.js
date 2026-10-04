@@ -265,6 +265,7 @@ const TOOLS = [
               lieuLiquidation: { type: 'string', enum: ['S', 'L', 'A'], description: 'S siège, L adresse du liquidateur, A autre adresse' },
               typeDissolution: { type: 'string', enum: ['1', '2'], description: '1 avec liquidation, 2 sans liquidation (TUP)' },
               dateDissolution: { type: 'string' },
+              annonce: { type: 'object', description: 'dissolution : annonce légale de la nomination du liquidateur, une fois parue', properties: { journal: { type: 'string' }, datePublication: { type: 'string' } } },
               prenom: { type: 'string', description: 'complementPersonne : prénom (si plusieurs personnes portent le même nom)' }, sexe: { type: 'string', enum: ['M', 'F'] }, dateNaissance: { type: 'string' }, lieuNaissance: { type: 'string' }, codePostalNaissance: { type: 'string' }, paysNaissance: { type: 'string' }, nationalite: { type: 'string' },
               description: { type: 'string', description: "Activité (activiteAjout, etablissementSecondaire)" },
               formeExercice: { type: 'string', enum: ['COMMERCIALE', 'ARTISANALE', 'ARTISANALE_REGLEMENTEE', 'LIBERALE', 'CIVILE'] },
@@ -825,7 +826,9 @@ async function toolModification(supa, ctx, input) {
   const operations = Array.isArray(input.operations) ? input.operations : [];
   if (!operations.length) throw new Error('Aucune opération de modification indiquée.');
   const siren = String(input.siren || '').replace(/\D/g, '');
-  const typeFormalite = operations.some((o) => ['miseEnSommeil', 'cessationEI', 'dissolution', 'clotureLiquidation'].includes(o.type)) ? 'R' : 'M';
+  // La dissolution avec nomination de liquidateur passe en modification (M) ; mise en sommeil,
+  // cessation d'EI et clôture de liquidation en cessation (R).
+  const typeFormalite = operations.some((o) => ['miseEnSommeil', 'cessationEI', 'clotureLiquidation'].includes(o.type)) ? 'R' : 'M';
 
   // Bloquants connus avant tout envoi
   const bloquants = [];
