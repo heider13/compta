@@ -438,7 +438,11 @@ export function FormalityAgent({ inpiFormality }: { inpiFormality?: { id: string
                   }
                 }}
                 rows={3}
-                placeholder="Ex : Je crée une SASU de conseil pour Marie Martin, capital 2 000 €, siège 10 rue de Rivoli 75001 Paris… Vous pouvez aussi joindre sa pièce d'identité ou un PV d'AG."
+                placeholder={
+                  inpiFormality
+                    ? "Ex : Prépare la réponse au greffe. Vous pouvez joindre les pièces reçues du client (pièce d'identité, acte enregistré…)."
+                    : "Ex : Je crée une SASU de conseil pour Marie Martin, capital 2 000 €, siège 10 rue de Rivoli 75001 Paris… Vous pouvez aussi joindre sa pièce d'identité ou un PV d'AG."
+                }
                 className="w-full resize-none bg-transparent px-2 py-1.5 text-sm outline-none placeholder:text-muted-foreground"
               />
               {fileChips && <div className="px-1">{fileChips}</div>}
