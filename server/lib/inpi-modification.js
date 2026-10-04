@@ -405,11 +405,12 @@ OPERATIONS.etablissementSecondaire = async (next, { adresse, description, codeAp
   const b = blocDe(next);
   const adr = await adresseInpi(adresse, [], 'Établissement secondaire');
   if (!adr) throw new Error("Adresse de l'établissement secondaire incomplète.");
+  // Validé par l'INPI : l'établissement principal reste inchangé (activités « I »,
+  // rôle principal conservé) ; l'activité du secondaire n'est pas principale.
   if (b.etablissementPrincipal) {
-    b.etablissementPrincipal.descriptionEtablissement = { ...(b.etablissementPrincipal.descriptionEtablissement || {}), statutPourFormalite: '3' };
-    for (const a of b.etablissementPrincipal.activites || []) if (!a.statutFormalite || a.statutFormalite === 'I') a.statutFormalite = 'M';
+    for (const a of b.etablissementPrincipal.activites || []) { a.statutFormalite = 'I'; a.rolePrincipalPourEntreprise = true; }
   }
-  const act = nouvelleActivite({ description, codeApe, formeExercice }, dateEffet, true);
+  const act = { ...nouvelleActivite({ description, codeApe, formeExercice }, dateEffet, true), rolePrincipalPourEntreprise: false };
   delete act.is61PMFTriggered;
   b.autresEtablissements = [...(b.autresEtablissements || []), {
     descriptionEtablissement: { rolePourEntreprise: '3', statutPourFormalite: '1', indicateurEtablissementPrincipal: false },
