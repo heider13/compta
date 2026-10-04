@@ -156,6 +156,9 @@ async function baseModification(orgId, siren) {
     ...(m.contactCorrespondance ? { contactCorrespondance: m.contactCorrespondance } : {}),
   });
   delete next.piecesJointes;
+  // « destinationEtablissement » interdit pour un établissement ni fermé (2) ni transféré
+  const ep0 = next[bloc]?.etablissementPrincipal?.descriptionEtablissement;
+  if (ep0 && ep0.destinationEtablissement && ep0.statutPourFormalite !== '2') delete ep0.destinationEtablissement;
   if (next.personneMorale?.identite?.description && next.personneMorale.identite.description.depotDemandeAcre == null) {
     next.personneMorale.identite.description.depotDemandeAcre = false;
   }
@@ -175,6 +178,7 @@ function donneesManquantes(next) {
     const nom = [desc.prenoms?.[0], desc.nom].filter(Boolean).join(' ') || qui;
     if (!/^\d{4}-\d{2}-\d{2}$/.test(desc.dateDeNaissance || '')) manquants.push(`${nom} : date de naissance complète`);
     if (!desc.lieuDeNaissance) manquants.push(`${nom} : lieu de naissance`);
+    if (!desc.genre) manquants.push(`${nom} : sexe`);
     if (!desc.codeInseeGeographique) manquants.push(`${nom} : commune ou pays de naissance (code INSEE)`);
     if (adr && !adr.voie) manquants.push(`${nom} : adresse personnelle (rue)`);
   };
@@ -504,7 +508,7 @@ OPERATIONS.complementEntreprise = async (next, { objet }) => {
 };
 
 // Complément des données d'un dirigeant existant (absentes du RNE), sans modification déclarée.
-OPERATIONS.complementPersonne = async (next, { nom, prenom, dateNaissance, lieuNaissance, codePostalNaissance, paysNaissance, nationalite, adresse }) => {
+OPERATIONS.complementPersonne = async (next, { nom, prenom, sexe, dateNaissance, lieuNaissance, codePostalNaissance, paysNaissance, nationalite, adresse }) => {
   const bloc = next.personneMorale || next.personnePhysique;
   const cibles = [
     ...(bloc?.composition?.pouvoirs || []).map((p) => p.individu),
@@ -514,8 +518,9 @@ OPERATIONS.complementPersonne = async (next, { nom, prenom, dateNaissance, lieuN
     && (!prenom || String(i.descriptionPersonne?.prenoms?.[0] || '').toUpperCase() === String(prenom).toUpperCase()));
   if (!ind) throw new Error(`Personne « ${[prenom, nom].filter(Boolean).join(' ')} » introuvable dans la fiche RNE.`);
   const d = ind.descriptionPersonne;
-  const naissance = await personneInpi({ nom: d.nom, prenoms: d.prenoms, sexe: d.genre === '2' ? 'F' : 'M', dateNaissance, lieuNaissance, codePostalNaissance, paysNaissance, nationalite: nationalite || d.codeNationalite }, [], nom);
+  const naissance = await personneInpi({ nom: d.nom, prenoms: d.prenoms, sexe: sexe || (d.genre === '2' ? 'F' : d.genre === '1' ? 'M' : undefined), dateNaissance, lieuNaissance, codePostalNaissance, paysNaissance, nationalite: nationalite || d.codeNationalite }, [], nom);
   for (const k of ['dateDeNaissance', 'lieuDeNaissance', 'codeInseeGeographique', 'paysNaissance', 'codePostalNaissance']) if (naissance[k]) d[k] = naissance[k];
+  if (!d.genre && naissance.genre) d.genre = naissance.genre;
   if (adresse) {
     const adr = await adresseInpi(adresse, [], `Adresse de ${nom}`);
     if (adr) ind.adresseDomicile = { ...(ind.adresseDomicile || {}), ...adr };

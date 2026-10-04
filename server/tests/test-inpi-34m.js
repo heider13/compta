@@ -14,8 +14,8 @@ const adresseFictive = { voie: '1 rue Fictive Test', codePostal: '13015', commun
       observation: 'TEST INTERNE - DONNEES FICTIVES - NE PAS VALIDER',
       mutate: (c) => appliquerOperations(c, [
         { type: 'complementEntreprise', objet: "Acquisition et location d'un immeuble" },
-        { type: 'complementPersonne', nom: 'HEDHIRI', prenom: 'Montassar', dateNaissance: '1995-10-01', lieuNaissance: 'Marseille', codePostalNaissance: '13001', nationalite: 'FRA', adresse: adresseFictive },
-        { type: 'complementPersonne', nom: 'HEDHIRI', prenom: 'Chaouki', dateNaissance: '1988-12-01', lieuNaissance: 'Marseille', codePostalNaissance: '13001', nationalite: 'FRA', adresse: adresseFictive },
+        { type: 'complementPersonne', nom: 'HEDHIRI', prenom: 'Montassar', sexe: 'M', dateNaissance: '1995-10-01', lieuNaissance: 'Marseille', codePostalNaissance: '13001', nationalite: 'FRA', adresse: adresseFictive },
+        { type: 'complementPersonne', nom: 'HEDHIRI', prenom: 'Chaouki', sexe: 'M', dateNaissance: '1988-12-01', lieuNaissance: 'Marseille', codePostalNaissance: '13001', nationalite: 'FRA', adresse: adresseFictive },
         { type: 'nomination', role: 'GERANT', personne: { nom: 'TESTEUSE', prenoms: ['Marie'], sexe: 'F', dateNaissance: '1985-04-12', lieuNaissance: 'Lyon', nationalite: 'FRA', numeroSecu: nir(), situationMatrimoniale: 'CELIBATAIRE', codePostalNaissance: '69001', adresse: { voie: '5 rue de la République', codePostal: '13002', commune: 'Marseille' } } },
       ]),
     });
