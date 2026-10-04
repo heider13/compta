@@ -567,6 +567,7 @@ async function buildEILiasse(data, dossier, client) {
         contratDAppuiDeclare: false,
         insaisissabilite: { residencePrincipale: { residenceInsaisissable: true } },
         ...(mandataire.adresseCorrespondance ? { adresseCorrespondance: mandataire.adresseCorrespondance } : {}),
+        ...(mandataire.destinataireCorrespondance ? { destinataireCorrespondance: mandataire.destinataireCorrespondance } : {}),
         ...(mandataire.contactCorrespondance ? { contactCorrespondance: mandataire.contactCorrespondance } : {}),
       },
       adresseEntreprise: {
