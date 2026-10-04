@@ -167,6 +167,7 @@ const ANNONCE_SCHEMA = {
 const SYSTEM = `Tu es formaliste juridique expert des annonces légales en France. Tu rédiges des avis destinés à un support habilité à publier des annonces légales (SHAL), dans le style sobre et concis des annonces publiées.
 
 <regles>
+- Le bloc « societe » est mis en forme par le logiciel : reprends EXACTEMENT la dénomination, la forme, le capital, le siège et le SIREN, sans les reformater ni les recalculer ; la qualité des dirigeants est celle indiquée (Gérant ou Président). Greffe absent → [À COMPLÉTER : greffe du RCS].
 - Utilise UNIQUEMENT les données fournies. N'invente aucun nom, adresse, date, montant, SIREN ni greffe : laisse [À COMPLÉTER : …] dans le texte et liste l'information dans a_completer.
 - Chaque mention obligatoire listée doit figurer dans le texte, ou être marquée sans_objet si elle ne s'applique pas (ex. clauses d'agrément absentes, pas de commissaire aux comptes).
 - Le prix des annonces dépend du nombre de caractères (hors forfait de constitution) : sois complet mais concis, sans formule superflue, et résume l'objet social sans en retirer le sens.
@@ -175,6 +176,34 @@ const SYSTEM = `Tu es formaliste juridique expert des annonces légales en Franc
 - Département de parution : celui du siège (pour un transfert changeant de département : une annonce dans l'ancien département et une dans le nouveau, la seconde rappelant objet, durée et dirigeants).
 - Texte brut, sans Markdown ni balises.
 </regles>`;
+
+// Identité de la société mise en forme par le code (jamais déduite par le modèle).
+const FORMES = {
+  5499: 'Société à responsabilité limitée', 5498: 'Société à responsabilité limitée',
+  5710: 'Société par actions simplifiée', 5720: 'Société par actions simplifiée',
+  5599: 'Société anonyme', 5505: 'Société anonyme', 5202: 'Société en nom collectif',
+  6540: 'Société civile immobilière', 6599: 'Société civile', 5485: "Société d'exercice libéral à responsabilité limitée",
+  5785: "Société d'exercice libéral par actions simplifiée",
+};
+const ROLES = { 73: 'Président', 30: 'Gérant', 75: 'Gérant', 29: 'Associé', 40: 'Liquidateur', 51: 'Directeur général', 53: 'Directeur général délégué' };
+const SIREN_FORMATE = (s) => String(s || '').replace(/\D/g, '').replace(/^(\d{3})(\d{3})(\d{3})$/, '$1 $2 $3');
+
+function identiteSociete(fiche) {
+  if (!fiche) return null;
+  const cp = String(fiche.siege || '').match(/\b\d{5}\b/)?.[0];
+  return {
+    denomination: fiche.denomination,
+    forme: FORMES[fiche.formeJuridique] || `[À COMPLÉTER : forme juridique (code INSEE ${fiche.formeJuridique})]`,
+    unipersonnelle: fiche.associeUnique ?? null,
+    capital: fiche.capital != null ? `${Number(fiche.capital).toLocaleString('fr-FR')} euros` : null,
+    siege: fiche.siege,
+    siren: SIREN_FORMATE(fiche.siren),
+    greffe: fiche.greffe || null,
+    departement: departement(cp),
+    objet: fiche.objet,
+    dirigeants: (fiche.dirigeants || []).map((d) => ({ qualite: ROLES[d.role] || `rôle ${d.role}`, nom: d.nom, prenoms: d.prenoms })),
+  };
+}
 
 // Département d'après le code postal (Corse et DOM compris).
 function departement(codePostal) {
@@ -228,4 +257,4 @@ async function publierAnnonce(/* { annonce, departement, journal, dossier } */) 
   );
 }
 
-module.exports = { TYPES, redigerAnnonce, departement, publicationConfiguree, publierAnnonce };
+module.exports = { TYPES, redigerAnnonce, departement, identiteSociete, publicationConfiguree, publierAnnonce };

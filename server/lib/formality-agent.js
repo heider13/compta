@@ -935,8 +935,12 @@ async function toolAnnonce(supa, ctx, input) {
   if (siren.length === 9) {
     try { societe = rne.summarizeCompany(await rne.getCompany(ctx.orgId, siren)); } catch { /* données du dossier seules */ }
   }
-  const cp = societe?.siege?.codePostal || data.siege?.codePostal;
-  const donnees = { dossier: data, ...(societe ? { fiche_rne: societe } : {}), departement_siege: annonces.departement(cp) };
+  const identite = annonces.identiteSociete(societe);
+  const donnees = {
+    ...(identite ? { societe: identite } : {}),
+    dossier: data,
+    departement_siege: identite?.departement || annonces.departement(data.siege?.codePostal),
+  };
   const r = await annonces.redigerAnnonce({ type: input.type, donnees, instructions: input.instructions });
   if (ctx.draftUsage && r.usage) {
     ctx.draftUsage.calls += 1;
