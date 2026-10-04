@@ -1,6 +1,7 @@
 'use client';
 
-// Hero « agent » (inspiration NanoCorp) : fond crème, grand titre à empattements,
+// Hero « agent » (structure inspirée de NanoCorp, identité Legaly : violets + corail, Sora) :
+// grand titre centré,
 // zone de saisie façon chat. Aucun appel IA : un petit algorithme reconnaît la
 // formalité décrite (mots-clés) et joue une animation en plusieurs scènes — de la
 // conversation au brouillon prêt sur le Guichet unique — pour présenter le produit.
@@ -178,13 +179,23 @@ export function HeroAgent() {
   }
 
   return (
-    <section className="relative overflow-hidden bg-[#ebe4d6] text-[#1d1b16]">
+    <section className="relative overflow-hidden bg-[#fbfaff] text-[var(--violet-900)]">
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-0"
+        style={{
+          background:
+            'radial-gradient(ellipse 700px 520px at 8% -4%, rgba(255,190,140,0.35), transparent 60%),' +
+            'radial-gradient(ellipse 900px 640px at 55% 18%, rgba(117,81,232,0.16), transparent 65%),' +
+            'radial-gradient(ellipse 760px 600px at 100% 95%, rgba(234,66,253,0.12), transparent 62%)',
+        }}
+      />
       {/* Trame de points discrète */}
       <div
         aria-hidden="true"
         className="pointer-events-none absolute inset-0 opacity-[0.35]"
         style={{
-          backgroundImage: 'radial-gradient(rgba(29,27,22,0.22) 1px, transparent 1px)',
+          backgroundImage: 'radial-gradient(rgba(54,31,171,0.18) 1px, transparent 1px)',
           backgroundSize: '18px 18px',
           maskImage: 'radial-gradient(ellipse 70% 55% at 50% 100%, black 10%, transparent 70%)',
           WebkitMaskImage: 'radial-gradient(ellipse 70% 55% at 50% 100%, black 10%, transparent 70%)',
@@ -192,36 +203,37 @@ export function HeroAgent() {
       />
 
       <div className="relative mx-auto w-full max-w-5xl px-4 pb-20 pt-36 text-center sm:px-6 sm:pt-40">
-        <p className="inline-flex items-center gap-2 font-mono text-[11px] uppercase tracking-[0.28em] text-[#5d574b] sm:text-xs">
+        <p className="inline-flex items-center gap-2 font-mono text-[11px] uppercase tracking-[0.28em] text-[var(--ink-500)] sm:text-xs">
           Connecté au
-          <span className="rounded-sm bg-[#2f6f63] px-1.5 py-0.5 text-[#f4efe4]">Guichet unique</span>
+          <span className="rounded-full bg-[var(--violet-600)] px-2 py-0.5 text-white">Guichet unique</span>
           INPI
         </p>
 
         <h1
-          className="!mx-auto !mt-6 max-w-4xl text-[clamp(2.6rem,7.4vw,5.6rem)] !font-normal !leading-[0.98] !tracking-[-0.01em] !text-[#1d1b16]"
-          style={SERIF}
+          className="!mx-auto !mt-6 max-w-4xl font-[Sora] text-[clamp(2.5rem,6.6vw,5rem)] !font-bold !leading-[1.02] !tracking-[-0.03em] !text-[var(--violet-900)]"
         >
           Décrivez la formalité.
           <br />
-          L’agent la prépare.
+          <span className="bg-gradient-to-r from-[#ffbe8c] via-[#ff887b] to-[#ea42fd] bg-clip-text text-transparent">
+            L’agent la prépare.
+          </span>
         </h1>
 
-        <p className="!mx-auto !mt-6 max-w-xl font-mono text-sm leading-relaxed !text-[#5d574b] sm:text-[15px]">
+        <p className="!mx-auto !mt-6 max-w-xl font-mono text-sm leading-relaxed !text-[var(--ink-500)] sm:text-[15px]">
           Création, modification, cessation, régularisation.
           <br className="hidden sm:block" /> De la conversation au brouillon INPI — vous validez, signez, payez.
         </p>
 
         {/* Zone de saisie */}
         <form
-          className="mx-auto mt-10 max-w-3xl rounded-xl border border-[#d6cdb9] bg-[#faf7f0] text-left shadow-[0_18px_50px_rgba(60,48,25,0.12)] transition-shadow focus-within:shadow-[0_22px_60px_rgba(47,111,99,0.22)]"
+          className="mx-auto mt-10 max-w-3xl rounded-2xl border border-[var(--ink-150)] bg-white text-left shadow-[0_18px_50px_rgba(43,23,105,0.10)] transition-shadow focus-within:border-[var(--violet-300)] focus-within:shadow-[0_22px_60px_rgba(54,31,171,0.18)]"
           onSubmit={(e) => {
             e.preventDefault();
             lancer(value);
           }}
         >
           <label className="flex items-start gap-2 px-5 pt-5">
-            <span className="mt-[3px] text-[10px] text-[#2f6f63]" aria-hidden="true">▶</span>
+            <span className="mt-[3px] text-[10px] text-[var(--violet-600)]" aria-hidden="true">▶</span>
             <textarea
               value={value}
               onChange={(e) => setValue(e.target.value)}
@@ -236,26 +248,26 @@ export function HeroAgent() {
               rows={3}
               placeholder={focused ? 'Décrivez votre formalité…' : placeholder}
               aria-label="Décrivez votre formalité"
-              className="w-full resize-none bg-transparent text-[15px] leading-relaxed text-[#1d1b16] outline-none placeholder:text-[#8a8373]"
+              className="w-full resize-none bg-transparent text-[15px] leading-relaxed text-[var(--violet-900)] outline-none placeholder:text-[var(--ink-400)]"
             />
           </label>
           <div className="flex items-center justify-between gap-3 px-4 pb-4 pt-1">
             <span
-              className="group relative grid size-9 place-items-center rounded-md text-[#5d574b] transition-colors hover:bg-[#efe8da]"
+              className="group relative grid size-9 place-items-center rounded-md text-[var(--ink-500)] transition-colors hover:bg-[var(--ink-50)]"
               title="Pièces d’identité, PV d’AG, statuts, annonces…"
             >
               <Plus className="size-5" />
             </span>
             <div className="flex items-center gap-3">
-              <span className="hidden font-mono text-[11px] uppercase tracking-[0.18em] text-[#5d574b] sm:inline">
+              <span className="hidden font-mono text-[11px] uppercase tracking-[0.18em] text-[var(--ink-500)] sm:inline">
                 Agent formalités
               </span>
               <button
                 type="submit"
-                className="grid size-9 place-items-center rounded-md border border-[#1d1b16] bg-[#1d1b16] text-[#f4efe4] transition-transform hover:-translate-y-0.5"
+                className="grid size-9 place-items-center rounded-full bg-[var(--accent)] text-white shadow-[0_8px_20px_rgba(255,136,123,0.45)] transition-transform hover:-translate-y-0.5"
                 aria-label="Lancer la démonstration"
               >
-                <ArrowUp className="size-4 !text-[#f4efe4]" strokeWidth={2.25} />
+                <ArrowUp className="size-4 !text-white" strokeWidth={2.25} />
               </button>
             </div>
           </div>
@@ -267,16 +279,16 @@ export function HeroAgent() {
               key={label}
               type="button"
               onClick={() => lancer(texte)}
-              className="rounded-full border border-[#d6cdb9] bg-[#f4efe4]/70 px-3.5 py-1.5 font-mono text-[12px] text-[#4a4539] transition-colors hover:border-[#2f6f63] hover:text-[#2f6f63]"
+              className="rounded-full border border-[var(--ink-150)] bg-white/80 px-3.5 py-1.5 text-[13px] font-medium text-[var(--ink-700)] transition-colors hover:border-[var(--accent)] hover:text-[var(--accent-ink)]"
             >
               {label}
             </button>
           ))}
         </div>
 
-        <p className="!mt-6 font-mono text-[13px] !text-[#5d574b]">
+        <p className="!mt-6 font-mono text-[13px] !text-[var(--ink-500)]">
           Vous êtes un cabinet ?{' '}
-          <a href="/auth/signup" className="inline-flex items-center gap-1 text-[#1d1b16] underline-offset-4 hover:underline">
+          <a href="/auth/signup" className="inline-flex items-center gap-1 text-[var(--violet-900)] underline-offset-4 hover:underline">
             Créer un compte <Arrow size={14} />
           </a>
         </p>
@@ -323,15 +335,15 @@ function DemoPlayer({ demande, scenario }: { demande: string; scenario: Scenario
     <div className="mx-auto mt-12 max-w-3xl text-left">
       {/* Échange */}
       <div className="space-y-3 font-mono text-[13px]">
-        <div className="ml-auto w-fit max-w-[85%] rounded-lg bg-[#1d1b16] px-4 py-2.5 text-[#f4efe4]">{demande}</div>
-        <div className="w-fit max-w-[90%] rounded-lg border border-[#d6cdb9] bg-[#faf7f0] px-4 py-2.5 text-[#1d1b16]">
+        <div className="ml-auto w-fit max-w-[85%] rounded-lg bg-[var(--violet-600)] px-4 py-2.5 text-white">{demande}</div>
+        <div className="w-fit max-w-[90%] rounded-lg border border-[var(--ink-150)] bg-[white] px-4 py-2.5 text-[var(--violet-900)]">
           {phase === 'reflexion' ? (
             <span className="inline-flex gap-1" aria-label="L’agent réfléchit">
               <Dot d={0} /> <Dot d={150} /> <Dot d={300} />
             </span>
           ) : (
             <>
-              <span className="mb-1 block text-[11px] uppercase tracking-[0.18em] text-[#2f6f63]">{scenario.titre}</span>
+              <span className="mb-1 block text-[11px] uppercase tracking-[0.18em] text-[var(--violet-600)]">{scenario.titre}</span>
               {scenario.reponse}
             </>
           )}
@@ -340,21 +352,21 @@ function DemoPlayer({ demande, scenario }: { demande: string; scenario: Scenario
 
       {/* « Vidéo » */}
       {phase === 'video' && (
-        <div className="mt-6 overflow-hidden rounded-xl border border-[#1d1b16] bg-[#1d1b16] shadow-[0_30px_70px_rgba(29,27,22,0.35)]">
-          <div className="flex items-center justify-between px-4 py-2.5 font-mono text-[11px] uppercase tracking-[0.18em] text-[#bfb6a3]">
+        <div className="mt-6 overflow-hidden rounded-2xl border border-[var(--violet-800)] bg-[#0e0b1a] shadow-[0_30px_70px_rgba(14,11,26,0.35)]">
+          <div className="flex items-center justify-between px-4 py-2.5 font-mono text-[11px] uppercase tracking-[0.18em] text-white/60">
             <span>Legaly AI · {scenario.titre}</span>
             <span>{String(scene + 1).padStart(2, '0')} / {String(scenes.length).padStart(2, '0')}</span>
           </div>
 
-          <div className="relative aspect-[16/10] bg-[#f4efe4] sm:aspect-[16/9]">
+          <div className="relative aspect-[16/10] bg-[var(--ink-50)] sm:aspect-[16/9]">
             <div key={current} className="absolute inset-0 grid place-items-center p-5 sm:p-8 animate-[heroSceneIn_.5s_ease-out]">
               <Scene k={current} scenario={scenario} demande={demande} t={elapsed / SCENE_MS} />
             </div>
           </div>
 
           {/* Barre de lecture */}
-          <div className="h-1 bg-[#3a362d]">
-            <div className="h-full bg-[#2f6f63] transition-[width] duration-75" style={{ width: `${progress * 100}%` }} />
+          <div className="h-1 bg-white/15">
+            <div className="h-full bg-gradient-to-r from-[#ff887b] to-[#ea42fd] transition-[width] duration-75" style={{ width: `${progress * 100}%` }} />
           </div>
           <div className="flex items-center gap-3 px-3 py-2.5">
             <button
@@ -362,7 +374,7 @@ function DemoPlayer({ demande, scenario }: { demande: string; scenario: Scenario
               onClick={() => {
                 if (fini) { setPos(0); setPlaying(true); } else setPlaying((p) => !p);
               }}
-              className="grid size-8 place-items-center rounded-md text-[#f4efe4] hover:bg-white/10"
+              className="grid size-8 place-items-center rounded-md text-white hover:bg-white/10"
               aria-label={fini ? 'Rejouer' : playing ? 'Pause' : 'Lecture'}
             >
               {fini ? <RotateCcw className="size-4" /> : playing ? <Pause className="size-4" /> : <Play className="size-4" />}
@@ -375,7 +387,7 @@ function DemoPlayer({ demande, scenario }: { demande: string; scenario: Scenario
                   onClick={() => goTo(i)}
                   className={cn(
                     'flex shrink-0 items-center gap-1.5 rounded-md px-2 py-1 font-mono text-[11px] transition-colors',
-                    i === scene ? 'bg-[#f4efe4] text-[#1d1b16]' : i < scene ? 'text-[#9fd3c7]' : 'text-[#8a8373] hover:text-[#f4efe4]',
+                    i === scene ? 'bg-white text-[var(--violet-900)]' : i < scene ? 'text-[#ffbe8c]' : 'text-white/45 hover:text-white',
                   )}
                 >
                   {i < scene ? <Check className="size-3.5" /> : <s.icon className="size-3.5" />}
@@ -389,10 +401,10 @@ function DemoPlayer({ demande, scenario }: { demande: string; scenario: Scenario
 
       {fini && (
         <div className="mt-6 flex flex-col items-center gap-3 text-center">
-          <p className="font-mono text-[13px] text-[#5d574b]">Brouillon prêt sur le Guichet unique. Il ne reste qu’à relire, signer et payer.</p>
+          <p className="font-mono text-[13px] text-[var(--ink-500)]">Brouillon prêt sur le Guichet unique. Il ne reste qu’à relire, signer et payer.</p>
           <a
             href="/auth/signup"
-            className="inline-flex items-center gap-2 rounded-md border border-[#1d1b16] bg-[#2f6f63] px-5 py-2.5 font-mono text-[13px] uppercase tracking-[0.12em] text-[#f4efe4] shadow-[3px_3px_0_#1d1b16] transition-transform hover:-translate-y-0.5"
+            className="inline-flex items-center gap-2 rounded-full bg-[var(--accent)] px-6 py-3 text-[15px] font-semibold text-white shadow-[0_12px_30px_rgba(255,136,123,0.4)] transition-transform hover:-translate-y-0.5"
           >
             Essayer avec mon cabinet <Arrow size={15} />
           </a>
@@ -403,26 +415,26 @@ function DemoPlayer({ demande, scenario }: { demande: string; scenario: Scenario
 }
 
 function Dot({ d }: { d: number }) {
-  return <span className="inline-block size-1.5 animate-bounce rounded-full bg-[#5d574b]" style={{ animationDelay: `${d}ms` }} />;
+  return <span className="inline-block size-1.5 animate-bounce rounded-full bg-[var(--violet-400)]" style={{ animationDelay: `${d}ms` }} />;
 }
 
 // Apparition progressive d'une liste selon l'avancement t (0 → 1) de la scène.
 const visible = (i: number, n: number, t: number) => t > (i + 0.4) / (n + 1);
 
 function Scene({ k, scenario, demande, t }: { k: string; scenario: Scenario; demande: string; t: number }) {
-  const card = 'w-full max-w-md rounded-lg border border-[#d6cdb9] bg-[#faf7f0] p-4 text-left shadow-[0_10px_30px_rgba(60,48,25,0.12)] sm:p-5';
-  const head = 'mb-3 font-mono text-[11px] uppercase tracking-[0.18em] text-[#2f6f63]';
-  const line = 'flex items-center gap-2.5 py-1.5 text-[13px] text-[#1d1b16] transition-opacity duration-300';
+  const card = 'w-full max-w-md rounded-lg border border-[var(--ink-150)] bg-[white] p-4 text-left shadow-[0_10px_30px_rgba(43,23,105,0.10)] sm:p-5';
+  const head = 'mb-3 font-mono text-[11px] uppercase tracking-[0.18em] text-[var(--violet-600)]';
+  const line = 'flex items-center gap-2.5 py-1.5 text-[13px] text-[var(--violet-900)] transition-opacity duration-300';
 
   if (k === 'conversation') {
     const q = ['Quelle date de décision ?', 'Qui signe les actes ?', 'Des pièces à joindre ?'];
     return (
       <div className={card}>
         <p className={head}>L’agent recueille les informations</p>
-        <p className="mb-2 rounded-md bg-[#1d1b16] px-3 py-2 font-mono text-[12px] text-[#f4efe4]">{demande}</p>
+        <p className="mb-2 rounded-md bg-[var(--violet-600)] px-3 py-2 font-mono text-[12px] text-white">{demande}</p>
         {q.map((x, i) => (
           <p key={x} className={cn(line, 'font-mono text-[12px]', visible(i, q.length, t) ? 'opacity-100' : 'opacity-0')}>
-            <MessageSquare className="size-3.5 text-[#2f6f63]" /> {x}
+            <MessageSquare className="size-3.5 text-[var(--violet-600)]" /> {x}
           </p>
         ))}
       </div>
@@ -432,17 +444,17 @@ function Scene({ k, scenario, demande, t }: { k: string; scenario: Scenario; dem
     return (
       <div className={card}>
         <p className={head}>Lecture des pièces jointes</p>
-        <div className="relative mb-3 h-16 overflow-hidden rounded-md border border-dashed border-[#c9bfa8] bg-[#efe8da]">
-          <div className="absolute inset-x-0 h-0.5 bg-[#2f6f63] shadow-[0_0_12px_#2f6f63]" style={{ top: `${(t * 100) % 100}%` }} />
+        <div className="relative mb-3 h-16 overflow-hidden rounded-md border border-dashed border-[var(--ink-200)] bg-[var(--ink-50)]">
+          <div className="absolute inset-x-0 h-0.5 bg-[var(--accent)] shadow-[0_0_12px_#ff887b]" style={{ top: `${(t * 100) % 100}%` }} />
           <div className="space-y-1.5 p-3">
-            <div className="h-1.5 w-2/3 rounded bg-[#d6cdb9]" />
-            <div className="h-1.5 w-1/2 rounded bg-[#d6cdb9]" />
-            <div className="h-1.5 w-3/4 rounded bg-[#d6cdb9]" />
+            <div className="h-1.5 w-2/3 rounded bg-[var(--ink-150)]" />
+            <div className="h-1.5 w-1/2 rounded bg-[var(--ink-150)]" />
+            <div className="h-1.5 w-3/4 rounded bg-[var(--ink-150)]" />
           </div>
         </div>
         {scenario.pieces.map((x, i) => (
           <p key={x} className={cn(line, visible(i, scenario.pieces.length, t) ? 'opacity-100' : 'opacity-30')}>
-            <Check className="size-4 text-[#2f6f63]" /> {x}
+            <Check className="size-4 text-[var(--violet-600)]" /> {x}
           </p>
         ))}
       </div>
@@ -455,18 +467,18 @@ function Scene({ k, scenario, demande, t }: { k: string; scenario: Scenario; dem
           <div
             key={x}
             className={cn(
-              'w-[46%] rounded-md border border-[#d6cdb9] bg-[#faf7f0] p-3 text-left shadow-sm transition-all duration-500 sm:w-[30%]',
+              'w-[46%] rounded-md border border-[var(--ink-150)] bg-[white] p-3 text-left shadow-sm transition-all duration-500 sm:w-[30%]',
               visible(i, scenario.actes.length, t) ? 'translate-y-0 opacity-100' : 'translate-y-3 opacity-0',
             )}
           >
-            <FileText className="mb-2 size-4 text-[#2f6f63]" />
-            <p className="text-[12px] font-medium leading-snug text-[#1d1b16]">{x}</p>
+            <FileText className="mb-2 size-4 text-[var(--violet-600)]" />
+            <p className="text-[12px] font-medium leading-snug text-[var(--violet-900)]">{x}</p>
             <div className="mt-2 space-y-1">
-              <div className="h-1 w-full rounded bg-[#e3dac7]" />
-              <div className="h-1 w-4/5 rounded bg-[#e3dac7]" />
-              <div className="h-1 w-3/5 rounded bg-[#e3dac7]" />
+              <div className="h-1 w-full rounded bg-[var(--ink-100)]" />
+              <div className="h-1 w-4/5 rounded bg-[var(--ink-100)]" />
+              <div className="h-1 w-3/5 rounded bg-[var(--ink-100)]" />
             </div>
-            <p className="mt-2 font-mono text-[10px] uppercase tracking-wider text-[#8a8373]">.docx éditable</p>
+            <p className="mt-2 font-mono text-[10px] uppercase tracking-wider text-[var(--ink-400)]">.docx éditable</p>
           </div>
         ))}
       </div>
@@ -478,14 +490,14 @@ function Scene({ k, scenario, demande, t }: { k: string; scenario: Scenario; dem
     return (
       <div className={card}>
         <p className={head}>{scenario.annonce.type}</p>
-        <p className="min-h-[3.5rem] text-[13px] leading-relaxed text-[#1d1b16]" style={SERIF}>
+        <p className="min-h-[3.5rem] text-[13px] leading-relaxed text-[var(--violet-900)]" style={SERIF}>
           {scenario.annonce.extrait.slice(0, n)}
-          <span className="ml-0.5 inline-block h-4 w-px animate-pulse bg-[#1d1b16] align-middle" />
+          <span className="ml-0.5 inline-block h-4 w-px animate-pulse bg-[var(--violet-900)] align-middle" />
         </p>
-        <div className="mt-3 border-t border-[#e3dac7] pt-2">
+        <div className="mt-3 border-t border-[var(--ink-100)] pt-2">
           {mentions.map((x, i) => (
             <p key={x} className={cn(line, 'py-1 text-[12px]', visible(i + 1, mentions.length + 1, t) ? 'opacity-100' : 'opacity-25')}>
-              <Check className="size-3.5 text-[#2f6f63]" /> {x}
+              <Check className="size-3.5 text-[var(--violet-600)]" /> {x}
             </p>
           ))}
         </div>
@@ -498,12 +510,12 @@ function Scene({ k, scenario, demande, t }: { k: string; scenario: Scenario; dem
       <div className={card}>
         <p className={cn(head, 'flex items-center gap-2')}><Landmark className="size-3.5" /> Guichet unique — brouillon</p>
         {champs.map(([l, v], i) => (
-          <div key={l} className="flex items-center justify-between gap-3 border-b border-[#ece4d4] py-2 text-[13px]">
-            <span className="text-[#5d574b]">{l}</span>
-            <span className={cn('font-mono text-[12px] text-[#1d1b16] transition-opacity duration-300', visible(i, champs.length, t) ? 'opacity-100' : 'opacity-0')}>{v}</span>
+          <div key={l} className="flex items-center justify-between gap-3 border-b border-[var(--ink-100)] py-2 text-[13px]">
+            <span className="text-[var(--ink-500)]">{l}</span>
+            <span className={cn('font-mono text-[12px] text-[var(--violet-900)] transition-opacity duration-300', visible(i, champs.length, t) ? 'opacity-100' : 'opacity-0')}>{v}</span>
           </div>
         ))}
-        <p className={cn('mt-3 inline-flex items-center gap-2 rounded-md bg-[#2f6f63]/10 px-2.5 py-1 font-mono text-[11px] text-[#2f6f63] transition-opacity', t > 0.8 ? 'opacity-100' : 'opacity-0')}>
+        <p className={cn('mt-3 inline-flex items-center gap-2 rounded-md bg-[var(--accent-soft)] px-2.5 py-1 font-mono text-[11px] text-[var(--accent-ink)] transition-opacity', t > 0.8 ? 'opacity-100' : 'opacity-0')}>
           <Check className="size-3.5" /> Brouillon créé · en attente de signature
         </p>
       </div>
@@ -513,21 +525,21 @@ function Scene({ k, scenario, demande, t }: { k: string; scenario: Scenario; dem
   return (
     <div className={card}>
       <p className={head}>À vous de jouer</p>
-      <p className="mb-4 text-[13px] text-[#1d1b16]">L’agent ne signe et ne paie jamais : vous gardez la main sur chaque formalité.</p>
+      <p className="mb-4 text-[13px] text-[var(--violet-900)]">L’agent ne signe et ne paie jamais : vous gardez la main sur chaque formalité.</p>
       <div className="grid gap-2 sm:grid-cols-3">
         {['Relire', 'Signer', 'Payer'].map((x, i) => (
           <span
             key={x}
             className={cn(
               'flex items-center justify-center gap-1.5 rounded-md border px-3 py-2 font-mono text-[12px] transition-colors duration-300',
-              visible(i, 3, t) ? 'border-[#2f6f63] bg-[#2f6f63] text-[#f4efe4]' : 'border-[#d6cdb9] text-[#5d574b]',
+              visible(i, 3, t) ? 'border-[var(--violet-600)] bg-[var(--violet-600)] text-white' : 'border-[var(--ink-150)] text-[var(--ink-500)]',
             )}
           >
             {visible(i, 3, t) && <Check className="size-3.5" />} {x}
           </span>
         ))}
       </div>
-      <p className="mt-3 font-mono text-[11px] text-[#8a8373]">Paiement par vos moyens ou par délégation de paiement.</p>
+      <p className="mt-3 font-mono text-[11px] text-[var(--ink-400)]">Paiement par vos moyens ou par délégation de paiement.</p>
     </div>
   );
 }

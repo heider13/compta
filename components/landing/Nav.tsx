@@ -46,7 +46,7 @@ export function Nav({ surface = 'dark', announcement }: { surface?: 'dark' | 'li
       onMouseLeave={() => setOpen(null)}
     >
       {announcement && !scrolled && (
-        <div className="bg-[#1d1b16] px-4 py-2 text-center font-mono text-[12px] tracking-wide text-[#e9e1d0] sm:text-[13px]">
+        <div className="bg-[#0e0b1a] px-4 py-2 text-center text-[12px] font-medium tracking-wide text-white/80 sm:text-[13px]">
           {announcement}
         </div>
       )}
