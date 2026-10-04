@@ -91,6 +91,9 @@ const MODELE_PAR_ACTE = {
 const PERSONNE = {
   type: 'object',
   properties: {
+    numeroSecu: { type: 'string', description: 'N° de sécurité sociale (15 chiffres) — exigé pour un gérant de SARL/EURL/SCI et un entrepreneur individuel' },
+    situationMatrimoniale: { type: 'string', enum: ['CELIBATAIRE', 'MARIE', 'PACSE', 'DIVORCE', 'VEUF'] },
+    codePostalNaissance: { type: 'string' },
     nom: { type: 'string' },
     prenoms: { type: 'array', items: { type: 'string' } },
     dateNaissance: { type: 'string', description: 'YYYY-MM-DD' },

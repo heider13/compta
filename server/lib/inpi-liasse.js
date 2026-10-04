@@ -22,6 +22,9 @@ const FORME_CODES = { SASU: '5710', SAS: '5710', HOLDING: '5710', SARL: '5499', 
 const ROLE_CODES = { PRESIDENT: '73', GERANT: '30' };
 const FORME_SOCIALE = { PRESIDENT: '1', GERANT: '3' };
 const REGIME_IS = '114';
+// Situation matrimoniale : « 1 » (célibataire) relevé sur les liasses validées ;
+// les autres codes sont provisoires et signalés au formaliste.
+const SITUATION_MATRIMONIALE = { CELIBATAIRE: '1', MARIE: '2', VEUF: '3', DIVORCE: '4', PACSE: '5' };
 
 // Catégorisation INPI de l'activité (obligatoire dès la création du brouillon),
 // relevée sur les formalités validées du cabinet : code APE → [cat1, cat2, cat3,
@@ -208,7 +211,14 @@ async function personneInpi(p, aCompleter, label) {
     else aCompleter.push(`${label} : lieu et pays de naissance à vérifier (${p.lieuNaissance})`);
   }
   if (!p.sexe) aCompleter.push(`${label} : genre`);
+  const sm = SITUATION_MATRIMONIALE[p.situationMatrimoniale];
+  if (p.situationMatrimoniale && p.situationMatrimoniale !== 'CELIBATAIRE') {
+    aCompleter.push(`${label} : situation matrimoniale (${p.situationMatrimoniale}) à vérifier sur le Guichet unique`);
+  }
   return {
+    ...(p.numeroSecu ? { numeroSecu: String(p.numeroSecu).replace(/\s/g, '') } : {}),
+    ...(sm ? { situationMatrimoniale: sm } : {}),
+    ...(naissance.codeInseeGeographique && !naissance.codeInseeGeographique.startsWith('99') && p.codePostalNaissance ? { codePostalNaissance: p.codePostalNaissance } : {}),
     nom: String(p.nom || '').toUpperCase(),
     prenoms: Array.isArray(p.prenoms) ? p.prenoms.filter(Boolean) : [],
     genre: p.sexe === 'F' ? '2' : p.sexe === 'M' ? '1' : '',
@@ -250,6 +260,7 @@ function pourcentage(a, capital, nbAssocies) {
 // data : metadata.agent_data du dossier (voir l'outil enregistrer_dossier)
 async function buildCreationLiasse(data, dossier, client) {
   const aCompleter = [];
+  const bloquants0 = [];
   const forme = String(data.formeJuridique || '').toUpperCase();
   const code = FORME_CODES[forme];
   if (!code) throw new Error(`Forme non prise en charge pour la liasse INPI : ${forme || 'inconnue'} (SASU, SAS, EURL, SARL, SCI).`);
@@ -262,6 +273,9 @@ async function buildCreationLiasse(data, dossier, client) {
   const siege = await adresseInpi(data.siege, aCompleter, 'Siège');
   const dir = data.dirigeant || {};
   const dirDesc = await personneInpi(dir, aCompleter, 'Dirigeant');
+  const tns = role === 'GERANT';
+  if (tns && dir.nationalite === 'FRA' && !dir.numeroSecu) bloquants0.push('Numéro de sécurité sociale du gérant (obligatoire pour un gérant de nationalité française)');
+  if (tns && !dir.situationMatrimoniale) bloquants0.push('Situation matrimoniale du gérant');
   const dirAdresse = await adresseInpi(dir.adresse, aCompleter, 'Domicile du dirigeant');
 
   // Bénéficiaires effectifs : associés personnes physiques détenant 25 % ou plus.
@@ -294,7 +308,7 @@ async function buildCreationLiasse(data, dossier, client) {
 
   const formeExercice = FORME_EXERCICE[data.formeExercice] || (forme === 'SCI' ? 'GESTION_DE_BIENS' : 'COMMERCIALE');
   // Bloquants : refusés par l'API dès la création du brouillon.
-  const bloquants = [];
+  const bloquants = [...bloquants0];
   const cat = categorisation(data.codeApe);
   const annonce = data.annonceLegale || {};
   if (!annonce.journal || !annonce.datePublication) {
@@ -359,6 +373,7 @@ async function buildCreationLiasse(data, dossier, client) {
           indicateurAssocieUnique: unipersonnelle,
           ...(unipersonnelle ? { indicateurAssocieUniqueDirigeant: true } : {}),
           ...(role === 'GERANT' ? { natureGerance: '1' } : {}),
+          ...(data.typeDeStatuts ? { typeDeStatuts: data.typeDeStatuts } : {}),
         },
         contratDAppuiDeclare: false,
         ...(annonce.journal && annonce.datePublication ? {
@@ -391,6 +406,16 @@ async function buildCreationLiasse(data, dossier, client) {
       composition: {
         pouvoirs: [{
           individu: {
+            ...(tns ? {
+              voletSocial: {
+                organismeAssuranceMaladieActuelle: 'R',
+                activiteSimultanee: false,
+                affiliationPamBiologiste: false,
+                affiliationPamPharmacien: false,
+                declarationMineur: false,
+                indicateurActiviteAnterieure: false,
+              },
+            } : {}),
             descriptionPersonne: { ...dirDesc, formeSociale: FORME_SOCIALE[role] || '1' },
             ...(dirAdresse ? { adresseDomicile: dirAdresse } : {}),
           },
