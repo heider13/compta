@@ -27,6 +27,8 @@ const inpi = require('../inpi');
 const { getFormalitySummary, downloadAttachment } = require('./inpi-formality');
 const { buildCreationLiasse, buildEILiasse, createDraftWithPieces, PIECES, PIECES_EI } = require('./inpi-liasse');
 const rne = require('./inpi-rne');
+const { createModificationDraft, appliquerOperations, baseModification } = require('./inpi-modification');
+const { deposerPieces, PIECES_MODIF } = require('./inpi-liasse');
 const { BUCKET } = require('./dossier-docs');
 const knowledge = require('./knowledge');
 
@@ -242,6 +244,49 @@ const TOOLS = [
     },
   },
   {
+    name: 'creer_modification_inpi',
+    description:
+      "Prépare une MODIFICATION (ou une mise en sommeil / cessation d'EI) au Guichet unique à partir de la fiche RNE à jour de l'entreprise. Opérations : objet (12M : objet, codeApe), denomination (10M), siege (60M : adresse), nomination (35M : personne, role GERANT|PRESIDENT|DG), revocation (35M : nom du dirigeant sortant), beneficiaires (38F : ajouts [{personne, pourcentage}], retraits [noms]), miseEnSommeil (40M), cessationEI (41P). Chaque opération peut avoir une dateEffet (YYYY-MM-DD). D'abord confirme=false (aperçu, rien n'est envoyé), puis confirme=true UNIQUEMENT après confirmation explicite du professionnel : crée le BROUILLON et dépose les pièces. Ne valide, ne signe et ne paie jamais. Catégories de pièces : " +
+      Object.entries(PIECES_MODIF).map(([k, v]) => `${k} (${v.label})`).join(', ') + '.',
+    eager_input_streaming: true,
+    input_schema: {
+      type: 'object',
+      properties: {
+        siren: { type: 'string' },
+        confirme: { type: 'boolean' },
+        operations: {
+          type: 'array',
+          items: {
+            type: 'object',
+            properties: {
+              type: { type: 'string', enum: ['objet', 'denomination', 'siege', 'nomination', 'revocation', 'beneficiaires', 'miseEnSommeil', 'cessationEI'] },
+              dateEffet: { type: 'string' },
+              objet: { type: 'string' },
+              codeApe: { type: 'string' },
+              denomination: { type: 'string' },
+              adresse: PERSONNE.properties.adresse,
+              personne: PERSONNE,
+              role: { type: 'string', enum: ['GERANT', 'PRESIDENT', 'DG'] },
+              nom: { type: 'string', description: 'Nom du dirigeant sortant (revocation)' },
+              ajouts: { type: 'array', items: { type: 'object', properties: { personne: PERSONNE, pourcentage: { type: 'number' } } } },
+              retraits: { type: 'array', items: { type: 'string' } },
+            },
+            required: ['type'],
+          },
+        },
+        pieces: {
+          type: 'array',
+          items: {
+            type: 'object',
+            properties: { document_id: { type: 'string' }, categorie: { type: 'string', enum: Object.keys(PIECES_MODIF) } },
+            required: ['document_id', 'categorie'],
+          },
+        },
+      },
+      required: ['siren', 'operations', 'confirme'],
+    },
+  },
+  {
     name: 'lire_fiche_rne',
     description:
       "Lit la fiche officielle à jour d'une entreprise au Registre national des entreprises (RNE) à partir de son SIREN : dénomination, forme, objet, capital, siège, dirigeants, bénéficiaires effectifs. À utiliser systématiquement avant de préparer une modification ou une radiation, pour partir des données officielles au lieu de les redemander.",
@@ -302,6 +347,7 @@ Objectif : préparer la formalité de A à Z pour que le formaliste n'ait plus q
 4. Présente le récapitulatif : pièces qui seront déposées, pièces manquantes ou non signées, champs que le formaliste devra compléter. Demande une confirmation explicite (« Je crée le brouillon sur votre Guichet unique ? »).
 5. Seulement si le dernier message du professionnel confirme clairement, appelle creer_brouillon_inpi avec confirme=true.
 6. Indique ensuite les étapes restantes du formaliste sur le Guichet unique : compléter les champs signalés, vérifier, valider, signer électroniquement, payer (carte ou délégation de paiement au client).
+Pour une MODIFICATION (objet, dénomination, siège, dirigeant, bénéficiaires effectifs), une mise en sommeil ou la cessation d'une entreprise individuelle : lis d'abord la fiche RNE (lire_fiche_rne), rédige les actes (PV, statuts mis à jour, annonce), puis utilise creer_modification_inpi avec la même logique aperçu → confirmation → brouillon. Un changement de dirigeant associé au capital s'accompagne en général d'une mise à jour des bénéficiaires effectifs (opération beneficiaires).
 La création de brouillon couvre les créations de SASU, SAS, EURL, SARL, SCI et d'entreprise individuelle (micro-entreprise : formeJuridique AE ; pas d'annonce légale ni de statuts, mais n° de sécurité sociale, situation matrimoniale, options du régime micro et pièce d'identité). Pour une modification ou une cessation, prépare les documents et guide le formaliste pour la saisie.
 </depot_inpi>
 
@@ -765,6 +811,90 @@ async function toolLireFormalite(ctx, input) {
   };
 }
 
+async function toolModification(supa, ctx, input) {
+  const operations = Array.isArray(input.operations) ? input.operations : [];
+  if (!operations.length) throw new Error('Aucune opération de modification indiquée.');
+  const siren = String(input.siren || '').replace(/\D/g, '');
+  const typeFormalite = operations.some((o) => ['miseEnSommeil', 'cessationEI'].includes(o.type)) ? 'R' : 'M';
+
+  // Bloquants connus avant tout envoi
+  const bloquants = [];
+  for (const o of operations) {
+    if (o.type === 'nomination') {
+      const p = o.personne || {};
+      if (!p.nom || !p.prenoms?.length || !p.dateNaissance || !p.lieuNaissance) bloquants.push('Nouveau dirigeant : identité complète (nom, prénoms, date et lieu de naissance)');
+      if (!p.adresse?.voie) bloquants.push('Nouveau dirigeant : adresse personnelle');
+      if ((o.role || 'GERANT') === 'GERANT' && p.nationalite === 'FRA' && !p.numeroSecu) bloquants.push('Nouveau gérant : numéro de sécurité sociale');
+      if ((o.role || 'GERANT') === 'GERANT' && !p.situationMatrimoniale) bloquants.push('Nouveau gérant : situation matrimoniale');
+    }
+    if (o.type === 'siege' && !(o.adresse?.voie && o.adresse?.codePostal && o.adresse?.commune)) bloquants.push('Adresse complète du nouveau siège');
+    if (o.type === 'objet' && !o.objet) bloquants.push('Nouvel objet social');
+    if (o.type === 'denomination' && !o.denomination) bloquants.push('Nouvelle dénomination');
+    if (o.type === 'revocation' && !o.nom) bloquants.push('Nom du dirigeant sortant');
+  }
+
+  const dossier = await loadDossier(supa, ctx);
+  const meta = dossier?.metadata || {};
+  const wanted = Array.isArray(input.pieces) ? input.pieces : [];
+  let docs = [];
+  if (dossier) ({ data: docs } = await supa.from('dossier_documents').select('id, name, file_path, mime_type').eq('dossier_id', dossier.id));
+  const byId = new Map((docs || []).map((d) => [String(d.id), d]));
+  const plan = wanted.filter((w) => byId.has(String(w.document_id)) && PIECES_MODIF[w.categorie]).map((w) => ({ doc: byId.get(String(w.document_id)), categorie: w.categorie }));
+
+  if (!input.confirme) {
+    const fiche = rne.summarizeCompany(await rne.getCompany(ctx.orgId, siren));
+    // Contrôle à blanc : les opérations s'appliquent-elles à la fiche ?
+    let evenements = [];
+    let erreurOperation = null;
+    try {
+      const base = await baseModification(ctx.orgId, siren);
+      evenements = await appliquerOperations(base.next, operations);
+    } catch (e) { erreurOperation = e.message; }
+    if (dossier) await supa.from('dossiers').update({ metadata: { ...meta, inpi_modif_preview_at: new Date().toISOString() } }).eq('id', dossier.id);
+    return {
+      result: {
+        apercu: true, rien_envoye: true, entreprise: fiche, type_formalite: typeFormalite,
+        evenements_prevus: evenements, erreur_operation: erreurOperation,
+        bloquants_a_resoudre_avant_creation: bloquants,
+        pieces_deposees: plan.map((p) => ({ document: p.doc.name, categorie: PIECES_MODIF[p.categorie].label })),
+        rappel: bloquants.length || erreurOperation ? 'Résoudre les bloquants avant toute création.' : 'Demander une confirmation explicite avant de créer le brouillon.',
+      },
+      event: { kind: 'inpi', label: `Aperçu de la modification — ${fiche.denomination || siren}`, detail: `${evenements.join(' + ') || 'événements à préciser'} · ${plan.length} pièce(s)` },
+    };
+  }
+
+  if (bloquants.length) throw new Error(`Création impossible : ${bloquants.join(' ; ')}`);
+  if (dossier && !meta.inpi_modif_preview_at) throw new Error("Fais d'abord un aperçu (confirme=false) et présente-le au professionnel.");
+  if (meta.inpi_draft_id) throw new Error(`Un brouillon existe déjà pour ce dossier (formalité ${meta.inpi_draft_id}).`);
+
+  const { formality, events } = await createModificationDraft(ctx.orgId, siren, {
+    typeFormalite,
+    reference: dossier?.reference,
+    nomDossier: dossier?.client_name,
+    mutate: (c) => appliquerOperations(c, operations),
+  });
+  const pieces = [];
+  for (const p of plan) {
+    const { data: blob } = await supa.storage.from(BUCKET).download(p.doc.file_path);
+    if (blob) pieces.push({ categorie: p.categorie, nom: p.doc.name, buffer: Buffer.from(await blob.arrayBuffer()), mime: p.doc.mime_type || 'application/pdf' });
+  }
+  const { deposees, erreurs } = await deposerPieces(ctx.orgId, formality.id, pieces, PIECES_MODIF);
+  if (dossier) {
+    await supa.from('dossiers').update({ metadata: { ...meta, inpi_draft_id: String(formality.id), inpi_formality_id: String(formality.id), inpi_liasse: formality.liasseNumber || null, inpi_draft_created_at: new Date().toISOString() } }).eq('id', dossier.id);
+  }
+  try {
+    await supa.from('audit_logs').insert({ organization_id: ctx.orgId, user_id: ctx.userId, action: 'agent.inpi.modification_draft_created', resource_type: 'dossier', resource_id: dossier?.id || null, metadata: { inpi_formality_id: formality.id, events } });
+  } catch {}
+  return {
+    result: {
+      brouillon_cree: true, formalite_inpi: formality.id, liasse: formality.liasseNumber, evenements_inpi: events,
+      pieces_deposees: deposees, erreurs_depot: erreurs,
+      etapes_formaliste: ['Ouvrir le brouillon sur procedures.inpi.fr', 'Vérifier et compléter', 'Valider', 'Signer électroniquement', 'Payer (carte ou délégation de paiement)'],
+    },
+    event: { kind: 'inpi', label: 'Brouillon de modification créé sur le Guichet unique', detail: `${formality.liasseNumber} · ${events.join(' + ')} · ${deposees.length} pièce(s)`, href: `/inpi/${formality.id}` },
+  };
+}
+
 async function toolFicheRne(ctx, input) {
   const company = await rne.getCompany(ctx.orgId, input.siren);
   const fiche = rne.summarizeCompany(company);
@@ -792,6 +922,7 @@ const TOOL_LABELS = {
   etat_dossier: "Lecture de l'avancement",
   creer_brouillon_inpi: 'Préparation du dépôt INPI',
   lire_fiche_rne: 'Lecture de la fiche RNE',
+  creer_modification_inpi: "Préparation de la modification INPI",
   lire_formalite_inpi: 'Lecture de la formalité INPI',
   lire_piece_inpi: "Lecture d'une pièce INPI",
 };
@@ -806,6 +937,7 @@ async function runTool(name, input, ctx) {
     case 'etat_dossier': return toolEtat(supa, ctx);
     case 'creer_brouillon_inpi': return toolBrouillon(supa, ctx, input);
     case 'lire_fiche_rne': return toolFicheRne(ctx, input);
+    case 'creer_modification_inpi': return toolModification(supa, ctx, input);
     case 'lire_formalite_inpi': return toolLireFormalite(ctx, input);
     case 'lire_piece_inpi': return toolLirePiece(ctx, input);
     default: throw new Error(`Outil inconnu : ${name}`);

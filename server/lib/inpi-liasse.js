@@ -664,6 +664,54 @@ async function toPdf(buffer, mime, name) {
   }
 }
 
+// Pièces d'une modification / mise en sommeil (codes relevés sur les modifications validées).
+const PIECES_MODIF = {
+  PV_DECISION: { typeDocument: 'PJ_52', sousTypeDocument: 'PJPM0043', path: '.piecesJointes[0]', label: "Procès-verbal / décision des associés" },
+  PV_MISE_EN_SOMMEIL: { typeDocument: 'PJ_54', sousTypeDocument: '', path: '.piecesJointes[0]', label: 'PV de mise en sommeil' },
+  STATUTS_MIS_A_JOUR: { typeDocument: 'PJ_200', sousTypeDocument: '', path: '.piecesJointes[0]', label: 'Statuts mis à jour certifiés conformes' },
+  ACTE_CESSION: { typeDocument: 'PJ_190', sousTypeDocument: '', path: '.piecesJointes[0]', label: 'Acte de cession (enregistré)' },
+  ATTESTATION_PARUTION: { typeDocument: 'PJ_08', sousTypeDocument: 'PJPM0013', path: '.piecesJointes[0]', label: "Attestation de parution de l'annonce légale" },
+  NON_CONDAMNATION: { typeDocument: 'PJ_17', sousTypeDocument: 'PJPM0018', path: '.piecesJointes[0]', label: 'Déclaration de non-condamnation du nouveau dirigeant' },
+  IDENTITE_DIRIGEANT: { typeDocument: 'PJ_11', sousTypeDocument: 'PJPM0014', path: '.piecesJointes[0]', label: "Pièce d'identité du nouveau dirigeant" },
+  JUSTIFICATIF_SIEGE: { typeDocument: 'PJ_25', sousTypeDocument: 'PJPM0021', path: '.piecesJointes[0]', label: 'Justificatif du nouveau siège' },
+  MANDAT: { typeDocument: 'PJ_51', sousTypeDocument: 'PJPM0034', path: '.piecesJointes[0]', label: 'Mandat / pouvoir au formaliste' },
+  IDENTITE_MANDATAIRE: { typeDocument: 'PJ_11', sousTypeDocument: 'PJPM0035', path: '.piecesJointes[0]', label: "Pièce d'identité du mandataire" },
+};
+
+// Dépôt de pièces (converties en PDF) sur une formalité existante.
+async function deposerPieces(orgId, formalityId, pieces, carte) {
+  const client = inpi.forOrg(orgId);
+  const deposees = [];
+  const erreurs = [];
+  for (const p of pieces) {
+    const spec = carte[p.categorie];
+    if (!spec) {
+      erreurs.push(`${p.nom} : catégorie inconnue`);
+      continue;
+    }
+    try {
+      const pdf = await toPdf(p.buffer, p.mime, p.nom);
+      const nomDocument = `${p.nom.replace(/\.(pdf|docx|png|jpe?g|webp|gif)$/i, '')}.pdf`;
+      await client.request(`/api/formalities/${formalityId}/attachments`, {
+        method: 'POST',
+        body: {
+          nomDocument,
+          typeDocument: spec.typeDocument,
+          ...(spec.sousTypeDocument ? { sousTypeDocument: spec.sousTypeDocument } : {}),
+          langueDocument: 'fr',
+          documentBase64: pdf.toString('base64'),
+          documentExtension: 'pdf',
+          path: spec.path,
+        },
+      });
+      deposees.push({ nom: nomDocument, categorie: spec.label });
+    } catch (e) {
+      erreurs.push(`${p.nom} : ${String(e.message).slice(0, 200)}`);
+    }
+  }
+  return { deposees, erreurs };
+}
+
 // Création du BROUILLON au Guichet unique puis dépôt des pièces.
 // pieces : [{ categorie, nom, buffer, mime }]
 async function createDraftWithPieces(orgId, payload, pieces) {
@@ -712,4 +760,4 @@ async function createDraftWithPieces(orgId, payload, pieces) {
   return { formality, deposees, erreurs };
 }
 
-module.exports = { buildCreationLiasse, buildEILiasse, createDraftWithPieces, mandataireBlocks, adresseInpi, personneInpi, categorisation, toPdf, parseVoie, PIECES, PIECES_EI, FORME_CODES };
+module.exports = { deposerPieces, PIECES_MODIF, buildCreationLiasse, buildEILiasse, createDraftWithPieces, mandataireBlocks, adresseInpi, personneInpi, categorisation, toPdf, parseVoie, PIECES, PIECES_EI, FORME_CODES };
