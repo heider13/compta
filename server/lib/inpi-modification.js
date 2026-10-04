@@ -13,6 +13,46 @@ const { mandataireBlocks } = require('./inpi-liasse');
 const clean = (o) => JSON.parse(JSON.stringify(o ?? null, (k, v) => (k.startsWith('@') ? undefined : v)));
 const on = (v) => (v === false || v === 'N' ? 'N' : 'O');
 
+
+const cle = (desc) => `${String(desc?.nom || '').toUpperCase()}|${String((desc?.prenoms || [])[0] || '').toUpperCase()}`;
+
+// Remplit les champs vides (null/'') de cible avec ceux de source, récursivement.
+function remplirVides(cible, source) {
+  if (!cible || !source || typeof cible !== 'object' || typeof source !== 'object') return;
+  for (const [k, v] of Object.entries(source)) {
+    if (k.startsWith('@') || /Triggered$|^dateEffet|statutPourLaFormalite|representantId|beneficiaireId/.test(k)) continue;
+    if (cible[k] == null || cible[k] === '') cible[k] = v;
+    else if (typeof cible[k] === 'object' && !Array.isArray(cible[k]) && typeof v === 'object') remplirVides(cible[k], v);
+  }
+}
+
+function completerPersonnes(bloc, blocGu) {
+  if (!bloc || !blocGu) return;
+  const index = new Map();
+  for (const p of blocGu.composition?.pouvoirs || []) index.set(cle(p.individu?.descriptionPersonne), p.individu);
+  for (const b of blocGu.beneficiairesEffectifs || []) index.set(cle(b.beneficiaire?.descriptionPersonne), b.beneficiaire);
+  for (const p of bloc.composition?.pouvoirs || []) {
+    const src = index.get(cle(p.individu?.descriptionPersonne));
+    if (src) remplirVides(p.individu, src);
+  }
+  for (const b of bloc.beneficiairesEffectifs || []) {
+    const src = index.get(cle(b.beneficiaire?.descriptionPersonne));
+    if (src) remplirVides(b.beneficiaire, src);
+  }
+}
+
+// Indicateurs …Present : false quand la donnée correspondante est absente.
+function marquerAbsents(o) {
+  if (Array.isArray(o)) return o.forEach(marquerAbsents);
+  if (!o || typeof o !== 'object') return;
+  for (const k of Object.keys(o)) {
+    if (k.endsWith('Present') && (o[k] == null)) {
+      const champ = k.slice(0, -'Present'.length);
+      o[k] = o[champ] != null && o[champ] !== '';
+    } else if (typeof o[k] === 'object') marquerAbsents(o[k]);
+  }
+}
+
 // Base de la nouvelle liasse : fiche RNE + champs que le RNE laisse vides mais
 // que le Guichet unique exige (repris de la dernière liasse de l'entreprise au GU).
 async function baseModification(orgId, siren) {
@@ -53,6 +93,13 @@ async function baseModification(orgId, siren) {
   }
   if (car.diffusionDomiciliationAsEntrepriseAddress == null) car.diffusionDomiciliationAsEntrepriseAddress = carGu.diffusionDomiciliationAsEntrepriseAddress || 'N';
   if (car.indicateurDomicileEntrepreneur) car.indicateurDomicileEntrepreneurValidation = true;
+
+  // Dirigeants et bénéficiaires existants : le RNE public ne donne que des données
+  // partielles (date de naissance tronquée, adresse incomplète…). On complète à
+  // partir de la dernière liasse de l'entreprise au GU (même personne), puis on
+  // marque « non présent au RNE » (…Present = false) ce qui reste absent.
+  completerPersonnes(next[bloc], gu?.[bloc]);
+  marquerAbsents(next[bloc]);
 
   const m = await mandataireBlocks(client);
   next.declarant = m.declarant;

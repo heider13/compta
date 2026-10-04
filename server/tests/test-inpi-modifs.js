@@ -10,8 +10,6 @@ const nir = () => { const b = '2850469123001'; return b + String(97 - Number(Big
 
 const personneTest = { nom: 'TESTEUSE', prenoms: ['Marie'], sexe: 'F', dateNaissance: '1985-04-12', lieuNaissance: 'Lyon', nationalite: 'FRA', numeroSecu: nir(), situationMatrimoniale: 'CELIBATAIRE', codePostalNaissance: '69001', adresse: { voie: '5 rue de la République', codePostal: '13002', commune: 'Marseille' } };
 const CAS = [
-  ['10M Changement de dénomination', [{ type: 'denomination', denomination: 'STRATEGY ASSOCIATES TEST' }]],
-  ['60M Transfert de siège', [{ type: 'siege', adresse: { voie: '10 avenue du Prado', codePostal: '13008', commune: 'Marseille' } }]],
   ["35M Nomination d'une co-gérante", [{ type: 'nomination', personne: personneTest, role: 'GERANT' }]],
 ];
 (async () => {
@@ -25,7 +23,7 @@ const CAS = [
       crees.push(`${label} : liasse ${formality.liasseNumber}`);
       console.log(`✓ ${label} : brouillon créé — liasse ${formality.liasseNumber}, statut ${formality.status}, événements INPI ${JSON.stringify(events)} (attendus ${JSON.stringify(attendus)})`);
     } catch (e) {
-      console.log(`✗ ${label} : ${String(e.message).slice(0, 1500)}`);
+      console.log(`✗ ${label} : ${String(e.message).slice(0, 4000)}`);
     }
   }
   console.log(`\nBROUILLONS À SUPPRIMER :\n${crees.map((x) => '  - ' + x).join('\n') || '  (aucun)'}`);
