@@ -828,7 +828,7 @@ async function toolModification(supa, ctx, input) {
   const siren = String(input.siren || '').replace(/\D/g, '');
   // La dissolution avec nomination de liquidateur passe en modification (M) ; mise en sommeil,
   // cessation d'EI et clôture de liquidation en cessation (R).
-  const typeFormalite = operations.some((o) => ['miseEnSommeil', 'cessationEI', 'clotureLiquidation', 'dissolution'].includes(o.type)) ? 'R' : 'M';
+  const typeFormalite = operations.some((o) => ['miseEnSommeil', 'cessationEI', 'clotureLiquidation'].includes(o.type)) ? 'R' : 'M';
 
   // Bloquants connus avant tout envoi
   const bloquants = [];
