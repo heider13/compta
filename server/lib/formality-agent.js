@@ -25,6 +25,8 @@ const {
 const { SUPPORTED_FORMES } = require('./doc-generator');
 const inpi = require('../inpi');
 const { getFormalitySummary, downloadAttachment } = require('./inpi-formality');
+const { buildCreationLiasse, createDraftWithPieces, PIECES } = require('./inpi-liasse');
+const { BUCKET } = require('./dossier-docs');
 
 const MAX_ITERATIONS = 12;
 
@@ -129,6 +131,7 @@ const TOOLS = [
             },
           },
         },
+        formeExercice: { type: 'string', enum: ['COMMERCIALE', 'ARTISANALE', 'LIBERALE', 'AGRICOLE', 'CIVILE'], description: "Nature de l'activité principale" },
         regimeImposition: { type: 'string', enum: ['IS', 'IR'] },
         regimeTVA: { type: 'string', enum: ['FRANCHISE_BASE', 'REEL_SIMPLIFIE', 'REEL_NORMAL'] },
         siren: { type: 'string', description: 'Pour une modification ou une cessation' },
@@ -166,6 +169,32 @@ const TOOLS = [
       "Renvoie l'avancement du dossier courant (étapes : collecte, identité, rédaction, signature, contrôle, dépôt INPI) et la liste de ses documents.",
     eager_input_streaming: true,
     input_schema: { type: 'object', properties: {} },
+  },
+  {
+    name: 'creer_brouillon_inpi',
+    description:
+      "Prépare la formalité de création au Guichet unique INPI. Avec confirme=false (obligatoire d'abord) : construit la liasse SANS rien envoyer et renvoie les champs à compléter et la répartition des pièces, à présenter au professionnel. Avec confirme=true, UNIQUEMENT après que le professionnel a explicitement confirmé dans son dernier message : crée le BROUILLON sur son compte Guichet unique et y dépose les pièces (converties en PDF). Ne valide, ne signe et ne paie jamais. Une seule création par dossier. Catégories de pièces : " +
+      Object.entries(PIECES).map(([k, v]) => `${k} (${v.label})`).join(', ') + '.',
+    eager_input_streaming: true,
+    input_schema: {
+      type: 'object',
+      properties: {
+        confirme: { type: 'boolean' },
+        pieces: {
+          type: 'array',
+          description: 'Documents du dossier à déposer (identifiants donnés par etat_dossier) et leur catégorie INPI.',
+          items: {
+            type: 'object',
+            properties: {
+              document_id: { type: 'string' },
+              categorie: { type: 'string', enum: Object.keys(PIECES) },
+            },
+            required: ['document_id', 'categorie'],
+          },
+        },
+      },
+      required: ['confirme'],
+    },
   },
   {
     name: 'lire_formalite_inpi',
@@ -208,6 +237,16 @@ Le professionnel peut joindre des documents : pièces d'identité, statuts, proc
 - Ne recopie jamais en entier dans tes réponses un numéro de pièce d'identité ou une donnée bancaire.
 - Les fichiers joints sont automatiquement rangés dans les pièces du dossier.
 </documents_joints>
+
+<depot_inpi>
+Objectif : préparer la formalité de A à Z pour que le formaliste n'ait plus qu'à valider, signer électroniquement et payer (par ses propres moyens ou par la délégation de paiement du Guichet unique).
+1. Une fois le dossier complet et les actes rédigés, rappelle que les actes à signer (statuts, déclaration de non-condamnation, pouvoir, liste des souscripteurs) doivent être signés par le client, et demande les pièces que seul le client peut fournir : pièce d'identité du dirigeant, attestation de dépôt des fonds, justificatif du siège, attestation de parution de l'annonce. Elles se joignent dans ce chat.
+2. Appelle etat_dossier pour connaître les identifiants des documents, puis creer_brouillon_inpi avec confirme=false en associant chaque document à sa catégorie.
+3. Présente le récapitulatif : pièces qui seront déposées, pièces manquantes ou non signées, champs que le formaliste devra compléter. Demande une confirmation explicite (« Je crée le brouillon sur votre Guichet unique ? »).
+4. Seulement si le dernier message du professionnel confirme clairement, appelle creer_brouillon_inpi avec confirme=true.
+5. Indique ensuite les étapes restantes du formaliste sur le Guichet unique : compléter les champs signalés, vérifier, valider, signer électroniquement, payer (carte ou délégation de paiement au client).
+La création de brouillon ne concerne que les créations de SASU, SAS, EURL, SARL et SCI. Pour une modification ou une cessation, prépare les documents et guide le formaliste pour la saisie.
+</depot_inpi>
 
 <regularisations_inpi>
 Pour une formalité déjà déposée au Guichet unique (régularisation demandée par le greffe, rejet, signature ou paiement en attente) :
@@ -482,9 +521,111 @@ async function toolEtat(supa, ctx) {
       reference: dossier.reference,
       progression: pipeline.progress,
       etapes: pipeline.steps.map((s) => ({ etape: s.title, statut: s.status, detail: s.detail })),
-      documents: (documents || []).map((d) => d.name),
+      documents: (documents || []).map((d) => ({ id: d.id, nom: d.name, type: d.doc_type, statut: d.status })),
     },
     event: { kind: 'pipeline', label: 'Avancement du dossier', detail: `${pipeline.progress.percent} %`, href: `/dossiers/${dossier.id}/orchestrator`, pipeline },
+  };
+}
+
+// ─── Brouillon au Guichet unique ──────────────────────────────────
+async function toolBrouillon(supa, ctx, input) {
+  const dossier = await loadDossier(supa, ctx);
+  if (!dossier) throw new Error("Aucun dossier : appelle d'abord enregistrer_dossier.");
+  const meta = dossier.metadata || {};
+  const data = meta.agent_data || {};
+  if ((data.typeFormalite || dossier.type_formalite) !== 'CREATION') {
+    throw new Error('Le brouillon automatique ne concerne que les créations de société.');
+  }
+  if (meta.inpi_draft_id) {
+    return {
+      result: { deja_cree: true, formalite_inpi: meta.inpi_draft_id, message: 'Un brouillon existe déjà pour ce dossier sur le Guichet unique.' },
+      event: { kind: 'inpi', label: 'Brouillon déjà créé', detail: `formalité ${meta.inpi_draft_id}`, href: `/inpi/${meta.inpi_draft_id}` },
+    };
+  }
+
+  // Pièces demandées → documents du dossier
+  const wanted = Array.isArray(input.pieces) ? input.pieces : [];
+  const { data: docs } = await supa
+    .from('dossier_documents').select('id, name, file_path, mime_type, doc_type')
+    .eq('dossier_id', dossier.id);
+  const byId = new Map((docs || []).map((d) => [String(d.id), d]));
+  const plan = [];
+  const introuvables = [];
+  for (const w of wanted) {
+    const d = byId.get(String(w.document_id));
+    if (!d || !PIECES[w.categorie]) introuvables.push(String(w.document_id));
+    else plan.push({ doc: d, categorie: w.categorie });
+  }
+  const categories = new Set(plan.map((p) => p.categorie));
+  const forme = String(data.formeJuridique || '').toUpperCase();
+  const attendues = ['STATUTS', 'NON_CONDAMNATION', 'IDENTITE_DIRIGEANT', 'DEPOT_FONDS', 'ATTESTATION_PARUTION', 'MANDAT']
+    .concat(['SAS', 'SASU', 'HOLDING'].includes(forme) ? ['LISTE_SOUSCRIPTEURS'] : [])
+    .concat(categories.has('ATTESTATION_HEBERGEMENT') ? [] : ['JUSTIFICATIF_SIEGE']);
+  const manquantes = attendues.filter((c) => !categories.has(c)).map((c) => PIECES[c].label);
+
+  const client = inpi.forOrg(ctx.orgId);
+  const { payload, aCompleter } = await buildCreationLiasse(data, dossier, client);
+
+  if (!input.confirme) {
+    await supa.from('dossiers').update({ metadata: { ...meta, inpi_dry_run_at: new Date().toISOString() } }).eq('id', dossier.id);
+    return {
+      result: {
+        apercu: true,
+        rien_envoye: true,
+        pieces_deposees: plan.map((p) => ({ document: p.doc.name, categorie: PIECES[p.categorie].label })),
+        pieces_manquantes: manquantes,
+        documents_introuvables: introuvables,
+        champs_a_completer_par_le_formaliste: aCompleter,
+        rappel: 'Demander une confirmation explicite avant de créer le brouillon.',
+      },
+      event: { kind: 'inpi', label: 'Aperçu du dépôt INPI', detail: `${plan.length} pièce(s) · ${manquantes.length} manquante(s) · ${aCompleter.length} champ(s) à compléter` },
+    };
+  }
+
+  if (!meta.inpi_dry_run_at) throw new Error("Fais d'abord un aperçu (confirme=false) et présente-le au professionnel.");
+
+  const pieces = [];
+  for (const p of plan) {
+    const { data: blob, error } = await supa.storage.from(BUCKET).download(p.doc.file_path);
+    if (error || !blob) { introuvables.push(p.doc.name); continue; }
+    pieces.push({ categorie: p.categorie, nom: p.doc.name, buffer: Buffer.from(await blob.arrayBuffer()), mime: p.doc.mime_type || 'application/pdf' });
+  }
+  const { formality, deposees, erreurs } = await createDraftWithPieces(ctx.orgId, payload, pieces);
+
+  await supa.from('dossiers').update({
+    metadata: {
+      ...meta,
+      inpi_draft_id: String(formality.id),
+      inpi_formality_id: String(formality.id),
+      inpi_liasse: formality.liasseNumber || null,
+      inpi_draft_created_at: new Date().toISOString(),
+    },
+  }).eq('id', dossier.id);
+  try {
+    await supa.from('audit_logs').insert({
+      organization_id: ctx.orgId, user_id: ctx.userId,
+      action: 'agent.inpi.draft_created', resource_type: 'dossier', resource_id: dossier.id,
+      metadata: { inpi_formality_id: formality.id, pieces: deposees.length, erreurs: erreurs.length },
+    });
+  } catch {}
+
+  return {
+    result: {
+      brouillon_cree: true,
+      formalite_inpi: formality.id,
+      liasse: formality.liasseNumber || null,
+      pieces_deposees: deposees,
+      erreurs_depot: erreurs.concat(introuvables.map((n) => `${n} : introuvable`)),
+      pieces_manquantes: manquantes,
+      champs_a_completer_par_le_formaliste: aCompleter,
+      etapes_formaliste: ['Ouvrir le brouillon sur procedures.inpi.fr', 'Compléter les champs signalés', 'Valider la formalité', 'Signer électroniquement', 'Payer (carte ou délégation de paiement)'],
+    },
+    event: {
+      kind: 'inpi',
+      label: 'Brouillon créé sur le Guichet unique',
+      detail: `${formality.liasseNumber || 'formalité ' + formality.id} · ${deposees.length} pièce(s) déposée(s)`,
+      href: `/inpi/${formality.id}`,
+    },
   };
 }
 
@@ -539,6 +680,7 @@ const TOOL_LABELS = {
   generer_statuts: 'Rédaction des statuts',
   rediger_acte: "Rédaction d'un acte",
   etat_dossier: "Lecture de l'avancement",
+  creer_brouillon_inpi: 'Préparation du dépôt INPI',
   lire_formalite_inpi: 'Lecture de la formalité INPI',
   lire_piece_inpi: "Lecture d'une pièce INPI",
 };
@@ -551,6 +693,7 @@ async function runTool(name, input, ctx) {
     case 'generer_statuts': return toolStatuts(supa, ctx);
     case 'rediger_acte': return toolActe(supa, ctx, input);
     case 'etat_dossier': return toolEtat(supa, ctx);
+    case 'creer_brouillon_inpi': return toolBrouillon(supa, ctx, input);
     case 'lire_formalite_inpi': return toolLireFormalite(ctx, input);
     case 'lire_piece_inpi': return toolLirePiece(ctx, input);
     default: throw new Error(`Outil inconnu : ${name}`);
