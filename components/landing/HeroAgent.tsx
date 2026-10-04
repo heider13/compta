@@ -199,7 +199,7 @@ export function HeroAgent() {
         </p>
 
         <h1
-          className="mx-auto mt-6 max-w-4xl text-[clamp(2.6rem,7.4vw,5.6rem)] font-normal leading-[0.98] tracking-[-0.02em] !text-[#1d1b16]"
+          className="!mx-auto !mt-6 max-w-4xl text-[clamp(2.6rem,7.4vw,5.6rem)] !font-normal !leading-[0.98] !tracking-[-0.01em] !text-[#1d1b16]"
           style={SERIF}
         >
           Décrivez la formalité.
@@ -207,7 +207,7 @@ export function HeroAgent() {
           L’agent la prépare.
         </h1>
 
-        <p className="mx-auto mt-6 max-w-xl font-mono text-sm leading-relaxed !text-[#5d574b] sm:text-[15px]">
+        <p className="!mx-auto !mt-6 max-w-xl font-mono text-sm leading-relaxed !text-[#5d574b] sm:text-[15px]">
           Création, modification, cessation, régularisation.
           <br className="hidden sm:block" /> De la conversation au brouillon INPI — vous validez, signez, payez.
         </p>
@@ -255,7 +255,7 @@ export function HeroAgent() {
                 className="grid size-9 place-items-center rounded-md border border-[#1d1b16] bg-[#1d1b16] text-[#f4efe4] transition-transform hover:-translate-y-0.5"
                 aria-label="Lancer la démonstration"
               >
-                <ArrowUp className="size-4" />
+                <ArrowUp className="size-4 !text-[#f4efe4]" strokeWidth={2.25} />
               </button>
             </div>
           </div>
@@ -274,7 +274,7 @@ export function HeroAgent() {
           ))}
         </div>
 
-        <p className="mt-6 font-mono text-[13px] text-[#5d574b]">
+        <p className="!mt-6 font-mono text-[13px] !text-[#5d574b]">
           Vous êtes un cabinet ?{' '}
           <a href="/auth/signup" className="inline-flex items-center gap-1 text-[#1d1b16] underline-offset-4 hover:underline">
             Créer un compte <Arrow size={14} />
