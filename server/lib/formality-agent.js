@@ -368,7 +368,11 @@ async function toolActe(supa, ctx, input) {
   const draft = await draftDocument({ docType: 'autre', title: label, brief, chunks });
   if (draft.refused) throw new Error('Rédaction refusée par le modèle.');
   const buffer = await Packer.toBuffer(markdownToDocx(label, draft.markdown));
-  const filename = `${label.replace(/[^\p{L}\p{N}-]+/gu, '_').slice(0, 70)}-${(dossier.client_name || '').replace(/[^\p{L}\p{N}-]+/gu, '_').slice(0, 30)}.docx`;
+  // Supabase Storage refuse les clés non ASCII (accents) : on translittère.
+  const slug = (s, n) => String(s || '')
+    .normalize('NFD').replace(/[̀-ͯ]/g, '')
+    .replace(/[^A-Za-z0-9-]+/g, '_').replace(/^_+|_+$/g, '').slice(0, n);
+  const filename = `${slug(label, 70)}-${slug(dossier.client_name, 30)}.docx`;
   const doc = await storeDossierDocument(supa, dossier, { buffer, filename, docType: type.toUpperCase(), userId: ctx.userId });
   const url = await signedUrl(supa, doc.file_path);
   return {

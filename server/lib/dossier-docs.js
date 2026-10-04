@@ -70,7 +70,9 @@ function extractFromContent(content, dossier) {
 // toutes les bases (enum doc_status d'origine : TRANSMIS/A_CORRIGER/OFFICIEL) :
 // on retombe sur 'TRANSMIS' si l'enum le refuse.
 async function storeDossierDocument(supa, dossier, { buffer, filename, docType, userId, mimeType = DOCX_MIME }) {
-  const storagePath = `generated/${dossier.id}/${Date.now()}-${filename}`;
+  // Clé Storage en ASCII strict (Supabase refuse les accents) ; le nom affiché garde l'original.
+  const safeName = filename.normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^A-Za-z0-9._-]+/g, '_');
+  const storagePath = `generated/${dossier.id}/${Date.now()}-${safeName}`;
   const { error: upErr } = await supa.storage.from(BUCKET).upload(storagePath, buffer, {
     contentType: mimeType,
     upsert: false,

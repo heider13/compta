@@ -31,7 +31,10 @@ function getAnthropic() {
       e.code = 'anthropic_not_configured';
       throw e;
     }
-    _anthropic = new Anthropic();
+    // Clé d'organisation (non rattachée à un espace de travail) : l'API exige
+    // alors l'en-tête anthropic-workspace-id.
+    const ws = process.env.ANTHROPIC_WORKSPACE_ID;
+    _anthropic = new Anthropic(ws ? { defaultHeaders: { 'anthropic-workspace-id': ws } } : {});
   }
   return _anthropic;
 }
