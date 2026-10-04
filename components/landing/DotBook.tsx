@@ -81,11 +81,11 @@ export function DotBook({ className }: { className?: string }) {
       const { width: w, height: h } = canvas!.getBoundingClientRect();
       ctx!.clearRect(0, 0, w, h);
 
-      const size = Math.min(w, h * 1.15);
+      const size = Math.min(w * 0.95, h * 1.7);
       const pageW = size * 0.4;
       const pageH = size * 0.5;
       const yaw = reduced ? 0.18 : Math.sin(t / 6000) * 0.28; // rotation lente
-      const pitch = -0.95; // vu d'en haut, comme un livre posé sur une table
+      const pitch = 0.95; // vu d'en haut, comme un livre posé sur une table (z+ = vers le haut à l'écran)
       const cy = Math.cos(yaw), sy = Math.sin(yaw), cp = Math.cos(pitch), sp = Math.sin(pitch);
       const focal = size * 1.9;
       const angles = pageAngles(t);
@@ -117,7 +117,7 @@ export function DotBook({ className }: { className?: string }) {
             // Couleur : côté gauche violet (comme le pan vertical du logo), droit rose → pêche
             const left = a > Math.PI / 2;
             const c = left ? mix(VIOLET_TOP, VIOLET_BOTTOM, v) : mix(PINK, PEACH, clamp(u * 0.8 + (1 - k) * 0.2));
-            dots.push({ x: w * 0.5 + x * s, y: h * 0.62 + y * s, z, c, r: (cover ? 1.55 : edge ? 1.35 : 1.1) * s });
+            dots.push({ x: w * 0.5 + x * s, y: h * 0.56 + y * s, z, c, r: (cover ? 1.55 : edge ? 1.35 : 1.1) * s });
           }
         }
       });
