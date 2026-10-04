@@ -131,8 +131,23 @@ function formatSize(bytes: number) {
 // inpiFormality : agent ouvert sur une formalité déjà déposée au Guichet unique
 // (page /inpi/[id]) — conversation propre à la formalité, consacrée à sa
 // régularisation ou à son suivi.
-export function FormalityAgent({ inpiFormality }: { inpiFormality?: { id: string; label: string; aTraiter?: boolean } } = {}) {
-  const storageKey = inpiFormality ? `${STORAGE_KEY}_inpi_${inpiFormality.id}` : STORAGE_KEY;
+// resume : reprise d'une formalité préparée en lot (conversation de l'agent déjà menée).
+export type AgentResume = {
+  dossier: { id: string; reference: string; denomination: string };
+  messages: unknown[];
+  events: { kind?: ToolEvent['kind']; label: string; detail?: string | null }[];
+  texte: string;
+};
+
+export function FormalityAgent({
+  inpiFormality,
+  resume,
+}: { inpiFormality?: { id: string; label: string; aTraiter?: boolean }; resume?: AgentResume } = {}) {
+  const storageKey = inpiFormality
+    ? `${STORAGE_KEY}_inpi_${inpiFormality.id}`
+    : resume
+      ? `${STORAGE_KEY}_dossier_${resume.dossier.id}`
+      : STORAGE_KEY;
   const examples = inpiFormality
     ? [
         {
@@ -160,7 +175,19 @@ export function FormalityAgent({ inpiFormality }: { inpiFormality?: { id: string
       setItems(saved.items ?? []);
       setHistory(saved.history ?? []);
       setDossier(saved.dossier ?? null);
+    } else if (resume) {
+      // Première ouverture : on repart de la préparation faite par le lot
+      setHistory(resume.messages);
+      setDossier(resume.dossier);
+      setItems([
+        ...resume.events.map((e, i): Item => ({
+          type: 'tool',
+          event: { id: `lot-${i}`, name: 'lot', status: 'done', label: e.label, detail: e.detail ?? undefined, kind: e.kind },
+        })),
+        { type: 'assistant', text: resume.texte.trim() || 'Préparation terminée.' },
+      ]);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [storageKey]);
 
   useEffect(() => {

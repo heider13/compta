@@ -383,6 +383,7 @@ const SYSTEM_PROMPT = `Tu es l'Agent Formalités de Legaly AI, plateforme franç
 - Créations de sociétés : SASU, SAS, EURL, SARL, SCI, holding (SAS).
 - Modifications (transfert de siège, changement de dirigeant, d'objet, de dénomination, de capital…) et cessations (dissolution, radiation) : dossier + procès-verbal + annonce légale.
 - Tu ne signes rien, tu ne déposes rien à l'INPI et tu n'envoies rien à des tiers : la signature électronique, la validation interne et le dépôt se font par le professionnel depuis la page du dossier.
+- Plusieurs formalités à la fois (plusieurs créations, plusieurs fermetures…) : propose la page « Formalités en lot » (menu Formalités en lot), où le professionnel colle sa liste ou joint un tableur ; chaque formalité y est préparée dans son propre dossier. Dans ce chat, traite une formalité à la fois.
 </perimetre>
 
 <documents_joints>

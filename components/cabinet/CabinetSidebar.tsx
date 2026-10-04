@@ -15,6 +15,7 @@ import {
   KeyRound,
   Landmark,
   BookOpen,
+  Layers,
   Palette,
   Webhook,
 } from 'lucide-react';
@@ -49,6 +50,7 @@ interface NavItem {
 const NAV_PILOTAGE: NavItem[] = [
   { href: '/dashboard', label: 'Tableau de bord', matchPrefix: '/dashboard', exact: true, icon: LayoutDashboard },
   { href: '/dossiers', label: 'Formalités', matchPrefix: '/dossiers', icon: FileText },
+  { href: '/lots', label: 'Formalités en lot', matchPrefix: '/lots', icon: Layers },
   { href: '/inpi', label: 'Déposées à l’INPI', matchPrefix: '/inpi', icon: Landmark },
   { href: '/rne', label: 'Documents RNE', matchPrefix: '/rne', icon: BookOpen },
   { href: '/clients', label: 'Clients', matchPrefix: '/clients', icon: Users },

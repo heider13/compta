@@ -17,6 +17,7 @@ const pappersAnnoncesRoutes = require('./routes/pappers-annonces');
 const agentRoutes = require('./routes/agent');
 const inpiFormalitiesRoutes = require('./routes/inpi-formalities');
 const rneDocumentsRoutes = require('./routes/rne-documents');
+const batchRoutes = require('./routes/batch');
 
 const app = express();
 app.set('trust proxy', 'loopback');
@@ -1020,6 +1021,7 @@ app.use('/api/ai', requireUser, requireOrg, aiRoutes);
 app.use('/api/agent', requireUser, requireOrg, agentRoutes);
 app.use('/api/inpi', requireUser, requireOrg, inpiFormalitiesRoutes);
 app.use('/api/rne', requireUser, requireOrg, rneDocumentsRoutes);
+app.use('/api/lots', requireUser, requireOrg, batchRoutes);
 
 app.use((err, req, res, _next) => {
   console.error(`[ERR] ${req.method} ${req.path}:`, err.message);
