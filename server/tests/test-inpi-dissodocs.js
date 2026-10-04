@@ -1,11 +1,14 @@
-// Lecture seule : listes de codes (rôles, pièces, événements) contenant « liquidat / dissolution / radiation ».
+// Lecture seule : champs racine liés à la cessation (evenementCessation, natureCessation…) et leurs codes.
 const fs = require('fs');
 const j = JSON.parse(fs.readFileSync('/opt/compta-proxy/data/gu-formalities-openapi.json', 'utf8'));
-const textes = new Set();
-(function walk(o) { if (Array.isArray(o)) return o.forEach(walk); if (o && typeof o === 'object') return Object.values(o).forEach(walk); if (typeof o === 'string' && o.includes('->')) textes.add(o); })(j);
-const lignes = [...new Set([...textes].flatMap((t) => t.split(/\n|<br\s*\/?>/)).map((l) => l.trim()))];
-const voir = (titre, re) => { console.log(`\n${titre}`); lignes.filter((l) => re.test(l)).slice(0, 25).forEach((l) => console.log('   ' + l.slice(0, 160))); };
-voir('Rôles (liquidateur, gérants) :', /^-?\s*\d{1,3} -> .*(iquidat|Gérant|Président)/);
-voir('Pièces :', /PJ_\d+ -> .*(issolution|iquidat|adiation|omptes de cl|isparition|sommeil)/i);
-voir('Événements :', /\b\d\d[MPF] -> .*(issolution|iquidat|adiation|isparition)/i);
-voir('Types de dissolution / motifs :', /^-?\s*\w{1,3} -> .*(issolution|amiable|anticip|judiciaire|transmission universelle|clôture)/i);
+const schemas = j.components?.schemas || {};
+const vus = new Set();
+for (const [nom, s] of Object.entries(schemas)) for (const [k, v] of Object.entries(s?.properties || {})) {
+  if (!/^(evenementCessation|natureCessation|natureCessationEntreprise|indicateurPoursuiteCessation|motifDisparition|typeDissolution|motifCessation|destination)$/.test(k)) continue;
+  const cle = `${k}|${v.description || ''}|${JSON.stringify(v.enum || '')}|${v.$ref || ''}`;
+  if (vus.has(cle)) continue; vus.add(cle);
+  console.log(`\n${nom}.${k} : ${v.type || v.$ref || ''}`);
+  if (v.description) console.log('  ' + String(v.description).replace(/\n/g, '\n  ').slice(0, 900));
+  if (v.enum) console.log('  enum', JSON.stringify(v.enum));
+  if (v.$ref) { const r = schemas[v.$ref.split('/').pop()]; if (r) console.log('  →', Object.keys(r.properties || {}).join(', ')); }
+}

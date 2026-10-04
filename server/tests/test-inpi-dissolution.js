@@ -10,7 +10,8 @@ const ORG = '00000000-0000-0000-0000-000000000001';
   const siege = { voie: '31 rue Chateauredon', codePostal: '13001', commune: 'Marseille' };
   const CAS = [
     ['Dissolution anticipée (liquidation amiable)', ['R', 'M'], [{ type: 'dissolution', liquidateurExistant: gerant, lieuLiquidation: siege, typeDissolution: '1' }]],
-    ['Clôture de liquidation et radiation', ['R'], [{ type: 'clotureLiquidation' }]],
+    ['Clôture de liquidation (événement 43M)', ['R'], [{ type: 'clotureLiquidation', evenementCessation: '43M' }]],
+    ['Clôture de liquidation (événement 42M)', ['R'], [{ type: 'clotureLiquidation', evenementCessation: '42M' }]],
   ];
   for (const [label, types, ops] of CAS) {
     for (const typeFormalite of types) {

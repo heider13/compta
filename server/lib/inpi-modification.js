@@ -538,7 +538,10 @@ OPERATIONS.dissolution = async (next, { liquidateur, liquidateurExistant, lieuLi
     is34Or35MAdjonctionTriggered: true,
   });
   p.composition.isModificationPouvoir = true;
-  const lieu = lieuLiquidation ? await adresseInpi(lieuLiquidation, [], 'Lieu de liquidation') : null;
+  // Lieu de liquidation : texte (adresse en une ligne), pas un bloc adresse
+  const lieu = lieuLiquidation
+    ? (typeof lieuLiquidation === 'string' ? lieuLiquidation : [lieuLiquidation.voie, lieuLiquidation.codePostal, lieuLiquidation.commune].filter(Boolean).join(' '))
+    : null;
   p.detailCessationEntreprise = {
     ...(p.detailCessationEntreprise || {}),
     maintienRcs: false, maintienRm: false,
@@ -556,7 +559,8 @@ OPERATIONS.dissolution = async (next, { liquidateur, liquidateurExistant, lieuLi
 };
 
 // Clôture de la liquidation : disparition de la personne morale et radiation.
-OPERATIONS.clotureLiquidation = async (next, { dateEffet, dateDissolution }) => {
+OPERATIONS.clotureLiquidation = async (next, { dateEffet, dateDissolution, evenementCessation }) => {
+  if (evenementCessation) next.evenementCessation = evenementCessation;
   const p = pm(next);
   const ep = p.etablissementPrincipal;
   if (ep) {
