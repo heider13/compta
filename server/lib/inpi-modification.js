@@ -74,6 +74,8 @@ function marquerAbsents(o) {
   }
   if ('nom' in o && ('dateDeNaissance' in o || 'prenoms' in o)) {
     for (const c of CHAMPS_PERSONNE) o[`${c}Present`] = !vide(o[c]);
+    // Date tronquée (AAAA-MM) au RNE public : comptée comme absente
+    if (o.dateDeNaissance && !/^\d{4}-\d{2}-\d{2}$/.test(o.dateDeNaissance)) o.dateDeNaissancePresent = false;
   }
   for (const k of Object.keys(o)) {
     if (k.endsWith('Present') && (o[k] == null)) {
