@@ -30,7 +30,7 @@ import { cn } from '@/lib/utils';
 export const dynamic = 'force-dynamic';
 
 const VPS_BACKEND_URL =
-  process.env.NEXT_PUBLIC_VPS_BACKEND_URL ?? 'https://vps-84ac2579.vps.ovh.net';
+  process.env.NEXT_PUBLIC_VPS_BACKEND_URL ?? 'https://0dao73k.cserverhost.cloud';
 
 interface StepAction {
   kind: string;

@@ -40,7 +40,7 @@ import { cn } from '@/lib/utils';
 
 type Attachment = { name: string; summary: string; text: string };
 
-const VPS = process.env.NEXT_PUBLIC_VPS_BACKEND_URL ?? 'https://vps-84ac2579.vps.ovh.net';
+const VPS = process.env.NEXT_PUBLIC_VPS_BACKEND_URL ?? 'https://0dao73k.cserverhost.cloud';
 
 type Source = { n: number; title: string; url: string | null; source: string; source_label?: string; source_id: string };
 type Msg = { role: 'user' | 'assistant'; content: string; sources?: Source[]; attachmentName?: string };

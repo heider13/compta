@@ -38,7 +38,7 @@ export default async function ApiKeysPage({ searchParams }: { searchParams: Prom
         <p className="mt-1 text-sm text-muted-foreground">
           Pour intégrer Legaly AI dans vos outils internes ou ceux de vos partenaires. Base URL :{' '}
           <code className="rounded bg-muted px-1.5 py-0.5 font-mono text-xs">
-            https://vps-84ac2579.vps.ovh.net/v1/
+            {`${process.env.NEXT_PUBLIC_VPS_BACKEND_URL ?? 'https://0dao73k.cserverhost.cloud'}/v1/`}
           </code>
         </p>
       </div>

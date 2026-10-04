@@ -1,6 +1,6 @@
 # Compta INPI Proxy
 
-Petit serveur Express qui proxy les appels au Guichet Unique INPI depuis une **IP française fixe** (VPS OVH), parce que les IPs Vercel sont filtrées par le WAF de l'INPI.
+Petit serveur Express qui proxy les appels au Guichet Unique INPI depuis une **IP française fixe** (VPS IONOS), parce que les IPs Vercel sont filtrées par le WAF de l'INPI.
 
 ## Architecture
 
@@ -8,7 +8,7 @@ Petit serveur Express qui proxy les appels au Guichet Unique INPI depuis une **I
 Browser (HTTPS) ─JWT Supabase─▶ Vercel (frontend)
                                        │
                                        ▼ fetch HTTPS
-                  https://vps-84ac2579.vps.ovh.net/api/*
+                  https://0dao73k.cserverhost.cloud/api/*
                                        │
                                        ▼  Caddy (TLS) → 127.0.0.1:3000 (Node)
                                        │
@@ -30,13 +30,13 @@ Browser (HTTPS) ─JWT Supabase─▶ Vercel (frontend)
 ## Setup du VPS (depuis chez toi)
 
 ```bash
-ssh ubuntu@51.210.247.134
+ssh -i ~/.ssh/compta_vps root@217.160.143.183
 # Puis sur le VPS :
 git clone https://github.com/heider13/compta.git /tmp/compta
 sudo bash /tmp/compta/server/setup.sh
 sudo nano /etc/compta-proxy.env   # remplir les valeurs
 sudo systemctl restart compta-proxy caddy
-curl https://vps-84ac2579.vps.ovh.net/health
+curl https://0dao73k.cserverhost.cloud/health
 ```
 
 ## Endpoints
@@ -59,7 +59,7 @@ Tous protégés par JWT Supabase (header `Authorization: Bearer <jwt>`).
 ## Mise à jour du code
 
 ```bash
-ssh ubuntu@51.210.247.134
+ssh -i ~/.ssh/compta_vps root@217.160.143.183
 sudo bash /opt/compta-proxy/server/setup.sh   # idempotent : git pull + npm i
 sudo systemctl restart compta-proxy
 ```

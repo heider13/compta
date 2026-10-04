@@ -22,7 +22,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { cn } from '@/lib/utils';
 
 const VPS_BACKEND_URL =
-  process.env.NEXT_PUBLIC_VPS_BACKEND_URL ?? 'https://vps-84ac2579.vps.ovh.net';
+  process.env.NEXT_PUBLIC_VPS_BACKEND_URL ?? 'https://0dao73k.cserverhost.cloud';
 
 const INPI_PORTAL_PROD = 'https://procedures-bis.inpi.fr/login';
 const INPI_PORTAL_DEMO = 'https://procedures-demo.inpi.fr/login';

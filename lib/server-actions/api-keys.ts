@@ -4,7 +4,7 @@ import { createClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
 import { randomBytes, createHash } from 'crypto';
 
-const VPS_BASE = process.env.NEXT_PUBLIC_VPS_BACKEND_URL || 'https://vps-84ac2579.vps.ovh.net';
+const VPS_BASE = process.env.NEXT_PUBLIC_VPS_BACKEND_URL || 'https://0dao73k.cserverhost.cloud';
 
 async function getCurrentOrgId(): Promise<string | null> {
   const supabase = await createClient();

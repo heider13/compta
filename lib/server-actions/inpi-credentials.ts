@@ -6,7 +6,7 @@ import { createClient } from '@/lib/supabase/server';
 
 // URL du backend OVH qui chiffre AES-256-GCM avant écriture des creds INPI.
 const VPS_BACKEND_URL =
-  process.env.NEXT_PUBLIC_VPS_BACKEND_URL ?? 'https://vps-84ac2579.vps.ovh.net';
+  process.env.NEXT_PUBLIC_VPS_BACKEND_URL ?? 'https://0dao73k.cserverhost.cloud';
 
 // Statut côté serveur des identifiants INPI d'une organisation.
 // Permet aux pages serveur de décider si on autorise les démarches.
