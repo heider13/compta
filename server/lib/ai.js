@@ -150,7 +150,9 @@ Tu rédiges des documents juridiques et contractuels de droit français, prêts 
 - Réponds UNIQUEMENT avec le document en Markdown, sans commentaire d'introduction.
 </regles>`;
 
-async function draftDocument({ docType, brief, chunks = [], title }) {
+// modele : texte d'un document du même type, validé par le greffe et anonymisé,
+// dont on reprend la structure, les clauses et le style (bibliothèque du cabinet).
+async function draftDocument({ docType, brief, chunks = [], title, modele = null }) {
   const client = getAnthropic();
   const label = title || DOC_TYPES[docType] || DOC_TYPES.autre;
   const context = chunks.length
@@ -161,12 +163,14 @@ async function draftDocument({ docType, brief, chunks = [], title }) {
 
   const msg = await client.messages.create({
     model: MODELS.balanced, // rédaction juridique : Sonnet 5
-    max_tokens: 8192,
+    max_tokens: 16000,
     thinking: { type: 'adaptive' },
     system: [{ type: 'text', text: DRAFT_SYSTEM, cache_control: { type: 'ephemeral' } }],
     messages: [{
       role: 'user',
-      content: `SOURCES OFFICIELLES :\n${context}\n\n---\n\nTYPE DE DOCUMENT : ${label}\n\nBRIEF DU PROFESSIONNEL :\n${brief}\n\nRédige le document complet en Markdown.`,
+      content: `SOURCES OFFICIELLES :\n${context}\n\n---\n\n${modele
+        ? `MODÈLE DU CABINET — document du même type déjà accepté par le greffe, anonymisé :\n"""\n${modele}\n"""\nReprends fidèlement sa structure, l'ordre et la rédaction de ses clauses, son style et ses mentions (signatures, certifications, « bon pour… »). Adapte-le au dossier : remplace chaque champ anonymisé ([NOM], [ADRESSE]…) par les données du dossier ou par [À COMPLÉTER : …], et n'en reprends aucune donnée propre à l'exemple. Corrige au besoin ce qui serait contraire au droit en vigueur.\n\n---\n\n`
+        : ''}TYPE DE DOCUMENT : ${label}\n\nBRIEF DU PROFESSIONNEL :\n${brief}\n\nRédige le document complet en Markdown.`,
     }],
   });
 

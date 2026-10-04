@@ -27,6 +27,7 @@ const inpi = require('../inpi');
 const { getFormalitySummary, downloadAttachment } = require('./inpi-formality');
 const { buildCreationLiasse, createDraftWithPieces, PIECES } = require('./inpi-liasse');
 const { BUCKET } = require('./dossier-docs');
+const knowledge = require('./knowledge');
 
 const MAX_ITERATIONS = 12;
 
@@ -63,8 +64,26 @@ const ACTES = {
   annonce_modification: "Avis de modification (annonce légale)",
   pv_dissolution: 'Procès-verbal de dissolution anticipée',
   reponse_greffe: 'Courrier de réponse à la demande de régularisation du greffe',
+  bail_commercial: 'Bail commercial',
+  attestation_hebergement: "Attestation d'hébergement du siège chez le dirigeant",
+  acte_cession: "Acte de cession d'actions ou de parts sociales",
+  statuts_mis_a_jour: 'Statuts mis à jour',
   declaration_beneficiaires: 'Déclaration des bénéficiaires effectifs',
   autre: 'Document juridique',
+};
+
+// Modèle du cabinet utilisé pour chaque type d'acte (voir lib/knowledge.js).
+const MODELE_PAR_ACTE = {
+  declaration_non_condamnation: 'non_condamnation',
+  liste_souscripteurs: 'liste_souscripteurs',
+  attestation_domiciliation: 'attestation_hebergement',
+  attestation_hebergement: 'attestation_hebergement',
+  pouvoir_formalites: 'mandat',
+  pv_decision: 'pv_assemblee',
+  pv_dissolution: 'pv_assemblee',
+  bail_commercial: 'bail_commercial',
+  acte_cession: 'acte_cession',
+  statuts_mis_a_jour: 'statuts_mis_a_jour',
 };
 
 // ─── Définition des outils ────────────────────────────────────────
@@ -453,7 +472,37 @@ async function toolEnregistrer(supa, ctx, input) {
 async function toolStatuts(supa, ctx) {
   const dossier = await loadDossier(supa, ctx);
   if (!dossier) throw new Error("Aucun dossier : appelle d'abord enregistrer_dossier.");
-  const overrides = String(dossier.forme_juridique).toUpperCase() === 'HOLDING' ? { formeJuridique: 'SAS' } : {};
+  const forme = String(dossier.forme_juridique || '').toUpperCase();
+  const modeleStatuts = knowledge.modele(`statuts_${(forme === 'HOLDING' ? 'SAS' : forme).toLowerCase()}`);
+  if (modeleStatuts) {
+    const data = dossier.metadata?.agent_data || {};
+    const brief = [
+      `Statuts constitutifs d'une ${forme === 'HOLDING' ? 'SAS (holding)' : forme}.`,
+      'Données du dossier (JSON) :',
+      JSON.stringify(data, null, 2),
+      'Utilise exactement ces données (dénomination, objet, siège, capital et sa répartition, durée, exercice, dirigeant, associés). Pour toute donnée absente : [À COMPLÉTER : …].',
+    ].join('\n');
+    const draft = await draftDocument({ docType: 'autre', title: `Statuts — ${dossier.client_name}`, brief, modele: modeleStatuts });
+    if (draft.refused) throw new Error('Rédaction refusée par le modèle.');
+    if (ctx.draftUsage && draft.usage) {
+      ctx.draftUsage.calls += 1;
+      ctx.draftUsage.input += draft.usage.input_tokens || 0;
+      ctx.draftUsage.output += draft.usage.output_tokens || 0;
+    }
+    const buffer = await Packer.toBuffer(markdownToDocx(`Statuts — ${dossier.client_name}`, draft.markdown));
+    const doc = await storeDossierDocument(supa, dossier, {
+      buffer,
+      filename: `Statuts-${String(dossier.client_name || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^A-Za-z0-9-]+/g, '_')}.docx`,
+      docType: 'STATUTS',
+      userId: ctx.userId,
+    });
+    const url = await signedUrl(supa, doc.file_path);
+    return {
+      result: { document: doc.name, ajoute_aux_pieces: true, redige_sur_modele_du_cabinet: true },
+      event: { kind: 'document', label: 'Statuts rédigés (modèle du cabinet)', detail: doc.name, href: url, docHref: dossierUrl(dossier) },
+    };
+  }
+  const overrides = forme === 'HOLDING' ? { formeJuridique: 'SAS' } : {};
   const doc = await generateStatutsForDossier(supa, dossier, ctx.userId, overrides);
   const url = await signedUrl(supa, doc.file_path);
   return {
@@ -485,7 +534,8 @@ async function toolActe(supa, ctx, input) {
     chunks = await searchLegalChunks(`${ACTES[type]} ${data.formeJuridique || ''}`, { matchCount: 4, minSimilarity: 0.35 });
   } catch { /* rédaction possible sans sources */ }
 
-  const draft = await draftDocument({ docType: 'autre', title: label, brief, chunks });
+  const modeleActe = knowledge.modele(MODELE_PAR_ACTE[type]);
+  const draft = await draftDocument({ docType: 'autre', title: label, brief, chunks, modele: modeleActe });
   if (draft.refused) throw new Error('Rédaction refusée par le modèle.');
   if (ctx.draftUsage && draft.usage) {
     ctx.draftUsage.calls += 1;
@@ -700,6 +750,20 @@ async function runTool(name, input, ctx) {
   }
 }
 
+// Prompt système + guide d'expertise du cabinet (s'il a été généré sur le VPS).
+function systemBlocks() {
+  const blocks = [{ type: 'text', text: SYSTEM_PROMPT, cache_control: { type: 'ephemeral' } }];
+  const guide = knowledge.playbook();
+  if (guide) {
+    blocks.push({
+      type: 'text',
+      text: `<guide_expertise_cabinet>\nEnseignements tirés de l'historique réel des formalités du cabinet (régularisations et rejets des greffes). Applique-les systématiquement : préviens ces erreurs dès la préparation et utilise la check-list avant tout dépôt.\n\n${guide}\n</guide_expertise_cabinet>`,
+      cache_control: { type: 'ephemeral' },
+    });
+  }
+  return blocks;
+}
+
 // ─── Boucle de l'agent ────────────────────────────────────────────
 // emit(event, data) : 'text' {text} | 'tool' {id, name, status, label, ...} | 'dossier' {...}
 // Transforme les pièces jointes en blocs de contenu Claude.
@@ -755,7 +819,7 @@ async function runAgentTurn({ history, input, attachments = [], ctx, emit }) {
       // Cache : prompt système + outils, et (top-level) tout l'historique jusqu'au
       // dernier bloc — chaque appel de la boucle relit l'historique en cache.
       cache_control: { type: 'ephemeral' },
-      system: [{ type: 'text', text: SYSTEM_PROMPT, cache_control: { type: 'ephemeral' } }],
+      system: systemBlocks(),
       tools: TOOLS,
       messages,
     });
