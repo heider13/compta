@@ -97,13 +97,17 @@ async function baseModification(orgId, siren) {
 
   // Dernière liasse de l'entreprise déposée par le cabinet (format natif GU)
   let gu = null;
-  try {
-    // Dernière liasse VALIDÉE (les brouillons récents ne contiennent pas forcément des données complètes)
-    const r = await client.listFormalities({ siren, itemsPerPage: 100, 'order[created]': 'desc' });
-    const items = r?.['hydra:member'] || [];
-    const last = items.find((f) => f.status === 'VALIDATED') || items[0];
-    if (last) gu = clean((await client.getFormality(last.id)).content);
-  } catch { /* entreprise jamais traitée par le cabinet */ }
+  // Dernière liasse VALIDÉE (les brouillons récents ne contiennent pas forcément des données
+  // complètes). L'API INPI échoue parfois ponctuellement : 3 tentatives avant d'abandonner.
+  for (let essai = 0; essai < 3 && !gu; essai++) {
+    try {
+      const r = await client.listFormalities({ siren, itemsPerPage: 100, 'order[created]': 'desc' });
+      const items = r?.['hydra:member'] || [];
+      const last = items.find((f) => f.status === 'VALIDATED') || items[0];
+      if (!last) break; // entreprise jamais traitée par le cabinet
+      gu = clean((await client.getFormality(last.id)).content);
+    } catch { await new Promise((ok) => setTimeout(ok, 1500 * (essai + 1))); }
+  }
 
   const ident = next[bloc]?.identite || {};
   if (bloc === 'personneMorale' && !ident.entreprise?.numGreffe && gu?.personneMorale?.identite?.entreprise?.numGreffe) {
@@ -377,7 +381,7 @@ OPERATIONS.miseEnSommeil = async (next, { dateEffet, deplacerEtablissement = tru
     indicateurDissolution: false, indicateurDisparitionPM: false, dateMiseEnSommeil: dateEffet,
     dateDissolutionDisparitionFromRNE: false, indicateurLocationTerresTVA: false,
   };
-  return ['40M'];
+  return ['dissolution'];
 };
 
 // 41P — cessation totale d'une entreprise individuelle (radiation).
@@ -505,10 +509,31 @@ OPERATIONS.domicileEI = async (next, { adresse, dateEffet, deplacerEntreprise = 
 // ─── Dissolution et liquidation (codes de la spécification officielle) ───
 // Rôle liquidateur : 40 ; typeDissolution : 1 avec liquidation, 2 sans (TUP).
 
-// Dissolution anticipée : la société subsiste pour sa liquidation (immatriculation
-// maintenue), les fonctions des dirigeants prennent fin, un liquidateur est nommé.
-OPERATIONS.dissolution = async (next, { liquidateur, liquidateurExistant, lieuLiquidation, typeDissolution = '1', annonce, dateEffet }) => {
+// Structure relevée sur des dissolutions et clôtures réellement inscrites au RNE :
+// - dissolution = événement 40M au RNE. Par l'API, une formalité R portant l'indicateur de
+//   dissolution est refusée (« aucune modification ») ; déposée en M (siège sans destination),
+//   seule la nomination du liquidateur (35M) est reconnue. Structure relevée : immatriculation
+//   maintenue, date reprise en dateMiseEnSommeil, publicité du liquidateur dans le bloc
+//   de cessation, établissement fermé en « siège sans activité » (ou maintenu si l'activité
+//   se poursuit pendant la liquidation) ;
+// - clôture = événement 42M, recevable seulement si la dissolution est inscrite (sinon
+//   le Guichet unique répond « aucune modification ») ou déclarée dans la même liasse.
+function fermerSiege(p, dateEffet, role) {
+  const ep = p.etablissementPrincipal;
+  if (!ep) return;
+  ep.descriptionEtablissement = {
+    ...(ep.descriptionEtablissement || {}),
+    rolePourEntreprise: role, statutPourFormalite: '2', destinationEtablissement: 'C',
+    sansActiviteAutreActiviteSiege: true, indicateurEtablissementPrincipal: false, dateFinActivite: dateEffet,
+  };
+  for (const a of ep.activites || []) a.statutFormalite = 'M';
+  p.autresEtablissements = [...(p.autresEtablissements || []), ep];
+  delete p.etablissementPrincipal;
+}
+
+OPERATIONS.dissolution = async (next, { liquidateur, liquidateurExistant, lieuLiquidation, typeDissolution = '1', annonce, poursuiteActivite = false, nommerLiquidateur = true, modeSiege = 'sansDestination', dateEffet }) => {
   const p = pm(next);
+  if (nommerLiquidateur) {
   // Fin des fonctions des dirigeants en place
   for (const x of p.composition?.pouvoirs || []) {
     if (['1', '3'].includes(x.statutPourLaFormalite)) continue;
@@ -532,7 +557,7 @@ OPERATIONS.dissolution = async (next, { liquidateur, liquidateurExistant, lieuLi
     individu: ind,
     roleEntreprise: '40',
     statutPourLaFormalite: '1',
-    // Adresse du liquidateur (S siège, L la sienne, A autre) et publicité de sa nomination
+    // Adresse de liquidation : S siège, L adresse du liquidateur, A autre
     typeAdresseLiquidateur: ['S', 'L', 'A'].includes(lieuLiquidation) ? lieuLiquidation : 'S',
     ...(annonce?.journal && annonce?.datePublication ? {
       publication: { typePublication: 'Publication légale', datePublication: annonce.datePublication, ...journalPublicationInpi(annonce.journal) },
@@ -544,65 +569,57 @@ OPERATIONS.dissolution = async (next, { liquidateur, liquidateurExistant, lieuLi
     is34Or35MAdjonctionTriggered: true,
   });
   p.composition.isModificationPouvoir = true;
-  // Lieu de liquidation : code S (siège), L (adresse du liquidateur) ou A (autre adresse)
-  const lieu = ['S', 'L', 'A'].includes(lieuLiquidation) ? lieuLiquidation : 'S';
-  p.detailCessationEntreprise = {
-    ...(p.detailCessationEntreprise || {}),
-    maintienRcs: false, maintienRm: false,
-    indicateurMaintienImmatriculationRegistre: true,
-    // motifCessation (liste officielle) : 9 dissolution, 11 dissolution sans liquidation
-    motifCessation: typeDissolution === '2' ? '11' : '9',
-    indicateurDissolution: true,
-    typeDissolution,
-    dateDissolutionDisparition: dateEffet,
-    indicateurDisparitionPM: false,
-    dateDissolutionDisparitionFromRNE: false,
-    indicateurLocationTerresTVA: false,
-    lieuDeLiquidation: lieu,
-  };
-  activitesInchangees(next);
-  return ['dissolution'];
-};
-
-// Clôture de la liquidation : disparition de la personne morale et radiation.
-OPERATIONS.clotureLiquidation = async (next, { dateEffet, dateDissolution, evenementCessation, deplacerEtablissement = true }) => {
-  if (evenementCessation) next.evenementCessation = evenementCessation;
-  const p = pm(next);
-  const ep = p.etablissementPrincipal;
-  if (ep) {
-    ep.descriptionEtablissement = {
-      ...(ep.descriptionEtablissement || {}),
-      statutPourFormalite: '2', destinationEtablissement: 'C', dateEffetFermeture: dateEffet,
-      is27PMFermetureEtablissementTriggered: true,
-    };
-    for (const a of ep.activites || []) a.statutFormalite = 'M';
-    // Comme pour la mise en sommeil (validée) : l'établissement passe en établissement fermé
-    if (deplacerEtablissement) {
-      ep.descriptionEtablissement = { ...ep.descriptionEtablissement, rolePourEntreprise: '1', indicateurEtablissementPrincipal: false, dateFinActivite: dateEffet };
-      p.autresEtablissements = [...(p.autresEtablissements || []), ep];
-      delete p.etablissementPrincipal;
-    }
+  }
+  const publication = annonce?.journal && annonce?.datePublication
+    ? { datePublication: annonce.datePublication, ...journalPublicationInpi(annonce.journal) } : null;
+  if (poursuiteActivite) activitesInchangees(next);
+  else {
+    fermerSiege(p, dateEffet, '1');
+    const de = p.autresEtablissements?.[p.autresEtablissements.length - 1]?.descriptionEtablissement;
+    if (de && modeSiege === 'sansDestination') delete de.destinationEtablissement;
+    if (de && modeSiege === 'fermeture') Object.assign(de, { dateEffetFermeture: dateEffet, is27PMFermetureEtablissementTriggered: true });
   }
   p.detailCessationEntreprise = {
     ...(p.detailCessationEntreprise || {}),
     maintienRcs: false, maintienRm: false,
-    indicateurMaintienImmatriculationRegistre: false,
-    // motifCessation 13 : disparition de l'entreprise (clôture de liquidation)
-    motifCessation: '13',
+    indicateurMaintienImmatriculationRegistre: true,
     indicateurDissolution: true,
-    typeDissolution: '1',
-    dateDissolutionDisparition: dateDissolution || dateEffet,
-    indicateurDisparitionPM: true,
-    indicateurDisparitionPMClotureLiquidation: true,
-    indicateurDisparitionPMTransmissionUniversellePatrimoine: false,
-    dateClotureLiquidation: dateEffet,
-    dateCessationTotaleActivite: dateEffet,
-    dateRadiation: dateEffet,
+    typeDissolution,
+    dateDissolutionDisparition: dateEffet,
+    ...(poursuiteActivite ? { indicateurPoursuiteActivite: true } : { dateMiseEnSommeil: dateEffet }),
+    ...(publication ? { publiciteNominationLiquidateur: publication } : {}),
+    indicateurDisparitionPM: false,
     dateDissolutionDisparitionFromRNE: false,
     indicateurLocationTerresTVA: false,
   };
+  return ['40M'];
+};
+
+// Clôture de la liquidation (42M) : radiation. Si la dissolution n'est pas encore inscrite,
+// la déclarer dans la même liasse (opération dissolution avant celle-ci).
+OPERATIONS.clotureLiquidation = async (next, { dateEffet, dateDissolution }) => {
+  const p = pm(next);
+  const d = p.detailCessationEntreprise || {};
+  if (!d.indicateurDissolution) {
+    throw new Error("Clôture impossible : la dissolution n'est pas inscrite au RNE. Déclarer la dissolution d'abord (ou dans la même liasse, opération « dissolution » avant la clôture).");
+  }
+  // Siège : déjà fermé à la dissolution (passé « siège fermé ») ou fermé maintenant
+  if (p.etablissementPrincipal) fermerSiege(p, dateEffet, '1');
+  for (const e of p.autresEtablissements || []) {
+    const de = e.descriptionEtablissement || {};
+    if (de.rolePourEntreprise === '1') e.descriptionEtablissement = { ...de, statutPourFormalite: '2', destinationEtablissement: 'C', dateEffetFermeture: dateEffet };
+  }
+  p.detailCessationEntreprise = {
+    ...d,
+    indicateurMaintienImmatriculationRegistre: false,
+    dateDissolutionDisparition: d.dateDissolutionDisparition || dateDissolution || dateEffet,
+    dateMiseEnSommeil: d.dateMiseEnSommeil || d.dateDissolutionDisparition || dateDissolution || dateEffet,
+    dateClotureLiquidation: dateEffet,
+    dateCessationTotaleActivite: dateEffet,
+    dateRadiation: dateEffet,
+  };
   next.natureCessationEntreprise = { dateRadiation: dateEffet };
-  return ['clôture de liquidation'];
+  return ['42M'];
 };
 
 // Complément des données de l'entreprise absentes du RNE (ex. objet social repris d'une

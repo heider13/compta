@@ -79,4 +79,4 @@ function summarizeCompany(company) {
   };
 }
 
-module.exports = { getCompany, summarizeCompany };
+module.exports = { getCompany, summarizeCompany, rneToken };
