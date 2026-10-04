@@ -1205,3 +1205,6 @@ section[id] { scroll-margin-top: 80px; }
 }
 .bp-tabin { animation: bp-tabin 0.35s cubic-bezier(0.22,1,0.36,1); }
 @media (prefers-reduced-motion: reduce) { .bp-tabin { animation: none; } }
+
+/* Hero agent (landing) : apparition des scènes de la démo */
+@keyframes heroSceneIn { from { opacity: 0; transform: translateY(8px) scale(0.985); } to { opacity: 1; transform: none; } }

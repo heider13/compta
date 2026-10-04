@@ -15,10 +15,13 @@ import { cn } from '@/lib/utils';
 // est ouvert. Les panneaux déroulants sont toujours clairs et lisibles.
 type MenuKey = 'modules' | 'solutions' | null;
 
-export function Nav() {
+// surface : fond du haut de page sous la nav transparente (dark = hero sombre, light = hero clair).
+// announcement : bandeau d'annonce affiché au-dessus de la nav.
+export function Nav({ surface = 'dark', announcement }: { surface?: 'dark' | 'light'; announcement?: React.ReactNode } = {}) {
   const [scrolled, setScrolled] = useState(false);
   const [open, setOpen] = useState<MenuKey>(null);
   const solid = scrolled || open !== null;
+  const onDark = surface === 'dark' && !solid;
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 24);
@@ -29,7 +32,7 @@ export function Nav() {
 
   const triggerCls = cn(
     'inline-flex items-center gap-1 text-sm font-medium transition-colors duration-150',
-    solid ? 'text-[var(--ink-600)] hover:text-[var(--violet-900)]' : '!text-white/80 hover:!text-white',
+    !onDark ? 'text-[var(--ink-600)] hover:text-[var(--violet-900)]' : '!text-white/80 hover:!text-white',
   );
 
   return (
@@ -42,12 +45,17 @@ export function Nav() {
       )}
       onMouseLeave={() => setOpen(null)}
     >
+      {announcement && !scrolled && (
+        <div className="bg-[#1d1b16] px-4 py-2 text-center font-mono text-[12px] tracking-wide text-[#e9e1d0] sm:text-[13px]">
+          {announcement}
+        </div>
+      )}
       <Container className="flex h-16 items-center justify-between gap-4">
         <Link href="/" className="flex items-center no-underline" aria-label="Legaly AI">
           <Logo
             size={28}
-            onDark={!solid}
-            textClassName={cn('text-[19px] transition-colors', !solid && '!text-white')}
+            onDark={onDark}
+            textClassName={cn('text-[19px] transition-colors', onDark && '!text-white')}
           />
         </Link>
 
@@ -131,7 +139,7 @@ export function Nav() {
             href="/auth/login"
             className={cn(
               'inline-flex items-center justify-center rounded-full px-4 py-2 text-sm font-medium transition-colors',
-              solid
+              !onDark
                 ? 'border border-[var(--ink-200)] text-[var(--ink-900)] hover:bg-[var(--ink-50)]'
                 : 'border border-white/25 !text-white hover:bg-white/10',
             )}
@@ -142,7 +150,7 @@ export function Nav() {
             href="/auth/signup"
             className={cn(
               'inline-flex items-center justify-center gap-1.5 rounded-full px-4 py-2 text-sm font-semibold transition-transform hover:-translate-y-0.5',
-              solid ? 'bg-[var(--accent)] text-white' : 'bg-white !text-[#0e0b1a]',
+              !onDark ? 'bg-[var(--accent)] text-white' : 'bg-white !text-[#0e0b1a]',
             )}
           >
             <span className="hidden sm:inline">Demander une démo</span>
