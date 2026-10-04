@@ -114,6 +114,13 @@ async function baseModification(orgId, siren) {
   // partir de la dernière liasse de l'entreprise au GU (même personne), puis on
   // marque « non présent au RNE » (…Present = false) ce qui reste absent.
   completerPersonnes(next[bloc], gu?.[bloc]);
+  // Entrepreneur individuel : identité complétée depuis la liasse du cabinet
+  const ent = next.personnePhysique?.identite?.entrepreneur;
+  const entGu = gu?.personnePhysique?.identite?.entrepreneur;
+  if (ent && entGu) {
+    remplirVides(ent, entGu);
+    corrigerPersonne(ent.descriptionPersonne, entGu.descriptionPersonne, null);
+  }
   marquerAbsents(next[bloc]);
   // Hors création, chaque dirigeant / bénéficiaire porte un statut : 4 = inchangé.
   for (const p of next[bloc]?.composition?.pouvoirs || []) if (!p.statutPourLaFormalite) p.statutPourLaFormalite = '4';
@@ -330,6 +337,106 @@ OPERATIONS.cessationEI = async (next, { dateEffet }) => {
   };
   next.natureCessationEntreprise = { dateRadiation: dateEffet };
   return ['41P'];
+};
+
+// ─── Cas plus rares (indicateurs relevés sur les modifications validées) ───
+const { categorisation } = require('./inpi-liasse');
+const blocDe = (next) => next.personneMorale || next.personnePhysique;
+const estPP = (next) => !next.personneMorale && Boolean(next.personnePhysique);
+const FORME_EXERCICE_INPI = { COMMERCIALE: 'COMMERCIALE', ARTISANALE: 'ARTISANALE', ARTISANALE_REGLEMENTEE: 'ARTISANALE_REGLEMENTEE', LIBERALE: 'INDEPENDANTE', INDEPENDANTE: 'INDEPENDANTE', CIVILE: 'GESTION_DE_BIENS' };
+
+function nouvelleActivite({ description, codeApe, formeExercice }, dateEffet, principale) {
+  const cat = categorisation(codeApe);
+  if (!cat) throw new Error(`Catégorie d'activité INPI inconnue pour le code APE ${codeApe || '(absent)'}.`);
+  return {
+    statutFormalite: 'A',
+    indicateurPrincipal: Boolean(principale),
+    indicateurProlongement: false,
+    dateDebut: dateEffet,
+    exerciceActivite: 'P',
+    indicateurNonSedentaire: false,
+    formeExercice: FORME_EXERCICE_INPI[formeExercice] || 'COMMERCIALE',
+    categorisationActivite1: cat.codes[0],
+    categorisationActivite2: cat.codes[1],
+    ...(cat.codes[2] ? { categorisationActivite3: cat.codes[2] } : {}),
+    ...(cat.codes[3] ? { categorisationActivite4: cat.codes[3] } : {}),
+    ...(cat.codes[4] ? { precisionActivite: cat.codes[4] } : {}),
+    descriptionDetaillee: description,
+    indicateurArtisteAuteur: false,
+    indicateurMarinProfessionnel: false,
+    rolePrincipalPourEntreprise: Boolean(principale),
+    codeApe,
+    origine: { typeOrigine: '1' },
+    is61PMFTriggered: true,
+  };
+}
+
+// 61M / 61P (+ 24P pour une EI) — ajout d'une activité à l'établissement principal
+OPERATIONS.activiteAjout = async (next, { description, codeApe, formeExercice, principale = false, dateEffet }) => {
+  const ep = blocDe(next).etablissementPrincipal;
+  if (!ep) throw new Error("Pas d'établissement principal dans la fiche RNE.");
+  for (const a of ep.activites || []) if (!a.statutFormalite || a.statutFormalite === 'I') a.statutFormalite = 'M';
+  const act = nouvelleActivite({ description, codeApe, formeExercice }, dateEffet, principale);
+  if (estPP(next)) Object.assign(act, { is24Or27PMTriggered: true, dateEffet24Or27PM: dateEffet });
+  ep.activites = [...(ep.activites || []), act];
+  ep.descriptionEtablissement = { ...(ep.descriptionEtablissement || {}), statutPourFormalite: '3' };
+  return estPP(next) ? ['24P', '61P'] : ['61M'];
+};
+
+// 62M / 62P — suppression d'une activité (par code APE ou par position)
+OPERATIONS.activiteSuppression = async (next, { codeApe, index, dateEffet }) => {
+  const ep = blocDe(next).etablissementPrincipal;
+  const acts = ep?.activites || [];
+  const cible = codeApe ? acts.find((a) => a.codeApe === codeApe && a.statutFormalite !== 'A') : acts[Number(index) || 0];
+  if (!cible) throw new Error(`Activité à supprimer introuvable (${codeApe || index}).`);
+  Object.assign(cible, { statutFormalite: 'S', is62PMTriggered: true, dateEffet67PM: dateEffet });
+  for (const a of acts) if (!a.statutFormalite || a.statutFormalite === 'I') a.statutFormalite = 'M';
+  ep.descriptionEtablissement = { ...(ep.descriptionEtablissement || {}), statutPourFormalite: '3' };
+  return estPP(next) ? ['62P'] : ['62M'];
+};
+
+// 54M — ouverture d'un établissement secondaire
+OPERATIONS.etablissementSecondaire = async (next, { adresse, description, codeApe, formeExercice, dateEffet }) => {
+  const b = blocDe(next);
+  const adr = await adresseInpi(adresse, [], 'Établissement secondaire');
+  if (!adr) throw new Error("Adresse de l'établissement secondaire incomplète.");
+  if (b.etablissementPrincipal) {
+    b.etablissementPrincipal.descriptionEtablissement = { ...(b.etablissementPrincipal.descriptionEtablissement || {}), statutPourFormalite: '3' };
+    for (const a of b.etablissementPrincipal.activites || []) if (!a.statutFormalite || a.statutFormalite === 'I') a.statutFormalite = 'M';
+  }
+  const act = nouvelleActivite({ description, codeApe, formeExercice }, dateEffet, true);
+  delete act.is61PMFTriggered;
+  b.autresEtablissements = [...(b.autresEtablissements || []), {
+    descriptionEtablissement: { rolePourEntreprise: '3', statutPourFormalite: '1', indicateurEtablissementPrincipal: false },
+    adresse: adr,
+    activites: [act],
+    effectifSalarie: { presenceSalarie: false, emploiPremierSalarie: false },
+    dateEffetOuvertureEtablissement: dateEffet,
+    is54PMFTriggered: true,
+  }];
+  return ['54M'];
+};
+
+// 17M — modification relative aux associés (hors dirigeants : entrée/sortie d'associé, associé unique…)
+OPERATIONS.associes = async (next, { associeUnique, dateEffet }) => {
+  const d = pm(next).identite.description;
+  if (typeof associeUnique === 'boolean') d.indicateurAssocieUnique = associeUnique;
+  Object.assign(d, { is17MNotDirigeantTriggered: true, dateEffet17M: dateEffet });
+  activitesInchangees(next);
+  return ['17M'];
+};
+
+// 16P — changement d'adresse personnelle de l'entrepreneur individuel
+OPERATIONS.domicileEI = async (next, { adresse, dateEffet, deplacerEntreprise = false }) => {
+  const pp = next.personnePhysique;
+  if (!pp) throw new Error('Opération réservée aux entreprises individuelles.');
+  const adr = await adresseInpi(adresse, [], "Nouveau domicile de l'entrepreneur");
+  if (!adr) throw new Error('Nouvelle adresse incomplète.');
+  const ent = pp.identite.entrepreneur;
+  ent.adresseDomicile = { ...(ent.adresseDomicile || {}), ...adr, is16PTriggered: true, dateEffet16P: dateEffet };
+  if (deplacerEntreprise && pp.adresseEntreprise) pp.adresseEntreprise.adresse = { ...(pp.adresseEntreprise.adresse || {}), ...adr };
+  activitesInchangees(next);
+  return ['16P'];
 };
 
 // Applique une liste d'opérations [{ type, ...params }] et renvoie les événements attendus.

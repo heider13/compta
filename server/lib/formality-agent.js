@@ -246,7 +246,7 @@ const TOOLS = [
   {
     name: 'creer_modification_inpi',
     description:
-      "Prépare une MODIFICATION (ou une mise en sommeil / cessation d'EI) au Guichet unique à partir de la fiche RNE à jour de l'entreprise. Opérations : objet (12M : objet, codeApe), denomination (10M), siege (60M : adresse), nomination (35M : personne, role GERANT|PRESIDENT|DG), revocation (35M : nom du dirigeant sortant), beneficiaires (38F : ajouts [{personne, pourcentage}], retraits [noms]), miseEnSommeil (40M), cessationEI (41P). Chaque opération peut avoir une dateEffet (YYYY-MM-DD). D'abord confirme=false (aperçu, rien n'est envoyé), puis confirme=true UNIQUEMENT après confirmation explicite du professionnel : crée le BROUILLON et dépose les pièces. Ne valide, ne signe et ne paie jamais. Catégories de pièces : " +
+      "Prépare une MODIFICATION (ou une mise en sommeil / cessation d'EI) au Guichet unique à partir de la fiche RNE à jour de l'entreprise. Opérations : objet (12M : objet, codeApe), denomination (10M), siege (60M : adresse), nomination (35M : personne, role GERANT|PRESIDENT|DG), revocation (35M : nom du dirigeant sortant), beneficiaires (38F : ajouts [{personne, pourcentage}], retraits [noms]), miseEnSommeil (40M), cessationEI (41P), activiteAjout (61M/61P+24P : description, codeApe, formeExercice), activiteSuppression (62M/62P : codeApe), etablissementSecondaire (54M : adresse, description, codeApe), associes (17M : entrée/sortie d'associé, associeUnique), domicileEI (16P : adresse). Chaque opération peut avoir une dateEffet (YYYY-MM-DD). D'abord confirme=false (aperçu, rien n'est envoyé), puis confirme=true UNIQUEMENT après confirmation explicite du professionnel : crée le BROUILLON et dépose les pièces. Ne valide, ne signe et ne paie jamais. Catégories de pièces : " +
       Object.entries(PIECES_MODIF).map(([k, v]) => `${k} (${v.label})`).join(', ') + '.',
     eager_input_streaming: true,
     input_schema: {
@@ -259,7 +259,11 @@ const TOOLS = [
           items: {
             type: 'object',
             properties: {
-              type: { type: 'string', enum: ['objet', 'denomination', 'siege', 'nomination', 'revocation', 'beneficiaires', 'miseEnSommeil', 'cessationEI'] },
+              type: { type: 'string', enum: ['objet', 'denomination', 'siege', 'nomination', 'revocation', 'beneficiaires', 'miseEnSommeil', 'cessationEI', 'activiteAjout', 'activiteSuppression', 'etablissementSecondaire', 'associes', 'domicileEI'] },
+              description: { type: 'string', description: "Activité (activiteAjout, etablissementSecondaire)" },
+              formeExercice: { type: 'string', enum: ['COMMERCIALE', 'ARTISANALE', 'ARTISANALE_REGLEMENTEE', 'LIBERALE', 'CIVILE'] },
+              principale: { type: 'boolean' },
+              associeUnique: { type: 'boolean', description: 'associes (17M) : la société devient (true) ou cesse d\'être (false) unipersonnelle' },
               dateEffet: { type: 'string' },
               objet: { type: 'string' },
               codeApe: { type: 'string' },
