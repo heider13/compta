@@ -113,13 +113,17 @@ async function baseModification(orgId, siren) {
   // partielles (date de naissance tronquée, adresse incomplète…). On complète à
   // partir de la dernière liasse de l'entreprise au GU (même personne), puis on
   // marque « non présent au RNE » (…Present = false) ce qui reste absent.
-  completerPersonnes(next[bloc], gu?.[bloc]);
-  // Entrepreneur individuel : identité complétée depuis la liasse du cabinet
-  const ent = next.personnePhysique?.identite?.entrepreneur;
-  const entGu = gu?.personnePhysique?.identite?.entrepreneur;
-  if (ent && entGu) {
-    remplirVides(ent, entGu);
-    corrigerPersonne(ent.descriptionPersonne, entGu.descriptionPersonne, null);
+  // Les deux états (précédent et nouveau) sont complétés : l'INPI contrôle les deux.
+  for (const etat of [next, previous]) {
+    completerPersonnes(etat[bloc], gu?.[bloc]);
+    // Entrepreneur individuel : identité complétée depuis la liasse du cabinet
+    const ent = etat.personnePhysique?.identite?.entrepreneur;
+    const entGu = gu?.personnePhysique?.identite?.entrepreneur;
+    if (ent && entGu) {
+      remplirVides(ent, entGu);
+      corrigerPersonne(ent.descriptionPersonne, entGu.descriptionPersonne, null);
+    }
+    if (etat !== next) marquerAbsents(etat[bloc]);
   }
   marquerAbsents(next[bloc]);
   // Hors création, chaque dirigeant / bénéficiaire porte un statut : 4 = inchangé.

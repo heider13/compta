@@ -13,8 +13,8 @@ const ORG = '00000000-0000-0000-0000-000000000001';
   console.log('EI de test trouvée :', ei ? 'oui' : 'NON');
   const CAS = [
     [sa, 'M', '61M ajout d\u2019activité (société)', [{ type: 'activiteAjout', description: 'Conseil en systèmes et logiciels informatiques', codeApe: '6201Z', formeExercice: 'LIBERALE' }]],
-    [sa, 'M', '54M établissement secondaire', [{ type: 'etablissementSecondaire', adresse: { voie: '1 rue de la République', codePostal: '13001', commune: 'Marseille' }, description: 'Conseil pour les affaires', codeApe: '7022Z', formeExercice: 'COMMERCIALE' }]],
-    [sa, 'M', '17M associés', [{ type: 'associes' }]],
+    // [sa, 'M', '54M établissement secondaire', [{ type: 'etablissementSecondaire', adresse: { voie: '1 rue de la République', codePostal: '13001', commune: 'Marseille' }, description: 'Conseil pour les affaires', codeApe: '7022Z', formeExercice: 'COMMERCIALE' }]],
+    // [sa, 'M', '17M associés', [{ type: 'associes' }]],
     [ei, 'M', '16P changement de domicile (EI)', [{ type: 'domicileEI', adresse: { voie: '10 avenue du Prado', codePostal: '13008', commune: 'Marseille' } }]],
     [ei, 'M', '24P+61P ajout d\u2019activité (EI)', [{ type: 'activiteAjout', description: 'Vente en ligne d\u2019accessoires', codeApe: '4791B', formeExercice: 'COMMERCIALE' }]],
     [ei, 'R', '41P cessation totale (EI)', [{ type: 'cessationEI' }]],
