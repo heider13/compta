@@ -133,6 +133,16 @@ const TOOLS = [
         siege: PERSONNE.properties.adresse,
         domiciliationChezDirigeant: { type: 'boolean' },
         societeDomiciliation: { type: 'boolean' },
+        domiciliataire: {
+          type: 'object',
+          description: 'Société de domiciliation (si siège domicilié)',
+          properties: { denomination: { type: 'string' }, siren: { type: 'string' } },
+        },
+        annonceLegale: {
+          type: 'object',
+          description: "Annonce légale une fois PARUE (exigée par le Guichet unique pour créer le brouillon d'une création de société)",
+          properties: { journal: { type: 'string' }, datePublication: { type: 'string', description: 'YYYY-MM-DD' } },
+        },
         dirigeant: {
           ...PERSONNE,
           properties: { ...PERSONNE.properties, role: { type: 'string', description: 'PRESIDENT, GERANT, DG…' } },
@@ -260,10 +270,11 @@ Le professionnel peut joindre des documents : pièces d'identité, statuts, proc
 <depot_inpi>
 Objectif : préparer la formalité de A à Z pour que le formaliste n'ait plus qu'à valider, signer électroniquement et payer (par ses propres moyens ou par la délégation de paiement du Guichet unique).
 1. Une fois le dossier complet et les actes rédigés, rappelle que les actes à signer (statuts, déclaration de non-condamnation, pouvoir, liste des souscripteurs) doivent être signés par le client, et demande les pièces que seul le client peut fournir : pièce d'identité du dirigeant, attestation de dépôt des fonds, justificatif du siège, attestation de parution de l'annonce. Elles se joignent dans ce chat.
-2. Appelle etat_dossier pour connaître les identifiants des documents, puis creer_brouillon_inpi avec confirme=false en associant chaque document à sa catégorie.
-3. Présente le récapitulatif : pièces qui seront déposées, pièces manquantes ou non signées, champs que le formaliste devra compléter. Demande une confirmation explicite (« Je crée le brouillon sur votre Guichet unique ? »).
-4. Seulement si le dernier message du professionnel confirme clairement, appelle creer_brouillon_inpi avec confirme=true.
-5. Indique ensuite les étapes restantes du formaliste sur le Guichet unique : compléter les champs signalés, vérifier, valider, signer électroniquement, payer (carte ou délégation de paiement au client).
+2. Le Guichet unique exige, dès la création du brouillon d'une société : l'annonce légale PARUE (journal et date de parution, à enregistrer dans annonceLegale) et la date de clôture du premier exercice ; et, si le siège est chez une société de domiciliation, sa dénomination et son SIREN. Ordre conseillé : rédiger l'annonce (annonce_legale), la faire publier par le professionnel, puis créer le brouillon avec l'attestation de parution.
+3. Appelle etat_dossier pour connaître les identifiants des documents, puis creer_brouillon_inpi avec confirme=false en associant chaque document à sa catégorie. Si l'aperçu signale des bloquants, demande les informations correspondantes avant toute création.
+4. Présente le récapitulatif : pièces qui seront déposées, pièces manquantes ou non signées, champs que le formaliste devra compléter. Demande une confirmation explicite (« Je crée le brouillon sur votre Guichet unique ? »).
+5. Seulement si le dernier message du professionnel confirme clairement, appelle creer_brouillon_inpi avec confirme=true.
+6. Indique ensuite les étapes restantes du formaliste sur le Guichet unique : compléter les champs signalés, vérifier, valider, signer électroniquement, payer (carte ou délégation de paiement au client).
 La création de brouillon ne concerne que les créations de SASU, SAS, EURL, SARL et SCI. Pour une modification ou une cessation, prépare les documents et guide le formaliste pour la saisie.
 </depot_inpi>
 

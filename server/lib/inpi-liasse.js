@@ -280,13 +280,21 @@ async function buildCreationLiasse(data, dossier, client) {
   // Bloquants : refusés par l'API dès la création du brouillon.
   const bloquants = [];
   const cat = categorisation(data.codeApe);
+  const annonce = data.annonceLegale || {};
+  if (!annonce.journal || !annonce.datePublication) {
+    bloquants.push("Annonce légale parue : nom du journal et date de parution (le Guichet unique les exige dès la création d'une société)");
+  }
+  const domiciliataire = data.domiciliataire || {};
+  if (data.societeDomiciliation && (!domiciliataire.denomination || !domiciliataire.siren)) {
+    bloquants.push('Société de domiciliation : dénomination et SIREN (siège domicilié)');
+  }
   if (!data.datePremiereCloture) bloquants.push('Date de clôture du premier exercice (exigée par le Guichet unique, à reprendre à l\'identique dans les statuts)');
   if (!data.codeApe) bloquants.push("Code APE de l'activité (nécessaire pour la catégorie d'activité exigée par le Guichet unique)");
   else if (!cat) bloquants.push(`Catégorie d'activité INPI inconnue pour le code APE ${data.codeApe} : préciser l'activité ou un code APE voisin`);
   else if (!cat.exacte) aCompleter.push(`Catégorie d'activité déduite du secteur (APE ${data.codeApe}) : à vérifier sur le Guichet unique`);
   aCompleter.push(`Régime de TVA (souhaité : ${data.regimeTVA || 'à confirmer'})`);
   if (forme === 'SCI' || data.regimeImposition === 'IR') aCompleter.push("Régime d'imposition des bénéfices");
-  aCompleter.push("Publication de l'annonce légale (journal et date) une fois parue");
+
 
   const mandataire = await mandataireBlocks(client);
 
@@ -337,6 +345,13 @@ async function buildCreationLiasse(data, dossier, client) {
           ...(role === 'GERANT' ? { natureGerance: '1' } : {}),
         },
         contratDAppuiDeclare: false,
+        ...(annonce.journal && annonce.datePublication ? {
+          publicationLegale: {
+            typePublication: 'Publication légale',
+            datePublication: annonce.datePublication,
+            journalPublication: annonce.journal,
+          },
+        } : {}),
         ...(mandataire.adresseCorrespondance ? { adresseCorrespondance: mandataire.adresseCorrespondance } : {}),
         ...(mandataire.destinataireCorrespondance ? { destinataireCorrespondance: mandataire.destinataireCorrespondance } : {}),
         ...(mandataire.contactCorrespondance ? { contactCorrespondance: mandataire.contactCorrespondance } : {}),
@@ -349,6 +364,12 @@ async function buildCreationLiasse(data, dossier, client) {
           indicateurAdresseEtablissement: !data.domiciliationChezDirigeant,
         },
         ...(siege ? { adresse: siege } : {}),
+        ...(data.societeDomiciliation && domiciliataire.siren ? {
+          entrepriseDomiciliataire: {
+            siren: String(domiciliataire.siren).replace(/\D/g, ''),
+            denomination: String(domiciliataire.denomination || '').toUpperCase(),
+          },
+        } : {}),
       },
       composition: {
         pouvoirs: [{
