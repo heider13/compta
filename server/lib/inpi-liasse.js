@@ -49,6 +49,22 @@ const CATEGORISATION_SECTEUR = {
   70: ['07', '04', '08', '01', '99'], 71: ['07', '04', '08', '01', '99'], 96: ['07', '16', '01', '', '99'],
 };
 
+// Journaux d'annonces légales reconnus par le Guichet unique, relevés sur les
+// formalités validées du cabinet (libellé exact attendu par l'INPI). Tout autre
+// journal est déclaré en « Autre » avec son nom dans journalPublicationAutre.
+const JOURNAUX_RECONNUS = [
+  'lamarseillaise.fr', 'nouvellespublications.com', 'Affiches parisiennes (Les)', 'tpbm-presse.com', 'mesinfos.fr',
+];
+
+function journalInpi(nom) {
+  // Comparaison tolérante : accents, articles, espaces, ponctuation et .fr/.com ignorés
+  // (« La Marseillaise » = « lamarseillaise.fr »).
+  const norm = (x) => strip(x).replace(/\((les?|la)\)/g, '').replace(/\.(fr|com)$/, '')
+    .replace(/[^a-z0-9]/g, '').replace(/^(les|la|le)/, '');
+  const hit = JOURNAUX_RECONNUS.find((j) => norm(j) === norm(nom));
+  return hit ? { journalPublication: hit } : { journalPublication: 'Autre', journalPublicationAutre: String(nom).trim() };
+}
+
 function categorisation(codeApe) {
   const ape = String(codeApe || '').toUpperCase().replace(/[^0-9A-Z]/g, '');
   if (!ape) return null;
@@ -349,7 +365,7 @@ async function buildCreationLiasse(data, dossier, client) {
           publicationLegale: {
             typePublication: 'Publication légale',
             datePublication: annonce.datePublication,
-            journalPublication: annonce.journal,
+            ...journalInpi(annonce.journal),
           },
         } : {}),
         ...(mandataire.adresseCorrespondance ? { adresseCorrespondance: mandataire.adresseCorrespondance } : {}),
@@ -361,6 +377,7 @@ async function buildCreationLiasse(data, dossier, client) {
           diffusionDomiciliationAsEntrepriseAddress: 'N',
           domiciliataire: Boolean(data.societeDomiciliation),
           indicateurDomicileEntrepreneur: Boolean(data.domiciliationChezDirigeant),
+          ...(data.domiciliationChezDirigeant ? { indicateurDomicileEntrepreneurValidation: true } : {}),
           indicateurAdresseEtablissement: !data.domiciliationChezDirigeant,
         },
         ...(siege ? { adresse: siege } : {}),
