@@ -13,6 +13,7 @@ import {
   User,
   CreditCard,
   KeyRound,
+  Landmark,
   Palette,
   Webhook,
 } from 'lucide-react';
@@ -47,6 +48,7 @@ interface NavItem {
 const NAV_PILOTAGE: NavItem[] = [
   { href: '/dashboard', label: 'Tableau de bord', matchPrefix: '/dashboard', exact: true, icon: LayoutDashboard },
   { href: '/dossiers', label: 'Formalités', matchPrefix: '/dossiers', icon: FileText },
+  { href: '/inpi', label: 'Déposées à l’INPI', matchPrefix: '/inpi', icon: Landmark },
   { href: '/clients', label: 'Clients', matchPrefix: '/clients', icon: Users },
   { href: '/tasks', label: 'Tâches', matchPrefix: '/tasks', icon: CheckSquare },
   { href: '/assistant', label: 'Assistant IA', matchPrefix: '/assistant', icon: Scale },
