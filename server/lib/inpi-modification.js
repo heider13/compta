@@ -113,6 +113,9 @@ async function baseModification(orgId, siren) {
   // partielles (date de naissance tronquée, adresse incomplète…). On complète à
   // partir de la dernière liasse de l'entreprise au GU (même personne), puis on
   // marque « non présent au RNE » (…Present = false) ce qui reste absent.
+  // « …Present » = la donnée figure-t-elle au RNE ? À fixer AVANT de compléter.
+  marquerAbsents(next[bloc]);
+  marquerAbsents(previous[bloc]);
   // Les deux états (précédent et nouveau) sont complétés : l'INPI contrôle les deux.
   for (const etat of [next, previous]) {
     completerPersonnes(etat[bloc], gu?.[bloc]);
@@ -123,9 +126,7 @@ async function baseModification(orgId, siren) {
       remplirVides(ent, entGu);
       corrigerPersonne(ent.descriptionPersonne, entGu.descriptionPersonne, null);
     }
-    if (etat !== next) marquerAbsents(etat[bloc]);
   }
-  marquerAbsents(next[bloc]);
   // Hors création, chaque dirigeant / bénéficiaire porte un statut : 4 = inchangé.
   for (const p of next[bloc]?.composition?.pouvoirs || []) if (!p.statutPourLaFormalite) p.statutPourLaFormalite = '4';
   for (const b of next[bloc]?.beneficiairesEffectifs || []) if (!b.statutPourLaFormalite) b.statutPourLaFormalite = '4';
@@ -437,7 +438,8 @@ OPERATIONS.domicileEI = async (next, { adresse, dateEffet, deplacerEntreprise = 
   const adr = await adresseInpi(adresse, [], "Nouveau domicile de l'entrepreneur");
   if (!adr) throw new Error('Nouvelle adresse incomplète.');
   const ent = pp.identite.entrepreneur;
-  ent.adresseDomicile = { ...(ent.adresseDomicile || {}), ...adr, is16PTriggered: true, dateEffet16P: dateEffet };
+  // reason16P : motif du changement d'adresse (« 1 », valeur documentée par l'INPI)
+  ent.adresseDomicile = { ...(ent.adresseDomicile || {}), ...adr, is16PTriggered: true, dateEffet16P: dateEffet, reason16P: '1' };
   if (deplacerEntreprise && pp.adresseEntreprise) pp.adresseEntreprise.adresse = { ...(pp.adresseEntreprise.adresse || {}), ...adr };
   activitesInchangees(next);
   return ['16P'];
