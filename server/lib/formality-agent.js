@@ -26,6 +26,7 @@ const { SUPPORTED_FORMES } = require('./doc-generator');
 const inpi = require('../inpi');
 const { getFormalitySummary, downloadAttachment } = require('./inpi-formality');
 const { buildCreationLiasse, createDraftWithPieces, PIECES } = require('./inpi-liasse');
+const rne = require('./inpi-rne');
 const { BUCKET } = require('./dossier-docs');
 const knowledge = require('./knowledge');
 
@@ -223,6 +224,17 @@ const TOOLS = [
         },
       },
       required: ['confirme'],
+    },
+  },
+  {
+    name: 'lire_fiche_rne',
+    description:
+      "Lit la fiche officielle à jour d'une entreprise au Registre national des entreprises (RNE) à partir de son SIREN : dénomination, forme, objet, capital, siège, dirigeants, bénéficiaires effectifs. À utiliser systématiquement avant de préparer une modification ou une radiation, pour partir des données officielles au lieu de les redemander.",
+    eager_input_streaming: true,
+    input_schema: {
+      type: 'object',
+      properties: { siren: { type: 'string', description: '9 chiffres' } },
+      required: ['siren'],
     },
   },
   {
@@ -732,6 +744,15 @@ async function toolLireFormalite(ctx, input) {
   };
 }
 
+async function toolFicheRne(ctx, input) {
+  const company = await rne.getCompany(ctx.orgId, input.siren);
+  const fiche = rne.summarizeCompany(company);
+  return {
+    result: fiche,
+    event: { kind: 'inpi', label: `Fiche RNE lue — ${fiche.denomination || fiche.siren}`, detail: `SIREN ${fiche.siren} · ${fiche.dirigeants.length} dirigeant(s)` },
+  };
+}
+
 async function toolLirePiece(ctx, input) {
   if (!ctx.inpiFormalityId) throw new Error("Appelle d'abord lire_formalite_inpi.");
   const { buffer } = await downloadAttachment(ctx.orgId, ctx.inpiFormalityId, input.piece_id);
@@ -749,6 +770,7 @@ const TOOL_LABELS = {
   rediger_acte: "Rédaction d'un acte",
   etat_dossier: "Lecture de l'avancement",
   creer_brouillon_inpi: 'Préparation du dépôt INPI',
+  lire_fiche_rne: 'Lecture de la fiche RNE',
   lire_formalite_inpi: 'Lecture de la formalité INPI',
   lire_piece_inpi: "Lecture d'une pièce INPI",
 };
@@ -762,6 +784,7 @@ async function runTool(name, input, ctx) {
     case 'rediger_acte': return toolActe(supa, ctx, input);
     case 'etat_dossier': return toolEtat(supa, ctx);
     case 'creer_brouillon_inpi': return toolBrouillon(supa, ctx, input);
+    case 'lire_fiche_rne': return toolFicheRne(ctx, input);
     case 'lire_formalite_inpi': return toolLireFormalite(ctx, input);
     case 'lire_piece_inpi': return toolLirePiece(ctx, input);
     default: throw new Error(`Outil inconnu : ${name}`);
