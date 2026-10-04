@@ -26,6 +26,7 @@ import { StatCard } from '@/components/cabinet/dashboard/StatCard';
 import { BarChart } from '@/components/cabinet/dashboard/BarChart';
 import { Donut } from '@/components/cabinet/dashboard/Donut';
 import { InsightsCard } from '@/components/cabinet/dashboard/InsightsCard';
+import { FormalityAgent } from '@/components/cabinet/dashboard/FormalityAgent';
 
 export const dynamic = 'force-dynamic';
 
@@ -241,6 +242,9 @@ export default async function CabinetDashboardPage() {
           </Link>
         </Button>
       </div>
+
+      {/* Agent Formalités */}
+      <FormalityAgent />
 
       {/* Bandeau INPI */}
       {inpiNotConfigured && (

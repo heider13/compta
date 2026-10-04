@@ -17,6 +17,8 @@ const MODELS = {
   cheap: process.env.CLAUDE_MODEL_CHEAP || 'claude-haiku-4-5',
   balanced: process.env.CLAUDE_MODEL_BALANCED || 'claude-sonnet-5',
   premium: process.env.CLAUDE_MODEL_PREMIUM || 'claude-opus-4-8',
+  // Agent formalités (boucle d'outils multi-étapes) : Opus 5.5
+  agent: process.env.CLAUDE_MODEL_AGENT || 'claude-opus-5-5',
 };
 const CLAUDE_MODEL = MODELS.premium; // rétro-compat (export)
 
@@ -145,9 +147,9 @@ Tu rédiges des documents juridiques et contractuels de droit français, prêts 
 - Réponds UNIQUEMENT avec le document en Markdown, sans commentaire d'introduction.
 </regles>`;
 
-async function draftDocument({ docType, brief, chunks = [] }) {
+async function draftDocument({ docType, brief, chunks = [], title }) {
   const client = getAnthropic();
-  const label = DOC_TYPES[docType] || DOC_TYPES.autre;
+  const label = title || DOC_TYPES[docType] || DOC_TYPES.autre;
   const context = chunks.length
     ? chunks
         .map((c, i) => `[${i + 1}] ${c.title} (${c.source}) — ${c.content}`)
@@ -376,6 +378,6 @@ async function extractDocument({ text, docTypeHint }) {
 }
 
 module.exports = {
-  embed, searchLegalChunks, streamAnswer, draftDocument, DOC_TYPES,
+  getAnthropic, embed, searchLegalChunks, streamAnswer, draftDocument, DOC_TYPES,
   prefillFormality, extractDocument, CLAUDE_MODEL, MODELS,
 };
