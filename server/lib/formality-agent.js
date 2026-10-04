@@ -260,7 +260,7 @@ const TOOLS = [
             type: 'object',
             properties: {
               type: { type: 'string', enum: ['objet', 'denomination', 'siege', 'nomination', 'revocation', 'beneficiaires', 'miseEnSommeil', 'cessationEI', 'activiteAjout', 'activiteSuppression', 'etablissementSecondaire', 'associes', 'domicileEI', 'complementPersonne', 'complementEntreprise'] },
-              dateNaissance: { type: 'string' }, lieuNaissance: { type: 'string' }, codePostalNaissance: { type: 'string' }, paysNaissance: { type: 'string' }, nationalite: { type: 'string' },
+              prenom: { type: 'string', description: 'complementPersonne : prénom (si plusieurs personnes portent le même nom)' }, dateNaissance: { type: 'string' }, lieuNaissance: { type: 'string' }, codePostalNaissance: { type: 'string' }, paysNaissance: { type: 'string' }, nationalite: { type: 'string' },
               description: { type: 'string', description: "Activité (activiteAjout, etablissementSecondaire)" },
               formeExercice: { type: 'string', enum: ['COMMERCIALE', 'ARTISANALE', 'ARTISANALE_REGLEMENTEE', 'LIBERALE', 'CIVILE'] },
               principale: { type: 'boolean' },

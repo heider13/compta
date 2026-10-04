@@ -504,14 +504,15 @@ OPERATIONS.complementEntreprise = async (next, { objet }) => {
 };
 
 // Complément des données d'un dirigeant existant (absentes du RNE), sans modification déclarée.
-OPERATIONS.complementPersonne = async (next, { nom, dateNaissance, lieuNaissance, codePostalNaissance, paysNaissance, nationalite, adresse }) => {
+OPERATIONS.complementPersonne = async (next, { nom, prenom, dateNaissance, lieuNaissance, codePostalNaissance, paysNaissance, nationalite, adresse }) => {
   const bloc = next.personneMorale || next.personnePhysique;
   const cibles = [
     ...(bloc?.composition?.pouvoirs || []).map((p) => p.individu),
     ...(next.personnePhysique ? [next.personnePhysique.identite?.entrepreneur] : []),
   ].filter(Boolean);
-  const ind = cibles.find((i) => String(i.descriptionPersonne?.nom || '').toUpperCase() === String(nom).toUpperCase());
-  if (!ind) throw new Error(`Personne « ${nom} » introuvable dans la fiche RNE.`);
+  const ind = cibles.find((i) => String(i.descriptionPersonne?.nom || '').toUpperCase() === String(nom).toUpperCase()
+    && (!prenom || String(i.descriptionPersonne?.prenoms?.[0] || '').toUpperCase() === String(prenom).toUpperCase()));
+  if (!ind) throw new Error(`Personne « ${[prenom, nom].filter(Boolean).join(' ')} » introuvable dans la fiche RNE.`);
   const d = ind.descriptionPersonne;
   const naissance = await personneInpi({ nom: d.nom, prenoms: d.prenoms, sexe: d.genre === '2' ? 'F' : 'M', dateNaissance, lieuNaissance, codePostalNaissance, paysNaissance, nationalite: nationalite || d.codeNationalite }, [], nom);
   for (const k of ['dateDeNaissance', 'lieuDeNaissance', 'codeInseeGeographique', 'paysNaissance', 'codePostalNaissance']) if (naissance[k]) d[k] = naissance[k];
