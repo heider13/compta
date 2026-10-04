@@ -98,8 +98,10 @@ async function baseModification(orgId, siren) {
   // Dernière liasse de l'entreprise déposée par le cabinet (format natif GU)
   let gu = null;
   try {
-    const r = await client.listFormalities({ siren, itemsPerPage: 10, 'order[created]': 'desc' });
-    const last = (r?.['hydra:member'] || []).find((f) => f.status === 'VALIDATED') || (r?.['hydra:member'] || [])[0];
+    // Dernière liasse VALIDÉE (les brouillons récents ne contiennent pas forcément des données complètes)
+    const r = await client.listFormalities({ siren, itemsPerPage: 100, 'order[created]': 'desc' });
+    const items = r?.['hydra:member'] || [];
+    const last = items.find((f) => f.status === 'VALIDATED') || items[0];
     if (last) gu = clean((await client.getFormality(last.id)).content);
   } catch { /* entreprise jamais traitée par le cabinet */ }
 
