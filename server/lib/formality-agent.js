@@ -27,6 +27,7 @@ const inpi = require('../inpi');
 const { getFormalitySummary, downloadAttachment } = require('./inpi-formality');
 const { buildCreationLiasse, buildEILiasse, createDraftWithPieces, PIECES, PIECES_EI } = require('./inpi-liasse');
 const rne = require('./inpi-rne');
+const annonces = require('./annonces-legales');
 const { createModificationDraft, appliquerOperations, baseModification, donneesManquantes } = require('./inpi-modification');
 const { deposerPieces, PIECES_MODIF } = require('./inpi-liasse');
 const { BUCKET } = require('./dossier-docs');
@@ -61,10 +62,8 @@ const ACTES = {
   liste_souscripteurs: 'Liste des souscripteurs et état des versements',
   attestation_domiciliation: 'Attestation de domiciliation du siège social',
   pouvoir_formalites: 'Pouvoir pour accomplir les formalités',
-  annonce_legale: "Avis de constitution (annonce légale)",
   decision_nomination: 'Acte de nomination du premier dirigeant',
   pv_decision: "Procès-verbal de décision des associés",
-  annonce_modification: "Avis de modification (annonce légale)",
   pv_dissolution: 'Procès-verbal de dissolution anticipée',
   reponse_greffe: 'Courrier de réponse à la demande de régularisation du greffe',
   bail_commercial: 'Bail commercial',
@@ -309,6 +308,23 @@ const TOOLS = [
     },
   },
   {
+    name: 'rediger_annonce_legale',
+    description:
+      "Rédige l'annonce légale de la formalité (texte prêt à publier dans un journal habilité), contrôle chaque mention obligatoire du Code de commerce, compte les caractères, détermine le département de parution, l'enregistre dans le dossier et l'ajoute aux pièces (.docx). Types : " +
+      Object.entries(annonces.TYPES).map(([k, v]) => `${k} (${v.label})`).join(', ') +
+      ". Pour une société immatriculée, passe son siren : la fiche RNE à jour sert de base (dénomination, forme, capital, siège, dirigeants). Utilise instructions pour décrire l'opération (ancienne/nouvelle valeur, organe et date de décision, date d'effet, liquidateur…). Ne publie pas : la publication passe par le formaliste (API de publication à venir).",
+    eager_input_streaming: true,
+    input_schema: {
+      type: 'object',
+      properties: {
+        type: { type: 'string', enum: Object.keys(annonces.TYPES) },
+        siren: { type: 'string', description: 'Société déjà immatriculée (modification, dissolution, clôture…)' },
+        instructions: { type: 'string' },
+      },
+      required: ['type'],
+    },
+  },
+  {
     name: 'lire_formalite_inpi',
     description:
       "Lit une formalité déposée au Guichet unique INPI : statut, société, observations, demandes de régularisation du greffe (en cours et passées, avec motifs et échéances) et liste des pièces jointes déposées. Sans paramètre, lit la formalité ouverte par le professionnel ; sinon recherche par nom de société ou numéro de liasse.",
@@ -353,12 +369,12 @@ Le professionnel peut joindre des documents : pièces d'identité, statuts, proc
 <depot_inpi>
 Objectif : préparer la formalité de A à Z pour que le formaliste n'ait plus qu'à valider, signer électroniquement et payer (par ses propres moyens ou par la délégation de paiement du Guichet unique).
 1. Une fois le dossier complet et les actes rédigés, rappelle que les actes à signer (statuts, déclaration de non-condamnation, pouvoir, liste des souscripteurs) doivent être signés par le client, et demande les pièces que seul le client peut fournir : pièce d'identité du dirigeant, attestation de dépôt des fonds, justificatif du siège, attestation de parution de l'annonce. Elles se joignent dans ce chat.
-2. Le Guichet unique exige, dès la création du brouillon d'une société : l'annonce légale PARUE (journal et date de parution, à enregistrer dans annonceLegale) et la date de clôture du premier exercice ; et, si le siège est chez une société de domiciliation, sa dénomination et son SIREN. Ordre conseillé : rédiger l'annonce (annonce_legale), la faire publier par le professionnel, puis créer le brouillon avec l'attestation de parution.
+2. Le Guichet unique exige, dès la création du brouillon d'une société : l'annonce légale PARUE (journal et date de parution, à enregistrer dans annonceLegale) et la date de clôture du premier exercice ; et, si le siège est chez une société de domiciliation, sa dénomination et son SIREN. Ordre conseillé : rédiger l'annonce (rediger_annonce_legale, type constitution), la faire publier par le professionnel, puis créer le brouillon avec l'attestation de parution.
 3. Appelle etat_dossier pour connaître les identifiants des documents, puis creer_brouillon_inpi avec confirme=false en associant chaque document à sa catégorie. Si l'aperçu signale des bloquants, demande les informations correspondantes avant toute création.
 4. Présente le récapitulatif : pièces qui seront déposées, pièces manquantes ou non signées, champs que le formaliste devra compléter. Demande une confirmation explicite (« Je crée le brouillon sur votre Guichet unique ? »).
 5. Seulement si le dernier message du professionnel confirme clairement, appelle creer_brouillon_inpi avec confirme=true.
 6. Indique ensuite les étapes restantes du formaliste sur le Guichet unique : compléter les champs signalés, vérifier, valider, signer électroniquement, payer (carte ou délégation de paiement au client).
-Pour une MODIFICATION (objet, dénomination, siège, dirigeant, bénéficiaires effectifs), une mise en sommeil ou la cessation d'une entreprise individuelle : lis d'abord la fiche RNE (lire_fiche_rne), rédige les actes (PV, statuts mis à jour, annonce), puis utilise creer_modification_inpi avec la même logique aperçu → confirmation → brouillon. Un changement de dirigeant associé au capital s'accompagne en général d'une mise à jour des bénéficiaires effectifs (opération beneficiaires).
+Pour une MODIFICATION (objet, dénomination, siège, dirigeant, bénéficiaires effectifs), une mise en sommeil ou la cessation d'une entreprise individuelle : lis d'abord la fiche RNE (lire_fiche_rne), rédige les actes (PV, statuts mis à jour) et l'annonce (rediger_annonce_legale avec le siren : modification, transfert_siege, dissolution, cloture_liquidation… ; pas d'annonce pour une mise en sommeil ni pour une entreprise individuelle), puis utilise creer_modification_inpi avec la même logique aperçu → confirmation → brouillon. Un changement de dirigeant associé au capital s'accompagne en général d'une mise à jour des bénéficiaires effectifs (opération beneficiaires).
 La création de brouillon couvre les créations de SASU, SAS, EURL, SARL, SCI et d'entreprise individuelle (micro-entreprise : formeJuridique AE ; pas d'annonce légale ni de statuts, mais n° de sécurité sociale, situation matrimoniale, options du régime micro et pièce d'identité). Pour une modification ou une cessation, prépare les documents et guide le formaliste pour la saisie.
 </depot_inpi>
 
@@ -377,7 +393,7 @@ Pour une formalité déjà déposée au Guichet unique (régularisation demandé
 2. Dès que la forme et la dénomination (ou la société concernée) sont connues, appelle enregistrer_dossier, puis rappelle-le à chaque nouvelle information.
 3. Demande les informations manquantes par petits groupes logiques (au plus 5 questions à la fois, numérotées), en t'appuyant sur la liste "manquants" renvoyée par l'outil. Ne redemande jamais ce qui est déjà connu.
 4. Rédige toi-même l'objet social au format statutaire à partir de l'activité décrite, et déduis le code APE le plus probable ; présente-les pour validation.
-5. Quand les données d'une création sont complètes : generer_statuts, puis les actes du dossier de constitution adaptés à la forme (declaration_non_condamnation pour chaque dirigeant, liste_souscripteurs pour une SAS/SASU, attestation_domiciliation, pouvoir_formalites, annonce_legale). Pour une modification ou une cessation : pv_decision ou pv_dissolution, puis annonce_modification, puis pouvoir_formalites.
+5. Quand les données d'une création sont complètes : generer_statuts, puis les actes du dossier de constitution adaptés à la forme (declaration_non_condamnation pour chaque dirigeant, liste_souscripteurs pour une SAS/SASU, attestation_domiciliation, pouvoir_formalites), puis rediger_annonce_legale (constitution). Pour une modification ou une cessation : pv_decision ou pv_dissolution, puis rediger_annonce_legale, puis pouvoir_formalites. Présente le texte de l'annonce et les informations à compléter ; une fois parue, enregistre journal et date de parution (annonceLegale) et demande l'attestation de parution.
 6. Termine par un récapitulatif : documents produits, informations à vérifier, et prochaines étapes humaines (relire les actes, fournir les pièces d'identité, déposer le capital et obtenir l'attestation de dépôt des fonds, publier l'annonce, envoyer en signature, valider, déposer à l'INPI).
 </methode>
 
@@ -909,6 +925,65 @@ async function toolModification(supa, ctx, input) {
   };
 }
 
+async function toolAnnonce(supa, ctx, input) {
+  if (!annonces.TYPES[input.type]) throw new Error(`Type d'annonce inconnu : ${input.type}`);
+  const dossier = await loadDossier(supa, ctx);
+  if (!dossier) throw new Error("Aucun dossier : appelle d'abord enregistrer_dossier.");
+  const data = dossier.metadata?.agent_data || {};
+  const siren = String(input.siren || data.siren || '').replace(/\D/g, '');
+  let societe = null;
+  if (siren.length === 9) {
+    try { societe = rne.summarizeCompany(await rne.getCompany(ctx.orgId, siren)); } catch { /* données du dossier seules */ }
+  }
+  const cp = societe?.siege?.codePostal || data.siege?.codePostal;
+  const donnees = { dossier: data, ...(societe ? { fiche_rne: societe } : {}), departement_siege: annonces.departement(cp) };
+  const r = await annonces.redigerAnnonce({ type: input.type, donnees, instructions: input.instructions });
+  if (ctx.draftUsage && r.usage) {
+    ctx.draftUsage.calls += 1;
+    ctx.draftUsage.input += r.usage.input_tokens || 0;
+    ctx.draftUsage.output += r.usage.output_tokens || 0;
+    ctx.draftUsage.cacheWrite += r.usage.cache_creation_input_tokens || 0;
+    ctx.draftUsage.cacheRead += r.usage.cache_read_input_tokens || 0;
+  }
+
+  // Document éditable : une section par département de parution + contrôle des mentions
+  const md = [
+    ...r.annonces.map((a) => `## ${a.titre} — département ${a.departement}\n\n${a.texte}\n\n*${a.caracteres} caractères*`),
+    '## Contrôle des mentions obligatoires',
+    ...r.controle.map((c) => `- ${c.statut === 'presente' ? '✔' : c.statut === 'sans_objet' ? '—' : '✘ À COMPLÉTER'} ${c.mention}`),
+    r.a_completer.length ? `**À compléter :** ${r.a_completer.join(' ; ')}` : '',
+    r.observations ? `**Observations :** ${r.observations}` : '',
+  ].filter(Boolean).join('\n\n');
+  const buffer = await Packer.toBuffer(markdownToDocx(r.label, md));
+  const slug = (x, n) => String(x || '').normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^A-Za-z0-9-]+/g, '_').replace(/^_+|_+$/g, '').slice(0, n);
+  const doc = await storeDossierDocument(supa, dossier, {
+    buffer, filename: `Annonce_legale-${slug(r.label, 50)}-${slug(dossier.client_name, 30)}.docx`, docType: 'ANNONCE_LEGALE', userId: ctx.userId,
+  });
+  const url = await signedUrl(supa, doc.file_path);
+
+  // Historique des annonces du dossier (statut : redigee → commandee → parue)
+  const meta = dossier.metadata || {};
+  const entree = {
+    type: r.type, label: r.label, statut: 'redigee', created_at: new Date().toISOString(), document_id: doc.id || null,
+    annonces: r.annonces.map(({ departement, titre, texte, caracteres }) => ({ departement, titre, texte, caracteres })),
+    a_completer: r.a_completer,
+  };
+  await supa.from('dossiers').update({ metadata: { ...meta, annonces_legales: [...(meta.annonces_legales || []), entree] } }).eq('id', dossier.id);
+
+  return {
+    result: {
+      annonces: r.annonces, controle: r.controle, a_completer: r.a_completer, observations: r.observations,
+      document: doc.name, ajoute_aux_pieces: true,
+      publication: annonces.publicationConfiguree() ? 'disponible' : "à commander par le formaliste auprès d'un journal habilité (publication automatique pas encore branchée)",
+    },
+    event: {
+      kind: 'document', label: r.label,
+      detail: `${r.annonces.map((a) => `dépt ${a.departement} · ${a.caracteres} car.`).join(' | ')}${r.a_completer.length ? ` · ${r.a_completer.length} info(s) à compléter` : ''}`,
+      href: url, docHref: dossierUrl(dossier),
+    },
+  };
+}
+
 async function toolFicheRne(ctx, input) {
   const company = await rne.getCompany(ctx.orgId, input.siren);
   const fiche = rne.summarizeCompany(company);
@@ -936,6 +1011,7 @@ const TOOL_LABELS = {
   etat_dossier: "Lecture de l'avancement",
   creer_brouillon_inpi: 'Préparation du dépôt INPI',
   lire_fiche_rne: 'Lecture de la fiche RNE',
+  rediger_annonce_legale: "Rédaction de l'annonce légale",
   creer_modification_inpi: "Préparation de la modification INPI",
   lire_formalite_inpi: 'Lecture de la formalité INPI',
   lire_piece_inpi: "Lecture d'une pièce INPI",
@@ -951,6 +1027,7 @@ async function runTool(name, input, ctx) {
     case 'etat_dossier': return toolEtat(supa, ctx);
     case 'creer_brouillon_inpi': return toolBrouillon(supa, ctx, input);
     case 'lire_fiche_rne': return toolFicheRne(ctx, input);
+    case 'rediger_annonce_legale': return toolAnnonce(supa, ctx, input);
     case 'creer_modification_inpi': return toolModification(supa, ctx, input);
     case 'lire_formalite_inpi': return toolLireFormalite(ctx, input);
     case 'lire_piece_inpi': return toolLirePiece(ctx, input);
