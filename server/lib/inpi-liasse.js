@@ -22,6 +22,9 @@ const FORME_CODES = { SASU: '5710', SAS: '5710', HOLDING: '5710', SARL: '5499', 
 const ROLE_CODES = { PRESIDENT: '73', GERANT: '30' };
 const FORME_SOCIALE = { PRESIDENT: '1', GERANT: '3' };
 const REGIME_IS = '114';
+const TVA_CODES = { FRANCHISE_BASE: '310' };
+// Micro-entreprise : micro-BNC (libéral) 110, micro-BIC 116.
+const REGIME_MICRO = { INDEPENDANTE: '110' };
 // Situation matrimoniale : « 1 » (célibataire) relevé sur les liasses validées ;
 // les autres codes sont provisoires et signalés au formaliste.
 const SITUATION_MATRIMONIALE = { CELIBATAIRE: '1', MARIE: '2', VEUF: '3', DIVORCE: '4', PACSE: '5' };
@@ -114,6 +117,16 @@ const PIECES = {
   ATTESTATION_PARUTION: { typeDocument: 'PJ_08', sousTypeDocument: 'PJPM0012', path: '.personneMorale.identite.publicationLegale.piecesJointes[0]', label: "Attestation de parution de l'annonce légale" },
   MANDAT: { typeDocument: 'PJ_51', sousTypeDocument: 'PJPM0034', path: '.piecesJointes[0]', label: 'Mandat / pouvoir au formaliste' },
   IDENTITE_MANDATAIRE: { typeDocument: 'PJ_11', sousTypeDocument: 'PJPM0035', path: '.piecesJointes[0]', label: "Pièce d'identité du mandataire" },
+};
+
+const PIECES_EI = {
+  IDENTITE_DIRIGEANT: { typeDocument: 'PJ_11', sousTypeDocument: 'PJPP0002', path: '.personnePhysique.identite.entrepreneur.justificatifIdentite[0]', label: "Pièce d'identité de l'entrepreneur" },
+  NON_CONDAMNATION: { typeDocument: 'PJ_17', sousTypeDocument: 'PJPP0006', path: '.personnePhysique.identite.entrepreneur.justificatifIdentite[0]', label: 'Déclaration de non-condamnation et de filiation' },
+  JUSTIFICATIF_SIEGE: { typeDocument: 'PJ_26', sousTypeDocument: 'PJPP0008', path: '.personnePhysique.adresseEntreprise.adresse.piecesJointes[0]', label: "Justificatif de l'adresse de l'entreprise" },
+  ATTESTATION_HEBERGEMENT: { typeDocument: 'PJ_26', sousTypeDocument: 'PJPP0008', path: '.personnePhysique.adresseEntreprise.adresse.piecesJointes[0]', label: "Justificatif de l'adresse de l'entreprise" },
+  MANDAT: { typeDocument: 'PJ_51', sousTypeDocument: 'PJPP0018', path: '.piecesJointes[0]', label: 'Mandat / pouvoir au formaliste' },
+  IDENTITE_MANDATAIRE: { typeDocument: 'PJ_11', sousTypeDocument: 'PJPP0019', path: '.piecesJointes[0]', label: "Pièce d'identité du mandataire" },
+  QUALIFICATION: { typeDocument: 'PJ_31', sousTypeDocument: 'PJPP0034', path: '.piecesJointes[0]', label: 'Justificatif de qualification professionnelle (activité réglementée)' },
 };
 
 function strip(s) {
@@ -322,7 +335,8 @@ async function buildCreationLiasse(data, dossier, client) {
   if (!data.codeApe) bloquants.push("Code APE de l'activité (nécessaire pour la catégorie d'activité exigée par le Guichet unique)");
   else if (!cat) bloquants.push(`Catégorie d'activité INPI inconnue pour le code APE ${data.codeApe} : préciser l'activité ou un code APE voisin`);
   else if (!cat.exacte) aCompleter.push(`Catégorie d'activité déduite du secteur (APE ${data.codeApe}) : à vérifier sur le Guichet unique`);
-  aCompleter.push(`Régime de TVA (souhaité : ${data.regimeTVA || 'à confirmer'})`);
+  const tva = TVA_CODES[data.regimeTVA || 'FRANCHISE_BASE'];
+  if (!tva) aCompleter.push(`Régime de TVA (${data.regimeTVA}) à sélectionner`);
   if (forme === 'SCI' || data.regimeImposition === 'IR') aCompleter.push("Régime d'imposition des bénéfices");
 
 
@@ -373,7 +387,7 @@ async function buildCreationLiasse(data, dossier, client) {
           indicateurAssocieUnique: unipersonnelle,
           ...(unipersonnelle ? { indicateurAssocieUniqueDirigeant: true } : {}),
           ...(role === 'GERANT' ? { natureGerance: '1' } : {}),
-          ...(data.typeDeStatuts ? { typeDeStatuts: data.typeDeStatuts } : {}),
+          ...(data.typeDeStatuts || forme === 'EURL' ? { typeDeStatuts: data.typeDeStatuts || '2' } : {}),
         },
         contratDAppuiDeclare: false,
         ...(annonce.journal && annonce.datePublication ? {
@@ -462,7 +476,10 @@ async function buildCreationLiasse(data, dossier, client) {
         dateEffetOuvertureEtablissement: dateDebut,
         effectifSalarie: { presenceSalarie: false, emploiPremierSalarie: false, employeurSalarieNonRegimeFr: false },
       },
-      optionsFiscales: forme === 'SCI' || data.regimeImposition === 'IR' ? {} : { regimeImpositionBenefices: REGIME_IS },
+      optionsFiscales: {
+        ...(forme === 'SCI' || data.regimeImposition === 'IR' ? {} : { regimeImpositionBenefices: REGIME_IS }),
+        ...(tva ? { regimeImpositionTVA: tva } : {}),
+      },
       beneficiairesEffectifs: beneficiaires,
       structureEntreprise: { indicateurPrincipalIdemSiege: true, aucuneActivite: false },
       optionsFiscalesReferences: {
@@ -489,6 +506,121 @@ async function buildCreationLiasse(data, dossier, client) {
       diffusionINSEE: 'O',
       diffusionCommerciale: 'O',
       content,
+    },
+    aCompleter,
+    bloquants,
+  };
+}
+
+// ─── Création d'entreprise individuelle (micro-entreprise) ───────
+// data : formeJuridique AE/EI, dirigeant = l'entrepreneur, siege = adresse de
+// l'entreprise (souvent son domicile), activité, options micro.
+async function buildEILiasse(data, dossier, client) {
+  const aCompleter = [];
+  const bloquants = [];
+  const p = data.dirigeant || {};
+  const today = new Date().toISOString().slice(0, 10);
+  const dateDebut = data.dateDebutActivite || today;
+  const formeExercice = FORME_EXERCICE[data.formeExercice] || 'COMMERCIALE';
+  const domicile = data.domiciliationChezDirigeant !== false && (!data.siege?.voie || data.domiciliationChezDirigeant);
+
+  if (p.nationalite === 'FRA' && !p.numeroSecu) bloquants.push("Numéro de sécurité sociale de l'entrepreneur");
+  if (!p.situationMatrimoniale) bloquants.push("Situation matrimoniale de l'entrepreneur");
+  const cat = categorisation(data.codeApe);
+  if (!data.codeApe) bloquants.push("Code APE de l'activité");
+  else if (!cat) bloquants.push(`Catégorie d'activité INPI inconnue pour le code APE ${data.codeApe}`);
+  else if (!cat.exacte) aCompleter.push(`Catégorie d'activité déduite du secteur (APE ${data.codeApe}) : à vérifier`);
+  if (formeExercice === 'ARTISANALE_REGLEMENTEE') aCompleter.push('Activité artisanale réglementée : justificatif de qualification à joindre');
+
+  const desc = await personneInpi(p, aCompleter, 'Entrepreneur');
+  const domicileAdr = await adresseInpi(p.adresse, aCompleter, "Domicile de l'entrepreneur");
+  const adrEntreprise = domicile ? domicileAdr : await adresseInpi(data.siege, aCompleter, "Adresse de l'entreprise");
+  const mandataire = await mandataireBlocks(client);
+  const micro = data.regimeMicro || {};
+
+  const content = {
+    formeExerciceActivitePrincipale: formeExercice,
+    natureCreation: {
+      formeJuridique: '1000', formeJuridiqueInsee: '1000', microEntreprise: true, societeEtrangere: false,
+      etablieEnFrance: true, salarieEnFrance: false, relieeEntrepriseAgricole: false, entrepriseAgricole: false,
+      eirl: false, indicateurEtablissementFictif: false,
+    },
+    personnePhysique: {
+      identite: {
+        entreprise: { formeJuridique: '1000', ...(data.codeApe ? { codeApe: data.codeApe } : {}) },
+        entrepreneur: {
+          voletSocial: {
+            organismeAssuranceMaladieActuelle: 'R',
+            demandeAcre: Boolean(micro.acre),
+            activiteSimultanee: Boolean(micro.activiteSalarieeSimultanee),
+            ...(micro.activiteSalarieeSimultanee ? { statutExerciceActiviteSimultanee: '1' } : {}),
+            affiliationPamBiologiste: false,
+            affiliationPamPharmacien: false,
+            activiteNonSalariee: false,
+            indicateurActiviteAnterieure: false,
+          },
+          regimeMicroSocial: { optionMicroSocial: true, periodiciteVersement: micro.periodicite === 'MENSUELLE' ? 'M' : 'T' },
+          descriptionPersonne: { ...desc, statutVisAVisFormalite: '1', formeSociale: '2', indicateurDeNonSedentarite: false },
+          ...(domicileAdr ? { adresseDomicile: domicileAdr } : {}),
+          ...(p.email || p.telephone ? { contact: { ...(p.email ? { mail: p.email } : {}), ...(p.telephone ? { telephone: p.telephone, phoneCode: '+33' } : {}) } } : {}),
+        },
+        contratDAppuiDeclare: false,
+        insaisissabilite: { residencePrincipale: { residenceInsaisissable: true } },
+        ...(mandataire.adresseCorrespondance ? { adresseCorrespondance: mandataire.adresseCorrespondance } : {}),
+        ...(mandataire.contactCorrespondance ? { contactCorrespondance: mandataire.contactCorrespondance } : {}),
+      },
+      adresseEntreprise: {
+        caracteristiques: {
+          diffusionDomiciliationAsEntrepriseAddress: 'N',
+          ambulant: false,
+          domiciliataire: false,
+          indicateurDomicileEntrepreneur: domicile,
+          ...(domicile ? { indicateurDomicileEntrepreneurValidation: true } : {}),
+          indicateurAdresseEtablissement: !domicile,
+        },
+        ...(adrEntreprise ? { adresse: adrEntreprise } : {}),
+      },
+      etablissementPrincipal: {
+        descriptionEtablissement: { rolePourEntreprise: '3', indicateurEtablissementPrincipal: true, statutPourFormalite: '1' },
+        effectifSalarie: { presenceSalarie: false, emploiPremierSalarie: false },
+        ...(adrEntreprise ? { adresse: adrEntreprise } : {}),
+        activites: [{
+          statutFormalite: 'A',
+          indicateurPrincipal: true,
+          indicateurProlongement: false,
+          dateDebut,
+          exerciceActivite: 'P',
+          indicateurNonSedentaire: false,
+          formeExercice,
+          ...(cat ? {
+            categorisationActivite1: cat.codes[0],
+            categorisationActivite2: cat.codes[1],
+            ...(cat.codes[2] ? { categorisationActivite3: cat.codes[2] } : {}),
+            ...(cat.codes[3] ? { categorisationActivite4: cat.codes[3] } : {}),
+            ...(cat.codes[4] ? { precisionActivite: cat.codes[4] } : {}),
+          } : {}),
+          descriptionDetaillee: data.activitePrincipale || data.objet || '',
+          indicateurArtisteAuteur: false,
+          indicateurMarinProfessionnel: false,
+          rolePrincipalPourEntreprise: true,
+          ...(data.codeApe ? { codeApe: data.codeApe } : {}),
+          origine: { typeOrigine: '1' },
+        }],
+      },
+      optionsFiscales: {
+        regimeImpositionBenefices: REGIME_MICRO[formeExercice] || '116',
+        regimeImpositionTVA: TVA_CODES.FRANCHISE_BASE,
+        optionVersementLiberatoire: Boolean(micro.versementLiberatoire),
+      },
+    },
+    ...(mandataire.declarant ? { declarant: mandataire.declarant } : {}),
+  };
+
+  const nom = [(p.prenoms || [])[0], String(p.nom || '').toUpperCase()].filter(Boolean).join(' ') || dossier.client_name || '';
+  return {
+    payload: {
+      companyName: nom, nomDossier: nom, referenceMandataire: dossier.reference,
+      typeFormalite: 'C', typePersonne: 'P', diffusionINSEE: 'O', diffusionCommerciale: 'O', content,
     },
     aCompleter,
     bloquants,
@@ -527,6 +659,7 @@ async function toPdf(buffer, mime, name) {
 // Création du BROUILLON au Guichet unique puis dépôt des pièces.
 // pieces : [{ categorie, nom, buffer, mime }]
 async function createDraftWithPieces(orgId, payload, pieces) {
+  const carte = payload.typePersonne === 'P' ? PIECES_EI : PIECES;
   const client = inpi.forOrg(orgId);
   let formality;
   try {
@@ -543,7 +676,7 @@ async function createDraftWithPieces(orgId, payload, pieces) {
   const deposees = [];
   const erreurs = [];
   for (const p of pieces) {
-    const spec = PIECES[p.categorie];
+    const spec = carte[p.categorie];
     if (!spec) {
       erreurs.push(`${p.nom} : catégorie inconnue`);
       continue;
@@ -571,4 +704,4 @@ async function createDraftWithPieces(orgId, payload, pieces) {
   return { formality, deposees, erreurs };
 }
 
-module.exports = { buildCreationLiasse, createDraftWithPieces, toPdf, parseVoie, PIECES, FORME_CODES };
+module.exports = { buildCreationLiasse, buildEILiasse, createDraftWithPieces, toPdf, parseVoie, PIECES, PIECES_EI, FORME_CODES };
