@@ -284,6 +284,51 @@ const OPERATIONS = {
   },
 };
 
+// 40M — mise en sommeil d'une société (cessation temporaire d'activité, immatriculation
+// maintenue). Structure relevée sur les mises en sommeil validées du cabinet.
+OPERATIONS.miseEnSommeil = async (next, { dateEffet, deplacerEtablissement = true }) => {
+  const p = pm(next);
+  const ep = p.etablissementPrincipal;
+  if (ep) {
+    ep.descriptionEtablissement = {
+      ...(ep.descriptionEtablissement || {}),
+      rolePourEntreprise: '1', statutPourFormalite: '2', destinationEtablissement: 'C',
+      sansActiviteAutreActiviteSiege: true, indicateurEtablissementPrincipal: false, dateFinActivite: dateEffet,
+    };
+    for (const a of ep.activites || []) a.statutFormalite = 'M';
+    if (deplacerEtablissement) {
+      p.autresEtablissements = [...(p.autresEtablissements || []), ep];
+      delete p.etablissementPrincipal;
+    }
+  }
+  p.detailCessationEntreprise = {
+    ...(p.detailCessationEntreprise || {}),
+    maintienRcs: false, maintienRm: false, indicateurMaintienImmatriculationRegistre: true,
+    indicateurDissolution: false, indicateurDisparitionPM: false, dateMiseEnSommeil: dateEffet,
+    dateDissolutionDisparitionFromRNE: false, indicateurLocationTerresTVA: false,
+  };
+  return ['40M'];
+};
+
+// 41P — cessation totale d'une entreprise individuelle (radiation).
+OPERATIONS.cessationEI = async (next, { dateEffet }) => {
+  const pp = next.personnePhysique;
+  if (!pp) throw new Error('Opération réservée aux entreprises individuelles.');
+  const ep = pp.etablissementPrincipal;
+  if (ep) {
+    ep.descriptionEtablissement = { ...(ep.descriptionEtablissement || {}), statutPourFormalite: '2', destinationEtablissement: 'C', dateEffetFermeture: dateEffet };
+    for (const a of ep.activites || []) a.statutFormalite = 'M';
+  }
+  pp.detailCessationEntreprise = {
+    ...(pp.detailCessationEntreprise || {}),
+    maintienRcs: false, dateCessationTotaleActivite: dateEffet, indicateurCessationTemporaire: false,
+    indicateurDecesEntrepreneur: false, indicateurMaintienImmatriculationRegistre: false,
+    indicateurDonnerFondsLocationGerance: false, dateRadiation: dateEffet,
+  };
+  next.natureCessationEntreprise = { dateRadiation: dateEffet };
+  return ['41P'];
+};
+
 // Applique une liste d'opérations [{ type, ...params }] et renvoie les événements attendus.
 async function appliquerOperations(next, operations) {
   const events = [];
