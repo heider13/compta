@@ -24,18 +24,19 @@ const CAS = [
 (async () => {
   const client = inpi.forOrg(ORG);
   const crees = [];
-  for (const cas of CAS) {
+  for (const cas of CAS.slice(1)) for (const diffusionDomicile of [undefined]) {
     try {
-      const { payload, bloquants, aCompleter } = await buildEILiasse(cas.data, { reference: 'TEST-EI', client_name: 'TEST EI' }, client);
+      const { payload, bloquants, aCompleter } = await buildEILiasse({ ...cas.data, diffusionDomicile }, { reference: 'TEST-EI', client_name: 'TEST EI' }, client);
       if (bloquants.length) { console.log(`✗ ${cas.label} : bloquants ${JSON.stringify(bloquants)}`); continue; }
       const { formality, deposees, erreurs } = await createDraftWithPieces(ORG, payload, [
         { categorie: 'IDENTITE_DIRIGEANT', nom: 'CNI-TEST.pdf', buffer: pdf('PIECE IDENTITE'), mime: 'application/pdf' },
         { categorie: 'JUSTIFICATIF_SIEGE', nom: 'Justificatif-domicile-TEST.pdf', buffer: pdf('JUSTIFICATIF DOMICILE'), mime: 'application/pdf' },
       ]);
       crees.push(`${cas.label} : liasse ${formality.liasseNumber} (formalité ${formality.id})`);
-      console.log(`✓ ${cas.label} : brouillon créé — liasse ${formality.liasseNumber}, ${deposees.length} pièce(s)${erreurs.length ? ', erreurs pièces : ' + erreurs.join(' ; ') : ''}${aCompleter.length ? ' | à compléter : ' + aCompleter.join(' ; ') : ''}`);
+      console.log(`✓ ${cas.label} [diffusion=${diffusionDomicile}] : brouillon créé — liasse ${formality.liasseNumber}, ${deposees.length} pièce(s)${erreurs.length ? ', erreurs pièces : ' + erreurs.join(' ; ') : ''}${aCompleter.length ? ' | à compléter : ' + aCompleter.join(' ; ') : ''}`);
+      break;
     } catch (e) {
-      console.log(`✗ ${cas.label} : ${String(e.message).slice(0, 2000)}`);
+      console.log(`✗ ${cas.label} [diffusion=${diffusionDomicile}] : ${String(e.message).slice(0, 600)}`);
     }
   }
   console.log(`\nBROUILLONS À SUPPRIMER SUR LE GUICHET UNIQUE :\n${crees.map((c) => '  - ' + c).join('\n') || '  (aucun)'}`);

@@ -513,6 +513,10 @@ async function buildCreationLiasse(data, dossier, client) {
 }
 
 // ─── Création d'entreprise individuelle (micro-entreprise) ───────
+function domicileEntreprise(data) {
+  return data.domiciliationChezDirigeant !== false && (!data.siege?.voie || Boolean(data.domiciliationChezDirigeant));
+}
+
 // data : formeJuridique AE/EI, dirigeant = l'entrepreneur, siege = adresse de
 // l'entreprise (souvent son domicile), activité, options micro.
 async function buildEILiasse(data, dossier, client) {
@@ -522,7 +526,7 @@ async function buildEILiasse(data, dossier, client) {
   const today = new Date().toISOString().slice(0, 10);
   const dateDebut = data.dateDebutActivite || today;
   const formeExercice = FORME_EXERCICE[data.formeExercice] || 'COMMERCIALE';
-  const domicile = data.domiciliationChezDirigeant !== false && (!data.siege?.voie || data.domiciliationChezDirigeant);
+  const domicile = domicileEntreprise(data);
 
   if (p.nationalite === 'FRA' && !p.numeroSecu) bloquants.push("Numéro de sécurité sociale de l'entrepreneur");
   if (!p.situationMatrimoniale) bloquants.push("Situation matrimoniale de l'entrepreneur");
@@ -530,6 +534,7 @@ async function buildEILiasse(data, dossier, client) {
   if (!data.codeApe) bloquants.push("Code APE de l'activité");
   else if (!cat) bloquants.push(`Catégorie d'activité INPI inconnue pour le code APE ${data.codeApe}`);
   else if (!cat.exacte) aCompleter.push(`Catégorie d'activité déduite du secteur (APE ${data.codeApe}) : à vérifier`);
+  if (domicileEntreprise(data)) aCompleter.push("Adresse personnelle diffusée comme adresse de l'entreprise : si l'entrepreneur souhaite la non-diffusion, la demander sur le Guichet unique");
   if (formeExercice === 'ARTISANALE_REGLEMENTEE') aCompleter.push('Activité artisanale réglementée : justificatif de qualification à joindre');
 
   const desc = await personneInpi(p, aCompleter, 'Entrepreneur');
@@ -572,7 +577,9 @@ async function buildEILiasse(data, dossier, client) {
       },
       adresseEntreprise: {
         caracteristiques: {
-          diffusionDomiciliationAsEntrepriseAddress: data.diffusionDomicile ?? 'N',
+          // « O » accepté par l'API ; la non-diffusion (« N ») exige un complément non
+          // documenté : l'entrepreneur qui la souhaite la coche sur le Guichet unique.
+          diffusionDomiciliationAsEntrepriseAddress: data.diffusionDomicile ?? 'O',
           ambulant: false,
           domiciliataire: false,
           indicateurDomicileEntrepreneur: domicile,
