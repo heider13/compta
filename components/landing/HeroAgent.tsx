@@ -296,7 +296,7 @@ export function HeroAgent() {
 
         {/* Livre en points (écho au logo) qui s'ouvre et feuillette */}
         {!demande && (
-          <DotBook className="pointer-events-none mx-auto -mb-12 -mt-2 block h-[280px] w-full max-w-[760px] sm:h-[360px]" />
+          <DotBook className="pointer-events-none relative left-1/2 -mb-20 -mt-6 block h-[340px] w-screen max-w-[1400px] -translate-x-1/2 sm:h-[460px] lg:h-[560px]" />
         )}
 
         {demande && scenario && (
