@@ -150,7 +150,7 @@ const TOOLS = [
             },
           },
         },
-        formeExercice: { type: 'string', enum: ['COMMERCIALE', 'ARTISANALE', 'LIBERALE', 'AGRICOLE', 'CIVILE'], description: "Nature de l'activité principale" },
+        formeExercice: { type: 'string', enum: ['COMMERCIALE', 'ARTISANALE', 'ARTISANALE_REGLEMENTEE', 'LIBERALE', 'AGRICOLE', 'CIVILE'], description: "Nature de l'activité principale (LIBERALE pour une profession libérale, CIVILE pour une SCI de gestion)" },
         regimeImposition: { type: 'string', enum: ['IS', 'IR'] },
         regimeTVA: { type: 'string', enum: ['FRANCHISE_BASE', 'REEL_SIMPLIFIE', 'REEL_NORMAL'] },
         siren: { type: 'string', description: 'Pour une modification ou une cessation' },
@@ -614,7 +614,7 @@ async function toolBrouillon(supa, ctx, input) {
   const manquantes = attendues.filter((c) => !categories.has(c)).map((c) => PIECES[c].label);
 
   const client = inpi.forOrg(ctx.orgId);
-  const { payload, aCompleter } = await buildCreationLiasse(data, dossier, client);
+  const { payload, aCompleter, bloquants } = await buildCreationLiasse(data, dossier, client);
 
   if (!input.confirme) {
     await supa.from('dossiers').update({ metadata: { ...meta, inpi_dry_run_at: new Date().toISOString() } }).eq('id', dossier.id);
@@ -626,13 +626,17 @@ async function toolBrouillon(supa, ctx, input) {
         pieces_manquantes: manquantes,
         documents_introuvables: introuvables,
         champs_a_completer_par_le_formaliste: aCompleter,
-        rappel: 'Demander une confirmation explicite avant de créer le brouillon.',
+        bloquants_a_resoudre_avant_creation: bloquants,
+        rappel: bloquants.length
+          ? 'Création impossible tant que les bloquants ne sont pas résolus : demander les informations au professionnel.'
+          : 'Demander une confirmation explicite avant de créer le brouillon.',
       },
       event: { kind: 'inpi', label: 'Aperçu du dépôt INPI', detail: `${plan.length} pièce(s) · ${manquantes.length} manquante(s) · ${aCompleter.length} champ(s) à compléter` },
     };
   }
 
   if (!meta.inpi_dry_run_at) throw new Error("Fais d'abord un aperçu (confirme=false) et présente-le au professionnel.");
+  if (bloquants.length) throw new Error(`Création impossible, informations exigées par le Guichet unique : ${bloquants.join(' ; ')}`);
 
   const pieces = [];
   for (const p of plan) {

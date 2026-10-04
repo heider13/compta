@@ -23,6 +23,46 @@ const ROLE_CODES = { PRESIDENT: '73', GERANT: '30' };
 const FORME_SOCIALE = { PRESIDENT: '1', GERANT: '3' };
 const REGIME_IS = '114';
 
+// Catégorisation INPI de l'activité (obligatoire dès la création du brouillon),
+// relevée sur les formalités validées du cabinet : code APE → [cat1, cat2, cat3,
+// cat4, précision]. À défaut de code exact, on prend le secteur (2 premiers chiffres).
+const CATEGORISATION_APE = {
+  '1089Z': ['07', '02', '08', '', '99'],
+  '4322A': ['05', '04', '19', '', '14'], '4399C': ['05', '04', '15', '', '14'],
+  '4511Z': ['06', '01', '', '', '99'], '4520A': ['06', '01', '', '', '99'],
+  '4643Z': ['06', '02', '02', '', '09'], '4649Z': ['06', '02', '02', '', '09'], '4651Z': ['06', '02', '02', '', '09'],
+  '4669B': ['06', '02', '02', '', '09'], '4669C': ['06', '02', '02', '', '09'], '4690Z': ['06', '02', '02', '', '09'],
+  '4711B': ['06', '03', '01', '', '10'], '4724Z': ['06', '03', '01', '', '10'], '4742Z': ['06', '03', '01', '', '10'],
+  '4752A': ['06', '02', '02', '', '09'], '4778C': ['06', '03', '09', '', '10'],
+  '4791A': ['06', '05', '', '', '99'], '4791B': ['06', '05', '', '', '99'],
+  '4941A': ['07', '01', '11', '', '99'], '4941B': ['07', '01', '04', '01', '99'],
+  '5610A': ['07', '02', '03', '01', '99'], '5610C': ['07', '02', '03', '01', '99'],
+  '6201Z': ['02', '08', '09', '02', '04'],
+  '6820B': ['07', '06', '01', '01', '20'],
+  '7022Z': ['07', '04', '08', '01', '99'], '7112B': ['07', '04', '08', '01', '99'],
+  '8010Z': ['07', '09', '07', '', '99'], '9602A': ['07', '16', '01', '', '99'],
+};
+const CATEGORISATION_SECTEUR = {
+  10: ['07', '02', '08', '', '99'], 43: ['05', '04', '15', '', '14'], 45: ['06', '01', '', '', '99'],
+  46: ['06', '02', '02', '', '09'], 47: ['06', '03', '01', '', '10'], 49: ['07', '01', '11', '', '99'],
+  56: ['07', '02', '03', '01', '99'], 62: ['02', '08', '09', '02', '04'], 68: ['07', '06', '01', '01', '20'],
+  70: ['07', '04', '08', '01', '99'], 71: ['07', '04', '08', '01', '99'], 96: ['07', '16', '01', '', '99'],
+};
+
+function categorisation(codeApe) {
+  const ape = String(codeApe || '').toUpperCase().replace(/[^0-9A-Z]/g, '');
+  if (!ape) return null;
+  if (CATEGORISATION_APE[ape]) return { codes: CATEGORISATION_APE[ape], exacte: true };
+  const secteur = CATEGORISATION_SECTEUR[Number(ape.slice(0, 2))];
+  return secteur ? { codes: secteur, exacte: false } : null;
+}
+
+// Forme d'exercice : valeurs attendues par le Guichet unique.
+const FORME_EXERCICE = {
+  COMMERCIALE: 'COMMERCIALE', ARTISANALE: 'ARTISANALE', ARTISANALE_REGLEMENTEE: 'ARTISANALE_REGLEMENTEE',
+  LIBERALE: 'INDEPENDANTE', INDEPENDANTE: 'INDEPENDANTE', CIVILE: 'GESTION_DE_BIENS', GESTION_DE_BIENS: 'GESTION_DE_BIENS', AGRICOLE: 'AGRICOLE',
+};
+
 // Pays de naissance → code INSEE géographique (99xxx) et libellé.
 const PAYS = {
   FRA: { code: null, label: 'FRANCE' },
@@ -236,9 +276,13 @@ async function buildCreationLiasse(data, dossier, client) {
   }
   if (!beneficiaires.length) aCompleter.push('Bénéficiaires effectifs : aucun associé à 25 % ou plus identifié, à déclarer');
 
-  const formeExercice = data.formeExercice || (forme === 'SCI' ? 'CIVILE' : 'COMMERCIALE');
-  if (!data.codeApe) aCompleter.push("Code APE de l'activité");
-  aCompleter.push("Catégorisation de l'activité (listes du Guichet unique)");
+  const formeExercice = FORME_EXERCICE[data.formeExercice] || (forme === 'SCI' ? 'GESTION_DE_BIENS' : 'COMMERCIALE');
+  // Bloquants : refusés par l'API dès la création du brouillon.
+  const bloquants = [];
+  const cat = categorisation(data.codeApe);
+  if (!data.codeApe) bloquants.push("Code APE de l'activité (nécessaire pour la catégorie d'activité exigée par le Guichet unique)");
+  else if (!cat) bloquants.push(`Catégorie d'activité INPI inconnue pour le code APE ${data.codeApe} : préciser l'activité ou un code APE voisin`);
+  else if (!cat.exacte) aCompleter.push(`Catégorie d'activité déduite du secteur (APE ${data.codeApe}) : à vérifier sur le Guichet unique`);
   aCompleter.push(`Régime de TVA (souhaité : ${data.regimeTVA || 'à confirmer'})`);
   if (forme === 'SCI' || data.regimeImposition === 'IR') aCompleter.push("Régime d'imposition des bénéfices");
   aCompleter.push("Publication de l'annonce légale (journal et date) une fois parue");
@@ -312,6 +356,13 @@ async function buildCreationLiasse(data, dossier, client) {
           exerciceActivite: 'P',
           formeExercice,
           descriptionDetaillee: data.activitePrincipale || data.objet || '',
+          ...(cat ? {
+            categorisationActivite1: cat.codes[0],
+            categorisationActivite2: cat.codes[1],
+            ...(cat.codes[2] ? { categorisationActivite3: cat.codes[2] } : {}),
+            ...(cat.codes[3] ? { categorisationActivite4: cat.codes[3] } : {}),
+            ...(cat.codes[4] ? { precisionActivite: cat.codes[4] } : {}),
+          } : {}),
           rolePrincipalPourEntreprise: true,
           ...(data.codeApe ? { codeApe: data.codeApe } : {}),
           origine: { typeOrigine: '1' },
@@ -338,6 +389,7 @@ async function buildCreationLiasse(data, dossier, client) {
       content,
     },
     aCompleter,
+    bloquants,
   };
 }
 
