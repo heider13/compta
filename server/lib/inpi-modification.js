@@ -56,10 +56,21 @@ function completerPersonnes(bloc, blocGu) {
   }
 }
 
-// Indicateurs …Present : false quand la donnée correspondante est absente.
+// Champs dont le Guichet unique attend un indicateur « …Present » (donnée présente au RNE ?)
+const CHAMPS_ADRESSE = ['typeVoie', 'voie', 'numVoie', 'indiceRepetition', 'complementLocalisation', 'distributionSpeciale', 'voieCodifiee'];
+const CHAMPS_PERSONNE = ['dateDeNaissance', 'paysNaissance', 'lieuDeNaissance', 'codePostalNaissance', 'codeInseeGeographique'];
+
+// Indicateurs …Present : false quand la donnée correspondante est absente (créés s'ils manquent).
 function marquerAbsents(o) {
   if (Array.isArray(o)) return o.forEach(marquerAbsents);
   if (!o || typeof o !== 'object') return;
+  const vide = (v) => v == null || v === '';
+  if ('codePostal' in o || 'codePays' in o) {
+    for (const c of CHAMPS_ADRESSE) if (o[`${c}Present`] == null) o[`${c}Present`] = !vide(o[c]);
+  }
+  if ('nom' in o && ('dateDeNaissance' in o || 'prenoms' in o)) {
+    for (const c of CHAMPS_PERSONNE) if (o[`${c}Present`] == null) o[`${c}Present`] = !vide(o[c]);
+  }
   for (const k of Object.keys(o)) {
     if (k.endsWith('Present') && (o[k] == null)) {
       const champ = k.slice(0, -'Present'.length);
@@ -139,10 +150,35 @@ async function baseModification(orgId, siren) {
     ...(m.contactCorrespondance ? { contactCorrespondance: m.contactCorrespondance } : {}),
   });
   delete next.piecesJointes;
+  if (next.personneMorale?.identite?.description && next.personneMorale.identite.description.depotDemandeAcre == null) {
+    next.personneMorale.identite.description.depotDemandeAcre = false;
+  }
 
   const denomination = ident.entreprise?.denomination
     || [ident.entrepreneur?.descriptionPersonne?.prenoms?.[0], ident.entrepreneur?.descriptionPersonne?.nom].filter(Boolean).join(' ');
   return { company, previous, next, typePersonne, bloc, denomination, client };
+}
+
+// Données encore manquantes après complément (personnes existantes, objet…) :
+// le Guichet unique les exige, seul le formaliste peut les fournir.
+function donneesManquantes(next) {
+  const bloc = next.personneMorale || next.personnePhysique;
+  const manquants = [];
+  const verifier = (desc, adr, qui) => {
+    if (!desc) return;
+    const nom = [desc.prenoms?.[0], desc.nom].filter(Boolean).join(' ') || qui;
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(desc.dateDeNaissance || '')) manquants.push(`${nom} : date de naissance complète`);
+    if (!desc.lieuDeNaissance) manquants.push(`${nom} : lieu de naissance`);
+    if (!desc.codeInseeGeographique) manquants.push(`${nom} : commune ou pays de naissance (code INSEE)`);
+    if (adr && !adr.voie) manquants.push(`${nom} : adresse personnelle (rue)`);
+  };
+  for (const p of bloc?.composition?.pouvoirs || []) {
+    if (p.statutPourLaFormalite === '1' || p.typeDePersonne !== 'INDIVIDU') continue;
+    verifier(p.individu?.descriptionPersonne, p.individu?.adresseDomicile, 'dirigeant');
+  }
+  if (next.personnePhysique) verifier(next.personnePhysique.identite?.entrepreneur?.descriptionPersonne, next.personnePhysique.identite?.entrepreneur?.adresseDomicile, 'entrepreneur');
+  if (next.personneMorale && !next.personneMorale.identite?.description?.objet) manquants.push('Objet social (absent du RNE)');
+  return manquants;
 }
 
 // Crée le brouillon de modification. mutate(next, ctx) applique les changements.
@@ -150,6 +186,10 @@ async function createModificationDraft(orgId, siren, { mutate, typeFormalite = '
   const base = await baseModification(orgId, siren);
   const { client, company, previous, next, typePersonne, denomination } = base;
   if (mutate) await mutate(next, base);
+  const manquants = donneesManquantes(next);
+  if (manquants.length) {
+    throw Object.assign(new Error(`Données absentes du RNE à fournir par le formaliste : ${manquants.join(' ; ')}`), { code: 'donnees_manquantes', manquants });
+  }
   const startedAt = new Date(Date.now() - 5000);
   const body = {
     previousFormality: { companyName: denomination, typePersonne, content: previous },
@@ -449,6 +489,25 @@ OPERATIONS.domicileEI = async (next, { adresse, dateEffet, deplacerEntreprise = 
   return ['16P'];
 };
 
+// Complément des données d'un dirigeant existant (absentes du RNE), sans modification déclarée.
+OPERATIONS.complementPersonne = async (next, { nom, dateNaissance, lieuNaissance, codePostalNaissance, paysNaissance, nationalite, adresse }) => {
+  const bloc = next.personneMorale || next.personnePhysique;
+  const cibles = [
+    ...(bloc?.composition?.pouvoirs || []).map((p) => p.individu),
+    ...(next.personnePhysique ? [next.personnePhysique.identite?.entrepreneur] : []),
+  ].filter(Boolean);
+  const ind = cibles.find((i) => String(i.descriptionPersonne?.nom || '').toUpperCase() === String(nom).toUpperCase());
+  if (!ind) throw new Error(`Personne « ${nom} » introuvable dans la fiche RNE.`);
+  const d = ind.descriptionPersonne;
+  const naissance = await personneInpi({ nom: d.nom, prenoms: d.prenoms, sexe: d.genre === '2' ? 'F' : 'M', dateNaissance, lieuNaissance, codePostalNaissance, paysNaissance, nationalite: nationalite || d.codeNationalite }, [], nom);
+  for (const k of ['dateDeNaissance', 'lieuDeNaissance', 'codeInseeGeographique', 'paysNaissance', 'codePostalNaissance']) if (naissance[k]) d[k] = naissance[k];
+  if (adresse) {
+    const adr = await adresseInpi(adresse, [], `Adresse de ${nom}`);
+    if (adr) ind.adresseDomicile = { ...(ind.adresseDomicile || {}), ...adr };
+  }
+  return [];
+};
+
 // Applique une liste d'opérations [{ type, ...params }] et renvoie les événements attendus.
 async function appliquerOperations(next, operations) {
   const events = [];
@@ -460,4 +519,4 @@ async function appliquerOperations(next, operations) {
   return [...new Set(events)];
 }
 
-module.exports = { baseModification, createModificationDraft, appliquerOperations, OPERATIONS };
+module.exports = { baseModification, createModificationDraft, appliquerOperations, donneesManquantes, OPERATIONS };

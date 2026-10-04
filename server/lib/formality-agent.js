@@ -27,7 +27,7 @@ const inpi = require('../inpi');
 const { getFormalitySummary, downloadAttachment } = require('./inpi-formality');
 const { buildCreationLiasse, buildEILiasse, createDraftWithPieces, PIECES, PIECES_EI } = require('./inpi-liasse');
 const rne = require('./inpi-rne');
-const { createModificationDraft, appliquerOperations, baseModification } = require('./inpi-modification');
+const { createModificationDraft, appliquerOperations, baseModification, donneesManquantes } = require('./inpi-modification');
 const { deposerPieces, PIECES_MODIF } = require('./inpi-liasse');
 const { BUCKET } = require('./dossier-docs');
 const knowledge = require('./knowledge');
@@ -246,7 +246,7 @@ const TOOLS = [
   {
     name: 'creer_modification_inpi',
     description:
-      "Prépare une MODIFICATION (ou une mise en sommeil / cessation d'EI) au Guichet unique à partir de la fiche RNE à jour de l'entreprise. Opérations : objet (12M : objet, codeApe), denomination (10M), siege (60M : adresse), nomination (35M : personne, role GERANT|PRESIDENT|DG), revocation (35M : nom du dirigeant sortant), beneficiaires (38F : ajouts [{personne, pourcentage}], retraits [noms]), miseEnSommeil (40M), cessationEI (41P), activiteAjout (61M/61P+24P : description, codeApe, formeExercice), activiteSuppression (62M/62P : codeApe), etablissementSecondaire (54M : adresse, description, codeApe), associes (17M : entrée/sortie d'associé, associeUnique), domicileEI (16P : adresse). Limite connue : pour une entreprise individuelle dont l'identité n'est pas diffusée au RNE, le Guichet unique peut refuser la liasse (identité rechargée de son côté) ; dans ce cas, préparer les documents et guider le formaliste pour la saisie manuelle sur le Guichet unique. Chaque opération peut avoir une dateEffet (YYYY-MM-DD). D'abord confirme=false (aperçu, rien n'est envoyé), puis confirme=true UNIQUEMENT après confirmation explicite du professionnel : crée le BROUILLON et dépose les pièces. Ne valide, ne signe et ne paie jamais. Catégories de pièces : " +
+      "Prépare une MODIFICATION (ou une mise en sommeil / cessation d'EI) au Guichet unique à partir de la fiche RNE à jour de l'entreprise. Opérations : objet (12M : objet, codeApe), denomination (10M), siege (60M : adresse), nomination (35M : personne, role GERANT|PRESIDENT|DG), revocation (35M : nom du dirigeant sortant), beneficiaires (38F : ajouts [{personne, pourcentage}], retraits [noms]), miseEnSommeil (40M), cessationEI (41P), activiteAjout (61M/61P+24P : description, codeApe, formeExercice), activiteSuppression (62M/62P : codeApe), etablissementSecondaire (54M : adresse, description, codeApe), associes (17M : entrée/sortie d'associé, associeUnique), domicileEI (16P : adresse), complementPersonne (pas un événement : complète un dirigeant existant dont le RNE n'a pas toutes les données — nom, dateNaissance, lieuNaissance, codePostalNaissance, paysNaissance, adresse — à demander au formaliste quand l'aperçu les signale). Limite connue : pour une entreprise individuelle dont l'identité n'est pas diffusée au RNE, le Guichet unique peut refuser la liasse (identité rechargée de son côté) ; dans ce cas, préparer les documents et guider le formaliste pour la saisie manuelle sur le Guichet unique. Chaque opération peut avoir une dateEffet (YYYY-MM-DD). D'abord confirme=false (aperçu, rien n'est envoyé), puis confirme=true UNIQUEMENT après confirmation explicite du professionnel : crée le BROUILLON et dépose les pièces. Ne valide, ne signe et ne paie jamais. Catégories de pièces : " +
       Object.entries(PIECES_MODIF).map(([k, v]) => `${k} (${v.label})`).join(', ') + '.',
     eager_input_streaming: true,
     input_schema: {
@@ -259,7 +259,8 @@ const TOOLS = [
           items: {
             type: 'object',
             properties: {
-              type: { type: 'string', enum: ['objet', 'denomination', 'siege', 'nomination', 'revocation', 'beneficiaires', 'miseEnSommeil', 'cessationEI', 'activiteAjout', 'activiteSuppression', 'etablissementSecondaire', 'associes', 'domicileEI'] },
+              type: { type: 'string', enum: ['objet', 'denomination', 'siege', 'nomination', 'revocation', 'beneficiaires', 'miseEnSommeil', 'cessationEI', 'activiteAjout', 'activiteSuppression', 'etablissementSecondaire', 'associes', 'domicileEI', 'complementPersonne'] },
+              dateNaissance: { type: 'string' }, lieuNaissance: { type: 'string' }, codePostalNaissance: { type: 'string' }, paysNaissance: { type: 'string' }, nationalite: { type: 'string' },
               description: { type: 'string', description: "Activité (activiteAjout, etablissementSecondaire)" },
               formeExercice: { type: 'string', enum: ['COMMERCIALE', 'ARTISANALE', 'ARTISANALE_REGLEMENTEE', 'LIBERALE', 'CIVILE'] },
               principale: { type: 'boolean' },
@@ -853,6 +854,7 @@ async function toolModification(supa, ctx, input) {
     try {
       const base = await baseModification(ctx.orgId, siren);
       evenements = await appliquerOperations(base.next, operations);
+      bloquants.push(...donneesManquantes(base.next));
     } catch (e) { erreurOperation = e.message; }
     if (dossier) await supa.from('dossiers').update({ metadata: { ...meta, inpi_modif_preview_at: new Date().toISOString() } }).eq('id', dossier.id);
     return {
