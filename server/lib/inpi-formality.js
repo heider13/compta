@@ -4,6 +4,7 @@
 
 const inpi = require('../inpi');
 const { paiementDe, emailsCabinet } = require('./inpi-paiement');
+const { getSupabaseAdmin } = require('./db');
 
 const TYPE_LABELS = { C: 'Création', M: 'Modification', R: 'Radiation' };
 
@@ -67,10 +68,13 @@ function mapRegularisations(validationsRequests = []) {
 // Résumé lisible d'une formalité (pour l'UI et pour l'agent).
 async function getFormalitySummary(orgId, formalityId) {
   const client = inpi.forOrg(orgId);
-  const [d, attachments, emails] = await Promise.all([
+  const [d, attachments, emails, lie] = await Promise.all([
     client.getFormality(formalityId),
     listAllAttachments(client, formalityId),
     emailsCabinet(orgId).catch(() => []),
+    getSupabaseAdmin().from('dossiers').select('id, metadata').eq('organization_id', orgId)
+      .eq('metadata->>inpi_formality_id', String(formalityId)).limit(1).maybeSingle()
+      .then((r) => r.data).catch(() => null),
   ]);
   const regularisations = mapRegularisations(d.validationsRequests);
   const demandesEnCours = regularisations.flatMap((r) =>
@@ -95,7 +99,8 @@ async function getFormalitySummary(orgId, formalityId) {
     regularisations,
     demandesEnCours,
     pieces: attachments.map(mapAttachment),
-    paiement: paiementDe(d, emails),
+    paiement: { ...paiementDe(d, emails), payeur_prevu: lie?.metadata?.agent_data?.payeur || null },
+    dossierId: lie?.id || null,
     _content: d.content || null,
   };
 }

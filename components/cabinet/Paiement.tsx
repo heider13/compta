@@ -30,6 +30,7 @@ export type Paiement = {
     lignes: { libelle: string; beneficiaire: string | null; montant_cents: number }[];
   }[];
   guichet?: { url: string; direct: boolean };
+  payeur_prevu?: { qui?: 'cabinet' | 'client'; email?: string } | null;
 };
 
 export const euros = (c: number) =>
@@ -58,6 +59,7 @@ const STATUT_PANIER: Record<string, string> = { TO_PAY: 'À payer', PAID: 'Payé
 
 export function PaiementCard({ p, liasse, formalityId }: { p: Paiement; liasse: string; formalityId: string | number }) {
   const [copie, setCopie] = useState(false);
+  const [copieMail, setCopieMail] = useState(false);
   const [facture, setFacture] = useState<'idle' | 'busy' | 'ok' | 'deja'>('idle');
   const [error, setError] = useState<string | null>(null);
 
@@ -138,6 +140,30 @@ export function PaiementCard({ p, liasse, formalityId }: { p: Paiement; liasse: 
                 {copie ? <Check className="size-4" /> : <Copy className="size-4" />} Liasse {liasse}
               </Button>
             </div>
+            {p.statut === 'a_payer' && p.payeur_prevu?.qui === 'client' && p.payeur_prevu.email && (
+              <div className="mt-3 flex flex-wrap items-center gap-2 border-t pt-3 text-xs">
+                <span>
+                  Délégation prévue au client : saisissez <strong>{p.payeur_prevu.email}</strong> dans « Délégation de paiement de la formalité à un tiers », puis « Inviter délégataire ».
+                </span>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="h-7"
+                  onClick={async () => {
+                    try {
+                      await navigator.clipboard.writeText(p.payeur_prevu?.email ?? '');
+                      setCopieMail(true);
+                      setTimeout(() => setCopieMail(false), 2000);
+                    } catch {}
+                  }}
+                >
+                  {copieMail ? <Check className="size-3.5" /> : <Copy className="size-3.5" />} Copier l’e-mail
+                </Button>
+              </div>
+            )}
+            {p.statut === 'a_payer' && p.payeur_prevu?.qui === 'cabinet' && (
+              <p className="mt-3 border-t pt-3 text-xs text-muted-foreground">Paiement prévu par le cabinet : « Payer la formalité » sur la page du Guichet unique.</p>
+            )}
           </div>
         )}
 
