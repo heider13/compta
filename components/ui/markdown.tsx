@@ -7,7 +7,21 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { cn } from '@/lib/utils';
 
+// Les modèles écrivent souvent <br> dans les cellules de tableau (Markdown n'a pas de
+// saut de ligne dans un tableau) : on le rend comme un vrai saut de ligne, sans
+// interpréter de HTML.
+const BR = 'br';
+function sautsDeLigne(nodes: React.ReactNode): React.ReactNode {
+  const list = Array.isArray(nodes) ? nodes : [nodes];
+  return list.flatMap((n, i) =>
+    typeof n === 'string' && n.includes(BR)
+      ? n.split(BR).flatMap((part, j) => (j ? [<br key={`${i}-${j}`} />, part] : [part]))
+      : [n],
+  );
+}
+
 export function Markdown({ children, className }: { children: string; className?: string }) {
+  const source = children.replace(/<br\s*\/?>/gi, BR);
   return (
     <div className={cn('text-sm leading-relaxed', className)}>
       <ReactMarkdown
@@ -58,12 +72,12 @@ export function Markdown({ children, className }: { children: string; className?
             </div>
           ),
           th: ({ children }) => (
-            <th className="border border-border bg-muted px-2.5 py-1.5 text-left font-semibold">{children}</th>
+            <th className="border border-border bg-muted px-2.5 py-1.5 text-left font-semibold">{sautsDeLigne(children)}</th>
           ),
-          td: ({ children }) => <td className="border border-border px-2.5 py-1.5 align-top">{children}</td>,
+          td: ({ children }) => <td className="border border-border px-2.5 py-1.5 align-top">{sautsDeLigne(children)}</td>,
         }}
       >
-        {children}
+        {source}
       </ReactMarkdown>
     </div>
   );
