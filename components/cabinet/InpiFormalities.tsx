@@ -14,6 +14,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
 import { FormalitesTabs } from '@/components/cabinet/FormalitesTabs';
+import { PaiementBadge, euros, type Paiement } from '@/components/cabinet/Paiement';
 
 const VPS = process.env.NEXT_PUBLIC_VPS_BACKEND_URL ?? 'https://0dao73k.cserverhost.cloud';
 const PAGE_SIZE = 100;
@@ -31,6 +32,7 @@ type Formality = {
   nomDossier: string | null;
   amount: number | null;
   updated: string | null;
+  paiement?: Paiement | null;
 };
 
 const TYPE_LABELS: Record<string, string> = { C: 'Création', M: 'Modification', R: 'Radiation' };
@@ -161,9 +163,21 @@ export function InpiFormalities() {
     { key: 'rejected' as FilterKey, label: 'Rejetées', hint: 'Refusées', value: counts.rejected, icon: XCircle, tone: 'text-red-700 bg-red-50' },
   ];
 
+  const enAttente = items.filter((f) => f.paiement && (f.paiement.statut === 'a_payer' || f.paiement.statut === 'delegation_en_attente'));
+  const totalAttente = enAttente.reduce((s, f) => s + (f.paiement?.a_payer_cents ?? 0), 0);
+  const enRetard = enAttente.filter((f) => (f.paiement?.jours_attente ?? 0) >= 3).length;
+
   return (
     <div className="space-y-5">
       <FormalitesTabs />
+      {enAttente.length > 0 && (
+        <p className="flex flex-wrap items-center gap-2 rounded-lg border border-[#ffd2cb] bg-[#fff8f6] px-3 py-2 text-sm">
+          <AlertTriangle className="size-4 text-[#ff887b]" />
+          <strong>{enAttente.length} formalité(s) en attente de paiement</strong> ({euros(totalAttente)})
+          {enRetard > 0 && <span className="text-muted-foreground">· dont {enRetard} depuis plus de 3 jours</span>}
+          <span className="text-muted-foreground">· {enAttente.filter((f) => f.paiement?.statut === 'delegation_en_attente').length} délégation(s) envoyée(s) au client</span>
+        </p>
+      )}
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div className="min-w-0">
           <p className="text-sm text-muted-foreground">
@@ -260,13 +274,14 @@ export function InpiFormalities() {
           </p>
         ) : (
           <div className="overflow-x-auto border-t">
-            <table className="w-full min-w-[680px] text-sm">
+            <table className="w-full min-w-[820px] text-sm">
               <thead>
                 <tr className="border-b bg-muted/40 text-left text-xs uppercase tracking-wider text-muted-foreground">
                   <th className="px-4 py-2.5 font-medium">Date</th>
                   <th className="px-4 py-2.5 font-medium">Société / dossier</th>
                   <th className="px-4 py-2.5 font-medium">Type</th>
                   <th className="px-4 py-2.5 font-medium">Statut</th>
+                  <th className="px-4 py-2.5 font-medium">Paiement</th>
                   <th className="px-4 py-2.5 font-medium">N° de liasse</th>
                   <th className="px-4 py-2.5" />
                 </tr>
@@ -287,6 +302,7 @@ export function InpiFormalities() {
                     </td>
                     <td className="whitespace-nowrap px-4 py-3">{TYPE_LABELS[f.typeFormalite ?? ''] ?? f.typeFormalite ?? '—'}</td>
                     <td className="whitespace-nowrap px-4 py-3"><StatusBadge statut={f.status ?? ''} /></td>
+                    <td className="whitespace-nowrap px-4 py-3"><PaiementBadge p={f.paiement} /></td>
                     <td className="whitespace-nowrap px-4 py-3 font-mono text-xs">{f.liasseNumber ?? '—'}</td>
                     <td className="whitespace-nowrap px-4 py-3 text-right">
                       <Button

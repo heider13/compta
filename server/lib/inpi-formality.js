@@ -3,6 +3,7 @@
 // l'agent formalités (outils lire_formalite_inpi / lire_piece_inpi).
 
 const inpi = require('../inpi');
+const { paiementDe, emailsCabinet } = require('./inpi-paiement');
 
 const TYPE_LABELS = { C: 'Création', M: 'Modification', R: 'Radiation' };
 
@@ -66,9 +67,10 @@ function mapRegularisations(validationsRequests = []) {
 // Résumé lisible d'une formalité (pour l'UI et pour l'agent).
 async function getFormalitySummary(orgId, formalityId) {
   const client = inpi.forOrg(orgId);
-  const [d, attachments] = await Promise.all([
+  const [d, attachments, emails] = await Promise.all([
     client.getFormality(formalityId),
     listAllAttachments(client, formalityId),
+    emailsCabinet(orgId).catch(() => []),
   ]);
   const regularisations = mapRegularisations(d.validationsRequests);
   const demandesEnCours = regularisations.flatMap((r) =>
@@ -93,6 +95,7 @@ async function getFormalitySummary(orgId, formalityId) {
     regularisations,
     demandesEnCours,
     pieces: attachments.map(mapAttachment),
+    paiement: paiementDe(d, emails),
     _content: d.content || null,
   };
 }

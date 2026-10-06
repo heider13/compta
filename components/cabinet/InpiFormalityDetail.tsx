@@ -16,6 +16,7 @@ import { FormalityAgent } from '@/components/cabinet/dashboard/FormalityAgent';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
+import { PaiementCard, type Paiement } from '@/components/cabinet/Paiement';
 
 const VPS = process.env.NEXT_PUBLIC_VPS_BACKEND_URL ?? 'https://0dao73k.cserverhost.cloud';
 
@@ -52,6 +53,7 @@ type Summary = {
   regularisations: Regularisation[];
   demandesEnCours: Demande[];
   pieces: Piece[];
+  paiement?: Paiement | null;
 };
 
 const TO_HANDLE = ['AMENDMENT_PENDING', 'AMENDMENT_SIGNATURE_PENDING', 'AMENDMENT_PAYMENT_PENDING', 'SIGNATURE_PENDING', 'PAYMENT_PENDING'];
@@ -262,6 +264,10 @@ export function InpiFormalityDetail({ id }: { id: string }) {
             ))}
           </CardContent>
         </Card>
+      )}
+
+      {data.paiement && data.paiement.statut !== 'aucun' && (
+        <PaiementCard p={data.paiement} liasse={data.liasse} formalityId={data.id} />
       )}
 
       {/* Agent de régularisation */}

@@ -17,6 +17,7 @@ const pappersAnnoncesRoutes = require('./routes/pappers-annonces');
 const agentRoutes = require('./routes/agent');
 const inpiFormalitiesRoutes = require('./routes/inpi-formalities');
 const rneDocumentsRoutes = require('./routes/rne-documents');
+const { paiementDe, emailsCabinet, verifierPaiements } = require('./lib/inpi-paiement');
 const batchRoutes = require('./routes/batch');
 
 const app = express();
@@ -94,7 +95,7 @@ function requireAdmin(req, res, next) {
   next();
 }
 
-function mapFormality(f) {
+function mapFormality(f, emails = []) {
   if (!f) return null;
   return {
     id: f.id,
@@ -108,6 +109,7 @@ function mapFormality(f) {
     nomDossier: f.nomDossier,
     amount: f.cart?.total,
     updated: f.updated,
+    paiement: paiementDe(f, emails),
   };
 }
 
@@ -851,8 +853,9 @@ app.get(
       itemsPerPage: itemsPerPage || 20,
       'order[statusDate]': 'desc',
     });
+    const emails = await emailsCabinet(req.currentOrgId).catch(() => []);
     res.json({
-      items: (result?.['hydra:member'] || []).map(mapFormality),
+      items: (result?.['hydra:member'] || []).map((f) => mapFormality(f, emails)),
       total: result?.['hydra:totalItems'] || 0,
     });
   }),
@@ -1040,6 +1043,10 @@ function BASE_LOOKS_PROD() {
 }
 
 const PORT = process.env.PORT || 3000;
+// Suivi des paiements INPI : statut sur les dossiers liés + alertes (toutes les 6 h)
+setTimeout(() => verifierPaiements().catch((e) => console.error('[paiements]', e.message)), 60 * 1000);
+setInterval(() => verifierPaiements().catch((e) => console.error('[paiements]', e.message)), 6 * 60 * 60 * 1000);
+
 app.listen(PORT, '127.0.0.1', () => {
   console.log(`[compta-proxy] listening on 127.0.0.1:${PORT} — INPI: ${process.env.INPI_BASE_URL}`);
 });

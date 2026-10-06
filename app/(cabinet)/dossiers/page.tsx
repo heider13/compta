@@ -11,6 +11,7 @@ import { createClient } from '@/lib/supabase/server';
 import { StatCard } from '@/components/cabinet/dashboard/StatCard';
 import { FilterBar } from '@/components/cabinet/FilterBar';
 import { StatusBadge } from '@/components/cabinet/StatusBadge';
+import { PaiementBadge, type Paiement } from '@/components/cabinet/Paiement';
 import {
   formatDate,
   formatRelative,
@@ -81,6 +82,8 @@ interface DossierRow {
   forme_juridique: string | null;
   statut: string;
   updated_at: string;
+  // Paiement au Guichet unique, recopié par le suivi des paiements (formalités déposées)
+  metadata?: { inpi_paiement?: Paiement | null } | null;
 }
 
 export default async function DossiersPage({ searchParams }: { searchParams: Promise<SearchParams> }) {
@@ -255,6 +258,11 @@ function ListView({ rows }: { rows: DossierRow[] }) {
                     {d.forme_juridique && ` · ${formeJuridiqueLabel(d.forme_juridique)}`}
                   </span>
                 </span>
+                {d.metadata?.inpi_paiement && d.metadata.inpi_paiement.statut !== 'aucun' && (
+                  <span className="hidden shrink-0 md:block">
+                    <PaiementBadge p={d.metadata.inpi_paiement} />
+                  </span>
+                )}
                 <span className="shrink-0">
                   <StatusBadge statut={d.statut} />
                 </span>

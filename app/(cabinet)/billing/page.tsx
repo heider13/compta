@@ -188,6 +188,16 @@ export default async function BillingPage() {
 
   const invoices = (invoicesData ?? []) as unknown as Invoice[];
 
+  // Factures clients : refacturation des frais officiels de formalités (débours)
+  const { data: clientInvoicesData } = await supabase
+    .from('invoices')
+    .select('id, organization_id, direction, number, amount_cents, vat_cents, currency, status, due_date, paid_at, stripe_invoice_id, metadata, created_at, dossier_id')
+    .eq('organization_id', org.id)
+    .eq('direction', 'cabinet_to_client')
+    .order('created_at', { ascending: false })
+    .limit(50);
+  const clientInvoices = (clientInvoicesData ?? []) as unknown as (Invoice & { dossier_id: string | null })[];
+
   const stripeConfigured = isStripeConfigured();
 
   return (
@@ -397,6 +407,57 @@ export default async function BillingPage() {
                         ) : (
                           <span className="text-xs text-muted-foreground/60">—</span>
                         )}
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* ─── Factures clients (débours de formalités) ───────────────── */}
+      <Card>
+        <CardHeader className="flex-row items-center justify-between space-y-0">
+          <CardTitle className="text-base">Factures clients</CardTitle>
+          <span className="text-xs text-muted-foreground">Frais officiels refacturés (débours)</span>
+        </CardHeader>
+        <CardContent>
+          {clientInvoices.length === 0 ? (
+            <p className="py-8 text-center text-sm text-muted-foreground">
+              Aucune facture client. Depuis une formalité déposée à l&apos;INPI, « Refacturer les frais au client » crée une facture en brouillon.
+            </p>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Date</TableHead>
+                  <TableHead>Description</TableHead>
+                  <TableHead className="text-right">Montant</TableHead>
+                  <TableHead>Statut</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {clientInvoices.map((inv) => {
+                  const meta = (inv.metadata ?? {}) as Record<string, unknown>;
+                  const sBadge = statusBadge(inv.status);
+                  return (
+                    <TableRow key={inv.id}>
+                      <TableCell className="text-muted-foreground">{formatDateFr(inv.created_at)}</TableCell>
+                      <TableCell>
+                        {(meta.libelle as string | undefined) ?? 'Frais de formalité'}
+                        {inv.dossier_id && (
+                          <Link href={`/dossiers/${inv.dossier_id}`} className="ml-2 text-xs text-primary hover:underline">
+                            dossier
+                          </Link>
+                        )}
+                      </TableCell>
+                      <TableCell className="text-right font-medium">{formatMoney(inv.amount_cents, inv.currency)}</TableCell>
+                      <TableCell>
+                        <Badge variant="secondary" className={cn('font-normal', sBadge.className)}>
+                          {sBadge.label}
+                        </Badge>
                       </TableCell>
                     </TableRow>
                   );

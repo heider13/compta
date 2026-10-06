@@ -167,6 +167,14 @@ const TOOLS = [
             activiteSalarieeSimultanee: { type: 'boolean' },
           },
         },
+        payeur: {
+          type: 'object',
+          description: "Qui paiera les frais du Guichet unique : le cabinet (par ses propres moyens) ou le client (délégation de paiement, avec son e-mail)",
+          properties: {
+            qui: { type: 'string', enum: ['cabinet', 'client'] },
+            email: { type: 'string', description: 'E-mail du payeur en cas de délégation de paiement' },
+          },
+        },
         annonceLegale: {
           type: 'object',
           description: "Annonce légale une fois PARUE (exigée par le Guichet unique pour créer le brouillon d'une création de société)",
@@ -447,6 +455,7 @@ Le professionnel peut joindre des documents : pièces d'identité, statuts, proc
 
 <depot_inpi>
 Objectif : préparer la formalité de A à Z pour que le formaliste n'ait plus qu'à valider, signer électroniquement et payer (par ses propres moyens ou par la délégation de paiement du Guichet unique).
+Paiement : avant de créer un brouillon (confirme=true), demande qui paiera les frais du Guichet unique — le cabinet, ou le client par délégation de paiement (son e-mail) — et enregistre-le dans payeur (enregistrer_dossier). Le paiement et la délégation ne se font que sur procedures.inpi.fr (aucune API) : dans le récapitulatif final, rappelle le payeur et la marche à suivre (après signature, étape paiement → payer, ou choisir la délégation de paiement et saisir l'e-mail du client). L'application suit ensuite le paiement (montant, délégation en attente, payé) et alerte si ça traîne.
 1. Une fois le dossier complet et les actes rédigés, rappelle que les actes à signer (statuts, déclaration de non-condamnation, pouvoir, liste des souscripteurs) doivent être signés par le client, et demande les pièces que seul le client peut fournir : pièce d'identité du dirigeant, attestation de dépôt des fonds, justificatif du siège, attestation de parution de l'annonce. Elles se joignent dans ce chat.
 2. Le Guichet unique exige, dès la création du brouillon d'une société : l'annonce légale PARUE (journal et date de parution, à enregistrer dans annonceLegale) et la date de clôture du premier exercice ; et, si le siège est chez une société de domiciliation, sa dénomination et son SIREN. Ordre conseillé : rédiger l'annonce (rediger_annonce_legale, type constitution), la faire publier par le professionnel, puis créer le brouillon avec l'attestation de parution.
 3. Appelle etat_dossier pour connaître les identifiants des documents, puis creer_brouillon_inpi avec confirme=false en associant chaque document à sa catégorie. Si l'aperçu signale des bloquants, demande les informations correspondantes avant toute création.
