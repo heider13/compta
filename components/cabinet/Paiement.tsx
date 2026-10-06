@@ -115,7 +115,12 @@ export function PaiementCard({ p, liasse, formalityId }: { p: Paiement; liasse: 
               {p.guichet && (
                 <Button asChild size="sm">
                   <a href={p.guichet.url} target="_blank" rel="noopener noreferrer">
-                    <ExternalLink className="size-4" /> {p.guichet.direct ? 'Payer sur le Guichet unique' : 'Ouvrir le Guichet unique'}
+                    <ExternalLink className="size-4" />{' '}
+                    {!p.guichet.direct
+                      ? 'Ouvrir le Guichet unique'
+                      : p.statut === 'delegation_en_attente'
+                        ? 'Voir la formalité sur le Guichet unique'
+                        : 'Payer ou envoyer la délégation'}
                   </a>
                 </Button>
               )}

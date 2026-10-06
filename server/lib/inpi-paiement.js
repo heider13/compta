@@ -14,9 +14,9 @@ const { getSupabaseAdmin } = require('./db');
 
 const STATUTS_PAIEMENT = ['PAYMENT_PENDING', 'AMENDMENT_PAYMENT_PENDING'];
 const ALERTE_JOURS = Number(process.env.PAIEMENT_ALERTE_JOURS || 3);
-// Lien vers une formalité sur le Guichet unique. Modèle configurable dès que
-// l'adresse exacte d'une formalité est connue, ex. https://procedures.inpi.fr/…/{id}
-const GU_FORMALITE_URL = process.env.GU_FORMALITE_URL || '';
+// Lien direct vers une formalité sur le Guichet unique (même identifiant que l'API),
+// où se trouvent le paiement et la délégation de paiement ; connexion demandée si besoin.
+const GU_FORMALITE_URL = process.env.GU_FORMALITE_URL || 'https://guichet-unique.inpi.fr/{id}';
 const GU_ACCUEIL = 'https://procedures.inpi.fr/?/';
 
 const cacheEmails = new Map(); // orgId → { emails, exp }
