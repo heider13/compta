@@ -106,7 +106,7 @@ async function traiter(supa, ctxBase, dossier) {
   const events = [];
   let texte = '';
   try {
-    const ctx = { ...ctxBase, dossierId: dossier.id, batchParent: b.id };
+    const ctx = { ...ctxBase, dossierId: dossier.id, batchParent: b.id, noForms: true };
     const out = await runAgentTurn({
       history: [],
       input: CONSIGNE_LOT + b.consigne,

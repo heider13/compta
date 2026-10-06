@@ -42,13 +42,25 @@ function parseAttachments(raw) {
 
 router.post('/formalite', async (req, res) => {
   const { input = '', messages = [], dossier_id = null, inpi_formality_id = null } = req.body || {};
+  // Réponse à un formulaire de l'agent : {tool_use_id, reponses|null, pending:[tool_result…]}
+  let formResponse = null;
+  const fr = req.body?.form_response;
+  if (fr) {
+    const pending = Array.isArray(fr.pending) ? fr.pending : [];
+    const ok = typeof fr.tool_use_id === 'string' && /^[\w-]{5,100}$/.test(fr.tool_use_id)
+      && pending.length <= 20 && pending.every((p) => p && p.type === 'tool_result' && typeof p.tool_use_id === 'string')
+      && (fr.reponses == null || (typeof fr.reponses === 'object' && !Array.isArray(fr.reponses)))
+      && JSON.stringify(fr).length < 400000;
+    if (!ok) return res.status(400).json({ error: 'invalid_form_response' });
+    formResponse = { tool_use_id: fr.tool_use_id, reponses: fr.reponses ?? null, pending };
+  }
   let attachments;
   try {
     attachments = parseAttachments(req.body?.attachments);
   } catch (e) {
     return res.status(400).json({ error: 'invalid_attachments', detail: e.message });
   }
-  if (typeof input !== 'string' || input.length > 8000 || (!input.trim() && !attachments.length)) {
+  if (typeof input !== 'string' || input.length > 8000 || (!input.trim() && !attachments.length && !formResponse)) {
     return res.status(400).json({ error: 'invalid_input' });
   }
   if (!Array.isArray(messages) || messages.length > 400 || JSON.stringify(messages).length > MAX_HISTORY_BYTES) {
@@ -80,6 +92,7 @@ router.post('/formalite', async (req, res) => {
       history: messages,
       input: input.trim(),
       attachments,
+      formResponse,
       ctx,
       emit: (event, data) => sse(res, event, data),
     });
@@ -105,7 +118,7 @@ router.post('/formalite', async (req, res) => {
       }
     }
 
-    sse(res, 'done', { messages: out.messages, dossier_id: out.dossierId, usage: out.usage });
+    sse(res, 'done', { messages: out.messages, dossier_id: out.dossierId, usage: out.usage, pending_form: out.pendingForm });
   } catch (e) {
     console.error('[agent]', e.status || '', e.message);
     sse(res, 'error', { error: e.code || 'agent_error', detail: String(e.message).slice(0, 300) });

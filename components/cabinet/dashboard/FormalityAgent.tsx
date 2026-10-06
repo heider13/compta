@@ -19,6 +19,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Markdown } from '@/components/ui/markdown';
 import { cn } from '@/lib/utils';
 import { BatchProgress, OpenFormaliteContext, vpsApi } from './BatchProgress';
+import { AgentForm, type FormSpec, type Reponses } from './AgentForm';
 
 const VPS = process.env.NEXT_PUBLIC_VPS_BACKEND_URL ?? 'https://0dao73k.cserverhost.cloud';
 const STORAGE_KEY = 'legaly_formality_agent_v1';
@@ -57,12 +58,17 @@ type ToolEvent = {
 type Item =
   | { type: 'user'; text: string; files?: string[] }
   | { type: 'assistant'; text: string }
-  | { type: 'tool'; event: ToolEvent };
+  | { type: 'tool'; event: ToolEvent }
+  | { type: 'form'; form: FormSpec; repondu?: boolean; reponses?: Reponses | null };
+
+// Formulaire en attente de réponse : son id et les résultats des autres outils du tour.
+type PendingForm = { tool_use_id: string; pending: unknown[] };
 
 type SavedState = {
   history: unknown[];
   items: Item[];
   dossier: ToolEvent['dossier'] | null;
+  pendingForm?: PendingForm | null;
 };
 
 type PendingFile = { name: string; mime: string; size: number; data: string };
@@ -197,6 +203,7 @@ function AgentChat({ inpiFormality, resume }: AgentProps) {
   const [items, setItems] = useState<Item[]>([]);
   const [history, setHistory] = useState<unknown[]>([]);
   const [dossier, setDossier] = useState<ToolEvent['dossier'] | null>(null);
+  const [pendingForm, setPendingForm] = useState<PendingForm | null>(null);
   const [input, setInput] = useState('');
   const [files, setFiles] = useState<PendingFile[]>([]);
   const [dragging, setDragging] = useState(false);
@@ -211,6 +218,7 @@ function AgentChat({ inpiFormality, resume }: AgentProps) {
       setItems(saved.items ?? []);
       setHistory(saved.history ?? []);
       setDossier(saved.dossier ?? null);
+      setPendingForm(saved.pendingForm ?? null);
     } else if (resume) {
       // Première ouverture : on repart de la préparation faite par le lot
       setHistory(resume.messages);
@@ -272,25 +280,32 @@ function AgentChat({ inpiFormality, resume }: AgentProps) {
     setItems([]);
     setHistory([]);
     setDossier(null);
+    setPendingForm(null);
     setFiles([]);
     setError(null);
     clearSaved(storageKey);
   }
 
-  async function send(text: string) {
+  async function send(text: string, reponses?: Reponses) {
     const question = text.trim();
-    if ((!question && files.length === 0) || busy) return;
+    if ((!question && files.length === 0 && !reponses) || busy) return;
     const attachments = files;
+    const formEnAttente = pendingForm;
     setBusy(true);
     setError(null);
     setInput('');
     setFiles([]);
+    setPendingForm(null);
 
-    // Copie locale : l'état React n'est relu qu'à la fin du tour.
-    let localItems: Item[] = [
-      ...items,
-      { type: 'user', text: question, files: attachments.map((f) => f.name) },
-    ];
+    // Copie locale : l'état React n'est relu qu'à la fin du tour. Le formulaire en
+    // attente passe en « répondu » (par le formulaire ou par message).
+    let localItems: Item[] = items.map((it) =>
+      it.type === 'form' && !it.repondu ? { ...it, repondu: true, reponses: reponses ?? null } : it,
+    );
+    if (question || attachments.length) {
+      localItems = [...localItems, { type: 'user', text: question, files: attachments.map((f) => f.name) }];
+    }
+    let localPending: PendingForm | null = null;
     let localDossier = dossier;
     setItems(localItems);
 
@@ -336,6 +351,9 @@ function AgentChat({ inpiFormality, resume }: AgentProps) {
           dossier_id: localDossier?.id ?? null,
           inpi_formality_id: inpiFormality?.id ?? null,
           attachments: attachments.map(({ name, mime, data }) => ({ name, mime, data })),
+          form_response: formEnAttente
+            ? { tool_use_id: formEnAttente.tool_use_id, reponses: reponses ?? null, pending: formEnAttente.pending }
+            : undefined,
         }),
       });
       if (!res.ok || !res.body) {
@@ -359,9 +377,14 @@ function AgentChat({ inpiFormality, resume }: AgentProps) {
           const payload = JSON.parse(d);
           if (t === 'text') appendText(payload.text);
           else if (t === 'tool') upsertTool(payload as ToolEvent);
-          else if (t === 'done') {
+          else if (t === 'form') {
+            const { id, ...spec } = payload as FormSpec;
+            commit([...localItems, { type: 'form', form: { ...spec, id } }]);
+          } else if (t === 'done') {
+            localPending = (payload.pending_form as PendingForm | null) ?? null;
+            setPendingForm(localPending);
             setHistory(payload.messages);
-            save(storageKey, { history: payload.messages, items: localItems, dossier: localDossier });
+            save(storageKey, { history: payload.messages, items: localItems, dossier: localDossier, pendingForm: localPending });
           } else if (t === 'error') {
             throw new Error(payload.detail || payload.error);
           }
@@ -551,9 +574,20 @@ function AgentChat({ inpiFormality, resume }: AgentProps) {
             {/* Conversation */}
             <div className="flex min-w-0 flex-col border-b lg:border-b-0 lg:border-r">
               <div ref={scrollRef} className="max-h-[520px] min-h-[260px] space-y-3 overflow-y-auto px-5 py-4">
-                {items.map((item, i) => (
-                  <ItemView key={i} item={item} />
-                ))}
+                {items.map((item, i) =>
+                  item.type === 'form' ? (
+                    <AgentForm
+                      key={`${item.form.id}-${i}`}
+                      form={item.form}
+                      repondu={Boolean(item.repondu)}
+                      reponses={item.reponses}
+                      disabled={busy}
+                      onSubmit={(r) => send('', r)}
+                    />
+                  ) : (
+                    <ItemView key={i} item={item} />
+                  ),
+                )}
                 {busy && items[items.length - 1]?.type !== 'assistant' && (
                   <div className="flex items-center gap-2 text-xs text-muted-foreground">
                     <Loader2 className="size-3.5 animate-spin" />
@@ -691,6 +725,7 @@ function ItemView({ item }: { item: Item }) {
       </div>
     );
   }
+  if (item.type !== 'tool') return null; // formulaires rendus par AgentForm
   const ev = item.event;
   if (ev.kind === 'batch' && ev.batch && ev.status === 'done') return <BatchProgress batch={ev.batch} />;
   const Icon = ev.status === 'start' ? Loader2 : ev.status === 'error' ? AlertCircle : CheckCircle2;

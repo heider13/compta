@@ -345,6 +345,38 @@ const TOOLS = [
     },
   },
   {
+    name: 'poser_questions',
+    description:
+      "Pose tes questions au professionnel sous forme de FORMULAIRE interactif (jamais en texte libre). Regroupe en un seul formulaire tout ce qui te manque pour avancer (8 champs maximum, les plus importants d'abord), avec le type de champ adapté et les valeurs déjà connues pré-remplies. Sert aussi aux confirmations (créer le brouillon, lancer un lot…) avec un champ oui_non. Après l'appel, n'écris rien d'autre : le formulaire s'affiche et tu reçois les réponses en résultat.",
+    eager_input_streaming: true,
+    input_schema: {
+      type: 'object',
+      properties: {
+        titre: { type: 'string', description: 'Titre court du formulaire (ex « Le président de la société »)' },
+        intro: { type: 'string', description: 'Une phrase de contexte, facultative' },
+        champs: {
+          type: 'array',
+          items: {
+            type: 'object',
+            properties: {
+              id: { type: 'string', description: 'Identifiant technique (ex president_nom)' },
+              label: { type: 'string' },
+              type: { type: 'string', enum: ['texte', 'texte_long', 'email', 'telephone', 'date', 'nombre', 'montant', 'liste', 'choix', 'cases', 'oui_non', 'adresse'] },
+              options: { type: 'array', items: { type: 'string' }, description: 'liste / choix / cases' },
+              requis: { type: 'boolean' },
+              valeur: { type: 'string', description: 'Valeur pré-remplie (déjà connue ou proposée par défaut)' },
+              aide: { type: 'string', description: 'Aide courte sous le champ' },
+              placeholder: { type: 'string' },
+            },
+            required: ['id', 'label', 'type'],
+          },
+        },
+        bouton: { type: 'string', description: 'Libellé du bouton (ex « Continuer », « Créer le brouillon »)' },
+      },
+      required: ['titre', 'champs'],
+    },
+  },
+  {
     name: 'preparer_lot',
     description:
       "Plusieurs formalités demandées en une fois (plusieurs créations, fermetures, modifications…, en texte ou dans un tableur joint) : découpe la liste en formalités distinctes, chacune avec une consigne complète et ses informations manquantes. Rien n'est créé. Présente ensuite le plan au professionnel (tableau court) et demande sa confirmation avant lancer_lot.",
@@ -452,6 +484,10 @@ Le professionnel peut joindre des documents : pièces d'identité, statuts, proc
 - Ne recopie jamais en entier dans tes réponses un numéro de pièce d'identité ou une donnée bancaire.
 - Les fichiers joints sont automatiquement rangés dans les pièces du dossier.
 </documents_joints>
+
+<questions>
+Quand il te manque des informations ou qu'une confirmation est nécessaire, utilise TOUJOURS poser_questions (formulaire interactif) au lieu de poser les questions en texte. Un seul formulaire à la fois, regroupant l'essentiel ; types adaptés (liste pour la forme juridique, date, montant, oui_non pour une confirmation, adresse…) ; valeurs connues ou par défaut pré-remplies pour que le professionnel n'ait qu'à vérifier. Tu peux écrire une phrase courte avant l'appel, rien après. Les réponses arrivent en résultat de l'outil ; un champ vide = information non fournie (ne l'invente pas). Si le professionnel répond en texte libre à la place, utilise son message.
+</questions>
 
 <depot_inpi>
 Objectif : préparer la formalité de A à Z pour que le formaliste n'ait plus qu'à valider, signer électroniquement et payer (par ses propres moyens ou par la délégation de paiement du Guichet unique).
@@ -1253,15 +1289,41 @@ async function attachmentBlocks(client, attachments) {
   return blocks;
 }
 
-async function runAgentTurn({ history, input, attachments = [], ctx, emit }) {
+async function runAgentTurn({ history, input, attachments = [], ctx, emit, formResponse = null }) {
   const client = getAnthropic();
   const docBlocks = attachments.length ? await attachmentBlocks(client, attachments) : [];
   // Date du jour dans le message (pas dans le prompt système, qui reste en cache) :
   // indispensable pour juger délais et échéances.
   const today = new Date().toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Europe/Paris' });
   const userText = `[Date du jour : ${today}]\n${input || 'Voici des documents pour le dossier : analyse-les.'}`;
-  const userContent = docBlocks.length ? [...docBlocks, { type: 'text', text: userText }] : userText;
+  let userContent = docBlocks.length ? [...docBlocks, { type: 'text', text: userText }] : userText;
+  // Réponse à un formulaire : résultats des outils du tour précédent (dont le formulaire)
+  // en tête du message, puis le texte éventuel du professionnel.
+  if (formResponse) {
+    const reponse = formResponse.reponses
+      ? { reponses: formResponse.reponses }
+      : { reponses: null, note: "Le professionnel n'a pas rempli le formulaire : il a répondu par message (ci-après)." };
+    userContent = [
+      ...(formResponse.pending || []),
+      { type: 'tool_result', tool_use_id: formResponse.tool_use_id, content: JSON.stringify(reponse) },
+      ...docBlocks,
+      { type: 'text', text: input ? userText : `[Date du jour : ${today}]\n(Réponses au formulaire ci-dessus.)` },
+    ];
+  }
+  // Outils restés sans résultat (formulaire en attente perdu côté navigateur) :
+  // on y répond « non rempli » pour que l'historique reste valide.
+  const dernier = history[history.length - 1];
+  const orphelins = !formResponse && dernier?.role === 'assistant' && Array.isArray(dernier.content)
+    ? dernier.content.filter((b) => b.type === 'tool_use') : [];
+  if (orphelins.length) {
+    const base = Array.isArray(userContent) ? userContent : [{ type: 'text', text: userContent }];
+    userContent = [
+      ...orphelins.map((tu) => ({ type: 'tool_result', tool_use_id: tu.id, content: JSON.stringify({ reponses: null, note: 'Formulaire non rempli : voir le message du professionnel.' }) })),
+      ...base,
+    ];
+  }
   const messages = [...history, { role: 'user', content: userContent }];
+  let pendingForm = null;
   const usage = { calls: 0, input: 0, output: 0, cacheWrite: 0, cacheRead: 0 };
   ctx.draftUsage = { calls: 0, input: 0, output: 0, cacheWrite: 0, cacheRead: 0 };
 
@@ -1314,7 +1376,13 @@ async function runAgentTurn({ history, input, attachments = [], ctx, emit }) {
     if (message.stop_reason !== 'tool_use' || toolUses.length === 0) break;
 
     const results = [];
+    const formulaire = !ctx.noForms && toolUses.find((tu) => tu.name === 'poser_questions');
     for (const tu of toolUses) {
+      if (tu.name === 'poser_questions') {
+        // Mode lot (aucun humain) : pas de formulaire, on continue avec [À COMPLÉTER]
+        if (ctx.noForms) results.push({ type: 'tool_result', tool_use_id: tu.id, is_error: true, content: 'Mode lot : aucune question possible. Laisse [À COMPLÉTER : …] et continue.' });
+        continue;
+      }
       emit('tool', { id: tu.id, name: tu.name, status: 'start', label: TOOL_LABELS[tu.name] || tu.name });
       try {
         const { result, event } = await runTool(tu.name, tu.input, ctx);
@@ -1326,6 +1394,12 @@ async function runAgentTurn({ history, input, attachments = [], ctx, emit }) {
         results.push({ type: 'tool_result', tool_use_id: tu.id, is_error: true, content: String(e.message).slice(0, 3000) });
       }
     }
+    if (formulaire) {
+      // Pause : le formulaire s'affiche ; les autres résultats repartiront avec les réponses.
+      emit('form', { id: formulaire.id, ...formulaire.input });
+      pendingForm = { tool_use_id: formulaire.id, pending: results };
+      break;
+    }
     messages.push({ role: 'user', content: results });
   }
 
@@ -1334,7 +1408,7 @@ async function runAgentTurn({ history, input, attachments = [], ctx, emit }) {
   usage.draftsCostUsd = Math.round(costUsd(ctx.draftUsage, DRAFT_PRICES) * 1000) / 1000;
   usage.costUsd = Math.round((usage.agentCostUsd + usage.draftsCostUsd) * 1000) / 1000;
   console.log('[agent usage]', JSON.stringify(usage));
-  return { messages, dossierId: ctx.dossierId || null, usage };
+  return { messages, dossierId: ctx.dossierId || null, usage, pendingForm };
 }
 
 module.exports = { runAgentTurn, ACTES, ATTACHMENT_TYPES };
