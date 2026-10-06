@@ -13,7 +13,7 @@ import { cn } from '@/lib/utils';
 const VPS = process.env.NEXT_PUBLIC_VPS_BACKEND_URL ?? 'https://0dao73k.cserverhost.cloud';
 
 export type Paiement = {
-  statut: 'aucun' | 'a_payer' | 'delegation_en_attente' | 'paye';
+  statut: 'aucun' | 'a_venir' | 'a_payer' | 'delegation_en_attente' | 'paye';
   a_payer_cents: number;
   paye_cents: number;
   rembourse_cents?: number;
@@ -42,6 +42,7 @@ export function PaiementBadge({ p, className }: { p?: Paiement | null; className
     a_payer: { label: `À payer · ${euros(p.a_payer_cents)}`, cls: retard ? 'bg-[#fff1ef] text-[#c2410c]' : 'bg-amber-50 text-amber-800', icon: CreditCard },
     delegation_en_attente: { label: `Délégation en attente · ${euros(p.a_payer_cents)}`, cls: retard ? 'bg-[#fff1ef] text-[#c2410c]' : 'bg-[#ede7ff] text-primary', icon: Send },
     paye: { label: `Payée · ${euros(p.paye_cents)}`, cls: 'bg-emerald-50 text-emerald-700', icon: Check },
+    a_venir: { label: `Prévu · ${euros(p.a_payer_cents)}`, cls: 'bg-muted text-muted-foreground', icon: Clock },
   }[p.statut];
   return (
     <span
@@ -135,10 +136,17 @@ export function PaiementCard({ p, liasse, formalityId }: { p: Paiement; liasse: 
           </div>
         )}
 
+        {p.statut === 'a_venir' && (
+          <p className="rounded-lg border bg-muted/40 p-3 text-sm">
+            Montant prévu : <strong>{euros(p.a_payer_cents)}</strong>, payable une fois la formalité validée et signée sur le Guichet unique
+            (par vos propres moyens ou par délégation de paiement au client).
+          </p>
+        )}
+
         {(p.paniers ?? []).map((k) => (
           <div key={k.id} className="rounded-lg border">
             <div className="flex flex-wrap items-center justify-between gap-2 border-b px-3 py-2 text-xs">
-              <span className="font-medium">{STATUT_PANIER[k.statut] ?? k.statut}</span>
+              <span className="font-medium">{p.statut === 'a_venir' && k.statut === 'TO_PAY' ? 'Prévu' : STATUT_PANIER[k.statut] ?? k.statut}</span>
               <span className="text-muted-foreground">
                 {k.payeur && <>{k.delegation ? 'Délégation à ' : 'Payeur : '}{k.payeur} · </>}
                 {k.date && new Date(k.date).toLocaleDateString('fr-FR')}

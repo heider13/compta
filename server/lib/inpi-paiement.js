@@ -73,8 +73,12 @@ function paiementDe(f, emails = []) {
   const delegation = aPayer.find((p) => p.delegation);
   const a_payer_cents = somme('TO_PAY');
   const paye_cents = somme('PAID');
+  // Un brouillon non signé a déjà un panier « à payer » : c'est le montant prévu,
+  // payable seulement une fois la formalité au stade du paiement.
+  const auPaiement = STATUTS_PAIEMENT.includes(f.status);
   let statut = 'aucun';
-  if (a_payer_cents > 0) statut = delegation ? 'delegation_en_attente' : 'a_payer';
+  if (a_payer_cents > 0 && auPaiement) statut = delegation ? 'delegation_en_attente' : 'a_payer';
+  else if (a_payer_cents > 0) statut = 'a_venir';
   else if (paye_cents > 0) statut = 'paye';
   const depuis = aPayer.map((p) => p.cree_le).filter(Boolean).sort()[0] || (STATUTS_PAIEMENT.includes(f.status) ? f.statusDate : null);
   return {
