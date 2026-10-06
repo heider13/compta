@@ -6,13 +6,14 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { AlertTriangle, CheckCircle2, FileDown, Hourglass, Landmark, Loader2, RefreshCw, Search, XCircle } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, FileDown, Hourglass, Loader2, RefreshCw, Search, XCircle } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { StatusBadge } from '@/components/cabinet/StatusBadge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
+import { FormalitesTabs } from '@/components/cabinet/FormalitesTabs';
 
 const VPS = process.env.NEXT_PUBLIC_VPS_BACKEND_URL ?? 'https://0dao73k.cserverhost.cloud';
 const PAGE_SIZE = 100;
@@ -162,13 +163,10 @@ export function InpiFormalities() {
 
   return (
     <div className="space-y-5">
+      <FormalitesTabs />
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div className="min-w-0">
-          <h1 className="flex items-center gap-2">
-            <Landmark className="size-6 text-primary" />
-            Déposées à l&apos;INPI
-          </h1>
-          <p className="mt-1 text-sm text-muted-foreground">
+          <p className="text-sm text-muted-foreground">
             Toutes les formalités de votre compte mandataire au Guichet unique, en temps réel. Cliquez sur une ligne pour voir ses pièces et ses régularisations.
             {!loading && !error && ` ${total} formalité${total > 1 ? 's' : ''}.`}
           </p>

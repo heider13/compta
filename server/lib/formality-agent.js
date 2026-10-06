@@ -44,6 +44,17 @@ const ATTACHMENT_TYPES = {
   'image/webp': 'image',
   'image/gif': 'image',
   'application/vnd.openxmlformats-officedocument.wordprocessingml.document': 'docx',
+  // Tableurs (listes de formalités à préparer en lot) : convertis en CSV
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': 'tableur',
+  'application/vnd.ms-excel': 'tableur',
+  'application/vnd.oasis.opendocument.spreadsheet': 'tableur',
+  'text/csv': 'tableur',
+};
+const EXT_TABLEUR = {
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': 'xlsx',
+  'application/vnd.ms-excel': 'xls',
+  'application/vnd.oasis.opendocument.spreadsheet': 'ods',
+  'text/csv': 'csv',
 };
 const DOCX_MAX_CHARS = 60000;
 
@@ -326,6 +337,45 @@ const TOOLS = [
     },
   },
   {
+    name: 'preparer_lot',
+    description:
+      "Plusieurs formalités demandées en une fois (plusieurs créations, fermetures, modifications…, en texte ou dans un tableur joint) : découpe la liste en formalités distinctes, chacune avec une consigne complète et ses informations manquantes. Rien n'est créé. Présente ensuite le plan au professionnel (tableau court) et demande sa confirmation avant lancer_lot.",
+    eager_input_streaming: true,
+    input_schema: {
+      type: 'object',
+      properties: { texte: { type: 'string', description: 'La liste telle que fournie (texte du message et/ou contenu CSV du tableur), avec les consignes générales' } },
+      required: ['texte'],
+    },
+  },
+  {
+    name: 'lancer_lot',
+    description:
+      "Lance la préparation d'un lot APRÈS confirmation explicite du professionnel : crée un dossier par formalité, puis l'agent prépare chacune en arrière-plan (actes, annonce, aperçu INPI ; aucun brouillon INPI créé). Le suivi s'affiche dans le chat ; le professionnel ouvre chaque formalité depuis ce suivi pour la compléter et créer le brouillon. Reprends les formalités de preparer_lot, corrigées selon ses remarques.",
+    eager_input_streaming: true,
+    input_schema: {
+      type: 'object',
+      properties: {
+        label: { type: 'string', description: 'Nom court du lot' },
+        formalites: {
+          type: 'array',
+          items: {
+            type: 'object',
+            properties: {
+              type: { type: 'string', enum: ['creation', 'transfert_siege', 'changement_dirigeant', 'modification', 'mise_en_sommeil', 'dissolution', 'cloture_liquidation', 'cessation_ei', 'autre'] },
+              societe: { type: 'string' },
+              siren: { type: 'string' },
+              consigne: { type: 'string' },
+              manquants: { type: 'array', items: { type: 'string' } },
+            },
+            required: ['type', 'societe', 'consigne'],
+          },
+        },
+        confirme: { type: 'boolean', description: 'true uniquement après confirmation explicite du professionnel' },
+      },
+      required: ['formalites', 'confirme'],
+    },
+  },
+  {
     name: 'lister_documents_rne',
     description:
       "Liste les documents publics déposés au RNE pour une entreprise (SIREN) : actes (statuts et statuts mis à jour, PV d'assemblée, décisions, certificats…) avec date de dépôt, et comptes annuels non confidentiels. À utiliser avant une modification pour retrouver les statuts en vigueur et les dernières décisions, au lieu de les demander au formaliste.",
@@ -383,7 +433,7 @@ const SYSTEM_PROMPT = `Tu es l'Agent Formalités de Legaly AI, plateforme franç
 - Créations de sociétés : SASU, SAS, EURL, SARL, SCI, holding (SAS).
 - Modifications (transfert de siège, changement de dirigeant, d'objet, de dénomination, de capital…) et cessations (dissolution, radiation) : dossier + procès-verbal + annonce légale.
 - Tu ne signes rien, tu ne déposes rien à l'INPI et tu n'envoies rien à des tiers : la signature électronique, la validation interne et le dépôt se font par le professionnel depuis la page du dossier.
-- Plusieurs formalités à la fois (plusieurs créations, plusieurs fermetures…) : propose la page « Formalités en lot » (menu Formalités en lot), où le professionnel colle sa liste ou joint un tableur ; chaque formalité y est préparée dans son propre dossier. Dans ce chat, traite une formalité à la fois.
+- Plusieurs formalités à la fois (plusieurs créations, plusieurs fermetures…, en texte ou dans un tableur joint) : preparer_lot, présente le plan en tableau court (type, société, informations manquantes), demande confirmation, puis lancer_lot (confirme=true). Chaque formalité est alors préparée dans son propre dossier ; le suivi s'affiche dans ce chat et le professionnel ouvre chaque formalité depuis ce suivi pour la compléter et créer son brouillon INPI.
 </perimetre>
 
 <documents_joints>
@@ -1017,6 +1067,29 @@ async function toolAnnonce(supa, ctx, input) {
   };
 }
 
+async function toolPreparerLot(input) {
+  const plan = await require('./batch').planifier(String(input.texte || ''));
+  const noms = plan.formalites.map((f) => f.societe);
+  return {
+    result: plan,
+    event: { kind: 'inpi', label: `Lot analysé — ${noms.length} formalité(s)`, detail: noms.slice(0, 4).join(', ') + (noms.length > 4 ? '…' : '') },
+  };
+}
+
+async function toolLancerLot(ctx, input) {
+  if (input.confirme !== true) throw new Error('Demande d’abord la confirmation du professionnel (confirme=true seulement ensuite).');
+  if (ctx.batchParent) throw new Error('Impossible de lancer un lot depuis une formalité préparée en lot.');
+  const r = await require('./batch').lancer({
+    ctx: { userId: ctx.userId, orgId: ctx.orgId, isAdmin: ctx.isAdmin },
+    label: input.label,
+    formalites: (input.formalites || []).map((f) => ({ ...f, manquants: f.manquants || [] })),
+  });
+  return {
+    result: { lot: r.batchId, formalites: r.total, suivi: 'affiché dans le chat, actualisé automatiquement' },
+    event: { kind: 'batch', label: `Lot lancé — ${r.total} formalité(s)`, detail: r.label, batch: { id: r.batchId, label: r.label, total: r.total } },
+  };
+}
+
 async function toolListerDocsRne(ctx, input) {
   const r = await rneDocs.listDocuments(ctx.orgId, input.siren);
   return {
@@ -1083,6 +1156,8 @@ const TOOL_LABELS = {
   lire_fiche_rne: 'Lecture de la fiche RNE',
   rediger_annonce_legale: "Rédaction de l'annonce légale",
   lister_documents_rne: 'Lecture des documents RNE',
+  preparer_lot: 'Analyse de la liste de formalités',
+  lancer_lot: 'Lancement du lot',
   lire_document_rne: "Lecture d'un document RNE",
   creer_modification_inpi: "Préparation de la modification INPI",
   lire_formalite_inpi: 'Lecture de la formalité INPI',
@@ -1101,6 +1176,8 @@ async function runTool(name, input, ctx) {
     case 'lire_fiche_rne': return toolFicheRne(ctx, input);
     case 'rediger_annonce_legale': return toolAnnonce(supa, ctx, input);
     case 'lister_documents_rne': return toolListerDocsRne(ctx, input);
+    case 'preparer_lot': return toolPreparerLot(input);
+    case 'lancer_lot': return toolLancerLot(ctx, input);
     case 'lire_document_rne': return toolLireDocRne(supa, ctx, input);
     case 'creer_modification_inpi': return toolModification(supa, ctx, input);
     case 'lire_formalite_inpi': return toolLireFormalite(ctx, input);
@@ -1132,6 +1209,16 @@ async function attachmentBlocks(client, attachments) {
   const blocks = [];
   for (const a of attachments) {
     const kind = ATTACHMENT_TYPES[a.mime];
+    if (kind === 'tableur') {
+      let csv = '';
+      try {
+        csv = await require('./batch').texteTableur(a.buffer, EXT_TABLEUR[a.mime]);
+      } catch (e) {
+        csv = `(lecture impossible : ${e.message})`;
+      }
+      blocks.push({ type: 'text', text: `Tableur joint « ${a.name} » (converti en CSV, séparateur ;) :\n<tableur>\n${csv.slice(0, DOCX_MAX_CHARS)}\n</tableur>` });
+      continue;
+    }
     if (kind === 'docx') {
       const { text } = await extractText(a.buffer);
       const clipped = String(text || '').slice(0, DOCX_MAX_CHARS);

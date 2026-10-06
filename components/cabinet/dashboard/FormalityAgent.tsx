@@ -7,10 +7,10 @@
 // crée le dossier, génère les statuts et les actes annexes. Signature et dépôt
 // INPI restent des actions humaines depuis la page du dossier.
 
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import {
-  AlertCircle, ArrowRight, Bot, CheckCircle2, FileText, FolderPlus, Loader2,
+  AlertCircle, ArrowLeft, ArrowRight, Bot, CheckCircle2, FileText, FolderPlus, Loader2,
   Paperclip, PenLine, RotateCcw, Send, Sparkles, Upload, Workflow, X,
 } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
@@ -18,11 +18,12 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Markdown } from '@/components/ui/markdown';
 import { cn } from '@/lib/utils';
+import { BatchProgress, OpenFormaliteContext, vpsApi } from './BatchProgress';
 
 const VPS = process.env.NEXT_PUBLIC_VPS_BACKEND_URL ?? 'https://0dao73k.cserverhost.cloud';
 const STORAGE_KEY = 'legaly_formality_agent_v1';
 
-const ACCEPT = '.pdf,.png,.jpg,.jpeg,.webp,.docx';
+const ACCEPT = '.pdf,.png,.jpg,.jpeg,.webp,.docx,.xlsx,.xls,.ods,.csv';
 const MIME_BY_EXT: Record<string, string> = {
   pdf: 'application/pdf',
   png: 'image/png',
@@ -30,6 +31,11 @@ const MIME_BY_EXT: Record<string, string> = {
   jpeg: 'image/jpeg',
   webp: 'image/webp',
   docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  // Tableurs : listes de formalités à préparer en lot
+  xlsx: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  xls: 'application/vnd.ms-excel',
+  ods: 'application/vnd.oasis.opendocument.spreadsheet',
+  csv: 'text/csv',
 };
 const MAX_FILES = 5;
 const MAX_FILE_BYTES = 8 * 1024 * 1024;
@@ -43,8 +49,9 @@ type ToolEvent = {
   detail?: string;
   href?: string | null;
   docHref?: string;
-  kind?: 'dossier' | 'document' | 'pipeline' | 'piece' | 'inpi';
+  kind?: 'dossier' | 'document' | 'pipeline' | 'piece' | 'inpi' | 'batch';
   dossier?: { id: string; reference: string; denomination: string };
+  batch?: { id: string; label: string; total: number };
 };
 
 type Item =
@@ -139,10 +146,39 @@ export type AgentResume = {
   texte: string;
 };
 
-export function FormalityAgent({
-  inpiFormality,
-  resume,
-}: { inpiFormality?: { id: string; label: string; aTraiter?: boolean }; resume?: AgentResume } = {}) {
+type AgentProps = { inpiFormality?: { id: string; label: string; aTraiter?: boolean }; resume?: AgentResume };
+
+// Agent Formalités : une conversation principale ; une formalité préparée en lot
+// s'ouvre dans ce même chat (« Ouvrir » dans le suivi du lot), avec retour à la
+// conversation principale.
+export function FormalityAgent(props: AgentProps = {}) {
+  const [ouverte, setOuverte] = useState<AgentResume | null>(null);
+  const ouvrir = useCallback(async (dossierId: string) => {
+    setOuverte(await vpsApi<AgentResume>(`/api/lots/formalites/${dossierId}/historique`));
+  }, []);
+  if (ouverte) {
+    return (
+      <div className="space-y-2">
+        <button
+          type="button"
+          onClick={() => setOuverte(null)}
+          className="inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+        >
+          <ArrowLeft className="size-4" /> Retour à la conversation principale
+          <span className="text-xs">· formalité du lot : {ouverte.dossier.denomination}</span>
+        </button>
+        <AgentChat key={ouverte.dossier.id} resume={ouverte} />
+      </div>
+    );
+  }
+  return (
+    <OpenFormaliteContext.Provider value={ouvrir}>
+      <AgentChat {...props} />
+    </OpenFormaliteContext.Provider>
+  );
+}
+
+function AgentChat({ inpiFormality, resume }: AgentProps) {
   const storageKey = inpiFormality
     ? `${STORAGE_KEY}_inpi_${inpiFormality.id}`
     : resume
@@ -207,7 +243,7 @@ export function FormalityAgent({
     for (const file of Array.from(list)) {
       const mime = mimeOf(file);
       if (!mime) {
-        setError(`Format non pris en charge : ${file.name}. Formats acceptés : PDF, image (JPG, PNG, WebP) ou Word (.docx).`);
+        setError(`Format non pris en charge : ${file.name}. Formats acceptés : PDF, image (JPG, PNG, WebP), Word (.docx) ou tableur (.xlsx, .csv).`);
         continue;
       }
       if (file.size > MAX_FILE_BYTES) {
@@ -656,6 +692,7 @@ function ItemView({ item }: { item: Item }) {
     );
   }
   const ev = item.event;
+  if (ev.kind === 'batch' && ev.batch && ev.status === 'done') return <BatchProgress batch={ev.batch} />;
   const Icon = ev.status === 'start' ? Loader2 : ev.status === 'error' ? AlertCircle : CheckCircle2;
   const link = ev.href;
   const body = (

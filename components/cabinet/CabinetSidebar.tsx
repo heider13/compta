@@ -13,9 +13,7 @@ import {
   User,
   CreditCard,
   KeyRound,
-  Landmark,
   BookOpen,
-  Layers,
   Palette,
   Webhook,
 } from 'lucide-react';
@@ -43,15 +41,14 @@ interface NavItem {
   href: string;
   label: string;
   matchPrefix: string;
+  alsoMatch?: string[];
   exact?: boolean;
   icon: React.ComponentType<{ className?: string }>;
 }
 
 const NAV_PILOTAGE: NavItem[] = [
   { href: '/dashboard', label: 'Tableau de bord', matchPrefix: '/dashboard', exact: true, icon: LayoutDashboard },
-  { href: '/dossiers', label: 'Formalités', matchPrefix: '/dossiers', icon: FileText },
-  { href: '/lots', label: 'Formalités en lot', matchPrefix: '/lots', icon: Layers },
-  { href: '/inpi', label: 'Déposées à l’INPI', matchPrefix: '/inpi', icon: Landmark },
+  { href: '/dossiers', label: 'Formalités', matchPrefix: '/dossiers', alsoMatch: ['/inpi'], icon: FileText },
   { href: '/rne', label: 'Documents RNE', matchPrefix: '/rne', icon: BookOpen },
   { href: '/clients', label: 'Clients', matchPrefix: '/clients', icon: Users },
   { href: '/tasks', label: 'Tâches', matchPrefix: '/tasks', icon: CheckSquare },
@@ -69,7 +66,7 @@ const NAV_CABINET: NavItem[] = [
 
 function isActive(item: NavItem, pathname: string): boolean {
   if (item.exact) return pathname === item.matchPrefix;
-  return pathname === item.matchPrefix || pathname.startsWith(`${item.matchPrefix}/`);
+  return [item.matchPrefix, ...(item.alsoMatch ?? [])].some((p) => pathname === p || pathname.startsWith(`${p}/`));
 }
 
 function NavGroup({ label, items, pathname }: { label: string; items: NavItem[]; pathname: string }) {

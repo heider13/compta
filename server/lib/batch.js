@@ -8,6 +8,10 @@
 // de chaque conversation est rangé dans le Storage pour la reprendre dans le chat.
 
 const crypto = require('crypto');
+const os = require('os');
+const nodePath = require('path');
+const fs = require('fs/promises');
+const { execFile } = require('child_process');
 const { getAnthropic, MODELS } = require('./ai');
 const { getSupabaseAdmin } = require('./db');
 const { runAgentTurn } = require('./formality-agent');
@@ -102,7 +106,7 @@ async function traiter(supa, ctxBase, dossier) {
   const events = [];
   let texte = '';
   try {
-    const ctx = { ...ctxBase, dossierId: dossier.id };
+    const ctx = { ...ctxBase, dossierId: dossier.id, batchParent: b.id };
     const out = await runAgentTurn({
       history: [],
       input: CONSIGNE_LOT + b.consigne,
@@ -245,4 +249,18 @@ async function historique(orgId, dossierId) {
   return { dossier: { id: d.id, reference: d.reference, denomination: d.client_name }, ...json };
 }
 
-module.exports = { TYPES, planifier, lancer, lister, detail, relancer, historique, MAX_FORMALITES };
+// Tableur (.xlsx, .xls, .ods) -> CSV via LibreOffice ; .csv lu tel quel.
+async function texteTableur(buffer, ext) {
+  if (['csv', 'txt', 'tsv'].includes(ext)) return buffer.toString('utf8');
+  const dir = await fs.mkdtemp(nodePath.join(os.tmpdir(), 'lot-'));
+  try {
+    const src = nodePath.join(dir, `liste.${ext}`);
+    await fs.writeFile(src, buffer);
+    await new Promise((ok, ko) => execFile('soffice', ['--headless', '--norestore', `-env:UserInstallation=file://${dir}/profile`, '--convert-to', 'csv:Text - txt - csv (StarCalc):59,34,76', '--outdir', dir, src], { timeout: 60000 }, (e) => (e ? ko(e) : ok())));
+    return await fs.readFile(nodePath.join(dir, 'liste.csv'), 'utf8');
+  } finally {
+    await fs.rm(dir, { recursive: true, force: true });
+  }
+}
+
+module.exports = { TYPES, planifier, lancer, lister, detail, relancer, historique, texteTableur, MAX_FORMALITES };

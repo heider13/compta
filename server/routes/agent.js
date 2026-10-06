@@ -32,7 +32,7 @@ function parseAttachments(raw) {
   return raw.map((a) => {
     const name = String(a?.name || 'document').slice(0, 120);
     const mime = String(a?.mime || '');
-    if (!ATTACHMENT_TYPES[mime]) throw new Error(`Format non pris en charge : ${name} (PDF, image ou Word .docx).`);
+    if (!ATTACHMENT_TYPES[mime]) throw new Error(`Format non pris en charge : ${name} (PDF, image, Word .docx ou tableur .xlsx/.csv).`);
     const buffer = Buffer.from(String(a?.data || ''), 'base64');
     if (!buffer.length) throw new Error(`Fichier vide : ${name}`);
     if (buffer.length > MAX_ATTACHMENT_BYTES) throw new Error(`Fichier trop lourd (8 Mo max) : ${name}`);

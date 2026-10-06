@@ -1,3 +1,4 @@
+import { FormalitesTabs } from '@/components/cabinet/FormalitesTabs';
 import Link from 'next/link';
 import {
   CheckCircle2,
@@ -144,11 +145,12 @@ export default async function DossiersPage({ searchParams }: { searchParams: Pro
 
   return (
     <div className="mx-auto w-full max-w-7xl space-y-6 p-4 sm:p-6">
+      <FormalitesTabs />
+
       {/* Header */}
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div className="min-w-0">
-          <h1>Dossiers</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
+          <p className="text-sm text-muted-foreground">
             {rows.length} dossier{rows.length > 1 ? 's' : ''}
             {isFiltered ? ' (filtré)' : ''} · toutes vos formalités
           </p>
