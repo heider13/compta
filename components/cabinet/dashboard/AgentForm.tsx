@@ -1,19 +1,21 @@
 'use client';
 
-// Formulaire interactif posé par l'Agent Formalités (outil poser_questions) :
-// champs typés, valeurs pré-remplies, validation des champs requis. Une fois
-// envoyé, il s'affiche en lecture seule avec les réponses données.
+// Questionnaire pas à pas posé par l'Agent Formalités (outil poser_questions) :
+// une question par écran (étiquette de rubrique + « 1 sur N »), réponse libre ou
+// choix parmi des options décrites, Retour / Suivant, « Passer : l'agent décide ».
+// Une fois envoyé, il s'affiche en récapitulatif.
 
-import { useState } from 'react';
-import { CheckCircle2, ClipboardList, Loader2, Send } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { useEffect, useRef, useState } from 'react';
+import { CheckCircle2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
+export type Option = string | { label: string; description?: string };
 export type Champ = {
   id: string;
   label: string;
+  rubrique?: string;
   type: 'texte' | 'texte_long' | 'email' | 'telephone' | 'date' | 'nombre' | 'montant' | 'liste' | 'choix' | 'cases' | 'oui_non' | 'adresse';
-  options?: string[];
+  options?: Option[];
   requis?: boolean;
   valeur?: string;
   aide?: string;
@@ -23,26 +25,40 @@ export type FormSpec = { id: string; titre: string; intro?: string; champs: Cham
 export type Valeur = string | string[];
 export type Reponses = Record<string, Valeur>;
 
-const INPUT = 'h-9 w-full rounded-md border bg-card px-3 text-sm outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/40';
+const optLabel = (o: Option) => (typeof o === 'string' ? o : o.label);
+const optDesc = (o: Option) => (typeof o === 'string' ? undefined : o.description);
+const optionsDe = (c: Champ): Option[] => (c.type === 'oui_non' ? ['Oui', 'Non'] : c.options ?? []);
+const aChoix = (c: Champ) => ['liste', 'choix', 'oui_non', 'cases'].includes(c.type);
 
 function initiales(champs: Champ[]): Reponses {
   const out: Reponses = {};
-  for (const c of champs) {
-    if (c.type === 'cases') out[c.id] = c.valeur ? c.valeur.split(/\s*[;,]\s*/).filter(Boolean) : [];
-    else out[c.id] = c.valeur ?? '';
-  }
+  for (const c of champs) out[c.id] = c.type === 'cases' ? (c.valeur ? c.valeur.split(/\s*[;,]\s*/).filter(Boolean) : []) : c.valeur ?? '';
   return out;
 }
 
+const rempli = (v: Valeur | undefined) => (Array.isArray(v) ? v.length > 0 : Boolean(String(v ?? '').trim()));
+
 function affichage(c: Champ, v: Valeur | undefined) {
-  if (Array.isArray(v)) return v.length ? v.join(', ') : '—';
-  if (!v) return '—';
+  if (Array.isArray(v)) return v.length ? v.join(', ') : 'l’agent décide';
+  if (!v) return 'l’agent décide';
   if (c.type === 'montant') return `${v} €`;
   if (c.type === 'date') {
     const d = new Date(v);
     return Number.isNaN(d.getTime()) ? v : d.toLocaleDateString('fr-FR');
   }
   return v;
+}
+
+const TAG = 'rounded-md border px-2 py-0.5 font-mono text-[11px] font-semibold uppercase tracking-wider';
+const SAISIE =
+  'w-full rounded-md border border-input bg-background px-3 py-2 text-sm outline-none transition-colors placeholder:text-muted-foreground/70 focus-visible:border-primary focus-visible:ring-[3px] focus-visible:ring-primary/15';
+
+function Radio({ on }: { on: boolean }) {
+  return (
+    <span className={cn('mt-[3px] grid size-3.5 shrink-0 place-items-center rounded-full border', on ? 'border-primary' : 'border-muted-foreground/50')}>
+      {on && <span className="size-1.5 rounded-full bg-primary" />}
+    </span>
+  );
 }
 
 export function AgentForm({
@@ -59,25 +75,31 @@ export function AgentForm({
   onSubmit: (r: Reponses) => void;
 }) {
   const [valeurs, setValeurs] = useState<Reponses>(() => initiales(form.champs));
-  const [erreurs, setErreurs] = useState<Record<string, boolean>>({});
-  const set = (id: string, v: Valeur) => {
-    setValeurs((x) => ({ ...x, [id]: v }));
-    setErreurs((e) => ({ ...e, [id]: false }));
-  };
+  const [etape, setEtape] = useState(0);
+  const saisieRef = useRef<HTMLInputElement & HTMLTextAreaElement>(null);
+  const total = form.champs.length;
+  const c = form.champs[Math.min(etape, total - 1)];
+
+  useEffect(() => {
+    if (!repondu) saisieRef.current?.focus({ preventScroll: true });
+  }, [etape, repondu]);
 
   if (repondu) {
     return (
-      <div className="ml-9 rounded-lg border bg-[#fbfaff] text-xs">
-        <p className="flex items-center gap-2 border-b px-3 py-2 font-medium">
-          <CheckCircle2 className="size-4 text-primary" /> {form.titre}
-          <span className="font-normal text-muted-foreground">· {reponses ? 'réponses envoyées' : 'répondu par message'}</span>
+      <div className="ml-9 rounded-xl border bg-card text-xs">
+        <p className="flex flex-wrap items-center gap-2 border-b px-4 py-2.5">
+          <CheckCircle2 className="size-4 text-primary" />
+          <span className="font-semibold">{form.titre}</span>
+          <span className="text-muted-foreground">· {reponses ? 'réponses envoyées' : 'répondu par message'}</span>
         </p>
         {reponses && (
-          <dl className="grid gap-x-4 gap-y-1 px-3 py-2 sm:grid-cols-[minmax(0,14rem)_1fr]">
-            {form.champs.map((c) => (
-              <div key={c.id} className="contents">
-                <dt className="text-muted-foreground">{c.label}</dt>
-                <dd className="min-w-0 break-words font-medium">{affichage(c, reponses[c.id])}</dd>
+          <dl className="grid gap-x-4 gap-y-1.5 px-4 py-3 sm:grid-cols-[minmax(0,15rem)_1fr]">
+            {form.champs.map((ch) => (
+              <div key={ch.id} className="contents">
+                <dt className="text-muted-foreground">{ch.rubrique || ch.label}</dt>
+                <dd className={cn('min-w-0 break-words font-medium', !rempli(reponses[ch.id]) && 'font-normal italic text-muted-foreground')}>
+                  {affichage(ch, reponses[ch.id])}
+                </dd>
               </div>
             ))}
           </dl>
@@ -86,123 +108,165 @@ export function AgentForm({
     );
   }
 
-  function envoyer(e: React.FormEvent) {
-    e.preventDefault();
-    const manquants: Record<string, boolean> = {};
-    for (const c of form.champs) {
-      const v = valeurs[c.id];
-      if (c.requis && (Array.isArray(v) ? v.length === 0 : !String(v ?? '').trim())) manquants[c.id] = true;
-    }
-    setErreurs(manquants);
-    if (Object.keys(manquants).length) return;
-    onSubmit(valeurs);
-  }
+  const v = valeurs[c.id];
+  const set = (x: Valeur) => setValeurs((s) => ({ ...s, [c.id]: x }));
+  const options = optionsDe(c);
+  const libre = aChoix(c) && c.type !== 'cases' && !options.some((o) => optLabel(o) === v);
+  const derniere = etape === total - 1;
+  const peutSuivre = !c.requis || rempli(v);
+
+  const suivant = (r: Reponses = valeurs) => {
+    if (derniere) onSubmit(r);
+    else setEtape((e) => e + 1);
+  };
+  const passer = () => {
+    const r = { ...valeurs, [c.id]: c.type === 'cases' ? [] : '' };
+    setValeurs(r);
+    suivant(r);
+  };
+
+  // Champ de saisie libre selon le type
+  const typeInput = { email: 'email', telephone: 'tel', date: 'date', nombre: 'number', montant: 'number' }[c.type as string] ?? 'text';
+  const saisieLibre =
+    c.type === 'texte_long' || c.type === 'adresse' ? (
+      <textarea
+        ref={saisieRef}
+        rows={c.type === 'adresse' ? 2 : 3}
+        value={typeof v === 'string' ? v : ''}
+        onChange={(e) => set(e.target.value)}
+        placeholder={c.placeholder ?? (c.type === 'adresse' ? 'N° et voie, code postal, commune' : 'Votre réponse…')}
+        className={SAISIE}
+      />
+    ) : (
+      <div className="relative w-full">
+        <input
+          ref={saisieRef}
+          type={typeInput}
+          step={c.type === 'montant' ? '0.01' : undefined}
+          value={typeof v === 'string' && (!aChoix(c) || libre) ? v : ''}
+          onChange={(e) => set(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' && peutSuivre && !disabled) {
+              e.preventDefault();
+              suivant();
+            }
+          }}
+          placeholder={c.placeholder ?? 'Votre réponse…'}
+          className={cn(SAISIE, c.type === 'montant' && 'pr-8')}
+        />
+        {c.type === 'montant' && <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">€</span>}
+      </div>
+    );
 
   return (
-    <form onSubmit={envoyer} className="ml-9 rounded-xl border border-primary/25 bg-card shadow-[0_8px_24px_rgba(54,31,171,0.08)]">
-      <div className="flex items-start gap-2 border-b bg-[#f7f5fd] px-4 py-3">
-        <ClipboardList className="mt-0.5 size-4 shrink-0 text-primary" />
-        <div className="min-w-0">
-          <p className="text-sm font-semibold">{form.titre}</p>
-          {form.intro && <p className="mt-0.5 text-xs text-muted-foreground">{form.intro}</p>}
+    <div className="ml-9 space-y-2">
+      <div className="rounded-xl border bg-card p-5 shadow-[0_10px_30px_rgba(54,31,171,0.08)]">
+        <div className="flex flex-wrap items-center gap-2">
+          <span className={cn(TAG, 'border-primary/25 bg-[#ede7ff] text-primary')}>{c.rubrique || form.titre}</span>
+          {total > 1 && (
+            <span className={cn(TAG, 'border-foreground/70 bg-card text-foreground')}>
+              {etape + 1} sur {total}
+            </span>
+          )}
         </div>
-      </div>
-      <div className="grid gap-4 px-4 py-4 sm:grid-cols-2">
-        {form.champs.map((c) => {
-          const v = valeurs[c.id];
-          const large = ['texte_long', 'adresse', 'cases', 'choix'].includes(c.type);
-          const err = erreurs[c.id];
-          const champ = (() => {
-            switch (c.type) {
-              case 'texte_long':
-              case 'adresse':
-                return (
-                  <textarea
-                    rows={c.type === 'adresse' ? 2 : 3}
-                    value={String(v ?? '')}
-                    onChange={(e) => set(c.id, e.target.value)}
-                    placeholder={c.placeholder ?? (c.type === 'adresse' ? 'N° et voie, code postal, commune' : undefined)}
-                    className={cn(INPUT, 'h-auto py-2')}
-                  />
-                );
-              case 'liste':
-                return (
-                  <select value={String(v ?? '')} onChange={(e) => set(c.id, e.target.value)} className={INPUT}>
-                    <option value="">— Choisir —</option>
-                    {(c.options ?? []).map((o) => <option key={o} value={o}>{o}</option>)}
-                  </select>
-                );
-              case 'choix':
-              case 'oui_non': {
-                const opts = c.type === 'oui_non' ? ['Oui', 'Non'] : c.options ?? [];
-                return (
-                  <div className="flex flex-wrap gap-2">
-                    {opts.map((o) => (
+        <p className="mt-3 max-w-xl text-[15px] font-semibold leading-snug">
+          {c.label}
+          {c.requis && <span className="text-[#ff887b]"> *</span>}
+        </p>
+        {c.aide && <p className="mt-1 max-w-xl text-xs text-muted-foreground">{c.aide}</p>}
+
+        <div className="mt-4 space-y-3">
+          {/* Réponse libre (toujours possible, sauf cases à cocher) */}
+          {c.type !== 'cases' && (
+            <label className="flex items-start gap-3">
+              {aChoix(c) && <Radio on={libre && rempli(v)} />}
+              {saisieLibre}
+            </label>
+          )}
+
+          {options.length > 0 && (
+            <>
+              <p className="pt-1 font-mono text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
+                {c.type === 'cases' ? 'Cochez ce qui s’applique' : 'Ou choisissez'}
+              </p>
+              <ul className="space-y-1">
+                {options.map((o) => {
+                  const lab = optLabel(o);
+                  const on = Array.isArray(v) ? v.includes(lab) : v === lab;
+                  return (
+                    <li key={lab}>
                       <button
-                        key={o}
                         type="button"
-                        onClick={() => set(c.id, o)}
+                        onClick={() => {
+                          if (c.type === 'cases') {
+                            const list = Array.isArray(v) ? v : [];
+                            set(on ? list.filter((x) => x !== lab) : [...list, lab]);
+                          } else {
+                            set(lab);
+                          }
+                        }}
                         className={cn(
-                          'rounded-full border px-3 py-1.5 text-xs font-medium transition-colors',
-                          v === o ? 'border-primary bg-primary text-primary-foreground' : 'bg-card hover:border-primary/50',
+                          'flex w-full items-start gap-3 rounded-lg px-2 py-2 text-left transition-colors',
+                          on ? 'bg-[#f5f3fb]' : 'hover:bg-muted/50',
                         )}
                       >
-                        {o}
+                        {c.type === 'cases' ? (
+                          <span className={cn('mt-[3px] grid size-3.5 shrink-0 place-items-center rounded-sm border', on ? 'border-primary bg-primary' : 'border-muted-foreground/50')}>
+                            {on && <span className="text-[9px] leading-none text-white">✓</span>}
+                          </span>
+                        ) : (
+                          <Radio on={on} />
+                        )}
+                        <span className="min-w-0">
+                          <span className="block text-sm font-medium">{lab}</span>
+                          {optDesc(o) && <span className="block text-xs text-muted-foreground">{optDesc(o)}</span>}
+                        </span>
                       </button>
-                    ))}
-                  </div>
-                );
-              }
-              case 'cases':
-                return (
-                  <div className="flex flex-wrap gap-x-4 gap-y-2">
-                    {(c.options ?? []).map((o) => {
-                      const list = Array.isArray(v) ? v : [];
-                      const on = list.includes(o);
-                      return (
-                        <label key={o} className="flex items-center gap-2 text-sm">
-                          <input type="checkbox" checked={on} onChange={() => set(c.id, on ? list.filter((x) => x !== o) : [...list, o])} />
-                          {o}
-                        </label>
-                      );
-                    })}
-                  </div>
-                );
-              case 'montant':
-                return (
-                  <div className="relative">
-                    <input type="number" step="0.01" min="0" value={String(v ?? '')} onChange={(e) => set(c.id, e.target.value)} placeholder={c.placeholder} className={cn(INPUT, 'pr-8')} />
-                    <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">€</span>
-                  </div>
-                );
-              default: {
-                const type = { email: 'email', telephone: 'tel', date: 'date', nombre: 'number' }[c.type as string] ?? 'text';
-                return <input type={type} value={String(v ?? '')} onChange={(e) => set(c.id, e.target.value)} placeholder={c.placeholder} className={INPUT} />;
-              }
-            }
-          })();
-          return (
-            <div key={c.id} className={cn('min-w-0 space-y-1.5', large && 'sm:col-span-2')}>
-              <label className="block text-xs font-medium">
-                {c.label} {c.requis && <span className="text-destructive">*</span>}
-              </label>
-              {champ}
-              {err ? (
-                <p className="text-[11px] text-destructive">Champ requis.</p>
-              ) : (
-                c.aide && <p className="text-[11px] text-muted-foreground">{c.aide}</p>
-              )}
-            </div>
-          );
-        })}
+                    </li>
+                  );
+                })}
+              </ul>
+            </>
+          )}
+        </div>
+
+        <div className="mt-5 flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setEtape((e) => Math.max(0, e - 1))}
+            disabled={etape === 0 || disabled}
+            className="rounded-md border px-3.5 py-1.5 font-mono text-[11px] font-semibold uppercase tracking-wider transition-colors hover:bg-muted disabled:opacity-40"
+          >
+            Retour
+          </button>
+          <button
+            type="button"
+            onClick={() => suivant()}
+            disabled={!peutSuivre || disabled}
+            className="rounded-md bg-primary px-4 py-1.5 font-mono text-[11px] font-semibold uppercase tracking-wider text-primary-foreground transition-opacity hover:opacity-90 disabled:opacity-40"
+          >
+            {derniere ? form.bouton || 'Envoyer' : 'Suivant'}
+          </button>
+          {!c.requis && (
+            <button
+              type="button"
+              onClick={passer}
+              disabled={disabled}
+              className="ml-auto font-mono text-[11px] font-semibold text-muted-foreground transition-colors hover:text-foreground disabled:opacity-40"
+            >
+              Passer : l’agent décide
+            </button>
+          )}
+        </div>
       </div>
-      <div className="flex items-center justify-between gap-3 border-t px-4 py-3">
-        <p className="text-[11px] text-muted-foreground">Vous pouvez aussi répondre par message dans le champ ci-dessous.</p>
-        <Button type="submit" size="sm" disabled={disabled}>
-          {disabled ? <Loader2 className="size-4 animate-spin" /> : <Send className="size-4" />}
-          {form.bouton || 'Envoyer'}
-        </Button>
-      </div>
-    </form>
+      <p className="flex items-center gap-2 pl-1 font-mono text-[11px] text-muted-foreground">
+        <span className="grid grid-cols-2 gap-[2px]" aria-hidden="true">
+          {[0, 1, 2, 3].map((i) => (
+            <span key={i} className="size-[3px] animate-pulse rounded-full bg-[#ff887b]" style={{ animationDelay: `${i * 180}ms` }} />
+          ))}
+        </span>
+        en attente de votre réponse… <span className="text-muted-foreground/70">(ou répondez par message ci-dessous)</span>
+      </p>
+    </div>
   );
 }

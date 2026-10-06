@@ -347,7 +347,7 @@ const TOOLS = [
   {
     name: 'poser_questions',
     description:
-      "Pose tes questions au professionnel sous forme de FORMULAIRE interactif (jamais en texte libre). Regroupe en un seul formulaire tout ce qui te manque pour avancer (8 champs maximum, les plus importants d'abord), avec le type de champ adapté et les valeurs déjà connues pré-remplies. Sert aussi aux confirmations (créer le brouillon, lancer un lot…) avec un champ oui_non. Après l'appel, n'écris rien d'autre : le formulaire s'affiche et tu reçois les réponses en résultat.",
+      "Pose tes questions au professionnel sous forme de QUESTIONNAIRE interactif pas à pas (une question par écran, jamais en texte libre). Regroupe tout ce qui te manque pour avancer (8 questions maximum, les plus importantes d'abord). Chaque question : label = la question complète et claire, rubrique = étiquette courte (2-3 mots, ex « Le président », « Le siège »), type adapté, valeur pré-remplie si connue. Pour les choix, propose 2 à 5 options avec une description courte chacune (le professionnel peut aussi écrire sa propre réponse). Sert aussi aux confirmations (créer le brouillon, lancer un lot…) avec oui_non. Après l'appel, n'écris rien d'autre : le questionnaire s'affiche et tu reçois les réponses en résultat ; une réponse vide = « l'agent décide » (choisis la valeur par défaut la plus prudente et dis-le).",
     eager_input_streaming: true,
     input_schema: {
       type: 'object',
@@ -360,9 +360,14 @@ const TOOLS = [
             type: 'object',
             properties: {
               id: { type: 'string', description: 'Identifiant technique (ex president_nom)' },
-              label: { type: 'string' },
+              rubrique: { type: 'string', description: 'Étiquette courte de la question (ex « Le président »)' },
+              label: { type: 'string', description: 'La question, formulée clairement' },
               type: { type: 'string', enum: ['texte', 'texte_long', 'email', 'telephone', 'date', 'nombre', 'montant', 'liste', 'choix', 'cases', 'oui_non', 'adresse'] },
-              options: { type: 'array', items: { type: 'string' }, description: 'liste / choix / cases' },
+              options: {
+                type: 'array',
+                description: 'liste / choix / cases : options proposées',
+                items: { type: 'object', properties: { label: { type: 'string' }, description: { type: 'string' } }, required: ['label'] },
+              },
               requis: { type: 'boolean' },
               valeur: { type: 'string', description: 'Valeur pré-remplie (déjà connue ou proposée par défaut)' },
               aide: { type: 'string', description: 'Aide courte sous le champ' },

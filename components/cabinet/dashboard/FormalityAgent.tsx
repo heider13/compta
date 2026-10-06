@@ -53,6 +53,8 @@ type ToolEvent = {
   kind?: 'dossier' | 'document' | 'pipeline' | 'piece' | 'inpi' | 'batch';
   dossier?: { id: string; reference: string; denomination: string };
   batch?: { id: string; label: string; total: number };
+  debut?: number; // horodatage (ms) du début de l'étape
+  fin?: number; // horodatage de la fin
 };
 
 type Item =
@@ -323,12 +325,14 @@ function AgentChat({ inpiFormality, resume }: AgentProps) {
     };
     const upsertTool = (ev: ToolEvent) => {
       const idx = localItems.findIndex((i) => i.type === 'tool' && i.event.id === ev.id);
+      const now = Date.now();
       if (idx >= 0) {
+        const prev = localItems[idx] as { type: 'tool'; event: ToolEvent };
         const next = localItems.slice();
-        next[idx] = { type: 'tool', event: ev };
+        next[idx] = { type: 'tool', event: { ...ev, debut: prev.event.debut ?? now, fin: ev.status === 'start' ? undefined : now } };
         commit(next);
       } else {
-        commit([...localItems, { type: 'tool', event: ev }]);
+        commit([...localItems, { type: 'tool', event: { ...ev, debut: now, fin: ev.status === 'start' ? undefined : now } }]);
       }
       if (ev.dossier) {
         localDossier = ev.dossier;
@@ -574,25 +578,24 @@ function AgentChat({ inpiFormality, resume }: AgentProps) {
             {/* Conversation */}
             <div className="flex min-w-0 flex-col border-b lg:border-b-0 lg:border-r">
               <div ref={scrollRef} className="max-h-[520px] min-h-[260px] space-y-3 overflow-y-auto px-5 py-4">
-                {items.map((item, i) =>
-                  item.type === 'form' ? (
+                {grouper(items).map((g, gi, all) =>
+                  g.kind === 'travail' ? (
+                    <Travail key={`t-${g.cle}`} events={g.events} enCours={busy && gi === all.length - 1} />
+                  ) : g.item.type === 'form' ? (
                     <AgentForm
-                      key={`${item.form.id}-${i}`}
-                      form={item.form}
-                      repondu={Boolean(item.repondu)}
-                      reponses={item.reponses}
+                      key={`${g.item.form.id}-${g.cle}`}
+                      form={g.item.form}
+                      repondu={Boolean(g.item.repondu)}
+                      reponses={g.item.reponses}
                       disabled={busy}
                       onSubmit={(r) => send('', r)}
                     />
                   ) : (
-                    <ItemView key={i} item={item} />
+                    <ItemView key={g.cle} item={g.item} />
                   ),
                 )}
-                {busy && items[items.length - 1]?.type !== 'assistant' && (
-                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                    <Loader2 className="size-3.5 animate-spin" />
-                    L&apos;agent travaille…
-                  </div>
+                {busy && items[items.length - 1]?.type !== 'assistant' && items[items.length - 1]?.type !== 'tool' && (
+                  <Travail events={[]} enCours />
                 )}
                 {error && <ErrorLine message={error} />}
               </div>
@@ -760,6 +763,78 @@ function ItemView({ item }: { item: Item }) {
     );
   }
   return <div className={cls}>{body}</div>;
+}
+
+// Étapes consécutives de l'agent regroupées en une ligne « A travaillé 17 s › »
+// (le suivi d'un lot reste affiché en entier).
+type Groupe = { kind: 'travail'; cle: number; events: ToolEvent[] } | { kind: 'item'; cle: number; item: Item };
+function grouper(items: Item[]): Groupe[] {
+  const out: Groupe[] = [];
+  items.forEach((it, i) => {
+    if (it.type === 'tool' && it.event.kind !== 'batch') {
+      const last = out[out.length - 1];
+      if (last?.kind === 'travail') last.events.push(it.event);
+      else out.push({ kind: 'travail', cle: i, events: [it.event] });
+    } else {
+      out.push({ kind: 'item', cle: i, item: it });
+    }
+  });
+  return out;
+}
+
+function duree(ms: number) {
+  const s = Math.max(1, Math.round(ms / 1000));
+  return s < 60 ? `${s} s` : `${Math.floor(s / 60)} min ${String(s % 60).padStart(2, '0')} s`;
+}
+
+function Travail({ events, enCours }: { events: ToolEvent[]; enCours: boolean }) {
+  const [ouvert, setOuvert] = useState(false);
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    if (!enCours) return;
+    const t = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(t);
+  }, [enCours]);
+  const debut = Math.min(...events.map((e) => e.debut ?? Infinity));
+  const fin = Math.max(...events.map((e) => e.fin ?? e.debut ?? 0));
+  const ms = Number.isFinite(debut) ? (enCours ? now : fin) - debut : 0;
+  const docs = events.filter((e) => e.kind === 'document' && e.status === 'done').length;
+  const erreurs = events.filter((e) => e.status === 'error').length;
+  const courant = [...events].reverse().find((e) => e.status === 'start');
+  return (
+    <div className="space-y-1.5">
+      <button
+        type="button"
+        onClick={() => events.length && setOuvert((o) => !o)}
+        className="group flex items-center gap-2 font-mono text-[11px] text-muted-foreground transition-colors hover:text-foreground"
+      >
+        {enCours ? (
+          <span className="grid grid-cols-2 gap-[2px]" aria-hidden="true">
+            {[0, 1, 2, 3].map((i) => (
+              <span key={i} className="size-[3px] animate-pulse rounded-full bg-primary" style={{ animationDelay: `${i * 180}ms` }} />
+            ))}
+          </span>
+        ) : (
+          <span className="size-1.5 rounded-full bg-primary/60" aria-hidden="true" />
+        )}
+        <span>
+          {enCours ? `Travaille… ${ms > 0 ? duree(ms) : ''}` : `A travaillé ${ms > 0 ? duree(ms) : ''}`}
+          {enCours && courant ? ` · ${courant.label}` : ''}
+          {!enCours && events.length > 0 && ` · ${events.length} étape${events.length > 1 ? 's' : ''}`}
+          {docs > 0 && ` · ${docs} document${docs > 1 ? 's' : ''}`}
+          {erreurs > 0 && ` · ${erreurs} erreur${erreurs > 1 ? 's' : ''}`}
+        </span>
+        {events.length > 0 && <span className={cn('transition-transform', ouvert && 'rotate-90')}>›</span>}
+      </button>
+      {ouvert && (
+        <div className="space-y-1.5 border-l pl-3">
+          {events.map((ev) => (
+            <ItemView key={ev.id} item={{ type: 'tool', event: ev }} />
+          ))}
+        </div>
+      )}
+    </div>
+  );
 }
 
 function ErrorLine({ message }: { message: string }) {
