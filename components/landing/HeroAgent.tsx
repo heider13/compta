@@ -191,6 +191,8 @@ export function HeroAgent() {
             'radial-gradient(ellipse 760px 600px at 100% 95%, rgba(234,66,253,0.12), transparent 62%)',
         }}
       />
+      {/* Fondu bas : enchaîne en douceur avec la section suivante */}
+      <div aria-hidden="true" className="pointer-events-none absolute inset-x-0 bottom-0 h-40 bg-gradient-to-b from-transparent to-[#fbfaff]" />
       {/* Trame de points discrète */}
       <div
         aria-hidden="true"

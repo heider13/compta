@@ -7,7 +7,7 @@ import { useRef, useState } from 'react';
 import { ArrowLeft, ArrowRight, Sparkles } from 'lucide-react';
 import { Container } from '../ui';
 import { ILLUS_AGENTS } from './Illus';
-import { Degrade, Halos, teinte } from './Couleurs';
+import { Degrade, Halos, fondSombre, teinte } from './Couleurs';
 
 const AGENTS = [
   { key: 'formalites', titre: 'Agent Formalités', texte: 'Décrivez l’opération : il pose les bonnes questions, crée le dossier, rédige les statuts et les actes, puis prépare le brouillon au Guichet unique.' },
@@ -29,7 +29,7 @@ export function AgentsCarousel() {
   };
 
   return (
-    <section id="agents" className="relative scroll-mt-24 overflow-hidden bg-[#140d2e] py-20 sm:py-24">
+    <section id="agents" className="relative scroll-mt-24 overflow-hidden py-[200px]" style={{ background: fondSombre('#140d2e', '#fff8f3', '#fff5fb') }}>
       <Halos variante="sombre" />
       <Container className="relative grid items-center gap-10 lg:grid-cols-[0.9fr_1.1fr]">
         <div>

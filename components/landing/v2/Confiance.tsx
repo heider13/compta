@@ -7,7 +7,7 @@ import { Degrade, Halos, teinte } from './Couleurs';
 
 export function Conformite() {
   return (
-    <section id="securite" className="relative scroll-mt-24 overflow-hidden bg-gradient-to-br from-[#f3eeff] via-white to-[#fff0ec] py-20 sm:py-24">
+    <section id="securite" className="relative scroll-mt-24 overflow-hidden bg-gradient-to-b from-[#f7f3ff] via-white to-[#fff0ec] py-20 sm:py-24">
       <Halos />
       <Container className="relative grid items-center gap-12 lg:grid-cols-2">
         <div>

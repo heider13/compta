@@ -3,14 +3,17 @@
 import Link from 'next/link';
 import { Logo } from '@/components/brand/Logo';
 import { Container } from '../ui';
+import { FONDU_VERTICAL, fondSombre } from './Couleurs';
 
 export function CtaBand() {
   return (
-    <section className="relative overflow-hidden bg-[#0e0b1a] py-20">
+    <section className="relative overflow-hidden py-[200px]" style={{ background: fondSombre('#0e0b1a', '#ffffff', '#fbfaff') }}>
       <div
         aria-hidden="true"
         className="absolute inset-0"
         style={{
+          maskImage: FONDU_VERTICAL,
+          WebkitMaskImage: FONDU_VERTICAL,
           background:
             'radial-gradient(ellipse 700px 460px at 10% 0%, rgba(255,190,140,0.55), transparent 60%),' +
             'radial-gradient(ellipse 820px 520px at 55% 45%, rgba(117,81,232,0.65), transparent 65%),' +
@@ -45,8 +48,7 @@ const COLONNES = [
 
 export function FooterV2() {
   return (
-    <footer className="relative bg-[#fbfaff] pb-10 pt-14">
-      <div aria-hidden="true" className="absolute inset-x-0 top-0 h-1" style={{ background: 'linear-gradient(90deg, #ffbe8c, #ff887b, #ea42fd, #7551e8)' }} />
+    <footer className="relative bg-[#fbfaff] pb-10 pt-6">
       <Container>
         <div className="flex flex-wrap items-center justify-between gap-6">
           <Link href="/" className="no-underline" aria-label="Legaly AI">

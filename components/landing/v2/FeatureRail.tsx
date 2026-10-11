@@ -27,7 +27,7 @@ export function FeatureRail() {
   const defiler = (sens: 1 | -1) => rail.current?.scrollBy({ left: sens * 320, behavior: 'smooth' });
 
   return (
-    <section id="fonctionnalites" className="relative scroll-mt-24 overflow-hidden bg-gradient-to-b from-[#fbf8ff] via-[#fff5fb] to-[#fff8f3] py-20 sm:py-24">
+    <section id="fonctionnalites" className="relative scroll-mt-24 overflow-hidden bg-gradient-to-b from-[#fbfaff] via-[#fff5fb] to-[#fff8f3] py-20 sm:py-24">
       <Halos />
       <Container className="relative">
         <h2 className="text-center font-[Sora] !text-[clamp(1.75rem,3.4vw,2.6rem)] !font-semibold !text-[var(--violet-900)]">
