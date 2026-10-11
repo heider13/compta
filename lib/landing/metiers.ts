@@ -4,6 +4,18 @@
 
 export type Carte = { key: string; titre: string; texte: string };
 export type Defi = { defi: string; reponse: string };
+export type Module = { key: string; nom: string; titre: string; texte: string };
+
+// Nouveautés (réelles) affichées dans la carte « Évolutif »
+export const NOUVEAUTES: { t: string; s: 'Déployé' | 'En cours' }[] = [
+  { t: 'Questionnaires interactifs de l’agent', s: 'Déployé' },
+  { t: 'Formalités en lot', s: 'Déployé' },
+  { t: 'Annonces légales contrôlées', s: 'Déployé' },
+  { t: 'Suivi des paiements et délégation', s: 'Déployé' },
+  { t: 'Publication des annonces en ligne', s: 'En cours' },
+];
+
+const PALIERS_CABINET = ['Jusqu’à 3 collaborateurs', 'Jusqu’à 10 collaborateurs', 'Collaborateurs illimités'];
 
 export type Metier = {
   kicker: string;
@@ -17,6 +29,11 @@ export type Metier = {
   defis: { titre: [string, string]; items: Defi[] };
   parcours: { titre: [string, string]; etapes: string[] };
   cta: [string, string];
+  modulesTitre: [string, string];
+  modules: Module[];
+  engagements: { titre: string; points: string[] };
+  adapte: { titre: string; texte: string; paliers: string[] };
+  fin: [string, string];
 };
 
 export const METIERS: Record<string, Metier> = {
@@ -73,6 +90,27 @@ export const METIERS: Record<string, Metier> = {
       ],
     },
     cta: ['Prêt à libérer vos équipes', 'du juridique ?'],
+    modulesTitre: ['Une plateforme unique pour', 'le cabinet et ses clients'],
+    modules: [
+      { key: 'agent', nom: 'Agent Formalités', titre: 'Préparez vite, déposez bien.', texte: 'Décrivez l’opération du client : l’agent pose ses questions en formulaire, lit la fiche RNE, rédige statuts, PV et annonce, puis prépare le brouillon au Guichet unique. Vos collaborateurs relisent au lieu de saisir.' },
+      { key: 'lots', nom: 'Formalités en lot', titre: 'Tout le portefeuille, en une demande.', texte: 'Collez une liste ou joignez un tableur : créations, mises en sommeil, changements de gérant. Chaque formalité est préparée dans son propre dossier, en parallèle, et suivie dans le même chat.' },
+      { key: 'annonces', nom: 'Annonces légales', titre: 'Des annonces conformes, sans relecture fastidieuse.', texte: 'L’avis est rédigé à partir du registre, chaque mention obligatoire du Code de commerce est vérifiée et ce qui manque est signalé.' },
+      { key: 'rne', nom: 'Documents RNE', titre: 'Les comptes et statuts de vos clients, à portée de clic.', texte: 'Statuts à jour, procès-verbaux, comptes annuels déposés et avis de situation INSEE : consultables et ajoutés au dossier client en un clic.' },
+      { key: 'paiement', nom: 'Paiements', titre: 'Des frais officiels suivis et refacturés.', texte: 'Montant de chaque formalité, délégation de paiement au client, alerte quand ça traîne et facture client en brouillon pour refacturer les débours.' },
+      { key: 'regularisation', nom: 'Régularisations', titre: 'Le greffe demande, l’agent prépare.', texte: 'Les demandes de régularisation sont lues avec les pièces déjà déposées ; la pièce corrigée et le courrier de réponse sont préparés.' },
+      { key: 'formalites', nom: 'Suivi des dossiers', titre: 'Tous les dossiers clients, sur un seul écran.', texte: 'Dossiers du cabinet et formalités déposées à l’INPI réunis : statut, pièces, signature et paiement de chaque client.' },
+    ],
+    engagements: {
+      titre: 'Nos engagements envers la profession comptable',
+      points: [
+        'Vos clients restent les vôtres : ils échangent avec votre cabinet, pas avec Legaly',
+        'Aucune formalité déposée sans la validation du cabinet',
+        'Les données de vos clients ne servent qu’à leurs dossiers',
+        'Un abonnement mensuel, sans engagement',
+      ],
+    },
+    adapte: { titre: 'Adapté à votre cabinet', texte: 'Du cabinet indépendant au réseau de cabinets : validation interne, formalités en lot et rôles s’ajustent à votre organisation.', paliers: PALIERS_CABINET },
+    fin: ['Tout ce dont vous avez besoin pour', 'le juridique de vos clients'],
   },
 
   avocats: {
@@ -128,6 +166,27 @@ export const METIERS: Record<string, Metier> = {
       ],
     },
     cta: ['Prêt à rendre leurs heures', 'à vos avocats ?'],
+    modulesTitre: ['Une plateforme unique pour', 'vos actes et vos formalités'],
+    modules: [
+      { key: 'agent', nom: 'Rédaction d’actes', titre: 'Vos actes, à votre style, en quelques minutes.', texte: 'L’agent part de vos modèles déjà acceptés par le greffe et des statuts en vigueur pour produire des projets de PV, statuts et déclarations, avec des champs « à compléter » plutôt que des données inventées.' },
+      { key: 'regularisation', nom: 'Régularisations', titre: 'Le greffe demande, l’agent prépare.', texte: 'Il lit le motif de la demande et les pièces déjà déposées, identifie ce qui bloque et prépare la correction ou le courrier de réponse.' },
+      { key: 'annonces', nom: 'Annonces légales', titre: 'Chaque mention vérifiée, rien d’inventé.', texte: 'Constitution, transfert, dissolution, clôture : l’avis est rédigé à partir du registre et contrôlé mention par mention.' },
+      { key: 'rne', nom: 'Documents RNE', titre: 'Le texte en vigueur, avant chaque acte.', texte: 'Statuts mis à jour et derniers procès-verbaux déposés : l’agent les lit avant de rédiger, et vous les joignez au dossier en un clic.' },
+      { key: 'signature', nom: 'Signature', titre: 'Vos clients signent à distance.', texte: 'Statuts, PV et pouvoirs envoyés en signature électronique ; une fois signés, le brouillon est prêt à déposer.' },
+      { key: 'formalites', nom: 'Suivi des opérations', titre: 'Chaque opération suivie jusqu’à l’inscription.', texte: 'Dossiers du cabinet et formalités déposées au Guichet unique : statut, pièces, demandes du greffe et paiement, au même endroit.' },
+      { key: 'paiement', nom: 'Débours', titre: 'Les frais du greffe, refacturés en débours.', texte: 'Montant officiel de chaque formalité, délégation de paiement au client et facture de débours en brouillon.' },
+    ],
+    engagements: {
+      titre: 'Nos engagements envers les avocats',
+      points: [
+        'Vos actes restent les vôtres : l’agent propose des projets, vous décidez de chaque clause',
+        'Aucun dépôt sans votre validation',
+        'Vos dossiers restent confidentiels : données cloisonnées par cabinet',
+        'Un abonnement mensuel, sans engagement',
+      ],
+    },
+    adapte: { titre: 'Adapté à votre cabinet', texte: 'De l’avocat exerçant seul au cabinet d’affaires : chacun retrouve ses dossiers, et la validation reste entre les mains de l’associé.', paliers: PALIERS_CABINET },
+    fin: ['Tout ce dont vous avez besoin pour', 'vos opérations de droit des sociétés'],
   },
 
   'directions-juridiques': {
@@ -183,5 +242,26 @@ export const METIERS: Record<string, Metier> = {
       ],
     },
     cta: ['Prêt à centraliser', 'le juridique du groupe ?'],
+    modulesTitre: ['Une plateforme unique pour', 'toutes les sociétés du groupe'],
+    modules: [
+      { key: 'entites', nom: 'Entités du groupe', titre: 'Toutes vos sociétés, un seul écran.', texte: 'Holding, filiales et sociétés civiles : fiche RNE, formalités en cours et documents de chaque entité, réunis au même endroit.' },
+      { key: 'lots', nom: 'Changements en série', titre: 'Un changement, toutes les filiales.', texte: 'Nouveau président, transfert de siège ou mise à jour des bénéficiaires effectifs : une seule demande, une formalité préparée par entité.' },
+      { key: 'agent', nom: 'Agent Formalités', titre: 'Le secrétariat juridique, préparé pour vous.', texte: 'Le juriste décrit le changement ; l’agent pose ses questions, lit les statuts en vigueur et rédige PV, déclarations et annonces.' },
+      { key: 'rne', nom: 'Documents RNE', titre: 'Les statuts à jour de chaque société.', texte: 'Statuts, procès-verbaux et comptes déposés de chaque entité, consultables et joints aux dossiers en un clic.' },
+      { key: 'signature', nom: 'Signature', titre: 'Les mandataires signent à distance.', texte: 'Les actes partent en signature électronique auprès des dirigeants concernés, où qu’ils soient.' },
+      { key: 'annonces', nom: 'Annonces légales', titre: 'Les annonces de chaque entité, conformes.', texte: 'Rédigées à partir du registre, mentions obligatoires vérifiées, une par département de parution.' },
+      { key: 'paiement', nom: 'Frais par entité', titre: 'Les frais suivis entité par entité.', texte: 'Montant de chaque formalité, paiement ou délégation, et alerte quand un paiement attend.' },
+    ],
+    engagements: {
+      titre: 'Nos engagements envers les directions juridiques',
+      points: [
+        'Aucun dépôt sans la validation de la direction juridique',
+        'L’historique et les pièces de chaque formalité conservés dans son dossier',
+        'Identifiants INPI chiffrés, données cloisonnées par organisation',
+        'Un abonnement mensuel, sans engagement',
+      ],
+    },
+    adapte: { titre: 'Adapté à votre organisation', texte: 'De la PME qui compte quelques sociétés au groupe aux nombreuses filiales.', paliers: ['PME', 'ETI et holdings', 'Grands groupes'] },
+    fin: ['Tout ce dont vous avez besoin pour', 'le juridique de vos entités'],
   },
 };
