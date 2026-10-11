@@ -21,8 +21,8 @@ function useCycle(n: number, ms: number) {
   return Math.min(i, n);
 }
 
-const CARTE = 'rounded-2xl border border-[var(--violet-900)]/80 bg-white shadow-[4px_4px_0_rgba(8,3,49,0.85)]';
-const FLOTTANTE = 'absolute hidden rounded-2xl border border-[var(--violet-900)]/80 bg-white px-3.5 py-2.5 shadow-[3px_3px_0_rgba(8,3,49,0.85)] sm:block';
+const CARTE = 'rounded-2xl border border-[var(--ink-150)] bg-white shadow-[0_24px_60px_rgba(20,13,46,0.10)]';
+const FLOTTANTE = 'absolute hidden rounded-xl border border-[var(--ink-150)] bg-white px-3.5 py-2.5 shadow-[0_12px_30px_rgba(20,13,46,0.10)] sm:block';
 
 // ── Experts-comptables : portefeuille clients ──
 function ScenePortefeuille() {
@@ -42,7 +42,7 @@ function ScenePortefeuille() {
           <span className="rounded-full bg-[var(--violet-50)] px-2.5 py-1 text-[11px] font-semibold text-[var(--violet-700)]">{prets}/{clients.length} prêts</span>
         </div>
         <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-[var(--ink-100)]">
-          <div className="h-full rounded-full bg-gradient-to-r from-[#ffbe8c] via-[#ff887b] to-[#ea42fd] transition-all duration-700" style={{ width: `${(prets / clients.length) * 100}%` }} />
+          <div className="h-full rounded-full bg-[var(--violet-600)] transition-all duration-700" style={{ width: `${(prets / clients.length) * 100}%` }} />
         </div>
         <ul className="mt-4 space-y-2">
           {clients.map(([nom, op], i) => {
@@ -67,10 +67,10 @@ function ScenePortefeuille() {
         </ul>
       </div>
       <div className={cn(FLOTTANTE, 'bp-float -top-6 left-6')}>
-        <p className="flex items-center gap-2 text-sm font-semibold text-[var(--violet-900)]"><Layers className="size-4 text-[#ea42fd]" /> Lot : 5 clients</p>
+        <p className="flex items-center gap-2 text-sm font-semibold text-[var(--violet-900)]"><Layers className="size-4 text-[var(--violet-600)]" /> Lot : 5 clients</p>
       </div>
       <div className={cn(FLOTTANTE, 'bp-float-slow -right-8 bottom-10')}>
-        <p className="flex items-center gap-2 text-sm font-semibold text-[var(--violet-900)]"><CreditCard className="size-4 text-[var(--accent)]" /> Frais refacturés au client</p>
+        <p className="flex items-center gap-2 text-sm font-semibold text-[var(--violet-900)]"><CreditCard className="size-4 text-[var(--violet-600)]" /> Frais refacturés au client</p>
       </div>
     </div>
   );
@@ -87,9 +87,9 @@ function SceneActe() {
   ];
   const n = useCycle(lignes.length, 1100);
   const notes = [
-    { a: 1, t: 'Article 1844-7 vérifié', c: '#7551e8' },
-    { a: 3, t: 'Liquidateur et pouvoirs', c: '#ea42fd' },
-    { a: 5, t: 'Mentions de l’annonce prêtes', c: '#ff887b' },
+    { a: 1, t: 'Article 1844-7 vérifié', c: '#361fab' },
+    { a: 3, t: 'Liquidateur et pouvoirs', c: '#361fab' },
+    { a: 5, t: 'Mentions de l’annonce prêtes', c: '#361fab' },
   ];
   return (
     <div className="relative mx-auto w-full max-w-[540px]">
@@ -106,16 +106,16 @@ function SceneActe() {
           </p>
           <div className="mt-5 flex items-center justify-between gap-3 border-t border-[var(--ink-100)] pt-4">
             <span className="flex items-center gap-1.5 text-xs text-[var(--ink-500)]"><PenLine className="size-3.5" /> D’après le modèle du cabinet</span>
-            <span className={cn('shrink-0 rotate-[-6deg] rounded-lg border-2 px-2.5 py-1 font-mono text-[11px] font-bold uppercase tracking-wider transition-all duration-500', n >= lignes.length ? 'scale-100 border-[#ea42fd] text-[#ea42fd] opacity-100' : 'scale-150 border-transparent text-transparent opacity-0')}>
+            <span className={cn('shrink-0 rotate-[-6deg] rounded-lg border-2 px-2.5 py-1 font-mono text-[11px] font-bold uppercase tracking-wider transition-all duration-500', n >= lignes.length ? 'scale-100 border-[var(--violet-600)] text-[var(--violet-600)] opacity-100' : 'scale-150 border-transparent text-transparent opacity-0')}>
               Prêt à signer
             </span>
           </div>
         </div>
         {/* Marge : annotations de l'agent */}
-        <div className="hidden space-y-3 border-l border-dashed border-[var(--violet-200)] bg-[var(--violet-50)]/60 p-4 sm:block">
+        <div className="hidden space-y-3 border-l border-[var(--ink-100)] bg-[#f7f7fa] p-4 sm:block">
           <p className="font-mono text-[10px] font-semibold uppercase tracking-wider text-[var(--violet-600)]">Notes de l’agent</p>
           {notes.map((x) => (
-            <div key={x.t} className={cn('rounded-xl border border-[var(--violet-900)]/70 bg-white px-2.5 py-2 shadow-[2px_2px_0_rgba(8,3,49,0.8)] transition-all duration-500', n >= x.a ? 'translate-x-0 opacity-100' : 'translate-x-2 opacity-0')}>
+            <div key={x.t} className={cn('rounded-lg border border-[var(--ink-150)] bg-white px-2.5 py-2 shadow-sm transition-all duration-500', n >= x.a ? 'translate-x-0 opacity-100' : 'translate-x-2 opacity-0')}>
               <p className="flex items-start gap-1.5 text-[11px] font-semibold leading-snug text-[var(--violet-900)]">
                 <span className="mt-px grid size-4 shrink-0 place-items-center rounded-full text-white" style={{ background: x.c }}><Check className="size-2.5" /></span>
                 {x.t}
@@ -140,7 +140,7 @@ function SceneGroupe() {
           <span className="rounded-full bg-[var(--violet-50)] px-2.5 py-1 text-[11px] font-semibold text-[var(--violet-700)]">{faites}/{filiales.length} prêtes</span>
         </div>
         <div className="mt-5 flex flex-col items-center">
-          <div className="rounded-xl border border-[var(--violet-900)]/80 bg-gradient-to-r from-[#7551e8] to-[#ea42fd] px-5 py-2.5 text-sm font-semibold text-white shadow-[3px_3px_0_rgba(8,3,49,0.85)]">HOLDING DU GROUPE</div>
+          <div className="rounded-lg bg-[#140d2e] px-5 py-2.5 text-sm font-semibold text-white">HOLDING DU GROUPE</div>
           <div className="h-5 w-px bg-[var(--violet-900)]/40" />
           <div className="h-px w-[86%] bg-[var(--violet-900)]/40" />
           <div className="grid w-full grid-cols-2 gap-3 pt-5 sm:grid-cols-4">
@@ -164,7 +164,7 @@ function SceneGroupe() {
         <p className="flex items-center gap-2 text-sm font-semibold text-[var(--violet-900)]"><FileText className="size-4 text-[var(--violet-600)]" /> Statuts à jour (RNE)</p>
       </div>
       <div className={cn(FLOTTANTE, 'bp-float-slow -bottom-6 -right-6')}>
-        <p className="flex items-center gap-2 text-sm font-semibold text-[var(--violet-900)]"><ShieldCheck className="size-4 text-[var(--accent)]" /> Validation de la direction</p>
+        <p className="flex items-center gap-2 text-sm font-semibold text-[var(--violet-900)]"><ShieldCheck className="size-4 text-[var(--violet-600)]" /> Validation de la direction</p>
       </div>
     </div>
   );
@@ -193,41 +193,39 @@ export function HeroMetier({
 }) {
   const Scene = SCENES[metier] ?? ScenePortefeuille;
   return (
-    <section className="relative overflow-hidden bg-[#fbfaff]">
+    <section className="relative overflow-hidden bg-white">
       <div
         aria-hidden="true"
         className="pointer-events-none absolute inset-0"
         style={{
           background:
-            'radial-gradient(ellipse 700px 520px at 4% 0%, rgba(255,190,140,0.4), transparent 60%),' +
-            'radial-gradient(ellipse 820px 620px at 75% 25%, rgba(117,81,232,0.2), transparent 65%),' +
-            'radial-gradient(ellipse 700px 560px at 100% 100%, rgba(234,66,253,0.16), transparent 62%)',
+            'radial-gradient(ellipse 900px 620px at 78% 30%, rgba(117,81,232,0.09), transparent 65%)',
         }}
       />
-      <div aria-hidden="true" className="pointer-events-none absolute inset-x-0 bottom-0 h-40 bg-gradient-to-b from-transparent to-[#fbfaff]" />
+      <div aria-hidden="true" className="pointer-events-none absolute inset-x-0 bottom-0 h-40 bg-gradient-to-b from-transparent to-white" />
       <div className="relative mx-auto grid w-full max-w-6xl items-center gap-14 px-5 pb-24 pt-36 sm:px-8 lg:grid-cols-[1.05fr_0.95fr] lg:pt-40">
         <div>
-          <span className="inline-flex items-center gap-2 rounded-full bg-[var(--violet-600)] px-3 py-1 text-xs font-semibold text-white">
-            <Sparkles className="size-3.5 text-[#ffbe8c]" /> {kicker}
+          <span className="inline-flex items-center gap-2 rounded-full border border-[var(--ink-150)] bg-white px-3 py-1 text-xs font-semibold text-[var(--violet-700)]">
+            <Sparkles className="size-3.5" /> {kicker}
           </span>
           <h1 className="!mt-6 font-[Sora] !text-[clamp(2.2rem,4.6vw,3.6rem)] !font-bold !leading-[1.04] !tracking-[-0.03em] !text-[var(--violet-900)]">
             {ligne1}
             <br />
-            <span className="bg-gradient-to-r from-[#ffbe8c] via-[#ff887b] to-[#ea42fd] bg-clip-text text-transparent">{ligne2}</span>
+            <span className="text-[var(--violet-600)]">{ligne2}</span>
           </h1>
           <p className="!mt-6 max-w-xl text-base !leading-relaxed !text-[var(--ink-600)] sm:text-lg">{sousTitre}</p>
           <ul className="mt-6 space-y-2">
             {points.map((p) => (
               <li key={p} className="flex items-start gap-2 text-[15px] text-[var(--ink-700)]">
-                <Check className="mt-0.5 size-4 shrink-0 text-[var(--accent)]" /> {p}
+                <Check className="mt-0.5 size-4 shrink-0 text-[var(--violet-600)]" /> {p}
               </li>
             ))}
           </ul>
           <div className="mt-8 flex flex-wrap gap-3">
-            <a href="/auth/signup" className="inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-[#ff887b] to-[#ea42fd] px-6 py-3 text-[15px] font-semibold !text-white no-underline shadow-[0_12px_30px_rgba(234,66,253,0.35)] transition-transform hover:-translate-y-0.5">
+            <a href="/auth/signup" className="inline-flex items-center gap-2 rounded-lg bg-[#140d2e] px-6 py-3 text-[15px] font-semibold !text-white no-underline transition-colors hover:bg-[var(--violet-600)]">
               Créer un compte <ArrowRight className="size-4" />
             </a>
-            <a href="/auth/signup" className="inline-flex items-center rounded-full border border-[var(--violet-900)]/20 bg-white px-6 py-3 text-[15px] font-semibold !text-[var(--violet-900)] no-underline transition-colors hover:border-[var(--violet-500)]">
+            <a href="/auth/signup" className="inline-flex items-center rounded-lg border border-[var(--ink-200)] bg-white px-6 py-3 text-[15px] font-semibold !text-[var(--violet-900)] no-underline transition-colors hover:border-[var(--violet-500)]">
               Demander une démo
             </a>
           </div>
