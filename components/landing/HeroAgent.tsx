@@ -12,7 +12,7 @@ import {
   RotateCcw, ScanLine, PenLine,
 } from 'lucide-react';
 import { Arrow } from '@/components/icons';
-import { DotBook } from './DotBook';
+import { DotInfinity } from './DotInfinity';
 import { cn } from '@/lib/utils';
 
 const SERIF = { fontFamily: "'Instrument Serif', 'Fraunces', Georgia, serif" };
@@ -345,9 +345,9 @@ export function HeroAgent({
           </a>
         </p>
 
-        {/* Livre en points (écho au logo) qui s'ouvre et feuillette */}
+        {/* Signe infini en points qui circulent (couleurs du logo) */}
         {livre && !demande && (
-          <DotBook className="pointer-events-none relative left-1/2 -mb-20 -mt-6 block h-[340px] w-screen max-w-[1400px] -translate-x-1/2 sm:h-[460px] lg:h-[560px]" />
+          <DotInfinity className="pointer-events-none relative left-1/2 -mb-16 -mt-4 block h-[300px] w-screen max-w-[1400px] -translate-x-1/2 sm:h-[400px] lg:h-[480px]" />
         )}
 
         {demande && scenario && (
