@@ -26,6 +26,7 @@ export function PersonaLanding({ persona }: { persona: PersonaContent }) {
         sousTitre={m.sousTitre}
         exemples={m.exemples}
         chips={m.chips}
+        compact
       />
       <FeatureRail titre={m.rail.titre} sousTitre={m.rail.sousTitre} cartes={m.rail.cartes} />
       <Defis titre={m.defis.titre} items={m.defis.items} />

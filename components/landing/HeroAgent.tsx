@@ -173,6 +173,7 @@ export type HeroAgentProps = {
   exemples?: string[];
   chips?: readonly (readonly [string, string])[];
   livre?: boolean;
+  compact?: boolean; // titre plus petit (phrases plus longues des pages métier)
 };
 
 export function HeroAgent({
@@ -183,6 +184,7 @@ export function HeroAgent({
   exemples = EXEMPLES,
   chips = CHIPS,
   livre = true,
+  compact = false,
 }: HeroAgentProps = {}) {
   const [value, setValue] = useState('');
   const [focused, setFocused] = useState(false);
@@ -236,7 +238,7 @@ export function HeroAgent({
         </p>
 
         <h1
-          className="!mx-auto !mt-6 max-w-4xl font-[Sora] text-[clamp(2.5rem,6.6vw,5rem)] !font-bold !leading-[1.02] !tracking-[-0.03em] !text-[var(--violet-900)]"
+          className={`!mx-auto !mt-6 max-w-4xl font-[Sora] ${compact ? 'text-[clamp(2.1rem,4.6vw,3.6rem)]' : 'text-[clamp(2.5rem,6.6vw,5rem)]'} !font-bold !leading-[1.02] !tracking-[-0.03em] !text-[var(--violet-900)]`}
         >
           {ligne1}
           <br />
