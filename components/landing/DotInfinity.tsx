@@ -26,8 +26,8 @@ function couleur(u: number): RGB {
   return [a[0] + (b[0] - a[0]) * f, a[1] + (b[1] - a[1]) * f, a[2] + (b[2] - a[2]) * f];
 }
 
-const SEGMENTS = 220; // points le long de la boucle
-const ANNEAU = 9; // points autour du ruban
+const SEGMENTS = 320; // points le long de la boucle
+const ANNEAU = 10; // points autour du ruban
 const VITESSE = 0.00018; // circulation (tours par ms ≈ 1 tour / 35 s)
 
 export function DotInfinity({ className }: { className?: string }) {
@@ -71,7 +71,7 @@ export function DotInfinity({ className }: { className?: string }) {
 
       const taille = Math.min(w * 0.9, h * 2.3);
       const a = taille * 0.5;
-      const rayon = taille * 0.045;
+      const rayon = taille * 0.04;
       const lacet = reduit ? 0.2 : Math.sin(t0 / 6500) * 0.38;
       const tangage = 0.55 + Math.sin(t0 / 9000) * 0.08;
       const cy = Math.cos(lacet), sy = Math.sin(lacet), cp = Math.cos(tangage), sp = Math.sin(tangage);
@@ -109,14 +109,14 @@ export function DotInfinity({ className }: { className?: string }) {
           const Z2 = Y * sp + Z1 * cp;
           X = X1; Y = Y1; Z = Z2;
           const s = focale / (focale + Z + taille * 0.5);
-          points.push({ x: w / 2 + X * s, y: h * 0.5 + Y * s, z: Z, c: base, r: (1.15 + onde * 0.9) * s, al: 0.35 + onde * 0.65 });
+          points.push({ x: w / 2 + X * s, y: h * 0.5 + Y * s, z: Z, c: base, r: (1.45 + onde * 1.0) * s, al: 0.62 + onde * 0.38 });
         }
       }
 
       points.sort((p, q) => q.z - p.z);
       for (const p of points) {
-        const prof = clamp(0.95 - (p.z / taille) * 0.9, 0.25, 1);
-        ctx!.fillStyle = `rgba(${p.c[0] | 0},${p.c[1] | 0},${p.c[2] | 0},${clamp(p.al * prof, 0.12, 1)})`;
+        const prof = clamp(1 - (p.z / taille) * 0.7, 0.5, 1);
+        ctx!.fillStyle = `rgba(${p.c[0] | 0},${p.c[1] | 0},${p.c[2] | 0},${clamp(p.al * prof, 0.3, 1)})`;
         ctx!.beginPath();
         ctx!.arc(p.x, p.y, Math.max(0.6, p.r), 0, Math.PI * 2);
         ctx!.fill();
