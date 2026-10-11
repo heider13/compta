@@ -10,6 +10,7 @@ export type Metier = {
   ligne1: string;
   ligne2: string;
   sousTitre: string;
+  points: string[];
   exemples: string[];
   chips: [string, string][];
   rail: { titre: [string, string]; sousTitre: string; cartes: Carte[] };
@@ -24,6 +25,7 @@ export const METIERS: Record<string, Metier> = {
     ligne1: 'Le juridique de vos clients.',
     ligne2: 'Préparé pendant que vous chiffrez.',
     sousTitre: 'Créations, modifications, mises en sommeil et cessations de tout le portefeuille : l’agent prépare, votre cabinet valide.',
+    points: ['Plusieurs clients préparés en une seule demande', 'Statuts, PV et annonces rédigés à partir du registre', 'Frais officiels suivis et refacturés au client'],
     exemples: [
       'Créer la SASU d’un client, capital 1 000 €',
       'Mettre en sommeil 3 sociétés du portefeuille',
@@ -78,6 +80,7 @@ export const METIERS: Record<string, Metier> = {
     ligne1: 'Consacrez vos heures au droit.',
     ligne2: 'L’agent s’occupe de la formalité.',
     sousTitre: 'Constitutions, cessions, dissolutions : des projets d’actes à votre style, contrôlés et prêts à signer, jusqu’au brouillon au Guichet unique.',
+    points: ['Vos modèles d’actes repris : structure, clauses, mentions', 'Régularisations du greffe analysées et préparées', 'Signature électronique de vos clients'],
     exemples: [
       'Rédiger le PV de dissolution anticipée d’une SARL',
       'Préparer la cession de parts et le changement de gérant',
@@ -132,6 +135,7 @@ export const METIERS: Record<string, Metier> = {
     ligne1: 'Toutes vos entités.',
     ligne2: 'Un seul assistant juridique.',
     sousTitre: 'Changements de dirigeants, transferts de siège, bénéficiaires effectifs : le secrétariat juridique de vos sociétés, préparé et centralisé.',
+    points: ['Un même changement préparé pour plusieurs entités', 'Statuts et PV à jour de chaque société, au RNE', 'Aucun dépôt sans la validation de la direction'],
     exemples: [
       'Nommer un nouveau président dans 4 filiales',
       'Transférer le siège de la holding à Paris',
