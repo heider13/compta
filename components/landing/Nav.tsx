@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import { ChevronDown } from 'lucide-react';
 import { Arrow } from '@/components/icons';
 import { Logo } from '@/components/brand/Logo';
@@ -18,6 +19,7 @@ type MenuKey = 'modules' | 'solutions' | null;
 // surface : fond du haut de page sous la nav transparente (dark = hero sombre, light = hero clair).
 // announcement : bandeau d'annonce affiché au-dessus de la nav.
 export function Nav({ surface = 'dark', announcement }: { surface?: 'dark' | 'light'; announcement?: React.ReactNode } = {}) {
+  const pathname = usePathname();
   const [scrolled, setScrolled] = useState(false);
   const [open, setOpen] = useState<MenuKey>(null);
   const solid = scrolled || open !== null;
@@ -44,9 +46,29 @@ export function Nav({ surface = 'dark', announcement }: { surface?: 'dark' | 'li
       )}
       onMouseLeave={() => setOpen(null)}
     >
-      {announcement && !scrolled && (
-        <div className="bg-[#0e0b1a] px-4 py-2 text-center text-[12px] font-medium tracking-wide text-white/80 sm:text-[13px]">
-          {announcement}
+      {/* Barre des publics (comme Pennylane) : un onglet par métier, l'actif souligné */}
+      {!scrolled && (
+        <div className="border-b border-[var(--ink-100)] bg-white/90 backdrop-blur-md">
+          <Container className="flex h-10 items-center justify-between gap-4">
+            <div className="-mb-px flex h-full items-stretch gap-5 overflow-x-auto [scrollbar-width:none] sm:gap-7 [&::-webkit-scrollbar]:hidden">
+              {PERSONA_LIST.map((p) => {
+                const actif = pathname === `/${p.slug}`;
+                return (
+                  <Link
+                    key={p.slug}
+                    href={`/${p.slug}`}
+                    className={cn(
+                      'flex shrink-0 items-center border-b-2 text-[13px] no-underline transition-colors sm:text-sm',
+                      actif ? 'border-[var(--violet-900)] font-semibold !text-[var(--violet-900)]' : 'border-transparent !text-[var(--ink-500)] hover:!text-[var(--violet-900)]',
+                    )}
+                  >
+                    {p.nom}
+                  </Link>
+                );
+              })}
+            </div>
+            {announcement && <p className="hidden truncate text-[12px] font-medium !text-[var(--ink-500)] lg:block">{announcement}</p>}
+          </Container>
         </div>
       )}
       <Container
