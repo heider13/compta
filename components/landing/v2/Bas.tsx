@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { Logo } from '@/components/brand/Logo';
 import { Container } from '../ui';
 
-export function CtaBand() {
+export function CtaBand({ titre = ['Prêt à automatiser', 'vos formalités'] }: { titre?: [string, string] } = {}) {
   return (
     <section className="bg-gradient-to-b from-white to-[#fbfaff] px-3 pb-10 pt-4 sm:px-6">
       <div className="relative mx-auto max-w-[1400px] overflow-hidden rounded-[32px] bg-[#0e0b1a] py-20 shadow-[0_30px_80px_rgba(54,31,171,0.25)] sm:rounded-[44px] sm:py-24">
@@ -19,7 +19,7 @@ export function CtaBand() {
         }}
       />
       <Container className="relative text-center">
-        <h2 className="font-[Sora] !text-[clamp(1.9rem,4vw,3rem)] !font-semibold !text-white">Prêt à automatiser <span className="bg-gradient-to-r from-[#ffbe8c] via-[#ff887b] to-[#ea42fd] bg-clip-text text-transparent">vos formalités</span> ?</h2>
+        <h2 className="font-[Sora] !text-[clamp(1.9rem,4vw,3rem)] !font-semibold !text-white">{titre[0]} <span className="bg-gradient-to-r from-[#ffbe8c] via-[#ff887b] to-[#ea42fd] bg-clip-text text-transparent">{titre[1].replace(/\s*\?$/, '')}</span> ?</h2>
         <p className="!mx-auto !mt-4 max-w-2xl !text-white/75">
           Décrivez votre première formalité : l’agent prépare le dossier, les actes et le brouillon INPI. Vous validez, c’est tout.
         </p>

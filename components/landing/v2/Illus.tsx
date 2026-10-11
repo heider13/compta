@@ -146,6 +146,43 @@ export const ILLUS: Record<string, React.ReactNode> = {
   ),
 };
 
+// Illustrations propres aux pages métier
+Object.assign(ILLUS, {
+  modeles: (
+    <div className="relative">
+      <div className="absolute left-3 top-2 h-24 w-32 rotate-[-6deg] rounded-lg border border-[var(--violet-900)]/50 bg-[var(--violet-50)]" />
+      <Fenetre className="relative w-36">
+        <p className="text-[8px] font-semibold text-[var(--violet-900)]">Modèle du cabinet</p>
+        <p className="mt-1 text-[7px] text-[var(--ink-500)]">Article 12 — Agrément</p>
+        <Lignes n={3} className="mt-1.5" />
+      </Fenetre>
+      <Pastille icon={FileText} tone="corail" className="absolute -right-3 -top-3" />
+    </div>
+  ),
+  filiales: (
+    <div className="relative flex flex-col items-center gap-2">
+      <div className="rounded-md border border-[var(--violet-900)]/70 bg-[var(--violet-100)] px-3 py-1 text-[8px] font-semibold text-[var(--violet-900)] shadow-[1.5px_1.5px_0_rgba(8,3,49,0.8)]">HOLDING</div>
+      <div className="h-2 w-px bg-[var(--violet-900)]/50" />
+      <div className="flex gap-1.5">
+        {['Filiale A', 'Filiale B', 'Filiale C'].map((f) => (
+          <div key={f} className="rounded-md border border-[var(--violet-900)]/70 bg-white px-1.5 py-1 text-[7px] text-[var(--violet-900)] shadow-[1.5px_1.5px_0_rgba(8,3,49,0.8)]">{f}</div>
+        ))}
+      </div>
+    </div>
+  ),
+  beneficiaires: (
+    <div className="relative">
+      <Fenetre className="w-36">
+        <p className="text-[8px] font-semibold text-[var(--violet-900)]">Bénéficiaires effectifs</p>
+        {[['M. Martin', '60 %'], ['Mme Durand', '40 %']].map(([n, p]) => (
+          <div key={n} className="mt-1 flex items-center justify-between text-[7px] text-[var(--violet-900)]"><span>{n}</span><span className="font-semibold">{p}</span></div>
+        ))}
+      </Fenetre>
+      <Pastille icon={Users} tone="peche" className="absolute -right-3 -top-3" />
+    </div>
+  ),
+});
+
 // Illustrations des cartes « agents »
 export const ILLUS_AGENTS: Record<string, React.ReactNode> = {
   formalites: (

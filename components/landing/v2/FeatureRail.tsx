@@ -22,7 +22,13 @@ const CARTES = [
   { key: 'signature', titre: 'Signature électronique', texte: 'Actes signés par vos clients, à distance' },
 ];
 
-export function FeatureRail() {
+type Carte = { key: string; titre: string; texte: string };
+
+export function FeatureRail({
+  titre = ['Toutes vos formalités,', 'au même endroit'],
+  sousTitre = 'De la création à la radiation : l’agent prépare, vous validez et déposez.',
+  cartes = CARTES,
+}: { titre?: [string, string]; sousTitre?: string; cartes?: Carte[] } = {}) {
   const rail = useRef<HTMLDivElement>(null);
   const defiler = (sens: 1 | -1) => rail.current?.scrollBy({ left: sens * 320, behavior: 'smooth' });
 
@@ -31,10 +37,10 @@ export function FeatureRail() {
       <Halos />
       <Container className="relative">
         <h2 className="text-center font-[Sora] !text-[clamp(1.75rem,3.4vw,2.6rem)] !font-semibold !text-[var(--violet-900)]">
-          Toutes vos formalités, <Degrade>au même endroit</Degrade>
+          {titre[0]} <Degrade>{titre[1]}</Degrade>
         </h2>
         <p className="!mx-auto !mt-3 max-w-2xl text-center !text-[var(--ink-600)]">
-          De la création à la radiation : l’agent prépare, vous validez et déposez.
+          {sousTitre}
         </p>
       </Container>
 
@@ -43,7 +49,7 @@ export function FeatureRail() {
           ref={rail}
           className="flex snap-x snap-mandatory gap-4 overflow-x-auto px-5 pb-4 [scrollbar-width:none] sm:px-8 [&::-webkit-scrollbar]:hidden"
         >
-          {CARTES.map((c, i) => {
+          {cartes.map((c, i) => {
             const t = teinte(i);
             return (
             <article

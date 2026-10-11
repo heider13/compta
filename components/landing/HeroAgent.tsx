@@ -164,16 +164,35 @@ function useTypewriter(phrases: string[], active: boolean) {
   return text;
 }
 
-export function HeroAgent() {
+// Contenu personnalisable (pages métier) ; par défaut, celui de l'accueil.
+export type HeroAgentProps = {
+  kicker?: React.ReactNode;
+  ligne1?: string;
+  ligne2?: string;
+  sousTitre?: React.ReactNode;
+  exemples?: string[];
+  chips?: readonly (readonly [string, string])[];
+  livre?: boolean;
+};
+
+export function HeroAgent({
+  kicker,
+  ligne1 = 'Décrivez la formalité.',
+  ligne2 = 'L’agent la prépare.',
+  sousTitre,
+  exemples = EXEMPLES,
+  chips = CHIPS,
+  livre = true,
+}: HeroAgentProps = {}) {
   const [value, setValue] = useState('');
   const [focused, setFocused] = useState(false);
   const [demande, setDemande] = useState<string | null>(null);
   const scenario = useMemo(() => (demande ? detecter(demande) : null), [demande]);
-  const placeholder = useTypewriter(EXEMPLES, !focused && !value && !demande);
+  const placeholder = useTypewriter(exemples, !focused && !value && !demande);
   const panelRef = useRef<HTMLDivElement>(null);
 
   function lancer(texte: string) {
-    const t = texte.trim() || EXEMPLES[0];
+    const t = texte.trim() || exemples[0];
     setDemande(t);
     setValue('');
     setTimeout(() => panelRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 80);
@@ -207,24 +226,32 @@ export function HeroAgent() {
 
       <div className="relative mx-auto w-full max-w-5xl px-4 pb-20 pt-36 text-center sm:px-6 sm:pt-40">
         <p className="inline-flex items-center gap-2 font-mono !text-[11px] uppercase tracking-[0.28em] !text-[var(--ink-500)] sm:text-xs">
-          Connecté au
-          <span className="rounded-full bg-[var(--violet-600)] px-2 py-0.5 text-white">Guichet unique</span>
-          INPI
+          {kicker ?? (
+            <>
+              Connecté au
+              <span className="rounded-full bg-[var(--violet-600)] px-2 py-0.5 text-white">Guichet unique</span>
+              INPI
+            </>
+          )}
         </p>
 
         <h1
           className="!mx-auto !mt-6 max-w-4xl font-[Sora] text-[clamp(2.5rem,6.6vw,5rem)] !font-bold !leading-[1.02] !tracking-[-0.03em] !text-[var(--violet-900)]"
         >
-          Décrivez la formalité.
+          {ligne1}
           <br />
           <span className="bg-gradient-to-r from-[#ffbe8c] via-[#ff887b] to-[#ea42fd] bg-clip-text text-transparent">
-            L’agent la prépare.
+            {ligne2}
           </span>
         </h1>
 
         <p className="!mx-auto !mt-6 max-w-xl text-base leading-relaxed !text-[var(--ink-600)] sm:text-lg">
-          Création, modification, cessation, régularisation.
-          <br className="hidden sm:block" /> De la conversation au brouillon INPI — vous validez, signez, payez.
+          {sousTitre ?? (
+            <>
+              Création, modification, cessation, régularisation.
+              <br className="hidden sm:block" /> De la conversation au brouillon INPI — vous validez, signez, payez.
+            </>
+          )}
         </p>
 
         {/* Zone de saisie */}
@@ -277,7 +304,7 @@ export function HeroAgent() {
         </form>
 
         <div className="mx-auto mt-4 flex max-w-3xl flex-wrap justify-center gap-2">
-          {CHIPS.map(([label, texte]) => (
+          {chips.map(([label, texte]) => (
             <button
               key={label}
               type="button"
@@ -297,7 +324,7 @@ export function HeroAgent() {
         </p>
 
         {/* Livre en points (écho au logo) qui s'ouvre et feuillette */}
-        {!demande && (
+        {livre && !demande && (
           <DotBook className="pointer-events-none relative left-1/2 -mb-20 -mt-6 block h-[340px] w-screen max-w-[1400px] -translate-x-1/2 sm:h-[460px] lg:h-[560px]" />
         )}
 
