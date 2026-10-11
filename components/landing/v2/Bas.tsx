@@ -3,17 +3,15 @@
 import Link from 'next/link';
 import { Logo } from '@/components/brand/Logo';
 import { Container } from '../ui';
-import { FONDU_VERTICAL, fondSombre } from './Couleurs';
 
 export function CtaBand() {
   return (
-    <section className="relative overflow-hidden py-[260px]" style={{ background: fondSombre('#0e0b1a', '#ffffff', '#fbfaff') }}>
+    <section className="bg-gradient-to-b from-white to-[#fbfaff] px-3 pb-10 pt-4 sm:px-6">
+      <div className="relative mx-auto max-w-[1400px] overflow-hidden rounded-[32px] bg-[#0e0b1a] py-20 shadow-[0_30px_80px_rgba(54,31,171,0.25)] sm:rounded-[44px] sm:py-24">
       <div
         aria-hidden="true"
-        className="absolute inset-0"
+        className="pointer-events-none absolute inset-0"
         style={{
-          maskImage: FONDU_VERTICAL,
-          WebkitMaskImage: FONDU_VERTICAL,
           background:
             'radial-gradient(ellipse 700px 460px at 10% 0%, rgba(255,190,140,0.55), transparent 60%),' +
             'radial-gradient(ellipse 820px 520px at 55% 45%, rgba(117,81,232,0.65), transparent 65%),' +
@@ -35,6 +33,7 @@ export function CtaBand() {
         </div>
         <p className="!mt-4 text-xs !text-white/55">Aucun dépôt sans votre validation.</p>
       </Container>
+      </div>
     </section>
   );
 }

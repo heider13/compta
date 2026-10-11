@@ -7,7 +7,7 @@ import { useRef, useState } from 'react';
 import { ArrowLeft, ArrowRight, Sparkles } from 'lucide-react';
 import { Container } from '../ui';
 import { ILLUS_AGENTS } from './Illus';
-import { Degrade, Halos, fondSombre, teinte } from './Couleurs';
+import { Degrade, teinte } from './Couleurs';
 
 const AGENTS = [
   { key: 'formalites', titre: 'Agent Formalités', texte: 'Décrivez l’opération : il pose les bonnes questions, crée le dossier, rédige les statuts et les actes, puis prépare le brouillon au Guichet unique.' },
@@ -29,8 +29,18 @@ export function AgentsCarousel() {
   };
 
   return (
-    <section id="agents" className="relative scroll-mt-24 overflow-hidden py-[260px]" style={{ background: fondSombre('#140d2e', '#fff8f3', '#fff5fb') }}>
-      <Halos variante="sombre" />
+    <section id="agents" className="scroll-mt-24 bg-gradient-to-b from-[#fff8f3] to-[#fff5fb] px-3 py-6 sm:px-6">
+      <div className="relative mx-auto max-w-[1400px] overflow-hidden rounded-[32px] bg-[#140d2e] py-20 shadow-[0_30px_80px_rgba(54,31,171,0.25)] sm:rounded-[44px] sm:py-24">
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-0"
+          style={{
+            background:
+              'radial-gradient(ellipse 620px 460px at 0% 0%, rgba(255,190,140,0.35), transparent 62%),' +
+              'radial-gradient(ellipse 760px 560px at 85% 20%, rgba(234,66,253,0.32), transparent 62%),' +
+              'radial-gradient(ellipse 820px 520px at 45% 115%, rgba(117,81,232,0.55), transparent 65%)',
+          }}
+        />
       <Container className="relative grid items-center gap-10 lg:grid-cols-[0.9fr_1.1fr]">
         <div>
           <span className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-3 py-1 text-xs font-semibold text-white backdrop-blur">
@@ -94,6 +104,7 @@ export function AgentsCarousel() {
           ))}
         </div>
       </Container>
+      </div>
     </section>
   );
 }
