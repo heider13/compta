@@ -42,7 +42,7 @@ function ScenePortefeuille() {
           <span className="rounded-full bg-[var(--violet-50)] px-2.5 py-1 text-[11px] font-semibold text-[var(--violet-700)]">{prets}/{clients.length} prêts</span>
         </div>
         <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-[var(--ink-100)]">
-          <div className="h-full rounded-full bg-[var(--violet-600)] transition-all duration-700" style={{ width: `${(prets / clients.length) * 100}%` }} />
+          <div className="h-full rounded-full bg-gradient-to-r from-[#7551e8] to-[#c13ad6] transition-all duration-700" style={{ width: `${(prets / clients.length) * 100}%` }} />
         </div>
         <ul className="mt-4 space-y-2">
           {clients.map(([nom, op], i) => {
@@ -70,7 +70,7 @@ function ScenePortefeuille() {
         <p className="flex items-center gap-2 text-sm font-semibold text-[var(--violet-900)]"><Layers className="size-4 text-[var(--violet-600)]" /> Lot : 5 clients</p>
       </div>
       <div className={cn(FLOTTANTE, 'bp-float-slow -right-8 bottom-10')}>
-        <p className="flex items-center gap-2 text-sm font-semibold text-[var(--violet-900)]"><CreditCard className="size-4 text-[var(--violet-600)]" /> Frais refacturés au client</p>
+        <p className="flex items-center gap-2 text-sm font-semibold text-[var(--violet-900)]"><CreditCard className="size-4 text-[var(--accent)]" /> Frais refacturés au client</p>
       </div>
     </div>
   );
@@ -88,8 +88,8 @@ function SceneActe() {
   const n = useCycle(lignes.length, 1100);
   const notes = [
     { a: 1, t: 'Article 1844-7 vérifié', c: '#361fab' },
-    { a: 3, t: 'Liquidateur et pouvoirs', c: '#361fab' },
-    { a: 5, t: 'Mentions de l’annonce prêtes', c: '#361fab' },
+    { a: 3, t: 'Liquidateur et pouvoirs', c: '#a43bc9' },
+    { a: 5, t: 'Mentions de l’annonce prêtes', c: '#e2675c' },
   ];
   return (
     <div className="relative mx-auto w-full max-w-[540px]">
@@ -140,7 +140,7 @@ function SceneGroupe() {
           <span className="rounded-full bg-[var(--violet-50)] px-2.5 py-1 text-[11px] font-semibold text-[var(--violet-700)]">{faites}/{filiales.length} prêtes</span>
         </div>
         <div className="mt-5 flex flex-col items-center">
-          <div className="rounded-lg bg-[#140d2e] px-5 py-2.5 text-sm font-semibold text-white">HOLDING DU GROUPE</div>
+          <div className="rounded-lg bg-gradient-to-r from-[#361fab] to-[#7551e8] px-5 py-2.5 text-sm font-semibold text-white">HOLDING DU GROUPE</div>
           <div className="h-5 w-px bg-[var(--violet-900)]/40" />
           <div className="h-px w-[86%] bg-[var(--violet-900)]/40" />
           <div className="grid w-full grid-cols-2 gap-3 pt-5 sm:grid-cols-4">
@@ -164,7 +164,7 @@ function SceneGroupe() {
         <p className="flex items-center gap-2 text-sm font-semibold text-[var(--violet-900)]"><FileText className="size-4 text-[var(--violet-600)]" /> Statuts à jour (RNE)</p>
       </div>
       <div className={cn(FLOTTANTE, 'bp-float-slow -bottom-6 -right-6')}>
-        <p className="flex items-center gap-2 text-sm font-semibold text-[var(--violet-900)]"><ShieldCheck className="size-4 text-[var(--violet-600)]" /> Validation de la direction</p>
+        <p className="flex items-center gap-2 text-sm font-semibold text-[var(--violet-900)]"><ShieldCheck className="size-4 text-[var(--accent)]" /> Validation de la direction</p>
       </div>
     </div>
   );
@@ -193,36 +193,38 @@ export function HeroMetier({
 }) {
   const Scene = SCENES[metier] ?? ScenePortefeuille;
   return (
-    <section className="relative overflow-hidden bg-white">
+    <section className="relative overflow-hidden bg-[#fcfbff]">
       <div
         aria-hidden="true"
         className="pointer-events-none absolute inset-0"
         style={{
           background:
-            'radial-gradient(ellipse 900px 620px at 78% 30%, rgba(117,81,232,0.09), transparent 65%)',
+            'radial-gradient(ellipse 900px 620px at 78% 30%, rgba(117,81,232,0.16), transparent 65%),' +
+            'radial-gradient(ellipse 620px 460px at 0% 0%, rgba(255,136,123,0.12), transparent 60%),' +
+            'radial-gradient(ellipse 700px 500px at 100% 100%, rgba(193,58,214,0.08), transparent 62%)',
         }}
       />
-      <div aria-hidden="true" className="pointer-events-none absolute inset-x-0 bottom-0 h-40 bg-gradient-to-b from-transparent to-white" />
+      <div aria-hidden="true" className="pointer-events-none absolute inset-x-0 bottom-0 h-40 bg-gradient-to-b from-transparent to-[#fcfbff]" />
       <div className="relative mx-auto grid w-full max-w-6xl items-center gap-14 px-5 pb-24 pt-36 sm:px-8 lg:grid-cols-[1.05fr_0.95fr] lg:pt-40">
         <div>
-          <span className="inline-flex items-center gap-2 rounded-full border border-[var(--ink-150)] bg-white px-3 py-1 text-xs font-semibold text-[var(--violet-700)]">
+          <span className="inline-flex items-center gap-2 rounded-full border border-[var(--violet-200)] bg-[var(--violet-50)] px-3 py-1 text-xs font-semibold text-[var(--violet-700)]">
             <Sparkles className="size-3.5" /> {kicker}
           </span>
           <h1 className="!mt-6 font-[Sora] !text-[clamp(2.2rem,4.6vw,3.6rem)] !font-bold !leading-[1.04] !tracking-[-0.03em] !text-[var(--violet-900)]">
             {ligne1}
             <br />
-            <span className="text-[var(--violet-600)]">{ligne2}</span>
+            <span className="bg-gradient-to-r from-[#4a2bc4] via-[#7551e8] to-[#c13ad6] bg-clip-text text-transparent">{ligne2}</span>
           </h1>
           <p className="!mt-6 max-w-xl text-base !leading-relaxed !text-[var(--ink-600)] sm:text-lg">{sousTitre}</p>
           <ul className="mt-6 space-y-2">
             {points.map((p) => (
               <li key={p} className="flex items-start gap-2 text-[15px] text-[var(--ink-700)]">
-                <Check className="mt-0.5 size-4 shrink-0 text-[var(--violet-600)]" /> {p}
+                <Check className="mt-0.5 size-4 shrink-0 text-[var(--accent)]" /> {p}
               </li>
             ))}
           </ul>
           <div className="mt-8 flex flex-wrap gap-3">
-            <a href="/auth/signup" className="inline-flex items-center gap-2 rounded-lg bg-[#140d2e] px-6 py-3 text-[15px] font-semibold !text-white no-underline transition-colors hover:bg-[var(--violet-600)]">
+            <a href="/auth/signup" className="inline-flex items-center gap-2 rounded-lg bg-gradient-to-r from-[#361fab] to-[#7551e8] px-6 py-3 text-[15px] font-semibold !text-white no-underline shadow-[0_10px_24px_rgba(54,31,171,0.25)] transition-transform hover:-translate-y-0.5">
               Créer un compte <ArrowRight className="size-4" />
             </a>
             <a href="/auth/signup" className="inline-flex items-center rounded-lg border border-[var(--ink-200)] bg-white px-6 py-3 text-[15px] font-semibold !text-[var(--violet-900)] no-underline transition-colors hover:border-[var(--violet-500)]">
