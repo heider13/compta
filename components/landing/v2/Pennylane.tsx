@@ -111,8 +111,8 @@ export function Reassurance({ adapte, nouveautes }: { adapte: { titre: string; t
         <article className="relative overflow-hidden rounded-3xl border border-white p-7 shadow-[0_10px_30px_rgba(54,31,171,0.08)]" style={{ background: 'linear-gradient(160deg, #ffffff 30%, #efe6ff)' }}>
           <h3 className="font-[Sora] !text-2xl !font-semibold !text-[var(--violet-900)]">Conçu en France</h3>
           <p className="!mt-2 text-sm !text-[var(--ink-600)]">Pensé pour le droit des sociétés français, le Guichet unique et le RNE.</p>
-          <svg viewBox="0 0 200 200" className="absolute -bottom-6 -right-4 h-52 w-52 text-[#7551e8]/25" fill="currentColor" aria-hidden="true">
-            <path d="M92 8l22 10 18-4 10 16 22 8-4 22 16 18-10 18 8 22-18 12-6 22-24 4-14 18-22-8-20 10-14-18-22-6 2-24-16-16 12-18-6-22 20-10 4-22 22-2z" />
+          <svg viewBox="0 0 206 200" className="absolute -bottom-4 -right-2 h-56 w-56 text-[#7551e8]/30" fill="currentColor" aria-hidden="true">
+            <path d="M108 10 L128 18 L150 30 L172 44 L190 64 L186 88 L184 110 L170 124 L176 140 L180 158 L184 170 L164 176 L146 180 L124 176 L104 184 L100 196 L78 192 L56 186 L40 180 L44 158 L46 138 L40 116 L30 102 L8 88 L6 80 L30 72 L46 70 L60 60 L74 56 L86 48 L98 30 Z" /><ellipse cx="196" cy="182" rx="5" ry="11" />
           </svg>
         </article>
         <article className="relative overflow-hidden rounded-3xl border border-white bg-white p-7 shadow-[0_10px_30px_rgba(54,31,171,0.08)]">
