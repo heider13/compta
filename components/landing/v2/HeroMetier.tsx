@@ -97,13 +97,13 @@ function SceneActe() {
         <div className="p-6">
           <p className="font-mono text-[11px] font-semibold uppercase tracking-wider text-[var(--violet-600)]">Procès-verbal des décisions</p>
           <p className="mt-1 font-[Sora] text-lg font-semibold text-[var(--violet-900)]">Dissolution anticipée</p>
-          <div className="mt-4 space-y-2">
+          <p className="mt-4 min-h-[9.5rem] leading-relaxed text-[var(--ink-700)]" style={{ fontFamily: "'Instrument Serif', Georgia, serif", fontSize: 15.5 }}>
             {lignes.map((l, i) => (
-              <p key={l} className={cn('leading-snug text-[var(--ink-700)] transition-all duration-500', i < n ? 'opacity-100' : 'translate-y-1 opacity-0')} style={{ fontFamily: "'Instrument Serif', Georgia, serif", fontSize: 15 }}>
-                {l}
-              </p>
+              <span key={l} className={cn('transition-opacity duration-700', i < n ? 'opacity-100' : 'opacity-0')}>
+                {l}{' '}
+              </span>
             ))}
-          </div>
+          </p>
           <div className="mt-5 flex items-center justify-between gap-3 border-t border-[var(--ink-100)] pt-4">
             <span className="flex items-center gap-1.5 text-xs text-[var(--ink-500)]"><PenLine className="size-3.5" /> D’après le modèle du cabinet</span>
             <span className={cn('shrink-0 rotate-[-6deg] rounded-lg border-2 px-2.5 py-1 font-mono text-[11px] font-bold uppercase tracking-wider transition-all duration-500', n >= lignes.length ? 'scale-100 border-[#ea42fd] text-[#ea42fd] opacity-100' : 'scale-150 border-transparent text-transparent opacity-0')}>
