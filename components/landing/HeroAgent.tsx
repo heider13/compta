@@ -234,6 +234,10 @@ export function HeroAgent({
       />
       {/* Fondu bas : enchaîne en douceur avec la section suivante */}
       <div aria-hidden="true" className="pointer-events-none absolute inset-x-0 bottom-0 h-40 bg-gradient-to-b from-transparent to-[#fbfaff]" />
+      {/* Signe infini en points qui circulent, en fond derrière le titre et le chat */}
+      {livre && (
+        <DotInfinity className="pointer-events-none absolute left-1/2 top-[90px] h-[560px] w-[min(1400px,100vw)] -translate-x-1/2 opacity-[0.55] sm:top-[110px] sm:h-[680px]" />
+      )}
       {/* Trame de points discrète */}
       <div
         aria-hidden="true"
@@ -344,11 +348,6 @@ export function HeroAgent({
             Créer un compte <Arrow size={14} />
           </a>
         </p>
-
-        {/* Signe infini en points qui circulent (couleurs du logo) */}
-        {livre && !demande && (
-          <DotInfinity className="pointer-events-none relative left-1/2 -mb-16 -mt-4 block h-[300px] w-screen max-w-[1400px] -translate-x-1/2 sm:h-[400px] lg:h-[480px]" />
-        )}
 
         {demande && scenario && (
           <div ref={panelRef} className="scroll-mt-24">
