@@ -66,7 +66,7 @@ function ScenePortefeuille() {
           })}
         </ul>
       </div>
-      <div className={cn(FLOTTANTE, 'bp-float -left-10 top-16')}>
+      <div className={cn(FLOTTANTE, 'bp-float -top-6 left-6')}>
         <p className="flex items-center gap-2 text-sm font-semibold text-[var(--violet-900)]"><Layers className="size-4 text-[#ea42fd]" /> Lot : 5 clients</p>
       </div>
       <div className={cn(FLOTTANTE, 'bp-float-slow -right-8 bottom-10')}>
@@ -92,36 +92,38 @@ function SceneActe() {
     { a: 5, t: 'Mentions de l’annonce prêtes', c: '#ff887b' },
   ];
   return (
-    <div className="relative mx-auto w-full max-w-[480px]">
-      <div className={cn(CARTE, 'p-6')}>
-        <p className="font-mono text-[11px] font-semibold uppercase tracking-wider text-[var(--violet-600)]">Procès-verbal des décisions</p>
-        <p className="mt-1 font-[Sora] text-lg font-semibold text-[var(--violet-900)]">Dissolution anticipée</p>
-        <div className="mt-4 space-y-2.5">
-          {lignes.map((l, i) => (
-            <p key={l} className={cn('text-[13px] leading-relaxed text-[var(--ink-700)] transition-all duration-500', i < n ? 'opacity-100' : 'translate-y-1 opacity-0')} style={{ fontFamily: "'Instrument Serif', Georgia, serif", fontSize: 15 }}>
-              {l}
-            </p>
+    <div className="relative mx-auto w-full max-w-[540px]">
+      <div className={cn(CARTE, 'grid grid-cols-1 overflow-hidden sm:grid-cols-[1fr_170px]')}>
+        <div className="p-6">
+          <p className="font-mono text-[11px] font-semibold uppercase tracking-wider text-[var(--violet-600)]">Procès-verbal des décisions</p>
+          <p className="mt-1 font-[Sora] text-lg font-semibold text-[var(--violet-900)]">Dissolution anticipée</p>
+          <div className="mt-4 space-y-2">
+            {lignes.map((l, i) => (
+              <p key={l} className={cn('leading-snug text-[var(--ink-700)] transition-all duration-500', i < n ? 'opacity-100' : 'translate-y-1 opacity-0')} style={{ fontFamily: "'Instrument Serif', Georgia, serif", fontSize: 15 }}>
+                {l}
+              </p>
+            ))}
+          </div>
+          <div className="mt-5 flex items-center justify-between gap-3 border-t border-[var(--ink-100)] pt-4">
+            <span className="flex items-center gap-1.5 text-xs text-[var(--ink-500)]"><PenLine className="size-3.5" /> D’après le modèle du cabinet</span>
+            <span className={cn('shrink-0 rotate-[-6deg] rounded-lg border-2 px-2.5 py-1 font-mono text-[11px] font-bold uppercase tracking-wider transition-all duration-500', n >= lignes.length ? 'scale-100 border-[#ea42fd] text-[#ea42fd] opacity-100' : 'scale-150 border-transparent text-transparent opacity-0')}>
+              Prêt à signer
+            </span>
+          </div>
+        </div>
+        {/* Marge : annotations de l'agent */}
+        <div className="hidden space-y-3 border-l border-dashed border-[var(--violet-200)] bg-[var(--violet-50)]/60 p-4 sm:block">
+          <p className="font-mono text-[10px] font-semibold uppercase tracking-wider text-[var(--violet-600)]">Notes de l’agent</p>
+          {notes.map((x) => (
+            <div key={x.t} className={cn('rounded-xl border border-[var(--violet-900)]/70 bg-white px-2.5 py-2 shadow-[2px_2px_0_rgba(8,3,49,0.8)] transition-all duration-500', n >= x.a ? 'translate-x-0 opacity-100' : 'translate-x-2 opacity-0')}>
+              <p className="flex items-start gap-1.5 text-[11px] font-semibold leading-snug text-[var(--violet-900)]">
+                <span className="mt-px grid size-4 shrink-0 place-items-center rounded-full text-white" style={{ background: x.c }}><Check className="size-2.5" /></span>
+                {x.t}
+              </p>
+            </div>
           ))}
         </div>
-        <div className="mt-5 flex items-center justify-between border-t border-[var(--ink-100)] pt-4">
-          <span className="flex items-center gap-1.5 text-xs text-[var(--ink-500)]"><PenLine className="size-3.5" /> D’après le modèle du cabinet</span>
-          <span className={cn('rotate-[-6deg] rounded-lg border-2 px-2.5 py-1 font-mono text-[11px] font-bold uppercase tracking-wider transition-all duration-500', n >= lignes.length ? 'scale-100 border-[#ea42fd] text-[#ea42fd] opacity-100' : 'scale-150 border-transparent text-transparent opacity-0')}>
-            Prêt à signer
-          </span>
-        </div>
       </div>
-      {notes.map((x, i) => (
-        <div
-          key={x.t}
-          className={cn(FLOTTANTE, 'transition-all duration-500', n >= x.a ? 'opacity-100' : 'opacity-0')}
-          style={{ right: i % 2 ? undefined : -44, left: i % 2 ? -48 : undefined, top: 70 + i * 92 }}
-        >
-          <p className="flex items-center gap-2 text-xs font-semibold text-[var(--violet-900)]">
-            <span className="grid size-5 place-items-center rounded-full text-white" style={{ background: x.c }}><Check className="size-3" /></span>
-            {x.t}
-          </p>
-        </div>
-      ))}
     </div>
   );
 }
