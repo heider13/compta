@@ -83,6 +83,24 @@ const SCENARIOS: Record<string, Scenario> = {
     annonce: null,
     inpi: { type: 'Cessation', evenement: '40M — mise en sommeil' },
   },
+  beneficiaires: {
+    key: 'beneficiaires',
+    titre: 'Bénéficiaires effectifs',
+    reponse: 'Mise à jour des bénéficiaires effectifs détectée. Je lis la fiche RNE de chaque société et je prépare les déclarations modificatives.',
+    pieces: ['Fiche RNE à jour', 'Répartition du capital', 'Pièces d’identité des bénéficiaires'],
+    actes: ['Déclaration des bénéficiaires effectifs', 'Pouvoir'],
+    annonce: null,
+    inpi: { type: 'Modification', evenement: '38F — bénéficiaires effectifs' },
+  },
+  documents: {
+    key: 'documents',
+    titre: 'Documents RNE',
+    reponse: 'Demande de documents détectée. Je retrouve au RNE les statuts en vigueur, les derniers PV et les comptes déposés de chaque société.',
+    pieces: ['Fiche RNE de chaque société', 'Liste des actes déposés'],
+    actes: ['Statuts à jour', 'Derniers PV', 'Comptes annuels'],
+    annonce: null,
+    inpi: { type: 'Consultation', evenement: 'Documents joints aux dossiers' },
+  },
   regularisation: {
     key: 'regularisation',
     titre: 'Régularisation du greffe',
@@ -96,6 +114,8 @@ const SCENARIOS: Record<string, Scenario> = {
 
 const REGLES: [RegExp, string][] = [
   [/r[ée]gularis|greffe|rejet/i, 'regularisation'],
+  [/b[ée]n[ée]ficiaires?/i, 'beneficiaires'],
+  [/statuts? (à|a) jour|r[ée]cup[ée]rer|documents?|RNE/i, 'documents'],
   [/dissou|dissolution|liquidat|radiation|fermer/i, 'dissolution'],
   [/sommeil|cessation temporaire/i, 'sommeil'],
   [/si[eè]ge|d[ée]m[ée]nag|transf[ée]r/i, 'transfert'],
