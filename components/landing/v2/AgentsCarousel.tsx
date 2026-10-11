@@ -34,7 +34,7 @@ export function AgentsCarousel() {
           <span className="inline-flex items-center gap-2 rounded-full border border-[var(--violet-200)] bg-[var(--violet-50)] px-3 py-1 text-xs font-semibold text-[var(--violet-700)]">
             <Sparkles className="size-3.5 text-[var(--accent)]" /> La différence Legaly AI
           </span>
-          <h2 className="!mt-5 font-[Sora] !text-[clamp(2rem,4vw,3rem)] !font-semibold !leading-[1.08] !text-[var(--violet-900)]">
+          <h2 className="!mt-5 font-[Sora] !text-[clamp(1.9rem,3.2vw,2.6rem)] !font-semibold !leading-[1.1] !text-[var(--violet-900)]">
             Des agents IA qui préparent vos formalités, avec vous.
           </h2>
           <p className="!mt-5 max-w-lg text-[15px] !leading-relaxed !text-[var(--ink-600)]">
