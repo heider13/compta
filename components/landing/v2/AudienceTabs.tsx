@@ -8,6 +8,7 @@ import { useState } from 'react';
 import { ArrowRight, Check } from 'lucide-react';
 import { Container } from '../ui';
 import { cn } from '@/lib/utils';
+import { Degrade, Halos, teinte } from './Couleurs';
 
 const PUBLICS = [
   {
@@ -43,10 +44,11 @@ export function AudienceTabs() {
   const [actif, setActif] = useState(0);
   const p = PUBLICS[actif];
   return (
-    <section id="solutions" className="scroll-mt-24 border-t border-[var(--ink-100)] bg-white py-20 sm:py-24">
-      <Container>
+    <section id="solutions" className="relative scroll-mt-24 overflow-hidden bg-gradient-to-b from-[#fff5fb] via-[#fff9f5] to-[#f7f3ff] py-20 sm:py-24">
+      <Halos />
+      <Container className="relative">
         <h2 className="text-center font-[Sora] !text-[clamp(1.75rem,3.4vw,2.6rem)] !font-semibold !text-[var(--violet-900)]">
-          Une plateforme pensée pour chaque cabinet
+          Une plateforme pensée pour <Degrade>chaque cabinet</Degrade>
         </h2>
         <div className="mt-8 flex justify-center">
           <div className="inline-flex flex-wrap justify-center gap-1 rounded-full border border-[var(--ink-150)] bg-white p-1.5">
@@ -57,7 +59,7 @@ export function AudienceTabs() {
                 onClick={() => setActif(i)}
                 className={cn(
                   'rounded-full px-4 py-2 text-sm font-medium transition-colors sm:px-5',
-                  i === actif ? 'bg-[var(--violet-100)] !text-[var(--violet-900)]' : '!text-[var(--ink-600)] hover:!text-[var(--violet-900)]',
+                  i === actif ? 'bg-gradient-to-r from-[#ff887b] to-[#ea42fd] !text-white shadow-[0_8px_20px_rgba(234,66,253,0.3)]' : '!text-[var(--ink-600)] hover:!text-[var(--violet-900)]',
                 )}
               >
                 {x.onglet}
@@ -80,13 +82,13 @@ export function AudienceTabs() {
             </ul>
             <a
               href={`/${p.key}`}
-              className="mt-7 inline-flex items-center gap-2 rounded-full bg-[var(--violet-900)] px-5 py-2.5 text-sm font-semibold !text-white no-underline transition-colors hover:bg-[var(--violet-600)]"
+              className="mt-7 inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-[#7551e8] to-[#ea42fd] px-5 py-2.5 text-sm font-semibold !text-white no-underline shadow-[0_10px_24px_rgba(117,81,232,0.35)] transition-transform hover:-translate-y-0.5"
             >
               En savoir plus <ArrowRight className="size-4" />
             </a>
           </div>
 
-          <div className="relative rounded-3xl bg-[var(--ink-50)] p-6 sm:p-8">
+          <div className="relative rounded-3xl p-6 sm:p-8" style={{ background: `linear-gradient(135deg, ${teinte(actif).fond}, ${teinte(actif + 1).fond})` }}>
             <div className="rounded-2xl border border-[var(--violet-900)]/80 bg-white p-5 shadow-[4px_4px_0_rgba(8,3,49,0.85)]">
               <p className="font-mono text-[11px] font-semibold uppercase tracking-wider text-[var(--violet-600)]">{p.carte.titre}</p>
               <ul className="mt-4 space-y-2.5">

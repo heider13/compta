@@ -3,14 +3,16 @@
 
 import { Check, FileSignature, KeyRound, Landmark, Lock, ShieldCheck, UserCheck } from 'lucide-react';
 import { Container } from '../ui';
+import { Degrade, Halos, teinte } from './Couleurs';
 
 export function Conformite() {
   return (
-    <section id="securite" className="scroll-mt-24 border-t border-[var(--ink-100)] bg-white py-20 sm:py-24">
-      <Container className="grid items-center gap-12 lg:grid-cols-2">
+    <section id="securite" className="relative scroll-mt-24 overflow-hidden bg-gradient-to-br from-[#f3eeff] via-white to-[#fff0ec] py-20 sm:py-24">
+      <Halos />
+      <Container className="relative grid items-center gap-12 lg:grid-cols-2">
         <div>
           <h2 className="font-[Sora] !text-[clamp(1.75rem,3.4vw,2.6rem)] !font-semibold !leading-[1.1] !text-[var(--violet-900)]">
-            Conçu en France. Connecté aux registres officiels. Sous votre contrôle.
+            Conçu en France. Connecté aux registres officiels. <Degrade>Sous votre contrôle.</Degrade>
           </h2>
           <p className="!mt-5 max-w-lg !text-[var(--ink-600)]">
             Le juridique ne se délègue pas à l’aveugle. Legaly prépare, vous décidez : chaque dépôt, chaque signature et chaque paiement restent une action humaine.
@@ -30,7 +32,7 @@ export function Conformite() {
         </div>
 
         <div className="relative mx-auto w-full max-w-[460px]">
-          <div className="rounded-3xl border border-[var(--violet-900)]/80 bg-gradient-to-br from-[var(--violet-50)] via-white to-[#fff3ee] p-8 shadow-[5px_5px_0_rgba(8,3,49,0.85)]">
+          <div className="rounded-3xl border border-[var(--violet-900)]/80 bg-gradient-to-br from-[#e9e1ff] via-[#fdeefb] to-[#ffe6dc] p-8 shadow-[5px_5px_0_rgba(8,3,49,0.85)]">
             <div className="space-y-3">
               {[
                 { icon: Landmark, t: 'Brouillon créé au Guichet unique', s: 'En attente de votre validation' },
@@ -75,15 +77,15 @@ export function Registres() {
     { nom: 'Paiement en ligne', detail: 'Abonnement et facturation' },
   ];
   return (
-    <section className="bg-white pb-20 sm:pb-24">
+    <section className="bg-gradient-to-b from-[#fff0ec] to-white py-16 sm:py-20">
       <Container>
-        <div className="rounded-3xl bg-[#fff7f2] px-6 py-12 sm:px-10">
+        <div className="rounded-3xl px-6 py-12 sm:px-10" style={{ background: 'linear-gradient(120deg, #ffe3d3 0%, #ffd9ea 45%, #e7ddff 100%)' }}>
           <h2 className="text-center font-[Sora] !text-[clamp(1.5rem,2.6vw,2rem)] !font-semibold !text-[var(--violet-900)]">
-            Connecté aux sources officielles
+            Connecté aux <Degrade>sources officielles</Degrade>
           </h2>
           <div className="mt-8 grid gap-4 [grid-template-columns:repeat(auto-fit,minmax(170px,1fr))]">
-            {sources.map((s) => (
-              <div key={s.nom} className="rounded-2xl border border-[var(--violet-900)]/80 bg-white px-4 py-5 text-center shadow-[3px_3px_0_rgba(8,3,49,0.85)]">
+            {sources.map((s, i) => (
+              <div key={s.nom} className="rounded-2xl border border-[var(--violet-900)]/80 bg-white px-4 py-5 text-center shadow-[3px_3px_0_rgba(8,3,49,0.85)] transition-transform hover:-translate-y-1" style={{ borderTop: `6px solid ${teinte(i).fort}` }}>
                 <p className="font-[Sora] text-sm font-semibold text-[var(--violet-900)]">{s.nom}</p>
                 <p className="mt-1 text-xs text-[var(--ink-500)]">{s.detail}</p>
               </div>

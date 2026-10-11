@@ -12,13 +12,13 @@ export function CtaBand() {
         className="absolute inset-0"
         style={{
           background:
-            'radial-gradient(ellipse 700px 420px at 15% 0%, rgba(255,190,140,0.35), transparent 60%),' +
-            'radial-gradient(ellipse 800px 500px at 60% 40%, rgba(117,81,232,0.45), transparent 65%),' +
-            'radial-gradient(ellipse 600px 420px at 100% 100%, rgba(234,66,253,0.25), transparent 62%)',
+            'radial-gradient(ellipse 700px 460px at 10% 0%, rgba(255,190,140,0.55), transparent 60%),' +
+            'radial-gradient(ellipse 820px 520px at 55% 45%, rgba(117,81,232,0.65), transparent 65%),' +
+            'radial-gradient(ellipse 700px 480px at 100% 100%, rgba(234,66,253,0.5), transparent 62%)',
         }}
       />
       <Container className="relative text-center">
-        <h2 className="font-[Sora] !text-[clamp(1.9rem,4vw,3rem)] !font-semibold !text-white">Prêt à automatiser vos formalités ?</h2>
+        <h2 className="font-[Sora] !text-[clamp(1.9rem,4vw,3rem)] !font-semibold !text-white">Prêt à automatiser <span className="bg-gradient-to-r from-[#ffbe8c] via-[#ff887b] to-[#ea42fd] bg-clip-text text-transparent">vos formalités</span> ?</h2>
         <p className="!mx-auto !mt-4 max-w-2xl !text-white/75">
           Décrivez votre première formalité : l’agent prépare le dossier, les actes et le brouillon INPI. Vous validez, c’est tout.
         </p>
@@ -45,7 +45,8 @@ const COLONNES = [
 
 export function FooterV2() {
   return (
-    <footer className="border-t border-[var(--ink-100)] bg-[#fbfaff] pb-10 pt-14">
+    <footer className="relative bg-[#fbfaff] pb-10 pt-14">
+      <div aria-hidden="true" className="absolute inset-x-0 top-0 h-1" style={{ background: 'linear-gradient(90deg, #ffbe8c, #ff887b, #ea42fd, #7551e8)' }} />
       <Container>
         <div className="flex flex-wrap items-center justify-between gap-6">
           <Link href="/" className="no-underline" aria-label="Legaly AI">
