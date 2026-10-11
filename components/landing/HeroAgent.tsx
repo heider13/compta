@@ -238,7 +238,7 @@ export function HeroAgent({
         </p>
 
         <h1
-          className={`!mx-auto !mt-6 max-w-4xl font-[Sora] ${compact ? 'text-[clamp(2.1rem,4.6vw,3.6rem)]' : 'text-[clamp(2.5rem,6.6vw,5rem)]'} !font-bold !leading-[1.02] !tracking-[-0.03em] !text-[var(--violet-900)]`}
+          className={`!mx-auto !mt-6 font-[Sora] ${compact ? 'max-w-5xl text-[clamp(1.9rem,3.9vw,3.15rem)]' : 'max-w-4xl text-[clamp(2.5rem,6.6vw,5rem)]'} !font-bold !leading-[1.02] !tracking-[-0.03em] !text-[var(--violet-900)]`}
         >
           {ligne1}
           <br />
