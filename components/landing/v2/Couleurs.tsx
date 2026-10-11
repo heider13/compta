@@ -22,8 +22,11 @@ export function Degrade({ children, className }: { children: React.ReactNode; cl
 export const FONDU_VERTICAL = 'linear-gradient(to bottom, transparent 0%, black 22%, black 78%, transparent 100%)';
 
 // Fond d'une section sombre qui se fond dans les sections voisines (couleurs de bord)
-export function fondSombre(couleur: string, avant: string, apres: string, zone = 180) {
-  return `linear-gradient(to bottom, ${avant} 0px, ${couleur} ${zone}px, ${couleur} calc(100% - ${zone}px), ${apres} 100%)`;
+// Le fondu passe par des violets (lavande puis violet profond) pour ne jamais tirer sur le gris.
+export function fondSombre(couleur: string, avant: string, apres: string, zone = 240) {
+  const z = (f: number) => `${Math.round(zone * f)}px`;
+  return `linear-gradient(to bottom, ${avant} 0px, #efe4ff ${z(0.2)}, #a98be8 ${z(0.45)}, #4b2a8f ${z(0.72)}, ${couleur} ${zone}px, ` +
+    `${couleur} calc(100% - ${zone}px), #4b2a8f calc(100% - ${z(0.72)}), #a98be8 calc(100% - ${z(0.45)}), #efe4ff calc(100% - ${z(0.2)}), ${apres} 100%)`;
 }
 
 // Halos colorés flous en fond de section

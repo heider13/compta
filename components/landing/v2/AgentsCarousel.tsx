@@ -29,7 +29,7 @@ export function AgentsCarousel() {
   };
 
   return (
-    <section id="agents" className="relative scroll-mt-24 overflow-hidden py-[200px]" style={{ background: fondSombre('#140d2e', '#fff8f3', '#fff5fb') }}>
+    <section id="agents" className="relative scroll-mt-24 overflow-hidden py-[260px]" style={{ background: fondSombre('#140d2e', '#fff8f3', '#fff5fb') }}>
       <Halos variante="sombre" />
       <Container className="relative grid items-center gap-10 lg:grid-cols-[0.9fr_1.1fr]">
         <div>

@@ -7,7 +7,7 @@ import { FONDU_VERTICAL, fondSombre } from './Couleurs';
 
 export function CtaBand() {
   return (
-    <section className="relative overflow-hidden py-[200px]" style={{ background: fondSombre('#0e0b1a', '#ffffff', '#fbfaff') }}>
+    <section className="relative overflow-hidden py-[260px]" style={{ background: fondSombre('#0e0b1a', '#ffffff', '#fbfaff') }}>
       <div
         aria-hidden="true"
         className="absolute inset-0"
