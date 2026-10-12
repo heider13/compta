@@ -210,7 +210,7 @@ function SceneParcours() {
           })}
         </ol>
       </div>
-      <div className={cn(FLOTTANTE, 'bp-float -left-10 top-16')}>
+      <div className={cn(FLOTTANTE, 'bp-float -left-8 -top-8')}>
         <p className="text-[11px] font-semibold uppercase tracking-wider text-[var(--violet-600)]">Micro ou société ?</p>
         <p className="mt-0.5 text-sm font-semibold text-[var(--violet-900)]">L’agent vous explique</p>
       </div>
