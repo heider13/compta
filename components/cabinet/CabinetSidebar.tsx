@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { LogoMark } from '@/components/brand/Logo';
 import { usePathname } from 'next/navigation';
 import {
+  Network,
   LayoutDashboard,
   Scale,
   FileSignature,
@@ -51,6 +52,7 @@ const NAV_PILOTAGE: NavItem[] = [
   { href: '/dossiers', label: 'Formalités', matchPrefix: '/dossiers', alsoMatch: ['/inpi'], icon: FileText },
   { href: '/rne', label: 'Documents RNE', matchPrefix: '/rne', icon: BookOpen },
   { href: '/clients', label: 'Clients', matchPrefix: '/clients', icon: Users },
+  { href: '/groupes', label: 'Groupes', matchPrefix: '/groupes', icon: Network },
   { href: '/tasks', label: 'Tâches', matchPrefix: '/tasks', icon: CheckSquare },
   { href: '/assistant', label: 'Assistant IA', matchPrefix: '/assistant', icon: Scale },
   { href: '/documents', label: 'Rédiger un doc', matchPrefix: '/documents', icon: FileSignature },

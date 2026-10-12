@@ -236,6 +236,18 @@ function AgentChat({ inpiFormality, resume }: AgentProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [storageKey]);
 
+  // Demande pré-remplie depuis une autre page (?demande=…), à relire puis envoyer.
+  useEffect(() => {
+    if (inpiFormality || resume) return;
+    const url = new URL(window.location.href);
+    const demande = url.searchParams.get('demande');
+    if (!demande) return;
+    setInput(demande.slice(0, 2000));
+    url.searchParams.delete('demande');
+    window.history.replaceState(null, '', url.pathname + url.search + url.hash);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   useEffect(() => {
     const el = scrollRef.current;
     if (el) el.scrollTop = el.scrollHeight;

@@ -16,6 +16,7 @@ const orchestratorRoutes = require('./routes/orchestrator');
 const pappersAnnoncesRoutes = require('./routes/pappers-annonces');
 const agentRoutes = require('./routes/agent');
 const inpiFormalitiesRoutes = require('./routes/inpi-formalities');
+const groupesRoutes = require('./routes/groupes');
 const rneDocumentsRoutes = require('./routes/rne-documents');
 const { paiementDe, emailsCabinet, verifierPaiements } = require('./lib/inpi-paiement');
 const batchRoutes = require('./routes/batch');
@@ -1025,6 +1026,7 @@ app.use('/api/agent', requireUser, requireOrg, agentRoutes);
 app.use('/api/inpi', requireUser, requireOrg, inpiFormalitiesRoutes);
 app.use('/api/rne', requireUser, requireOrg, rneDocumentsRoutes);
 app.use('/api/lots', requireUser, requireOrg, batchRoutes);
+app.use('/api/groupes', requireUser, requireOrg, groupesRoutes);
 
 app.use((err, req, res, _next) => {
   console.error(`[ERR] ${req.method} ${req.path}:`, err.message);

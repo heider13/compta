@@ -34,6 +34,7 @@ const { deposerPieces, PIECES_MODIF } = require('./inpi-liasse');
 const { BUCKET } = require('./dossier-docs');
 const knowledge = require('./knowledge');
 const ca = require('./inpi-comptes-annuels');
+const groupes = require('./groupes');
 
 const MAX_ITERATIONS = 12;
 
@@ -350,6 +351,42 @@ const TOOLS = [
     },
   },
   {
+    name: 'lire_groupe',
+    description:
+      "Lit le GROUPE de sociétés enregistré par le cabinet (holding, filiales, sous-filiales) à partir d'un nom de groupe, d'une dénomination ou d'un SIREN : arbre (qui détient ou dirige qui, pourcentages), détention indirecte par la tête, points d'attention (bénéficiaires effectifs, régime mère-fille, intégration fiscale, confidentialité, sociétés cessées). suivi=true ajoute pour chaque société les formalités en cours, le dernier dépôt de comptes et la prochaine échéance (plus lent). À utiliser dès qu'une demande vise « le groupe », « la holding et ses filiales », « toutes les filiales »… puis enchaîner sur preparer_lot avec les sociétés concernées.",
+    eager_input_streaming: true,
+    input_schema: {
+      type: 'object',
+      properties: {
+        recherche: { type: 'string', description: 'Nom du groupe, dénomination ou SIREN d’une société du groupe' },
+        suivi: { type: 'boolean' },
+      },
+      required: ['recherche'],
+    },
+  },
+  {
+    name: 'modifier_groupe',
+    description:
+      "Crée ou complète un groupe de sociétés. operation : creer (siren de la tête : l'arbre est découvert automatiquement au RNE — sociétés dirigées par la holding, sur 3 niveaux — liens marqués à vérifier) ; lien (parent_siren, enfant_siren : pourcentage de détention, droits_vote, direction = mandat exercé) ; ajouter (société absente du RNE ou non dirigée par le groupe : siren ou denomination, rattachée à parent_siren avec son pourcentage) ; redecouvrir (relance la recherche de nouvelles filiales). Les pourcentages ne sont pas publics : relève-les dans les statuts, PV, liste des filiales et participations des comptes annuels ou demande-les ; n'en invente jamais.",
+    eager_input_streaming: true,
+    input_schema: {
+      type: 'object',
+      properties: {
+        operation: { type: 'string', enum: ['creer', 'lien', 'ajouter', 'redecouvrir'] },
+        groupe: { type: 'string', description: 'Nom du groupe ou SIREN d’une de ses sociétés (sauf pour creer)' },
+        siren: { type: 'string', description: 'creer : SIREN de la tête ; ajouter : SIREN de la société ajoutée' },
+        nom: { type: 'string', description: 'creer : nom du groupe (facultatif)' },
+        denomination: { type: 'string' },
+        parent_siren: { type: 'string' },
+        enfant_siren: { type: 'string' },
+        pourcentage: { type: 'number' },
+        droits_vote: { type: 'number' },
+        direction: { type: 'string', description: 'Mandat exercé par la société mère dans la filiale (Président, Gérant…)' },
+      },
+      required: ['operation'],
+    },
+  },
+  {
     name: 'lire_fiche_rne',
     description:
       "Lit la fiche officielle à jour d'une entreprise au Registre national des entreprises (RNE) à partir de son SIREN : dénomination, forme, objet, capital, siège, dirigeants, bénéficiaires effectifs. À utiliser systématiquement avant de préparer une modification ou une radiation, pour partir des données officielles au lieu de les redemander.",
@@ -552,6 +589,14 @@ Dépôt des comptes annuels au greffe via le Guichet unique (outil deposer_compt
 7. Récapitulatif : lien_guichet_unique, frais, payeur, étapes (vérifier, signer, payer ou délégation de paiement).
 Plusieurs dépôts à la fois (une liste de sociétés) : preparer_lot / lancer_lot avec le type comptes_annuels ; chaque dépôt est préparé dans sa formalité, le professionnel y joint les comptes et crée le brouillon depuis le suivi.
 </comptes_annuels>
+
+<groupes>
+Groupes de sociétés (holding, filiales) enregistrés par le cabinet :
+- Dès qu'une demande vise un groupe, une holding et ses filiales ou « toutes les filiales », lis le groupe (lire_groupe). S'il n'existe pas, propose de le créer depuis le SIREN de la tête (modifier_groupe operation=creer) : l'arbre est découvert au RNE à partir des mandats exercés par la holding.
+- Action sur plusieurs sociétés du groupe (transfert de siège, nomination d'un président, dépôt des comptes, mise en sommeil…) : présente la liste des sociétés visées (tableau court), fais-la confirmer, puis preparer_lot / lancer_lot avec une formalité par société (SIREN compris).
+- Pourcentages de détention : non publics. Quand tu les lis dans un document joint (statuts, PV, liste des filiales et participations, tableau de capitalisation), enregistre-les (modifier_groupe operation=lien) et dis-le. N'en invente jamais.
+- Signale les points d'attention utiles à la formalité en cours : bénéficiaires effectifs d'une filiale détenue à 25 % ou plus par une holding (inclure les personnes qui contrôlent la holding), confidentialité du compte de résultat fermée aux sociétés d'un groupe, échéances de comptes en retard, sociétés cessées encore dans l'arbre.
+</groupes>
 
 <regularisations_inpi>
 Pour une formalité déjà déposée au Guichet unique (régularisation demandée par le greffe, rejet, signature ou paiement en attente) :
@@ -1102,6 +1147,90 @@ async function toolModification(supa, ctx, input) {
   };
 }
 
+// ─── Groupes de sociétés ──────────────────────────────────────────
+async function trouverGroupe(ctx, recherche) {
+  const ids = await groupes.rechercher(ctx.orgId, recherche);
+  if (!ids.length) throw new Error(`Aucun groupe enregistré pour « ${recherche} ». Proposer de le créer (modifier_groupe operation=creer avec le SIREN de la tête).`);
+  return ids;
+}
+
+function arbreTexte(d) {
+  const parId = new Map(d.entites.map((e) => [e.id, e]));
+  return {
+    groupe: d.groupe.nom,
+    url: `/groupes/${d.groupe.id}`,
+    societes: d.entites.map((e) => ({
+      siren: e.siren, denomination: e.denomination, forme: e.forme, ville: e.ville, tete: e.tete, cessee: !e.active,
+      a_verifier: e.a_verifier, detention_indirecte_tete: d.detentions[e.id] ?? null,
+    })),
+    liens: d.liens.map((l) => ({
+      mere: parId.get(l.parent_id)?.denomination, mere_siren: parId.get(l.parent_id)?.siren,
+      filiale: parId.get(l.enfant_id)?.denomination, filiale_siren: parId.get(l.enfant_id)?.siren,
+      pourcentage: l.pourcentage == null ? null : Number(l.pourcentage), droits_vote: l.droits_vote == null ? null : Number(l.droits_vote),
+      direction: l.direction, a_verifier: l.a_verifier,
+    })),
+    points_attention: d.controles.filter((c) => c.niveau !== 'info' || !/non renseigné/.test(c.texte)).map((c) => c.texte).slice(0, 30),
+    pourcentages_manquants: d.liens.filter((l) => l.pourcentage == null).length,
+  };
+}
+
+async function toolLireGroupe(ctx, input) {
+  const ids = await trouverGroupe(ctx, input.recherche);
+  const out = [];
+  for (const id of ids.slice(0, 3)) {
+    const d = await groupes.detail(ctx.orgId, id);
+    const r = arbreTexte(d);
+    if (input.suivi) {
+      const parId = new Map(d.entites.map((e) => [e.id, e.denomination]));
+      r.suivi = (await groupes.suivi(ctx.orgId, id)).map((s) => ({
+        societe: parId.get(s.entite_id), siren: s.siren,
+        formalites_en_cours: s.formalites_en_cours, dernier_depot_comptes: s.comptes, echeance_comptes: s.echeance_comptes,
+        dossiers_cabinet: (s.dossiers || []).map((x) => `${x.reference} (${x.statut})`), erreur: s.erreur,
+      }));
+    }
+    out.push(r);
+  }
+  return {
+    result: out.length === 1 ? out[0] : { groupes: out },
+    event: { kind: 'dossier', label: `Groupe lu — ${out[0].groupe}`, detail: `${out[0].societes.length} société(s)${input.suivi ? ' · suivi' : ''}`, href: out[0].url },
+  };
+}
+
+async function toolModifierGroupe(ctx, input) {
+  const op = input.operation;
+  const siren = (v) => (v ? String(v).replace(/\D/g, '') : undefined);
+  if (op === 'creer') {
+    const r = await groupes.creer(ctx.orgId, ctx.userId, { siren: siren(input.siren), nom: input.nom });
+    const d = await groupes.detail(ctx.orgId, r.groupe.id);
+    return {
+      result: { cree: true, ...arbreTexte(d), societes_meres_possibles: r.meres_possibles, tronque: r.tronque, rappel: 'Liens découverts au RNE (direction) : pourcentages à compléter et liens à vérifier.' },
+      event: { kind: 'dossier', label: `Groupe créé — ${r.groupe.nom}`, detail: `${r.entites_ajoutees} société(s) · ${r.liens_ajoutes} lien(s) découverts au RNE`, href: `/groupes/${r.groupe.id}` },
+    };
+  }
+  const [id] = await trouverGroupe(ctx, input.groupe || input.parent_siren || input.enfant_siren || input.siren);
+  const d0 = await groupes.detail(ctx.orgId, id);
+  const parSiren = (s) => d0.entites.find((e) => e.siren === siren(s));
+  if (op === 'redecouvrir') {
+    const r = await groupes.redecouvrir(ctx.orgId, id, siren(input.siren));
+    return { result: r, event: { kind: 'dossier', label: `Groupe mis à jour — ${d0.groupe.nom}`, detail: `${r.entites_ajoutees} nouvelle(s) société(s)`, href: `/groupes/${id}` } };
+  }
+  if (op === 'lien') {
+    const p = parSiren(input.parent_siren);
+    const e = parSiren(input.enfant_siren);
+    if (!p || !e) throw new Error('Société mère ou filiale absente du groupe : l’ajouter d’abord (operation=ajouter).');
+    await groupes.enregistrerLien(ctx.orgId, id, { parentId: p.id, enfantId: e.id, pourcentage: input.pourcentage, droitsVote: input.droits_vote, direction: input.direction, source: 'agent' });
+  } else if (op === 'ajouter') {
+    const p = input.parent_siren ? parSiren(input.parent_siren) : null;
+    if (input.parent_siren && !p) throw new Error('Société mère absente du groupe.');
+    await groupes.ajouterEntite(ctx.orgId, id, { siren: siren(input.siren), denomination: input.denomination, parentId: p?.id, pourcentage: input.pourcentage, direction: input.direction, source: 'agent' });
+  } else throw new Error(`Opération inconnue : ${op}`);
+  const d = await groupes.detail(ctx.orgId, id);
+  return {
+    result: arbreTexte(d),
+    event: { kind: 'dossier', label: `Groupe mis à jour — ${d.groupe.nom}`, detail: op === 'lien' ? `${input.pourcentage ?? '?'} % · ${input.enfant_siren}` : 'société ajoutée', href: `/groupes/${id}` },
+  };
+}
+
 async function toolComptesAnnuels(supa, ctx, input) {
   const siren = String(input.siren || '').replace(/\D/g, '');
   if (!/^\d{9}$/.test(siren)) throw new Error('SIREN invalide (9 chiffres).');
@@ -1361,6 +1490,8 @@ async function runTool(name, input, ctx) {
     case 'lire_document_rne': return toolLireDocRne(supa, ctx, input);
     case 'creer_modification_inpi': return toolModification(supa, ctx, input);
     case 'deposer_comptes_annuels': return toolComptesAnnuels(supa, ctx, input);
+    case 'lire_groupe': return toolLireGroupe(ctx, input);
+    case 'modifier_groupe': return toolModifierGroupe(ctx, input);
     case 'lire_formalite_inpi': return toolLireFormalite(ctx, input);
     case 'lire_piece_inpi': return toolLirePiece(ctx, input);
     default: throw new Error(`Outil inconnu : ${name}`);
