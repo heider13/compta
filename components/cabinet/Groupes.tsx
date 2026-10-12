@@ -305,7 +305,7 @@ export function GroupeDetail({ id }: { id: string }) {
         <p className="flex items-center gap-2 rounded-md bg-[#fff1ef] p-3 text-sm text-[#c2410c]"><AlertTriangle className="size-4" /> {retards} société(s) du groupe ont un dépôt de comptes en retard.</p>
       )}
 
-      <div className="grid gap-5 xl:grid-cols-[1fr_340px]">
+      <div className="grid gap-5 2xl:grid-cols-[1fr_360px]">
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-base">Arbre du groupe</CardTitle>
@@ -321,7 +321,10 @@ export function GroupeDetail({ id }: { id: string }) {
             <CardHeader className="pb-2"><CardTitle className="text-base">Points d’attention</CardTitle></CardHeader>
             <CardContent className="space-y-2 pt-0">
               {!d.controles.length && <p className="text-sm text-muted-foreground">Aucun point relevé.</p>}
-              {[...d.controles].sort((a, b) => ['erreur', 'attention', 'info'].indexOf(a.niveau) - ['erreur', 'attention', 'info'].indexOf(b.niveau)).slice(0, 25).map((c, i) => (
+              {manquants > 0 && (
+                <div className="flex gap-2 text-sm"><Info className="mt-0.5 size-4 shrink-0 text-primary" /><span>{manquants} pourcentage(s) de détention à compléter dans l’arbre (non publics : statuts, PV, liste des filiales et participations).</span></div>
+              )}
+              {d.controles.filter((c) => !/non renseigné/.test(c.texte)).sort((a, b) => ['erreur', 'attention', 'info'].indexOf(a.niveau) - ['erreur', 'attention', 'info'].indexOf(b.niveau)).slice(0, 25).map((c, i) => (
                 <div key={i} className="flex gap-2 text-sm">
                   {c.niveau === 'erreur' ? <XCircle className="mt-0.5 size-4 shrink-0 text-[#c2410c]" /> : c.niveau === 'attention' ? <AlertTriangle className="mt-0.5 size-4 shrink-0 text-amber-600" /> : <Info className="mt-0.5 size-4 shrink-0 text-primary" />}
                   <span>{c.texte}</span>
@@ -357,9 +360,9 @@ function LienEditeur({ lien, occupe, onSave }: { lien: Lien; occupe: boolean; on
     if (v !== pct(lien.pourcentage)) onSave({ pourcentage: v });
   };
   return (
-    <div className="flex shrink-0 items-center gap-2 text-xs lg:w-[260px]">
+    <div className="flex shrink-0 items-center gap-2 text-xs lg:w-[330px]">
       <label className="flex items-center gap-1">
-        <span className="text-muted-foreground">Détenue à</span>
+        <span className="whitespace-nowrap text-muted-foreground">Détenue à</span>
         <input
           value={valeur} onChange={(e) => setValeur(e.target.value)} onBlur={enregistrer} onKeyDown={(e) => e.key === 'Enter' && (e.target as HTMLInputElement).blur()}
           inputMode="decimal" placeholder="?" aria-label="Pourcentage de détention"
@@ -369,7 +372,7 @@ function LienEditeur({ lien, occupe, onSave }: { lien: Lien; occupe: boolean; on
       </label>
       {lien.direction && <span className="truncate text-muted-foreground" title={`Mandat : ${lien.direction}`}>{lien.direction}</span>}
       {occupe ? <Loader2 className="size-3.5 animate-spin text-muted-foreground" /> : lien.a_verifier && (
-        <button type="button" onClick={() => onSave({})} className="inline-flex items-center gap-0.5 text-primary hover:underline" title="Marquer ce lien comme vérifié"><Check className="size-3.5" /> vérifié</button>
+        <button type="button" onClick={() => onSave({})} className="inline-flex items-center gap-0.5 text-primary hover:underline" title="Le lien trouvé au RNE est exact"><Check className="size-3.5" /> Confirmer le lien</button>
       )}
     </div>
   );
