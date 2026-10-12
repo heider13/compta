@@ -11,6 +11,7 @@
 const { getSupabaseAdmin } = require('./db');
 const inpi = require('../inpi');
 const rne = require('./inpi-rne');
+const rneDocs = require('./rne-documents');
 
 const ANNUAIRE = 'https://recherche-entreprises.api.gouv.fr/search';
 const MAX_ENTITES = 60;
@@ -335,14 +336,18 @@ function echeanceComptes(clotureDDMM, dernierExerciceDepose) {
   return null;
 }
 
+const cacheSuivi = new Map(); // org|siren → { exp, data }
+
 async function suiviEntite(orgId, client, e) {
   const out = { entite_id: e.id, siren: e.siren, formalites_en_cours: [], comptes: null, echeance_comptes: null, dossiers: [] };
   if (!e.siren) return out;
+  const cle = `${orgId}|${e.siren}`;
+  const hit = cacheSuivi.get(cle);
+  if (hit && hit.exp > Date.now()) return { ...hit.data, entite_id: e.id };
   const supa = getSupabaseAdmin();
-  const [forms, comptes, fiche, dossiers] = await Promise.all([
+  const [forms, comptes, dossiers, docs] = await Promise.all([
     client.listFormalities({ siren: e.siren, itemsPerPage: 30, 'order[created]': 'desc' }).catch(() => null),
     client.request('/api/annual_accounts', { query: { siren: e.siren, itemsPerPage: 5, 'order[created]': 'desc' } }).catch(() => null),
-    rne.getCompany(orgId, e.siren).catch(() => null),
     supa.from('dossiers').select('id, reference, statut, type_formalite, created_at').eq('organization_id', orgId).eq('siren', e.siren).order('created_at', { ascending: false }).limit(5),
   ]);
   out.formalites_en_cours = (forms?.['hydra:member'] || []).filter((f) => ACTIFS.includes(f.status))
@@ -350,13 +355,39 @@ async function suiviEntite(orgId, client, e) {
   const ca = comptes?.['hydra:member'] || [];
   const valide = ca.find((a) => a.status === 'VALIDATED');
   out.comptes = ca[0] ? { id: ca[0].id, statut: ca[0].status, annee: ca[0].year, dernier_valide: valide ? valide.year : null } : null;
-  const desc = fiche?.formality?.content?.personneMorale?.identite?.description;
-  const dernier = valide?.content?.comptesAnnuels?.dateCloture || (valide?.year ? `${valide.year}-12-31` : null);
-  if (desc) out.echeance_comptes = echeanceComptes(desc.dateClotureExerciceSocial, dernier);
-  if (desc?.datePremiereCloture && out.echeance_comptes && desc.datePremiereCloture > out.echeance_comptes.cloture) {
-    out.echeance_comptes = { cloture: desc.datePremiereCloture, limite: null, en_retard: false, a_faire: false, premier_exercice: true };
-  }
   out.dossiers = dossiers.data || [];
+  if (!e.active) return out; // société cessée : pas d'échéance
+
+  // Derniers comptes déposés au RNE (tous déposants, confidentiels compris) : relus au
+  // plus une fois par 24 h et mémorisés sur l'entité (l'API RNE est limitée).
+  let memo = e.metadata?.comptes_rne;
+  if (!memo || Date.now() - new Date(memo.verifie_le).getTime() > 24 * 3600 * 1000) {
+    try {
+      const docs = await rneDocs.listDocuments(orgId, e.siren);
+      memo = { dernier: (docs?.bilans || []).map((b) => b.dateCloture).filter(Boolean).sort().pop() || null, verifie_le: new Date().toISOString() };
+      if (!memo.dernier) {
+        const desc = (await rne.getCompany(orgId, e.siren))?.formality?.content?.personneMorale?.identite?.description;
+        memo.ddmm = desc?.dateClotureExerciceSocial || null;
+        memo.premiere = desc?.datePremiereCloture || null;
+      }
+      await supa.from('groupe_entites').update({ metadata: { ...(e.metadata || {}), comptes_rne: memo } }).eq('id', e.id);
+    } catch (err) {
+      out.erreur = `RNE indisponible : ${String(err.message).slice(0, 120)}`;
+      return out;
+    }
+  }
+  const dernierRne = memo.dernier || null;
+  const dernierCabinet = valide?.content?.comptesAnnuels?.dateCloture || (valide?.year ? `${valide.year}-12-31` : null);
+  const dernier = [dernierRne, dernierCabinet].filter(Boolean).sort().pop() || null;
+  out.derniers_comptes_deposes = dernier;
+  // Date de clôture : déduite des derniers comptes ; fiche RNE seulement à défaut (API limitée).
+  const ddmm = dernier ? `${dernier.slice(8, 10)}${dernier.slice(5, 7)}` : memo.ddmm || null;
+  const premiere = dernier ? null : memo.premiere || null;
+  out.echeance_comptes = echeanceComptes(ddmm, dernier);
+  if (premiere && (!out.echeance_comptes || premiere > out.echeance_comptes.cloture)) {
+    out.echeance_comptes = { cloture: premiere, limite: null, en_retard: false, a_faire: false, premier_exercice: true };
+  }
+  cacheSuivi.set(cle, { exp: Date.now() + 30 * 60 * 1000, data: out });
   return out;
 }
 

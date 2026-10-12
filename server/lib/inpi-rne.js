@@ -10,6 +10,22 @@ const { decrypt } = require('./encryption');
 const RNE_BASE = 'https://registre-national-entreprises.inpi.fr';
 const tokens = new Map(); // orgId → { token, exp }
 
+// Le serveur RNE coupe l'accès (connexions refusées pendant plusieurs minutes) en cas
+// de rafale : tous les appels passent par une file unique, un à la fois, espacés.
+const ESPACEMENT_MS = Number(process.env.RNE_ESPACEMENT_MS || 400);
+let fileRne = Promise.resolve();
+let dernierAppel = 0;
+function viaFileRne(fn) {
+  const tour = fileRne.then(async () => {
+    const attente = dernierAppel + ESPACEMENT_MS - Date.now();
+    if (attente > 0) await new Promise((ok) => setTimeout(ok, attente));
+    try { return await fn(); } finally { dernierAppel = Date.now(); }
+  });
+  fileRne = tour.catch(() => {});
+  return tour;
+}
+const cacheFiches = new Map(); // siren → { exp, data } (5 min : une conversation relit souvent la même fiche)
+
 async function rneToken(orgId) {
   const hit = tokens.get(orgId);
   if (hit && hit.exp > Date.now()) return hit.token;
@@ -41,11 +57,17 @@ async function rneToken(orgId) {
 async function getCompany(orgId, siren) {
   const s = String(siren || '').replace(/\D/g, '');
   if (s.length !== 9) throw Object.assign(new Error(`SIREN invalide : ${siren}`), { status: 400 });
+  const hit = cacheFiches.get(`${orgId}|${s}`);
+  if (hit && hit.exp > Date.now()) return hit.data;
   const token = await rneToken(orgId);
-  const r = await fetch(`${RNE_BASE}/api/companies/${s}`, { headers: { Authorization: `Bearer ${token}` } });
-  if (r.status === 404) throw Object.assign(new Error(`Entreprise ${s} introuvable au RNE.`), { status: 404 });
-  if (!r.ok) throw Object.assign(new Error(`Lecture RNE impossible (HTTP ${r.status}).`), { status: r.status });
-  return r.json();
+  const data = await viaFileRne(async () => {
+    const r = await fetch(`${RNE_BASE}/api/companies/${s}`, { headers: { Authorization: `Bearer ${token}` }, signal: AbortSignal.timeout(60000) });
+    if (r.status === 404) throw Object.assign(new Error(`Entreprise ${s} introuvable au RNE.`), { status: 404 });
+    if (!r.ok) throw Object.assign(new Error(`Lecture RNE impossible (HTTP ${r.status}).`), { status: r.status });
+    return r.json();
+  });
+  cacheFiches.set(`${orgId}|${s}`, { exp: Date.now() + 5 * 60 * 1000, data });
+  return data;
 }
 
 // Résumé lisible de la fiche (pour l'agent).
@@ -79,4 +101,4 @@ function summarizeCompany(company) {
   };
 }
 
-module.exports = { getCompany, summarizeCompany, rneToken };
+module.exports = { getCompany, summarizeCompany, rneToken, viaFileRne };

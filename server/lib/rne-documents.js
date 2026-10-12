@@ -2,7 +2,7 @@
 // comptes annuels non confidentiels, plus l'avis de situation SIRENE de l'INSEE.
 // Lecture seule, avec les identifiants INPI du cabinet.
 
-const { rneToken, getCompany } = require('./inpi-rne');
+const { rneToken, getCompany, viaFileRne } = require('./inpi-rne');
 
 const RNE_BASE = 'https://registre-national-entreprises.inpi.fr';
 const INSEE_AVIS = 'https://api-avis-situation-sirene.insee.fr/identification/pdf';
@@ -17,10 +17,13 @@ const cleanSiren = (s) => {
 
 async function rneFetch(orgId, path) {
   const token = await rneToken(orgId);
-  const r = await fetch(`${RNE_BASE}${path}`, { headers: { Authorization: `Bearer ${token}` }, signal: AbortSignal.timeout(60000) });
-  if (r.status === 404) throw Object.assign(new Error('Document introuvable au RNE.'), { status: 404 });
-  if (!r.ok) throw Object.assign(new Error(`Lecture RNE impossible (HTTP ${r.status}).`), { status: 502 });
-  return r;
+  // File unique des appels RNE (voir inpi-rne.js) ; le corps est lu par l'appelant.
+  return viaFileRne(async () => {
+    const r = await fetch(`${RNE_BASE}${path}`, { headers: { Authorization: `Bearer ${token}` }, signal: AbortSignal.timeout(60000) });
+    if (r.status === 404) throw Object.assign(new Error('Document introuvable au RNE.'), { status: 404 });
+    if (!r.ok) throw Object.assign(new Error(`Lecture RNE impossible (HTTP ${r.status}).`), { status: 502 });
+    return r;
+  });
 }
 
 function libelleActe(a) {
