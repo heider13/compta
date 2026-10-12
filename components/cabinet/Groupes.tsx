@@ -242,7 +242,7 @@ export function GroupeDetail({ id }: { id: string }) {
             <LienEditeur lien={lien} occupe={occupe === lien.id} onSave={(patch) => action(lien.id, () => api(`/${id}/liens`, { method: 'PUT', body: { parent_id: lien.parent_id, enfant_id: lien.enfant_id, ...patch } }))} />
           )}
 
-          <div className="flex shrink-0 items-center gap-3 text-xs lg:w-[300px] lg:justify-end">
+          <div className="flex min-w-0 flex-wrap items-center gap-3 text-xs lg:max-w-[260px] lg:justify-end">
             {!e.tete && d.detentions[e.id] != null && <span className="text-muted-foreground" title="Détention indirecte par la tête du groupe">Tête : <strong className="text-foreground">{d.detentions[e.id]} %</strong></span>}
             {s?.echeance_comptes && (
               <span className={cn('inline-flex items-center gap-1', s.echeance_comptes.en_retard ? 'text-[#c2410c]' : s.echeance_comptes.a_faire ? 'text-amber-700' : 'text-muted-foreground')} title={`Clôture ${dateFr(s.echeance_comptes.cloture)}`}>
@@ -317,7 +317,7 @@ export function GroupeDetail({ id }: { id: string }) {
       )}
 
       <div className="grid gap-5 2xl:grid-cols-[1fr_360px]">
-        <Card>
+        <Card className="min-w-0">
           <CardHeader className="pb-2">
             <CardTitle className="text-base">Arbre du groupe</CardTitle>
             <CardDescription>Liens trouvés au RNE à partir des mandats exercés par les sociétés du groupe. Complétez les pourcentages de détention (non publics) : ils servent aux contrôles et à la détention indirecte.</CardDescription>
