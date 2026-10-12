@@ -137,7 +137,26 @@ export const NOEUDS: Record<string, Noeud> = {
 };
 
 // Aiguillage d'un message libre : mots-clés → étape de départ (sans IA).
-export function aiguiller(texte: string): { noeud: string; reconnu: string | null } {
+// `choix` : réponse déjà donnée dans le message (ex. « SASU ») → l'issue est directe.
+export type Aiguillage = { noeud: string; reconnu: string | null; choix?: string };
+
+export function aiguiller(texte: string): Aiguillage {
+  const a = aiguillerBrut(texte);
+  const t = texte.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+  const direct: Record<string, [RegExp, string][]> = {
+    creer_unip: [[/\bsasu\b/, 'Assimilé salarié'], [/\beurl\b/, 'Travailleur non salarié']],
+    creer_assoc: [[/\bsas\b/, 'La souplesse'], [/\bsarl\b/, 'Un cadre plus encadré']],
+    creer_projet: [[/\bsci\b|immobili/, 'Acheter ou gérer un bien immobilier']],
+    modif_quoi: [[/siege|transf|demenag/, 'Transférer le siège social'], [/dirigeant|president|gerant/, 'Changer de dirigeant'], [/denomination|nom de|renomm/, 'Changer de nom'], [/objet|activite/, 'Modifier l’activité'], [/associe|cession|parts|actions/, 'Faire entrer ou sortir un associé']],
+    fermer_forme: [[/micro|auto[- ]?entrepr/, 'Une micro-entreprise'], [/\b(sasu|sas|sarl|eurl|sci|societe)\b/, 'Une société']],
+    sommeil_forme: [[/\b(sasu|sas|sarl|eurl|sci|societe)\b/, 'Une société']],
+    comptes_forme: [[/\b(sasu|sas|sarl|eurl)\b/, 'Une société commerciale']],
+  };
+  const trouve = (direct[a.noeud] || []).find(([re]) => re.test(t));
+  return trouve ? { ...a, choix: trouve[1] } : a;
+}
+
+function aiguillerBrut(texte: string): Aiguillage {
   const t = texte.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
   const micro = /micro|auto[- ]?entrepr|entreprise individuelle|\bei\b/.test(t);
   const societe = /\b(sasu|sas|sarl|eurl|sci|societe|holding)\b/.test(t);

@@ -42,13 +42,21 @@ export function HeroEntrepreneur({
   function demarrer(texte: string) {
     const t = texte.trim();
     if (!t) return;
-    const { noeud, reconnu } = aiguiller(t);
+    const { noeud, reconnu, choix } = aiguiller(t);
     setDebute(true);
     setMessage(t);
     setIncompris(!reconnu);
     setFin(null);
-    setEtapes(noeud === 'debut' ? [{ noeud: 'debut' }] : [{ noeud: 'debut', choix: reconnu || undefined }, { noeud }]);
     setSaisie('');
+    const depart: Etape[] = noeud === 'debut' ? [{ noeud: 'debut' }] : [{ noeud: 'debut', choix: reconnu || undefined }, { noeud }];
+    // Réponse déjà contenue dans le message (« SASU », « transférer le siège »…)
+    const opt = choix ? NOEUDS[noeud].options.find((o) => o.label === choix) : undefined;
+    if (opt) {
+      const avecChoix = depart.map((e, i) => (i === depart.length - 1 ? { ...e, choix: opt.label } : e));
+      if (opt.fin) { setEtapes(avecChoix); setFin({ fin: opt.fin, choix: opt.label }); return; }
+      if (opt.suite) { setEtapes([...avecChoix, { noeud: opt.suite }]); return; }
+    }
+    setEtapes(depart);
   }
 
   function choisir(index: number, label: string, suite?: string, f?: Fin) {
