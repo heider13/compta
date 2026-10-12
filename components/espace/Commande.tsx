@@ -73,8 +73,10 @@ export function EspaceCommande({ id }: { id: string }) {
 
   useEffect(() => { const el = filRef.current; if (el) el.scrollTop = el.scrollHeight; }, [items, busy]);
 
-  const envoyer = useCallback(async (texte: string, reponse?: { id: string; reponses: Reponses }, demarrage = false) => {
+  const envoyer = useCallback(async (texte: string, reponse?: { id: string; reponses: Reponses | null }, demarrage = false) => {
     if (busy) return;
+    const enAttente = items.find((it) => it.type === 'form' && !it.repondu) as { id: string } | undefined;
+    if (!reponse && enAttente && (texte.trim() || fichiers.length)) reponse = { id: enAttente.id, reponses: null };
     const t = await jeton();
     if (!t) return;
     const pj = fichiers;
@@ -204,11 +206,11 @@ export function EspaceCommande({ id }: { id: string }) {
             <textarea
               value={saisie} onChange={(e) => setSaisie(e.target.value)} rows={1} maxLength={8000}
               onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); void envoyer(saisie); } }}
-              disabled={busy || formEnAttente}
-              placeholder={formEnAttente ? 'Répondez au questionnaire ci-dessus…' : 'Votre message…'}
+              disabled={busy}
+              placeholder={formEnAttente ? 'Répondez au questionnaire ci-dessus, ou écrivez votre message…' : 'Votre message…'}
               className="min-h-10 flex-1 resize-none rounded-xl border px-3 py-2 text-sm outline-none focus:border-[#7551e8]"
             />
-            <button type="submit" disabled={busy || formEnAttente || (!saisie.trim() && !fichiers.length)} className="grid size-10 shrink-0 place-items-center rounded-xl bg-gradient-to-r from-[#361fab] to-[#7551e8] text-white disabled:opacity-40" aria-label="Envoyer">
+            <button type="submit" disabled={busy || (!saisie.trim() && !fichiers.length)} className="grid size-10 shrink-0 place-items-center rounded-xl bg-gradient-to-r from-[#361fab] to-[#7551e8] text-white disabled:opacity-40" aria-label="Envoyer">
               <ArrowUp className="size-5" />
             </button>
           </div>

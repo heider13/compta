@@ -39,6 +39,12 @@ router.post('/stripe-webhook', async (req, res) => {
             stripe_session_id: s.id, email: s.customer_details?.email || undefined, updated_at: new Date().toISOString(),
           }).eq('id', id);
           console.log('[paiement] commande payée', id, s.amount_total);
+          // Prévient l'équipe Legaly
+          const org = process.env.LEGALY_ORG_ID || '00000000-0000-0000-0000-000000000001';
+          const { data: membres } = await supa.from('memberships').select('user_id').eq('organization_id', org);
+          for (const m of membres || []) {
+            await supa.from('notifications').insert({ user_id: m.user_id, organization_id: org, type: 'commande_payee', title: `Commande payée — ${c.offre?.libelle || 'formalité'}`, body: `${s.customer_details?.email || ''} a réglé ${((s.amount_total || 0) / 100).toLocaleString('fr-FR')} € TTC. L'assistant prépare le dossier avec l'entrepreneur.`, link: null });
+          }
         }
       }
     }

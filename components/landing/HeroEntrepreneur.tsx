@@ -44,8 +44,10 @@ export function HeroEntrepreneur({
     if (el) el.scrollTop = el.scrollHeight;
   }, [items, busy]);
 
-  async function envoyer(texte: string, reponse?: { id: string; reponses: Reponses }) {
+  async function envoyer(texte: string, reponse?: { id: string; reponses: Reponses | null }) {
     if (busy || (!texte.trim() && !reponse)) return;
+    const enAttente = items.find((it) => it.type === 'form' && !it.repondu) as { id: string } | undefined;
+    if (!reponse && enAttente && texte.trim()) reponse = { id: enAttente.id, reponses: null };
     setErreur(null);
     setBusy(true);
     setSaisie('');
@@ -125,11 +127,11 @@ export function HeroEntrepreneur({
                 onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); void envoyer(saisie); } }}
                 rows={vide ? 3 : 1}
                 maxLength={1500}
-                disabled={busy || formEnAttente}
-                placeholder={formEnAttente ? 'Répondez au questionnaire ci-dessus…' : vide ? 'Décrivez votre projet : « Je veux créer ma micro-entreprise de graphisme », « transférer le siège de mon EURL »…' : 'Votre message…'}
+                disabled={busy}
+                placeholder={formEnAttente ? 'Répondez au questionnaire ci-dessus, ou écrivez votre message…' : vide ? 'Décrivez votre projet : « Je veux créer ma micro-entreprise de graphisme », « transférer le siège de mon EURL »…' : 'Votre message…'}
                 className="w-full resize-none rounded-2xl border-0 bg-transparent px-3 py-2 pr-14 text-[15px] text-[#241143] outline-none placeholder:text-[#9a93b3]"
               />
-              <button type="submit" disabled={busy || formEnAttente || !saisie.trim()} aria-label="Envoyer" className="absolute bottom-2 right-2 grid size-10 place-items-center rounded-xl bg-gradient-to-r from-[#361fab] to-[#7551e8] text-white transition-opacity disabled:opacity-40">
+              <button type="submit" disabled={busy || !saisie.trim()} aria-label="Envoyer" className="absolute bottom-2 right-2 grid size-10 place-items-center rounded-xl bg-gradient-to-r from-[#361fab] to-[#7551e8] text-white transition-opacity disabled:opacity-40">
                 <ArrowUp className="size-5" />
               </button>
             </form>

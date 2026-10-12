@@ -20,6 +20,19 @@ const { storeDossierDocument, signedUrl } = require('../lib/dossier-docs');
 const UUID = /^[0-9a-f-]{36}$/i;
 const LEGALY_ORG_ID = process.env.LEGALY_ORG_ID || '00000000-0000-0000-0000-000000000001';
 const APP_URL = process.env.APP_URL || 'https://compta-navy.vercel.app';
+
+// Prévient l'équipe Legaly (notifications de l'application) : demande à rappeler,
+// commande payée… Une seule fois par commande et par type.
+async function notifierLegaly(c, type, title, body) {
+  const supa = getSupabaseAdmin();
+  const deja = c.usage?.notifie || [];
+  if (deja.includes(type)) return;
+  const { data: membres } = await supa.from('memberships').select('user_id').eq('organization_id', LEGALY_ORG_ID);
+  for (const m of membres || []) {
+    await supa.from('notifications').insert({ user_id: m.user_id, organization_id: LEGALY_ORG_ID, type, title, body, link: c.dossier_id ? `/dossiers/${c.dossier_id}` : null });
+  }
+  await supa.from('commandes').update({ usage: { ...(c.usage || {}), notifie: [...deja, type] } }).eq('id', c.id);
+}
 const sse = (res, event, data) => res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
 
 const vue = (c) => ({
@@ -79,10 +92,13 @@ router.post('/commandes/:id/paiement', async (req, res) => {
   if (!c) return;
   if (c.statut === 'payee') return res.json({ deja_payee: true });
   if (!c.offre?.prix_ttc_cents) return res.status(400).json({ error: 'sans_offre', detail: 'Aucune formalité proposée pour cette conversation.' });
+  const aRappeler = () => notifierLegaly(c, 'commande_a_rappeler', `Entrepreneur à rappeler — ${c.offre.libelle}`, `${c.email || req.user.email} souhaite commander « ${c.offre.libelle} » (${(c.offre.prix_ttc_cents / 100).toLocaleString('fr-FR')} € TTC) : paiement en ligne indisponible.`).catch(() => {});
   if (c.offre.provisoire && process.env.TARIFS_PROVISOIRES_OK !== '1') {
+    await aRappeler();
     return res.status(503).json({ error: 'tarif_a_confirmer', detail: 'Le paiement en ligne de cette formalité ouvre très bientôt. Nous vous recontactons par e-mail.' });
   }
   const key = process.env.STRIPE_SECRET_KEY;
+  if (!key) await aRappeler();
   if (!key) return res.status(503).json({ error: 'paiement_indisponible', detail: 'Le paiement en ligne ouvre très bientôt. Votre demande est enregistrée : nous vous recontactons par e-mail.' });
   const form = new URLSearchParams({
     mode: 'payment',
