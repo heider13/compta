@@ -28,6 +28,9 @@ app.set('trust proxy', 'loopback');
 // DOIT être monté AVANT express.json() pour court-circuiter le parsing JSON global.
 app.use('/api/yousign', express.raw({ type: '*/*', limit: '15mb' }), yousignWebhookRoutes);
 
+// Webhook Stripe des commandes d'entrepreneurs (corps brut, signature HMAC)
+app.use('/api/paiements', express.raw({ type: '*/*', limit: '1mb' }), require('./routes/stripe-webhook'));
+
 app.use(express.json({ limit: '15mb' }));
 
 const allowedOrigins = (process.env.CORS_ALLOWED_ORIGINS || 'https://compta-navy.vercel.app,http://localhost:3000,http://localhost:3001')
@@ -1027,6 +1030,9 @@ app.use('/api/inpi', requireUser, requireOrg, inpiFormalitiesRoutes);
 app.use('/api/rne', requireUser, requireOrg, rneDocumentsRoutes);
 app.use('/api/lots', requireUser, requireOrg, batchRoutes);
 app.use('/api/groupes', requireUser, requireOrg, groupesRoutes);
+// Chat public de la page Indépendants et TPE (sans compte) et espace entrepreneur (compte, sans cabinet)
+app.use('/api/public', require('./routes/public-agent'));
+app.use('/api/espace', requireUser, require('./routes/espace'));
 
 app.use((err, req, res, _next) => {
   console.error(`[ERR] ${req.method} ${req.path}:`, err.message);

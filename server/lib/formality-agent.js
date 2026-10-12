@@ -35,6 +35,7 @@ const { BUCKET } = require('./dossier-docs');
 const knowledge = require('./knowledge');
 const ca = require('./inpi-comptes-annuels');
 const groupes = require('./groupes');
+const tarifs = require('./tarifs');
 
 const MAX_ITERATIONS = 12;
 
@@ -626,6 +627,67 @@ Pour une formalité déjà déposée au Guichet unique (régularisation demandé
 - Les documents produits sont des projets à faire relire par le professionnel ; dis-le une fois dans le récapitulatif final.
 </regles>`;
 
+// ─── Mode public (page Indépendants et TPE) et mode entrepreneur ──
+// public : visiteur anonyme, orientation seulement (2 questionnaires au plus), puis
+//          proposition de la formalité et de son prix ; aucun accès aux données.
+// client : entrepreneur ayant payé ; l'agent mène SA formalité, déposée par Legaly
+//          comme mandataire, sans accès aux autres dossiers du cabinet.
+const PUBLIC_TOOLS = [
+  TOOLS.find((t) => t.name === 'poser_questions'),
+  {
+    name: 'proposer_formalite',
+    description:
+      "Propose au visiteur la formalité adaptée à son besoin, avec son prix (grille officielle Legaly, ne cite jamais un prix sans cet outil). À appeler dès que le besoin est clair, au plus tard après deux questionnaires. Codes : " +
+      Object.entries(tarifs.TARIFS).map(([k, v]) => `${k} (${v.libelle})`).join(', ') + '.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        code: { type: 'string', enum: Object.keys(tarifs.TARIFS) },
+        resume: { type: 'string', description: 'Ce que tu as compris du projet, en une ou deux phrases adressées au visiteur (tu)' },
+        forme: { type: 'string', description: 'Forme conseillée ou choisie (micro-entreprise, SASU, EURL…) si pertinent' },
+        pourquoi: { type: 'string', description: 'Une phrase : pourquoi cette formalité ou cette forme' },
+      },
+      required: ['code', 'resume'],
+    },
+  },
+];
+
+const CLIENT_TOOLS = new Set([
+  'enregistrer_dossier', 'generer_statuts', 'rediger_acte', 'etat_dossier', 'creer_brouillon_inpi',
+  'creer_modification_inpi', 'deposer_comptes_annuels', 'lire_fiche_rne', 'rediger_annonce_legale',
+  'poser_questions', 'lister_documents_rne', 'lire_document_rne',
+]);
+
+const PUBLIC_PROMPT = `Tu es l'assistant de Legaly AI sur la page « Indépendants et TPE ». Tu parles à un entrepreneur (pas à un professionnel du droit), en français, en le vouvoyant, avec des mots simples.
+
+Ton rôle dans cette partie gratuite : comprendre son projet et lui proposer la bonne formalité, rien de plus.
+- Pose au plus DEUX questionnaires (outil poser_questions, 1 à 3 questions chacun, types choix / oui_non de préférence, options avec une courte description). Questions d'orientation seulement : nature du projet (créer, modifier, fermer, déposer des comptes), activité, seul ou à plusieurs, micro-entreprise ou société, chiffre d'affaires visé, besoin de protéger son patrimoine… Jamais de données personnelles (nom, date de naissance, adresse, numéro de sécurité sociale) à ce stade.
+- Dès que le besoin est clair, appelle proposer_formalite (code, résumé du projet, forme conseillée, une phrase de justification). Si le visiteur a déjà tout dit dans son premier message, propose directement.
+- Après la proposition, écris deux phrases au plus : la suite se fait dans son espace (création du compte et paiement), où tu continueras exactement là où vous en êtes ; les frais officiels (greffe, annonce légale) s'ajoutent et sont payés sur le Guichet unique.
+- Conseil sur la forme : explique en deux ou trois phrases les différences utiles (micro-entreprise : simple, plafonds de chiffre d'affaires, responsabilité limitée au patrimoine professionnel ; SASU : statut assimilé salarié, souple, cotisations plus élevées ; EURL : TNS, cotisations plus faibles…), sans long exposé, et précise que c'est une orientation générale.
+- Hors périmètre (contentieux, droit de la famille, fiscalité personnelle…) : dis-le simplement.
+- Ne cite jamais un prix sans proposer_formalite. Tu ne crées et ne déposes rien dans cette partie.`;
+
+const CLIENT_PROMPT = `<espace_entrepreneur>
+Tu parles directement à un ENTREPRENEUR qui a commandé et payé une formalité à Legaly (pas à un professionnel) : vouvoiement, mots simples, explique chaque étape en une phrase, pas de jargon sans explication.
+- Un seul dossier : sa formalité commandée (voir le récapitulatif de commande). Pour toute autre formalité, explique qu'elle fera l'objet d'une nouvelle commande sur la page Indépendants et TPE.
+- Legaly dépose la formalité au Guichet unique COMME MANDATAIRE : rédige le pouvoir_formalites au nom de Legaly (le mandataire) et fais-le signer par l'entrepreneur avec les autres actes. Le brouillon est ensuite vérifié par un formaliste de Legaly, qui valide, signe et transmet ; les frais officiels sont payés par l'entrepreneur par délégation de paiement (son e-mail : enregistre payeur = client avec cet e-mail).
+- Ne travaille que sur l'entreprise de l'entrepreneur : pour une modification ou une fermeture, vérifie que la personne est bien dirigeante de la société (fiche RNE) et signale-le sinon.
+- Les pièces (pièce d'identité, justificatif de domicile du siège, attestation de dépôt des fonds…) se joignent dans ce chat.
+</espace_entrepreneur>`;
+
+// Résumé de la conversation gratuite, point de départ de l'espace entrepreneur.
+function resumeCommande(commande) {
+  const lignes = (commande.affichage || []).map((it) => {
+    if (it.type === 'user') return `Entrepreneur : ${it.text}`;
+    if (it.type === 'assistant') return `Assistant : ${it.text}`;
+    if (it.type === 'form' && it.reponses) return `Réponses au questionnaire « ${it.form?.titre || ''} » : ${Object.entries(it.reponses).map(([k, v]) => `${(it.form?.champs || []).find((c) => c.id === k)?.label || k} → ${Array.isArray(v) ? v.join(', ') : v}`).join(' ; ')}`;
+    return null;
+  }).filter(Boolean);
+  const o = commande.offre || {};
+  return `[Récapitulatif de commande]\nFormalité commandée et payée : ${o.libelle || o.code} (${o.code})${o.forme ? `, forme : ${o.forme}` : ''}.\nE-mail de l'entrepreneur (payeur des frais officiels) : ${commande.email || 'à demander'}.\nÉchange préalable :\n${lignes.join('\n').slice(0, 12000)}\n\nCommence la formalité : rappelle en une phrase ce qui va se passer, puis pose tes premières questions avec poser_questions.`;
+}
+
 // ─── Fusion des données ───────────────────────────────────────────
 const DATA_KEYS = Object.keys(TOOLS[0].input_schema.properties);
 
@@ -710,9 +772,10 @@ async function loadDossier(supa, ctx) {
     e.code = 'not_found';
     throw e;
   }
-  const allowed =
-    ctx.isAdmin || dossier.user_id === ctx.userId ||
-    (dossier.organization_id && dossier.organization_id === ctx.orgId);
+  const allowed = ctx.mode === 'client'
+    ? dossier.user_id === ctx.userId
+    : ctx.isAdmin || dossier.user_id === ctx.userId ||
+      (dossier.organization_id && dossier.organization_id === ctx.orgId);
   if (!allowed) {
     const e = new Error('Accès refusé à ce dossier.');
     e.code = 'forbidden';
@@ -756,6 +819,7 @@ async function toolEnregistrer(supa, ctx, input) {
         metadata: {
           agent_data: data,
           created_by_agent: true,
+          ...(ctx.commandeId ? { commande_id: ctx.commandeId, client_entrepreneur: true } : {}),
           ...(ctx.inpiFormalityId ? { inpi_formality_id: String(ctx.inpiFormalityId), inpi_liasse: ctx.inpiLiasse || null } : {}),
         },
       })
@@ -1457,6 +1521,7 @@ async function toolLirePiece(ctx, input) {
 }
 
 const TOOL_LABELS = {
+  proposer_formalite: 'Proposition de la formalité',
   enregistrer_dossier: 'Enregistrement du dossier',
   generer_statuts: 'Rédaction des statuts',
   rediger_acte: "Rédaction d'un acte",
@@ -1476,6 +1541,18 @@ const TOOL_LABELS = {
 async function runTool(name, input, ctx) {
   const supa = getSupabaseAdmin();
   if (!isPlainObject(input)) throw new Error('Paramètres invalides.');
+  if (ctx.mode === 'public' && name !== 'proposer_formalite') throw new Error('Outil indisponible dans la partie gratuite.');
+  if (ctx.mode === 'client' && !CLIENT_TOOLS.has(name)) throw new Error('Outil indisponible dans l’espace entrepreneur.');
+  if (name === 'proposer_formalite') {
+    if (ctx.mode !== 'public') throw new Error('Outil réservé à la partie gratuite.');
+    const o = tarifs.offre(input.code);
+    if (!o) throw new Error(`Formalité inconnue : ${input.code}`);
+    ctx.offre = { ...o, resume: String(input.resume || '').slice(0, 600), forme: input.forme || null, pourquoi: input.pourquoi ? String(input.pourquoi).slice(0, 400) : null };
+    return {
+      result: { proposee: true, libelle: o.libelle, prix_ht: o.prix_ht, prix_ttc: o.prix_ttc_cents / 100, frais_officiels: o.frais_officiels, suite: 'Le visiteur voit la proposition et le bouton pour continuer (compte + paiement). Termine en deux phrases au plus.' },
+      event: { kind: 'offre', label: o.libelle, detail: `${(o.prix_ttc_cents / 100).toLocaleString('fr-FR')} € TTC`, offre: ctx.offre },
+    };
+  }
   switch (name) {
     case 'enregistrer_dossier': return toolEnregistrer(supa, ctx, input);
     case 'generer_statuts': return toolStatuts(supa, ctx);
@@ -1588,23 +1665,29 @@ async function runAgentTurn({ history, input, attachments = [], ctx, emit, formR
     ];
   }
   const messages = [...history, { role: 'user', content: userContent }];
+  const mode = ctx.mode || 'cabinet';
+  const reglages = mode === 'public'
+    ? { model: MODELS.balanced, system: [{ type: 'text', text: PUBLIC_PROMPT, cache_control: { type: 'ephemeral' } }], tools: PUBLIC_TOOLS, effort: 'medium', iterations: 3, maxTokens: 4000, prix: DRAFT_PRICES }
+    : mode === 'client'
+      ? { model: MODELS.agent, system: [...systemBlocks(), { type: 'text', text: CLIENT_PROMPT }], tools: TOOLS.filter((t) => CLIENT_TOOLS.has(t.name)), effort: 'high', iterations: MAX_ITERATIONS, maxTokens: 16000, prix: PRICES }
+      : { model: MODELS.agent, system: systemBlocks(), tools: TOOLS, effort: 'high', iterations: MAX_ITERATIONS, maxTokens: 16000, prix: PRICES };
   let pendingForm = null;
   const usage = { calls: 0, input: 0, output: 0, cacheWrite: 0, cacheRead: 0 };
   ctx.draftUsage = { calls: 0, input: 0, output: 0, cacheWrite: 0, cacheRead: 0 };
 
-  for (let i = 0; i < MAX_ITERATIONS; i++) {
+  for (let i = 0; i < reglages.iterations; i++) {
     const stream = client.beta.messages.stream({
-      model: MODELS.agent,
-      max_tokens: 16000,
+      model: reglages.model,
+      max_tokens: reglages.maxTokens,
       thinking: { type: 'adaptive' },
-      output_config: { effort: 'high' },
+      output_config: { effort: reglages.effort },
       betas: ['server-side-fallback-2026-07-01'],
       fallbacks: 'default',
       // Cache : prompt système + outils, et (top-level) tout l'historique jusqu'au
       // dernier bloc — chaque appel de la boucle relit l'historique en cache.
       cache_control: { type: 'ephemeral' },
-      system: systemBlocks(),
-      tools: TOOLS,
+      system: reglages.system,
+      tools: reglages.tools,
       messages,
     });
     stream.on('text', (delta) => emit('text', { text: delta }));
@@ -1668,12 +1751,12 @@ async function runAgentTurn({ history, input, attachments = [], ctx, emit, formR
     messages.push({ role: 'user', content: results });
   }
 
-  usage.agentCostUsd = Math.round(costUsd(usage, PRICES) * 1000) / 1000;
+  usage.agentCostUsd = Math.round(costUsd(usage, reglages.prix) * 1000) / 1000;
   usage.drafts = ctx.draftUsage;
   usage.draftsCostUsd = Math.round(costUsd(ctx.draftUsage, DRAFT_PRICES) * 1000) / 1000;
   usage.costUsd = Math.round((usage.agentCostUsd + usage.draftsCostUsd) * 1000) / 1000;
   console.log('[agent usage]', JSON.stringify(usage));
-  return { messages, dossierId: ctx.dossierId || null, usage, pendingForm };
+  return { messages, dossierId: ctx.dossierId || null, usage, pendingForm, offre: ctx.offre || null };
 }
 
-module.exports = { runAgentTurn, ACTES, ATTACHMENT_TYPES };
+module.exports = { runAgentTurn, resumeCommande, ACTES, ATTACHMENT_TYPES };
