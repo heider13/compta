@@ -27,6 +27,8 @@ async function signIn(formData: FormData) {
       .eq('user_id', userId)
       .limit(1);
     const m = memberships?.[0] as any;
+    // Compte entrepreneur (sans cabinet) : son espace
+    if (!m && data.user?.user_metadata?.compte === 'entrepreneur') return redirect('/espace');
     if (m && !m.organizations?.siren) {
       return redirect('/onboarding');
     }

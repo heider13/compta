@@ -8,6 +8,7 @@ import type { PersonaContent } from '@/lib/landing/personas';
 import { METIERS, NOUVEAUTES } from '@/lib/landing/metiers';
 import { Nav } from './Nav';
 import { HeroMetier } from './v2/HeroMetier';
+import { HeroEntrepreneur } from './HeroEntrepreneur';
 import { Modules, Engagements, Reassurance, Connexions, FinAppareils } from './v2/Pennylane';
 import type { Variante } from './v2/Maquettes';
 import { FooterV2 } from './v2/Bas';
@@ -18,7 +19,12 @@ export function PersonaLanding({ persona }: { persona: PersonaContent }) {
   return (
     <div className="landing-theme">
       <Nav surface="light" />
-      <HeroMetier metier={persona.slug} kicker={m.kicker} ligne1={m.ligne1} ligne2={m.ligne2} sousTitre={m.sousTitre} points={m.points} />
+      {persona.slug === 'independants-tpe' ? (
+        // Indépendants et TPE : le vrai assistant, utilisable sans compte
+        <HeroEntrepreneur kicker={m.kicker} ligne1={m.ligne1} ligne2={m.ligne2} sousTitre={m.sousTitre} exemples={m.exemples.slice(0, 4)} />
+      ) : (
+        <HeroMetier metier={persona.slug} kicker={m.kicker} ligne1={m.ligne1} ligne2={m.ligne2} sousTitre={m.sousTitre} points={m.points} />
+      )}
       <Modules titre={m.modulesTitre} modules={m.modules} v={v} />
       <Engagements titre={m.engagements.titre} points={m.engagements.points} />
       <Reassurance adapte={m.adapte} nouveautes={NOUVEAUTES} />
