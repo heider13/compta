@@ -98,4 +98,10 @@ async function downloadDocument(orgId, kind, id) {
   throw Object.assign(new Error(`Type de document inconnu : ${kind}`), { status: 400 });
 }
 
-module.exports = { listDocuments, downloadDocument, siretSiege };
+// Dates de clôture des comptes déposés au RNE (un seul appel, sans la fiche).
+async function bilansDeposes(orgId, siren) {
+  const r = await (await rneFetch(orgId, `/api/companies/${cleanSiren(siren)}/attachments`)).json();
+  return (r.bilans || []).filter((b) => !b.deleted && b.dateCloture).map((b) => b.dateCloture).sort();
+}
+
+module.exports = { listDocuments, downloadDocument, siretSiege, bilansDeposes };

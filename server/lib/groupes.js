@@ -173,8 +173,8 @@ async function charger(orgId, groupeId) {
   const { data: groupe } = await supa.from('groupes').select('*').eq('id', groupeId).eq('organization_id', orgId).maybeSingle();
   if (!groupe) throw Object.assign(new Error('Groupe introuvable.'), { status: 404 });
   const [{ data: entites }, { data: liens }] = await Promise.all([
-    supa.from('groupe_entites').select('*').eq('groupe_id', groupeId).order('created_at'),
-    supa.from('groupe_liens').select('*').eq('groupe_id', groupeId).order('created_at'),
+    supa.from('groupe_entites').select('*').eq('groupe_id', groupeId).order('tete', { ascending: false }).order('denomination'),
+    supa.from('groupe_liens').select('*').eq('groupe_id', groupeId).order('created_at').order('id'),
   ]);
   return { groupe, entites: entites || [], liens: liens || [] };
 }
@@ -199,9 +199,12 @@ async function fusionner(orgId, groupeId, dec) {
     a_verifier: e.niveau > 0, metadata: { niveau: e.niveau },
   }));
   if (nouvelles.length) {
-    const { data, error } = await supa.from('groupe_entites').insert(nouvelles).select('id, siren');
+    const { data, error } = await supa.from('groupe_entites').insert(nouvelles).select('id, siren, active, metadata');
     if (error) throw new Error(error.message);
-    for (const e of data) ids.set(e.siren, e.id);
+    for (const e of data) {
+      ids.set(e.siren, e.id);
+      verifierPlusTard(orgId, e); // comptes déposés au RNE, lus en arrière-plan
+    }
   }
   const { data: liensExistants } = await supa.from('groupe_liens').select('parent_id, enfant_id').eq('groupe_id', groupeId);
   const deja = new Set((liensExistants || []).map((l) => `${l.parent_id}>${l.enfant_id}`));
@@ -338,6 +341,38 @@ function echeanceComptes(clotureDDMM, dernierExerciceDepose) {
 
 const cacheSuivi = new Map(); // org|siren → { exp, data }
 
+// File de vérification RNE en arrière-plan : une société toutes les RNE_LENT_MS.
+const RNE_LENT_MS = Number(process.env.RNE_GROUPES_MS || 10000);
+const aVerifier = new Map(); // entité id → { orgId, e }
+let verificateur = null;
+function verifierPlusTard(orgId, e) {
+  if (!e.siren || !e.active || aVerifier.has(e.id)) return;
+  aVerifier.set(e.id, { orgId, e });
+  if (!verificateur) verificateur = setInterval(verifierSuivante, RNE_LENT_MS);
+}
+async function verifierSuivante() {
+  const [id, job] = aVerifier.entries().next().value || [];
+  if (!id) { clearInterval(verificateur); verificateur = null; return; }
+  aVerifier.delete(id);
+  const { orgId, e } = job;
+  try {
+    const dates = await rneDocs.bilansDeposes(orgId, e.siren);
+    const memo = { dernier: dates.pop() || null, verifie_le: new Date().toISOString() };
+    if (!memo.dernier) {
+      const desc = (await rne.getCompany(orgId, e.siren))?.formality?.content?.personneMorale?.identite?.description;
+      memo.ddmm = desc?.dateClotureExerciceSocial || null;
+      memo.premiere = desc?.datePremiereCloture || null;
+    }
+    const supa = getSupabaseAdmin();
+    const { data: cur } = await supa.from('groupe_entites').select('metadata').eq('id', id).maybeSingle();
+    if (cur) await supa.from('groupe_entites').update({ metadata: { ...(cur.metadata || {}), comptes_rne: memo } }).eq('id', id);
+    cacheSuivi.delete(`${orgId}|${e.siren}`);
+  } catch (err) {
+    // RNE indisponible : on réessaiera au prochain affichage du suivi
+    console.error('[groupes] vérification RNE', e.siren, String(err.message).slice(0, 120));
+  }
+}
+
 async function suiviEntite(orgId, client, e) {
   const out = { entite_id: e.id, siren: e.siren, formalites_en_cours: [], comptes: null, echeance_comptes: null, dossiers: [] };
   if (!e.siren) return out;
@@ -345,7 +380,7 @@ async function suiviEntite(orgId, client, e) {
   const hit = cacheSuivi.get(cle);
   if (hit && hit.exp > Date.now()) return { ...hit.data, entite_id: e.id };
   const supa = getSupabaseAdmin();
-  const [forms, comptes, dossiers, docs] = await Promise.all([
+  const [forms, comptes, dossiers] = await Promise.all([
     client.listFormalities({ siren: e.siren, itemsPerPage: 30, 'order[created]': 'desc' }).catch(() => null),
     client.request('/api/annual_accounts', { query: { siren: e.siren, itemsPerPage: 5, 'order[created]': 'desc' } }).catch(() => null),
     supa.from('dossiers').select('id, reference, statut, type_formalite, created_at').eq('organization_id', orgId).eq('siren', e.siren).order('created_at', { ascending: false }).limit(5),
@@ -358,24 +393,12 @@ async function suiviEntite(orgId, client, e) {
   out.dossiers = dossiers.data || [];
   if (!e.active) return out; // société cessée : pas d'échéance
 
-  // Derniers comptes déposés au RNE (tous déposants, confidentiels compris) : relus au
-  // plus une fois par 24 h et mémorisés sur l'entité (l'API RNE est limitée).
-  let memo = e.metadata?.comptes_rne;
-  if (!memo || Date.now() - new Date(memo.verifie_le).getTime() > 24 * 3600 * 1000) {
-    try {
-      const docs = await rneDocs.listDocuments(orgId, e.siren);
-      memo = { dernier: (docs?.bilans || []).map((b) => b.dateCloture).filter(Boolean).sort().pop() || null, verifie_le: new Date().toISOString() };
-      if (!memo.dernier) {
-        const desc = (await rne.getCompany(orgId, e.siren))?.formality?.content?.personneMorale?.identite?.description;
-        memo.ddmm = desc?.dateClotureExerciceSocial || null;
-        memo.premiere = desc?.datePremiereCloture || null;
-      }
-      await supa.from('groupe_entites').update({ metadata: { ...(e.metadata || {}), comptes_rne: memo } }).eq('id', e.id);
-    } catch (err) {
-      out.erreur = `RNE indisponible : ${String(err.message).slice(0, 120)}`;
-      return out;
-    }
-  }
+  // Derniers comptes déposés au RNE (tous déposants, confidentiels compris) : lus en
+  // arrière-plan, lentement (l'API RNE coupe l'accès au-delà d'un certain volume),
+  // et mémorisés 24 h sur l'entité. Ici, aucune lecture RNE : seulement la mémoire.
+  const memo = e.metadata?.comptes_rne;
+  if (!memo || Date.now() - new Date(memo.verifie_le).getTime() > 24 * 3600 * 1000) verifierPlusTard(orgId, e);
+  if (!memo) { out.verification_en_attente = true; return out; }
   const dernierRne = memo.dernier || null;
   const dernierCabinet = valide?.content?.comptesAnnuels?.dateCloture || (valide?.year ? `${valide.year}-12-31` : null);
   const dernier = [dernierRne, dernierCabinet].filter(Boolean).sort().pop() || null;
@@ -387,7 +410,7 @@ async function suiviEntite(orgId, client, e) {
   if (premiere && (!out.echeance_comptes || premiere > out.echeance_comptes.cloture)) {
     out.echeance_comptes = { cloture: premiere, limite: null, en_retard: false, a_faire: false, premier_exercice: true };
   }
-  cacheSuivi.set(cle, { exp: Date.now() + 30 * 60 * 1000, data: out });
+  cacheSuivi.set(cle, { exp: Date.now() + 2 * 60 * 1000, data: out });
   return out;
 }
 

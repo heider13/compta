@@ -40,6 +40,7 @@ type Suivi = {
   echeance_comptes?: { cloture: string; limite: string | null; en_retard: boolean; a_faire: boolean; premier_exercice?: boolean } | null;
   dossiers?: { id: string; reference: string; statut: string }[];
   erreur?: string;
+  verification_en_attente?: boolean;
 };
 
 async function api<T>(path: string, init?: { method?: string; body?: unknown }): Promise<T> {
@@ -179,6 +180,9 @@ export function GroupeDetail({ id }: { id: string }) {
       parents.set(l.enfant_id, [...(parents.get(l.enfant_id) ?? []), l]);
     }
     const parId = new Map(d.entites.map((e) => [e.id, e]));
+    // Filiales par ordre alphabétique (sociétés cessées en dernier) : affichage stable
+    const nomDe = (id: string) => `${parId.get(id)?.active === false ? '1' : '0'}${parId.get(id)?.denomination ?? ''}`;
+    for (const l of enfants.values()) l.sort((a, b) => nomDe(a.enfant_id).localeCompare(nomDe(b.enfant_id), 'fr'));
     const racines = d.entites.filter((e) => e.tete || !parents.has(e.id));
     return { enfants, parents, parId, racines };
   }, [d]);
@@ -246,6 +250,7 @@ export function GroupeDetail({ id }: { id: string }) {
                 {s.echeance_comptes.premier_exercice ? `1re clôture ${dateFr(s.echeance_comptes.cloture)}` : s.echeance_comptes.a_faire ? `Comptes avant le ${dateFr(s.echeance_comptes.limite)}` : `Comptes à jour`}
               </span>
             )}
+            {s?.verification_en_attente && <span className="text-muted-foreground" title="Les comptes déposés sont relus au registre en arrière-plan">Comptes : vérification au RNE…</span>}
             {s?.formalites_en_cours && s.formalites_en_cours.length > 0 && (
               <Link href={`/inpi/${s.formalites_en_cours[0].id}`} className="text-primary">{s.formalites_en_cours.length} formalité(s)</Link>
             )}
@@ -303,6 +308,12 @@ export function GroupeDetail({ id }: { id: string }) {
 
       {suivi && retards > 0 && (
         <p className="flex items-center gap-2 rounded-md bg-[#fff1ef] p-3 text-sm text-[#c2410c]"><AlertTriangle className="size-4" /> {retards} société(s) du groupe ont un dépôt de comptes en retard.</p>
+      )}
+
+      {suivi && [...suivi.values()].some((x) => x.verification_en_attente) && (
+        <p className="flex items-center gap-2 rounded-md bg-muted p-3 text-sm text-muted-foreground">
+          <Loader2 className="size-4 animate-spin" /> {[...suivi.values()].filter((x) => x.verification_en_attente).length} société(s) en cours de vérification au registre (comptes déposés), une toutes les 10 secondes pour respecter les limites du RNE. Actualisez le suivi dans quelques minutes.
+        </p>
       )}
 
       <div className="grid gap-5 2xl:grid-cols-[1fr_360px]">
