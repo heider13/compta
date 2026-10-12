@@ -12,6 +12,15 @@ import { Degrade, Halos, teinte } from './Couleurs';
 
 const PUBLICS = [
   {
+    key: 'independants-tpe',
+    onglet: 'Indépendants et TPE',
+    eyebrow: 'Pour les indépendants et les TPE',
+    titre: 'Votre entreprise, sans vous perdre dans les formalités',
+    texte: 'Micro-entreprise, SASU, EURL : décrivez votre projet, l’agent pose ses questions, rédige les documents et prépare le dossier du Guichet unique.',
+    points: ['Des questions simples, une à la fois', 'Statuts et annonce légale rédigés pour vous', 'Frais officiels affichés avant de payer', 'Rien n’est envoyé sans votre validation'],
+    carte: { titre: 'Ma création de SASU', lignes: ['Statuts — prêts à signer', 'Annonce légale — mentions vérifiées', 'Dossier du Guichet unique — à vérifier'] },
+  },
+  {
     key: 'experts-comptables',
     onglet: 'Experts-comptables',
     eyebrow: 'Pour les cabinets d’expertise comptable',
@@ -48,7 +57,7 @@ export function AudienceTabs() {
       <Halos />
       <Container className="relative">
         <h2 className="text-center font-[Sora] !text-[clamp(1.75rem,3.4vw,2.6rem)] !font-semibold !text-[var(--violet-900)]">
-          Une plateforme pensée pour <Degrade>chaque cabinet</Degrade>
+          Une plateforme pensée pour <Degrade>chaque profil</Degrade>
         </h2>
         <div className="mt-8 flex justify-center">
           <div className="inline-flex flex-wrap justify-center gap-1 rounded-full border border-[var(--ink-150)] bg-white p-1.5">

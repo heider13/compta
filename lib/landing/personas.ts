@@ -23,6 +23,25 @@ export type PersonaContent = {
 };
 
 export const PERSONAS: Record<string, PersonaContent> = {
+  'independants-tpe': {
+    slug: 'independants-tpe',
+    nom: 'Indépendants et TPE',
+    metaTitle: 'Legaly AI pour indépendants et TPE — créez, modifiez, fermez votre entreprise',
+    metaDescription:
+      "Micro-entreprise, SASU, EURL : l'agent Legaly prépare les statuts, l'annonce légale et le dossier du Guichet unique. Vous relisez, signez et payez les frais officiels affichés à l'avance.",
+    eyebrow: 'Pour les indépendants et les TPE',
+    heroLines: ['Votre entreprise,', 'sans vous perdre dans les formalités.'],
+    heroHighlight: 'Créer, modifier, fermer.',
+    heroSub:
+      "Décrivez ce que vous voulez faire : l'agent vous pose les bonnes questions, rédige les documents et prépare le dossier du Guichet unique.",
+    pains: [
+      { pain: 'Micro-entreprise ou société ?', solution: "L'agent explique les différences utiles à votre situation et prépare la forme choisie." },
+      { pain: 'Des statuts et une annonce légale à rédiger', solution: 'Statuts et annonce rédigés à partir de vos réponses, mentions obligatoires vérifiées.' },
+      { pain: 'Le Guichet unique est difficile à remplir', solution: 'Le dossier est préparé pour vous ; vous vérifiez, signez et payez.' },
+      { pain: 'Les frais qui tombent à la fin', solution: 'Les frais officiels sont affichés avant le paiement.' },
+    ],
+    selectorPitch: 'Créez, modifiez ou fermez votre entreprise : l’agent prépare tout, vous gardez la main.',
+  },
   'experts-comptables': {
     slug: 'experts-comptables',
     nom: 'Experts-comptables',

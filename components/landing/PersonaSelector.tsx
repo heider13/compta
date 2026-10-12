@@ -19,7 +19,7 @@ export function PersonaSelector() {
             </>
           }
         />
-        <div className="grid gap-5 md:grid-cols-3">
+        <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-4">
           {PERSONA_LIST.map((p) => (
             <Link
               key={p.slug}

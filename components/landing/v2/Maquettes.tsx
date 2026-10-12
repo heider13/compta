@@ -8,9 +8,10 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
-export type Variante = 'experts-comptables' | 'avocats' | 'directions-juridiques';
+export type Variante = 'independants-tpe' | 'experts-comptables' | 'avocats' | 'directions-juridiques';
 
 const SOCIETES: Record<Variante, string[]> = {
+  'independants-tpe': ['NOVA CONSEIL', 'PIXEL STUDIO', 'ATELIER CÉRAMIQUE', 'CAFÉ DES HALLES'],
   'experts-comptables': ['ALPHA CONSEIL', 'BOULANGERIE MARTIN', 'SCI DU PORT', 'GAMMA FINANCE'],
   avocats: ['HOLDING VERNE', 'STUDIO NOVA', 'SCI LES TILLEULS', 'ATELIER BLEU'],
   'directions-juridiques': ['HOLDING DU GROUPE', 'FILIALE FRANCE', 'FILIALE LOGISTIQUE', 'SCI IMMOBILIÈRE'],
@@ -60,7 +61,7 @@ export function MaquetteAgent({ v }: { v: Variante }) {
     <Ecran titre="Agent Formalités">
       <div className="space-y-2.5 text-[11px]">
         <div className="ml-auto w-fit max-w-[80%] rounded-xl bg-[var(--violet-600)] px-3 py-2 text-white">
-          {v === 'experts-comptables' ? `Créer la SASU ${soc} pour un client, capital 1 000 €` : v === 'avocats' ? `Dissolution anticipée de ${soc}, liquidateur le gérant` : `Nommer un nouveau président chez ${SOCIETES[v][1]}`}
+          {v === 'independants-tpe' ? `Je veux créer ma SASU ${soc}, capital 1 000 €` : v === 'experts-comptables' ? `Créer la SASU ${soc} pour un client, capital 1 000 €` : v === 'avocats' ? `Dissolution anticipée de ${soc}, liquidateur le gérant` : `Nommer un nouveau président chez ${SOCIETES[v][1]}`}
         </div>
         <p className="flex items-center gap-1.5 font-mono text-[10px] text-[var(--ink-500)]"><span className="size-1.5 rounded-full bg-[var(--violet-500)]" /> A travaillé 14 s · 4 étapes · 2 documents ›</p>
         <div className="rounded-xl border border-[var(--violet-200)] bg-white p-3 shadow-sm">
@@ -234,7 +235,7 @@ export function MaquetteEntites() {
 export function MaquetteFormalites({ v }: { v: Variante }) {
   return (
     <Ecran actif={1} titre="Formalités">
-      <div className="mb-2 flex gap-1 border-b text-[10.5px]"><span className="border-b-2 border-[var(--violet-600)] px-2 py-1 font-semibold">Dossiers du cabinet</span><span className="px-2 py-1 text-[var(--ink-500)]">Déposées à l’INPI</span></div>
+      <div className="mb-2 flex gap-1 border-b text-[10.5px]"><span className="border-b-2 border-[var(--violet-600)] px-2 py-1 font-semibold">{v === 'independants-tpe' ? 'Mes formalités' : 'Dossiers du cabinet'}</span><span className="px-2 py-1 text-[var(--ink-500)]">Déposées à l’INPI</span></div>
       {SOCIETES[v].map((s, i) => (
         <div key={s} className="flex items-center gap-2 border-b py-2 text-[11px] last:border-0">
           <span className="font-mono text-[9px] text-[var(--ink-400)]">CMP-{(4821 + i).toString(36).toUpperCase()}</span>

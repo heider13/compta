@@ -2,6 +2,7 @@
 
 // Hero des pages métier (sans chat, réservé à l'accueil) : titre et appels à
 // l'action à gauche, scène animée propre au métier à droite.
+//   independants-tpe    → parcours de création qui se coche étape par étape
 //   experts-comptables  → portefeuille clients qui se prépare dossier par dossier
 //   avocats             → acte qui se rédige, annoté et tamponné « prêt à signer »
 //   directions-juridiques → organigramme du groupe, changement propagé aux filiales
@@ -170,7 +171,58 @@ function SceneGroupe() {
   );
 }
 
+// ── Indépendants et TPE : le parcours de création qui se coche étape par étape ──
+function SceneParcours() {
+  const etapes: [string, string][] = [
+    ['Vos réponses', 'Forme, activité, capital, adresse'],
+    ['Statuts rédigés', 'SASU — à relire'],
+    ['Annonce légale', 'Mentions obligatoires vérifiées'],
+    ['Signature en ligne', 'Statuts, déclaration, pouvoir'],
+    ['Dossier du Guichet unique', 'Prêt à vérifier et payer'],
+  ];
+  const faites = useCycle(etapes.length, 1250);
+  return (
+    <div className="relative mx-auto w-full max-w-[460px]">
+      <div className={cn(CARTE, 'p-6')}>
+        <div className="flex items-center justify-between">
+          <p className="font-mono text-[11px] font-semibold uppercase tracking-wider text-[var(--violet-600)]">Ma création de SASU</p>
+          <span className="rounded-full bg-[var(--violet-50)] px-2.5 py-1 text-[11px] font-semibold text-[var(--violet-700)]">{faites}/{etapes.length}</span>
+        </div>
+        <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-[var(--ink-100)]">
+          <div className="h-full rounded-full bg-gradient-to-r from-[#4a2bc4] via-[#7551e8] to-[#c13ad6] transition-all duration-700" style={{ width: `${(faites / etapes.length) * 100}%` }} />
+        </div>
+        <ol className="mt-5 space-y-1">
+          {etapes.map(([t, d], i) => {
+            const ok = i < faites;
+            const cours = i === faites;
+            return (
+              <li key={t} className={cn('flex items-center gap-3 rounded-xl px-3 py-2.5 transition-colors duration-500', cours && 'bg-[var(--violet-50)]')}>
+                <span className={cn('grid size-7 shrink-0 place-items-center rounded-full border text-xs font-semibold transition-all duration-500',
+                  ok ? 'border-emerald-300 bg-emerald-50 text-emerald-700' : cours ? 'border-[var(--violet-400)] bg-white text-[var(--violet-700)]' : 'border-[var(--ink-150)] bg-white text-[var(--ink-400)]')}>
+                  {ok ? <Check className="size-3.5" /> : cours ? <Loader2 className="size-3.5 animate-spin" /> : i + 1}
+                </span>
+                <div className="min-w-0">
+                  <p className={cn('text-sm font-semibold', ok || cours ? 'text-[var(--violet-900)]' : 'text-[var(--ink-400)]')}>{t}</p>
+                  <p className="text-[12px] text-[var(--ink-500)]">{d}</p>
+                </div>
+              </li>
+            );
+          })}
+        </ol>
+      </div>
+      <div className={cn(FLOTTANTE, 'bp-float -left-10 top-16')}>
+        <p className="text-[11px] font-semibold uppercase tracking-wider text-[var(--violet-600)]">Micro ou société ?</p>
+        <p className="mt-0.5 text-sm font-semibold text-[var(--violet-900)]">L’agent vous explique</p>
+      </div>
+      <div className={cn(FLOTTANTE, 'bp-float-slow -bottom-6 -right-6')}>
+        <p className="flex items-center gap-2 text-sm font-semibold text-[var(--violet-900)]"><CreditCard className="size-4 text-[var(--accent)]" /> Frais affichés avant de payer</p>
+      </div>
+    </div>
+  );
+}
+
 const SCENES: Record<string, () => React.ReactNode> = {
+  'independants-tpe': SceneParcours,
   'experts-comptables': ScenePortefeuille,
   avocats: SceneActe,
   'directions-juridiques': SceneGroupe,

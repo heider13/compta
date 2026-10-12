@@ -37,6 +37,74 @@ export type Metier = {
 };
 
 export const METIERS: Record<string, Metier> = {
+  'independants-tpe': {
+    kicker: 'Pour les indépendants et les TPE',
+    ligne1: 'Votre entreprise.',
+    ligne2: 'Les formalités en moins.',
+    sousTitre: 'Créer votre micro-entreprise ou votre société, changer d’adresse, déposer vos comptes, fermer : décrivez ce que vous voulez faire, l’agent prépare tout, vous gardez la main.',
+    points: ['Des questions simples, une à la fois', 'Statuts, annonce légale et dossier préparés pour vous', 'Les frais officiels affichés avant de payer'],
+    exemples: [
+      'Créer ma micro-entreprise de graphisme',
+      'Créer ma SASU de conseil, capital 1 000 €',
+      'Transférer le siège de mon EURL',
+      'Déposer les comptes de ma SASU',
+      'Mettre ma société en sommeil',
+    ],
+    chips: [
+      ['Me lancer', 'Créer ma micro-entreprise de graphisme'],
+      ['Créer une société', 'Créer ma SASU de conseil, capital 1 000 €'],
+      ['Déménager', 'Transférer le siège de mon EURL'],
+      ['Comptes annuels', 'Déposer les comptes de ma SASU'],
+      ['Faire une pause', 'Mettre ma société en sommeil'],
+    ],
+    rail: {
+      titre: ['Toute la vie de votre entreprise,', 'au même endroit'],
+      sousTitre: 'De la création à la fermeture, chaque étape préparée et expliquée.',
+      cartes: [
+        { key: 'creation', titre: 'Création', texte: 'Micro-entreprise, SASU, EURL, SAS, SARL' },
+        { key: 'annonces', titre: 'Annonce légale', texte: 'Rédigée, mentions vérifiées' },
+        { key: 'modification', titre: 'Changements', texte: 'Adresse, activité, dirigeant' },
+        { key: 'comptes', titre: 'Comptes annuels', texte: 'Dépôt et confidentialité' },
+        { key: 'rne', titre: 'Vos documents', texte: 'Statuts et comptes déposés au RNE' },
+        { key: 'sommeil', titre: 'Pause ou fermeture', texte: 'Mise en sommeil, cessation' },
+      ],
+    },
+    defis: {
+      titre: ['Ce qui change', 'pour vous'],
+      items: [
+        { defi: 'Micro-entreprise ou société ?', reponse: 'L’agent explique ce qui compte pour votre situation et prépare la forme choisie.' },
+        { defi: 'Des documents juridiques à rédiger', reponse: 'Statuts, annonce, déclarations : rédigés à partir de vos réponses.' },
+        { defi: 'Un portail officiel difficile à remplir', reponse: 'Le dossier du Guichet unique est préparé ; vous vérifiez, signez et payez.' },
+        { defi: 'Des frais découverts au dernier moment', reponse: 'Les frais officiels sont affichés avant le paiement.' },
+      ],
+    },
+    parcours: {
+      titre: ['Votre formalité,', 'en quatre temps'],
+      etapes: ['Vous décrivez votre projet', 'L’agent pose ses questions', 'Documents et dossier préparés', 'Vous signez et payez'],
+    },
+    cta: ['Prêt à vous lancer', 'sans paperasse ?'],
+    modulesTitre: ['Tout ce qu’il faut pour', 'créer et faire vivre votre entreprise'],
+    modules: [
+      { key: 'agent', nom: 'Agent Formalités', titre: 'Des questions simples, une à la fois.', texte: 'Vous décrivez votre projet en quelques mots ; l’agent pose ses questions sous forme de formulaire et vous propose des choix expliqués.' },
+      { key: 'signature', nom: 'Documents', titre: 'Vos statuts rédigés pour vous.', texte: 'Statuts, déclaration de non-condamnation, pouvoir, attestation de domiciliation : rédigés à partir de vos réponses, à relire puis signer en ligne.' },
+      { key: 'annonces', nom: 'Annonce légale', titre: 'L’annonce légale, sans erreur.', texte: 'Rédigée à partir de vos informations, mentions obligatoires vérifiées, avec le département de parution.' },
+      { key: 'formalites', nom: 'Guichet unique', titre: 'Le dossier officiel préparé.', texte: 'Le dossier du Guichet unique est prérempli avec vos pièces ; vous le vérifiez, le signez et le payez vous-même.' },
+      { key: 'paiement', nom: 'Frais', titre: 'Les frais connus à l’avance.', texte: 'Montant des frais officiels affiché avant le paiement, et suivi jusqu’à la validation.' },
+      { key: 'rne', nom: 'Vos documents', titre: 'Vos statuts et comptes, toujours sous la main.', texte: 'Statuts, procès-verbaux et comptes déposés au registre national, téléchargeables en un clic.' },
+      { key: 'regularisation', nom: 'Demandes du greffe', titre: 'Le greffe demande une correction ?', texte: 'La demande est expliquée simplement et la réponse est préparée avec les pièces à fournir.' },
+    ],
+    engagements: {
+      titre: 'Nos engagements envers les indépendants',
+      points: [
+        'Rien n’est envoyé sans votre validation',
+        'Les frais officiels affichés avant le paiement',
+        'Vos données chiffrées et jamais revendues',
+        'Un abonnement mensuel, sans engagement',
+      ],
+    },
+    adapte: { titre: 'Adapté à votre activité', texte: 'Du premier jour d’activité à la petite équipe.', paliers: ['Micro-entrepreneur', 'Société unipersonnelle', 'TPE avec associés'] },
+    fin: ['Tout ce dont vous avez besoin pour', 'gérer votre entreprise sereinement'],
+  },
   'experts-comptables': {
     kicker: 'Pour les experts-comptables',
     ligne1: 'Le juridique de vos clients.',
@@ -244,7 +312,7 @@ export const METIERS: Record<string, Metier> = {
     cta: ['Prêt à centraliser', 'le juridique du groupe ?'],
     modulesTitre: ['Une plateforme unique pour', 'toutes les sociétés du groupe'],
     modules: [
-      { key: 'entites', nom: 'Entités du groupe', titre: 'Toutes vos sociétés, un seul écran.', texte: 'Holding, filiales et sociétés civiles : fiche RNE, formalités en cours et documents de chaque entité, réunis au même endroit.' },
+      { key: 'entites', nom: 'Entités du groupe', titre: 'L’arbre du groupe, un seul écran.', texte: 'Holding, filiales et sous-filiales retrouvées au registre, détentions directes et indirectes, points d’attention, formalités en cours et échéances de comptes de chaque société.' },
       { key: 'lots', nom: 'Changements en série', titre: 'Un changement, toutes les filiales.', texte: 'Nouveau président, transfert de siège ou mise à jour des bénéficiaires effectifs : une seule demande, une formalité préparée par entité.' },
       { key: 'agent', nom: 'Agent Formalités', titre: 'Le secrétariat juridique, préparé pour vous.', texte: 'Le juriste décrit le changement ; l’agent pose ses questions, lit les statuts en vigueur et rédige PV, déclarations et annonces.' },
       { key: 'rne', nom: 'Documents RNE', titre: 'Les statuts à jour de chaque société.', texte: 'Statuts, procès-verbaux et comptes déposés de chaque entité, consultables et joints aux dossiers en un clic.' },
