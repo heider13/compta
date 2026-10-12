@@ -33,6 +33,7 @@ const { createModificationDraft, appliquerOperations, baseModification, donneesM
 const { deposerPieces, PIECES_MODIF } = require('./inpi-liasse');
 const { BUCKET } = require('./dossier-docs');
 const knowledge = require('./knowledge');
+const ca = require('./inpi-comptes-annuels');
 
 const MAX_ITERATIONS = 12;
 
@@ -317,6 +318,35 @@ const TOOLS = [
     },
   },
   {
+    name: 'deposer_comptes_annuels',
+    description:
+      "Prépare le DÉPÔT DES COMPTES ANNUELS d'une société au Guichet unique (greffe) : identité reprise du RNE, exercice, niveau de confidentialité, pièces. Contrôle l'exercice (clos, 24 mois maximum), les délais (approbation dans les 6 mois de la clôture, dépôt dans le mois qui suit, 2 mois en ligne) et les pièces attendues selon la confidentialité : aucune → COMPTES_COMPLETS + PV_AFFECTATION ; totale (micro-entreprise) → COMPTES_COMPLETS + DECLARATION_CONFIDENTIALITE + PV_AFFECTATION ; compte_resultat (petite entreprise) → BILAN_ET_ANNEXES + COMPTE_RESULTAT + PV_AFFECTATION ; comptes non approuvés → REFUS_APPROBATION au lieu du PV. D'abord confirme=false (aperçu, rien n'est envoyé), puis confirme=true UNIQUEMENT après confirmation explicite du professionnel : crée le BROUILLON du dépôt et y joint les pièces. Ne signe et ne paie jamais. Catégories de pièces : " +
+      Object.entries(ca.PIECES_CA).map(([k, v]) => `${k} (${v.label})`).join(', ') + '.',
+    eager_input_streaming: true,
+    input_schema: {
+      type: 'object',
+      properties: {
+        siren: { type: 'string' },
+        exercice_debut: { type: 'string', description: 'YYYY-MM-DD' },
+        exercice_fin: { type: 'string', description: 'YYYY-MM-DD (date de clôture)' },
+        confidentialite: { type: 'string', enum: Object.keys(ca.CONFIDENTIALITE) },
+        comptes_approuves: { type: 'boolean', description: 'false si l’assemblée a refusé d’approuver les comptes' },
+        date_approbation: { type: 'string', description: "YYYY-MM-DD : date de l'assemblée ou de la décision de l'associé unique" },
+        cac: { type: 'boolean', description: 'Comptes certifiés par un commissaire aux comptes (joindre RAPPORT_CAC)' },
+        pieces: {
+          type: 'array',
+          items: {
+            type: 'object',
+            properties: { document_id: { type: 'string' }, categorie: { type: 'string', enum: Object.keys(ca.PIECES_CA) } },
+            required: ['document_id', 'categorie'],
+          },
+        },
+        confirme: { type: 'boolean' },
+      },
+      required: ['siren', 'exercice_debut', 'exercice_fin', 'confidentialite', 'confirme'],
+    },
+  },
+  {
     name: 'lire_fiche_rne',
     description:
       "Lit la fiche officielle à jour d'une entreprise au Registre national des entreprises (RNE) à partir de son SIREN : dénomination, forme, objet, capital, siège, dirigeants, bénéficiaires effectifs. À utiliser systématiquement avant de préparer une modification ou une radiation, pour partir des données officielles au lieu de les redemander.",
@@ -406,7 +436,7 @@ const TOOLS = [
           items: {
             type: 'object',
             properties: {
-              type: { type: 'string', enum: ['creation', 'transfert_siege', 'changement_dirigeant', 'modification', 'mise_en_sommeil', 'dissolution', 'cloture_liquidation', 'cessation_ei', 'autre'] },
+              type: { type: 'string', enum: ['creation', 'transfert_siege', 'changement_dirigeant', 'modification', 'mise_en_sommeil', 'dissolution', 'cloture_liquidation', 'cessation_ei', 'comptes_annuels', 'autre'] },
               societe: { type: 'string' },
               siren: { type: 'string' },
               consigne: { type: 'string' },
@@ -477,6 +507,7 @@ const SYSTEM_PROMPT = `Tu es l'Agent Formalités de Legaly AI, plateforme franç
 <perimetre>
 - Créations de sociétés : SASU, SAS, EURL, SARL, SCI, holding (SAS).
 - Modifications (transfert de siège, changement de dirigeant, d'objet, de dénomination, de capital…) et cessations (dissolution, radiation) : dossier + procès-verbal + annonce légale.
+- Dépôt des comptes annuels des sociétés : contrôle des comptes et du PV, confidentialité, brouillon du dépôt au Guichet unique (voir <comptes_annuels>).
 - Tu ne signes rien, tu ne déposes rien à l'INPI et tu n'envoies rien à des tiers : la signature électronique, la validation interne et le dépôt se font par le professionnel depuis la page du dossier.
 - Plusieurs formalités à la fois (plusieurs créations, plusieurs fermetures…, en texte ou dans un tableur joint) : preparer_lot, présente le plan en tableau court (type, société, informations manquantes), demande confirmation, puis lancer_lot (confirme=true). Chaque formalité est alors préparée dans son propre dossier ; le suivi s'affiche dans ce chat et le professionnel ouvre chaque formalité depuis ce suivi pour la compléter et créer son brouillon INPI.
 </perimetre>
@@ -506,6 +537,18 @@ Paiement : avant de créer un brouillon (confirme=true), demande qui paiera les 
 Pour une MODIFICATION (objet, dénomination, siège, dirigeant, bénéficiaires effectifs), une mise en sommeil ou la cessation d'une entreprise individuelle : lis d'abord la fiche RNE (lire_fiche_rne), puis les documents déposés (lister_documents_rne, et lire_document_rne sur les statuts les plus récents pour rédiger le PV et les statuts mis à jour à partir du texte en vigueur ; les joindre au dossier si utile), rédige les actes (PV, statuts mis à jour) et l'annonce (rediger_annonce_legale avec le siren : modification, transfert_siege, dissolution, cloture_liquidation… ; pas d'annonce pour une mise en sommeil ni pour une entreprise individuelle), puis utilise creer_modification_inpi avec la même logique aperçu → confirmation → brouillon. Un changement de dirigeant associé au capital s'accompagne en général d'une mise à jour des bénéficiaires effectifs (opération beneficiaires).
 La création de brouillon couvre les créations de SASU, SAS, EURL, SARL, SCI et d'entreprise individuelle (micro-entreprise : formeJuridique AE ; pas d'annonce légale ni de statuts, mais n° de sécurité sociale, situation matrimoniale, options du régime micro et pièce d'identité). Pour une modification ou une cessation, prépare les documents et guide le formaliste pour la saisie.
 </depot_inpi>
+
+<comptes_annuels>
+Dépôt des comptes annuels au greffe via le Guichet unique (outil deposer_comptes_annuels) :
+1. Lis la fiche RNE (lire_fiche_rne) puis enregistre le dossier (enregistrer_dossier : typeFormalite MODIFICATION, operation « Dépôt des comptes annuels <année> », dénomination, SIREN, forme).
+2. Demande, avec poser_questions, ce qui manque : exercice (début, clôture), date d'approbation, comptes approuvés ou non, commissaire aux comptes, niveau de confidentialité (propose celui auquel la société a droit), payeur des frais. Pré-remplis depuis la fiche RNE (date de clôture) et les documents joints.
+3. Confidentialité (2 des 3 seuils non dépassés à la clôture) : micro-entreprise (total du bilan ≤ 450 000 €, chiffre d'affaires net ≤ 900 000 €, ≤ 10 salariés) → « totale » (comptes non publiés, déclaration de confidentialité jointe) ; petite entreprise (bilan ≤ 7,5 M€, CA ≤ 15 M€, ≤ 50 salariés) → « compte_resultat » (compte de résultat non publié). Exclus : établissements de crédit, assurances, sociétés dont l'activité est la gestion de titres de participation (holdings) et, pour la confidentialité du compte de résultat, les sociétés d'un groupe. Dans le doute, « aucune » et signale-le.
+4. Contrôle les comptes joints AVANT l'aperçu (motifs de rejet fréquents du greffe) : première page signée, bilan actif ET passif complets avec total de l'actif = total du passif, compte de résultat complet avec un résultat identique au bilan (passif) et au compte de résultat, annexe présente si exigée, dates d'exercice identiques à celles déclarées, PV d'approbation daté et signé votant l'affectation du résultat (montant concordant). Signale chaque écart clairement ; une liasse fiscale 2033/2050 est acceptée si elle contient bilan et compte de résultat.
+5. EURL ou SASU dont l'associé unique personne physique est le dirigeant : le dépôt vaut approbation ; la décision d'affectation signée sert de PV_AFFECTATION.
+6. etat_dossier pour les identifiants des pièces, puis deposer_comptes_annuels confirme=false ; présente l'aperçu (pièces, bloquants, alertes de délai, frais indicatifs) ; confirmation explicite via poser_questions (oui_non) ; puis confirme=true.
+7. Récapitulatif : lien_guichet_unique, frais, payeur, étapes (vérifier, signer, payer ou délégation de paiement).
+Plusieurs dépôts à la fois (une liste de sociétés) : preparer_lot / lancer_lot avec le type comptes_annuels ; chaque dépôt est préparé dans sa formalité, le professionnel y joint les comptes et crée le brouillon depuis le suivi.
+</comptes_annuels>
 
 <regularisations_inpi>
 Pour une formalité déjà déposée au Guichet unique (régularisation demandée par le greffe, rejet, signature ou paiement en attente) :
@@ -1056,6 +1099,88 @@ async function toolModification(supa, ctx, input) {
   };
 }
 
+async function toolComptesAnnuels(supa, ctx, input) {
+  const siren = String(input.siren || '').replace(/\D/g, '');
+  if (!/^\d{9}$/.test(siren)) throw new Error('SIREN invalide (9 chiffres).');
+  const confidentialite = input.confidentialite || 'aucune';
+  const exercice = { debut: input.exercice_debut, fin: input.exercice_fin };
+  const approuves = input.comptes_approuves !== false;
+  const annee = String(input.exercice_fin || '').slice(0, 4);
+
+  const dossier = await loadDossier(supa, ctx);
+  const meta = dossier?.metadata || {};
+  let docs = [];
+  if (dossier) ({ data: docs } = await supa.from('dossier_documents').select('id, name, file_path, mime_type').eq('dossier_id', dossier.id));
+  const byId = new Map((docs || []).map((d) => [String(d.id), d]));
+  const wanted = Array.isArray(input.pieces) ? input.pieces : [];
+  const plan = wanted.filter((w) => byId.has(String(w.document_id)) && ca.PIECES_CA[w.categorie]).map((w) => ({ doc: byId.get(String(w.document_id)), categorie: w.categorie }));
+  const introuvables = wanted.filter((w) => !byId.has(String(w.document_id))).map((w) => String(w.document_id));
+  const { bloquants, alertes } = ca.controler({
+    exercice, confidentialite, approuves, dateApprobation: input.date_approbation,
+    categories: plan.map((p) => p.categorie),
+  });
+  if (introuvables.length) bloquants.push(`Documents introuvables dans le dossier : ${introuvables.join(', ')} (appelle etat_dossier)`);
+  if (input.cac && !plan.some((p) => p.categorie === 'RAPPORT_CAC')) bloquants.push('Pièce manquante : Rapport du commissaire aux comptes');
+  if (confidentialite !== 'aucune') alertes.push('Confidentialité : à vérifier sur le Guichet unique au moment de la signature (l’option est portée par le dépôt, la mention « confidentielle » des pièces se contrôle à l’écran)');
+
+  if (!input.confirme) {
+    const fiche = rne.summarizeCompany(await rne.getCompany(ctx.orgId, siren));
+    let erreur = null;
+    try { await ca.construireContenu(ctx.orgId, siren, { exercice, confidentialite, approuves, cac: input.cac ?? null }); } catch (e) { erreur = e.message; }
+    if (dossier) await supa.from('dossiers').update({ metadata: { ...meta, inpi_comptes_preview_at: new Date().toISOString() } }).eq('id', dossier.id);
+    return {
+      result: {
+        apercu: true, rien_envoye: true, entreprise: fiche, exercice, confidentialite,
+        pieces_attendues: ca.piecesAttendues(confidentialite, { approuves, cac: Boolean(input.cac) }).map((c) => ca.PIECES_CA[c].label),
+        pieces_deposees: plan.map((p) => ({ document: p.doc.name, categorie: ca.PIECES_CA[p.categorie].label })),
+        bloquants_a_resoudre_avant_creation: bloquants, alertes, erreur,
+        frais_indicatifs: 'Environ 45 € TTC pour une société commerciale (greffe, BODACC, INPI) ; montant exact calculé par le Guichet unique à la création du brouillon.',
+        rappel: bloquants.length || erreur ? 'Résoudre les bloquants avant toute création.' : 'Demander une confirmation explicite avant de créer le brouillon.',
+      },
+      event: { kind: 'inpi', label: `Aperçu du dépôt des comptes ${annee} — ${fiche.denomination || siren}`, detail: `${plan.length} pièce(s) · ${bloquants.length ? `${bloquants.length} point(s) bloquant(s)` : 'prêt'}` },
+    };
+  }
+
+  if (ctx.batchParent) throw new Error('Mode lot : le brouillon du dépôt est créé ensuite par le professionnel depuis cette formalité, après vérification des comptes. Termine par l’aperçu.');
+  if (!dossier) throw new Error("Enregistre d'abord le dossier (enregistrer_dossier, typeFormalite MODIFICATION, operation « Dépôt des comptes annuels ») et fais un aperçu.");
+  if (bloquants.length) throw new Error(`Création impossible : ${bloquants.join(' ; ')}`);
+  if (!meta.inpi_comptes_preview_at) throw new Error("Fais d'abord un aperçu (confirme=false) et présente-le au professionnel.");
+  if (meta.inpi_comptes_id) throw new Error(`Un brouillon de dépôt existe déjà pour ce dossier (dépôt ${meta.inpi_comptes_id}).`);
+
+  const pieces = [];
+  for (const p of plan) {
+    const { data: blob } = await supa.storage.from(BUCKET).download(p.doc.file_path);
+    if (blob) pieces.push({ categorie: p.categorie, nom: p.doc.name, buffer: Buffer.from(await blob.arrayBuffer()), mime: p.doc.mime_type || 'application/pdf' });
+  }
+  const { depot, deposees, erreurs } = await ca.creerBrouillon(ctx.orgId, {
+    siren, exercice, confidentialite, approuves, cac: input.cac ?? null, pieces,
+    reference: dossier.reference, nomDossier: `COMPTES ${annee} ${dossier.client_name || ''}`.trim(),
+  });
+  let frais = null;
+  try { frais = (await ca.detail(ctx.orgId, depot.id)).paiement; } catch {}
+  await supa.from('dossiers').update({
+    metadata: { ...meta, inpi_comptes_id: String(depot.id), inpi_comptes_liasse: depot.liasseNumber || null, inpi_comptes_annee: annee, inpi_comptes_created_at: new Date().toISOString() },
+  }).eq('id', dossier.id);
+  try {
+    await supa.from('audit_logs').insert({ organization_id: ctx.orgId, user_id: ctx.userId, action: 'agent.inpi.comptes_draft_created', resource_type: 'dossier', resource_id: dossier.id, metadata: { inpi_comptes_id: depot.id, annee, confidentialite } });
+  } catch {}
+  return {
+    result: {
+      brouillon_cree: true, depot_inpi: depot.id, liasse: depot.liasseNumber, exercice, confidentialite,
+      pieces_deposees: deposees, erreurs_depot: erreurs,
+      frais_cents: frais?.a_payer_cents ?? null, detail_frais: frais?.paniers?.[0]?.lignes || [],
+      lien_guichet_unique: ca.lienDepot(depot.id),
+      etapes_formaliste: [
+        'Ouvrir le dépôt sur le Guichet unique (lien_guichet_unique, rubrique Comptes annuels)',
+        'Vérifier les pièces' + (confidentialite !== 'aucune' ? ' et leur mention confidentielle' : ''),
+        'Signer électroniquement',
+        'Payer ou envoyer la délégation de paiement au client (même page)',
+      ],
+    },
+    event: { kind: 'inpi', label: `Brouillon de dépôt des comptes ${annee} créé`, detail: `${depot.liasseNumber || depot.id} · ${deposees.length} pièce(s)`, href: `/inpi/comptes/${depot.id}` },
+  };
+}
+
 async function toolAnnonce(supa, ctx, input) {
   if (!annonces.TYPES[input.type]) throw new Error(`Type d'annonce inconnu : ${input.type}`);
   const dossier = await loadDossier(supa, ctx);
@@ -1232,6 +1357,7 @@ async function runTool(name, input, ctx) {
     case 'lancer_lot': return toolLancerLot(ctx, input);
     case 'lire_document_rne': return toolLireDocRne(supa, ctx, input);
     case 'creer_modification_inpi': return toolModification(supa, ctx, input);
+    case 'deposer_comptes_annuels': return toolComptesAnnuels(supa, ctx, input);
     case 'lire_formalite_inpi': return toolLireFormalite(ctx, input);
     case 'lire_piece_inpi': return toolLirePiece(ctx, input);
     default: throw new Error(`Outil inconnu : ${name}`);

@@ -57,7 +57,7 @@ export function PaiementBadge({ p, className }: { p?: Paiement | null; className
 
 const STATUT_PANIER: Record<string, string> = { TO_PAY: 'À payer', PAID: 'Payé', REFUNDED: 'Remboursé', CANCELED: 'Annulé' };
 
-export function PaiementCard({ p, liasse, formalityId }: { p: Paiement; liasse: string; formalityId: string | number }) {
+export function PaiementCard({ p, liasse, formalityId, comptes = false }: { p: Paiement; liasse: string; formalityId: string | number; comptes?: boolean }) {
   const [copie, setCopie] = useState(false);
   const [copieMail, setCopieMail] = useState(false);
   const [facture, setFacture] = useState<'idle' | 'busy' | 'ok' | 'deja'>('idle');
@@ -70,7 +70,7 @@ export function PaiementCard({ p, liasse, formalityId }: { p: Paiement; liasse: 
       const { data } = await createClient().auth.getSession();
       const token = data.session?.access_token;
       if (!token) throw new Error('Session expirée, reconnectez-vous.');
-      const res = await fetch(`${VPS}/api/inpi/formalites/${encodeURIComponent(String(formalityId))}/refacturer`, {
+      const res = await fetch(`${VPS}/api/inpi/${comptes ? 'comptes' : 'formalites'}/${encodeURIComponent(String(formalityId))}/refacturer`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}` },
       });

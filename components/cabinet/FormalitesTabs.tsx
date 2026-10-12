@@ -1,26 +1,32 @@
 'use client';
 
 // En-tête commun de la rubrique « Formalités » : dossiers du cabinet et
-// formalités déposées au Guichet unique, réunis sous un même menu.
+// formalités déposées au Guichet unique et dépôts de comptes annuels, réunis sous un même menu.
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { FolderOpen, Landmark } from 'lucide-react';
+import { BookOpenCheck, FolderOpen, Landmark } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const TABS = [
   { href: '/dossiers', label: 'Dossiers du cabinet', icon: FolderOpen },
   { href: '/inpi', label: 'Déposées à l’INPI', icon: Landmark },
+  { href: '/inpi/comptes', label: 'Comptes annuels', icon: BookOpenCheck },
 ];
+
+// Onglet actif : le chemin le plus précis l'emporte (/inpi/comptes avant /inpi).
+const actif = (pathname: string) =>
+  [...TABS].sort((a, b) => b.href.length - a.href.length).find((t) => pathname === t.href || pathname.startsWith(`${t.href}/`))?.href;
 
 export function FormalitesTabs() {
   const pathname = usePathname();
+  const courant = actif(pathname);
   return (
     <div className="space-y-3">
       <h1>Formalités</h1>
       <nav className="flex gap-1 border-b" aria-label="Formalités">
         {TABS.map((t) => {
-          const active = pathname === t.href || pathname.startsWith(`${t.href}/`);
+          const active = courant === t.href;
           return (
             <Link
               key={t.href}

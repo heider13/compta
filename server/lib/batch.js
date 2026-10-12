@@ -29,6 +29,7 @@ const TYPES = {
   dissolution: { label: 'Dissolution', type: 'MODIFICATION' },
   cloture_liquidation: { label: 'Clôture de liquidation', type: 'RADIATION' },
   cessation_ei: { label: "Cessation d'entreprise individuelle", type: 'RADIATION' },
+  comptes_annuels: { label: 'Dépôt des comptes annuels', type: 'MODIFICATION' },
   autre: { label: 'Autre formalité', type: 'MODIFICATION' },
 };
 
