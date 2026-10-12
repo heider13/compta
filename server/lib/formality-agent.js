@@ -84,6 +84,8 @@ const ACTES = {
   acte_cession: "Acte de cession d'actions ou de parts sociales",
   statuts_mis_a_jour: 'Statuts mis à jour',
   declaration_beneficiaires: 'Déclaration des bénéficiaires effectifs',
+  pv_approbation_comptes: "Procès-verbal d'approbation des comptes et d'affectation du résultat (ou décision de l'associé unique)",
+  declaration_confidentialite: 'Déclaration de confidentialité des comptes annuels (art. L232-25 du Code de commerce)',
   autre: 'Document juridique',
 };
 
@@ -96,6 +98,7 @@ const MODELE_PAR_ACTE = {
   pouvoir_formalites: 'mandat',
   pv_decision: 'pv_assemblee',
   pv_dissolution: 'pv_assemblee',
+  pv_approbation_comptes: 'pv_assemblee',
   bail_commercial: 'bail_commercial',
   acte_cession: 'acte_cession',
   statuts_mis_a_jour: 'statuts_mis_a_jour',
