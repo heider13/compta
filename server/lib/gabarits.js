@@ -30,6 +30,44 @@ const adresse = (a) => (a?.voie ? [a.voie, a.complement, `${a.codePostal || ''} 
 const NATIONALITE = { FRA: 'française', DZA: 'algérienne', MAR: 'marocaine', TUN: 'tunisienne', TUR: 'turque', PRT: 'portugaise', ESP: 'espagnole', ITA: 'italienne', BEL: 'belge', DEU: 'allemande', GBR: 'britannique', CHE: 'suisse', SEN: 'sénégalaise', MLI: 'malienne', CIV: 'ivoirienne', CMR: 'camerounaise', CHN: 'chinoise', ROU: 'roumaine', POL: 'polonaise', USA: 'américaine' };
 const FORMES = { SASU: 'société par actions simplifiée unipersonnelle', SAS: 'société par actions simplifiée', HOLDING: 'société par actions simplifiée', EURL: 'société à responsabilité limitée unipersonnelle', SARL: 'société à responsabilité limitée', SCI: 'société civile immobilière' };
 const ROLE = { PRESIDENT: 'Président', GERANT: 'Gérant', DG: 'Directeur général' };
+const REGIMES = { COMMUNAUTE: 'la communauté réduite aux acquêts', SEPARATION: 'la séparation de biens', PARTICIPATION: 'la participation aux acquêts', COMMUNAUTE_UNIVERSELLE: 'la communauté universelle' };
+const nombre = (n) => (Number.isFinite(Number(n)) ? Number(n).toLocaleString('fr-FR', { maximumFractionDigits: 2 }) : null);
+
+// Cession de parts : données du dossier (data.cession), prix total calculé.
+function cession(c = {}, actions = false) {
+  if (!c || !Object.keys(c).length) return null;
+  const nb = Number(c.nbParts) || null;
+  const pu = Number(c.prixUnitaire);
+  const ced = personne(c.cedant || {});
+  const conj = c.cedant?.conjoint ? personne(c.cedant.conjoint) : null;
+  const cess = personne(c.cessionnaire || {});
+  return {
+    cedant: { ...ced, marieMot: ced.feminin ? 'mariée' : 'marié', denomme: ced.feminin ? 'dénommée' : 'dénommé', marie: Boolean(c.cedant?.regimeMatrimonial && c.cedant.regimeMatrimonial !== 'CELIBATAIRE'), regime: REGIMES[c.cedant?.regimeMatrimonial] || null },
+    conjoint: conj, avecConjoint: Boolean(conj?.nomComplet),
+    cessionnaire: { ...cess, marieMot: cess.feminin ? 'mariée' : 'marié', denomme: cess.feminin ? 'dénommée' : 'dénommé', resident: c.cessionnaire?.resident !== false, regime: REGIMES[c.cessionnaire?.regimeMatrimonial] || null },
+    nbParts: nb, nbPartsLettres: null,
+    numeroDe: c.numeroDe ?? null,
+    numeroA: c.numeroA ?? (c.numeroDe != null && nb ? Number(c.numeroDe) + nb - 1 : null),
+    prixUnitaire: Number.isFinite(pu) ? `${nombre(pu)} euros` : null,
+    prixTotal: Number.isFinite(pu) && nb ? `${nombre(pu * nb)} euros` : null,
+    dateAgrement: dateFr(c.dateAgrement),
+    dateAcquisition: dateFr(c.dateAcquisitionCedant),
+    dateStatuts: dateFr(c.dateStatuts),
+    dernierExercice: dateFr(c.dateDernierExercice),
+    tiers: c.cessionnaireAssocie !== true,
+    repartition: (c.repartitionAvant || []).map((r) => ({ ...personne(r), nbParts: r.nbParts ?? null, titresDetenus: r.nbParts == null ? null : `${r.nbParts} ${actions ? 'action' : 'part'}${Number(r.nbParts) > 1 ? 's' : ''}${actions ? '' : ` sociale${Number(r.nbParts) > 1 ? 's' : ''}`}` })),
+    nbExemplaires: c.nbExemplaires || 3,
+    // Accords singulier/pluriel : « 1 part sociale, numérotée 100 » / « 2 parts sociales, numérotées de 99 à 100 »
+    designation: designation(nb, c.numeroDe, c.numeroA ?? (c.numeroDe != null && nb ? Number(c.numeroDe) + nb - 1 : null), actions),
+    titresCedes: !nb ? null : nb === 1 ? (actions ? "l'action cédée" : 'la part sociale cédée') : `les ${nb} ${actions ? 'actions' : 'parts sociales'} cédées`,
+  };
+}
+
+function designation(nb, de, a, actions) {
+  if (!nb) return null;
+  if (nb === 1) return `1 ${actions ? 'action' : 'part sociale'}${de != null ? `, numérotée ${de}` : ''}`;
+  return `${nb} ${actions ? 'actions' : 'parts sociales'}${de != null ? `, numérotées de ${de} à ${a}` : ''}`;
+}
 
 function personne(p = {}, role = null) {
   const feminin = p.sexe === 'F';
@@ -76,11 +114,11 @@ function contexte(data, { dossier = {}, cabinet = {}, date = new Date() } = {}) 
     forme, formeLongue: FORMES[forme] || null,
     unipersonnelle, plusieursAssocies: !unipersonnelle, actions, parts: !actions,
     titres: actions ? 'actions' : 'parts sociales',
-    capital: euros(capital), capitalVariable: Boolean(data.capitalVariable),
+    capital: capital ? euros(capital) : null, capitalVariable: Boolean(data.capitalVariable),
     capitalMinimum: euros(data.capitalMinimum), capitalMaximum: euros(data.capitalMaximum),
     nbTitres, valeurNominale: nbTitres ? euros(capital / nbTitres) : null,
     objet: data.objet || null,
-    siege: adresse(data.siege),
+    siege: adresse(data.siege) || data.siegeTexte || null,
     domiciliationChezDirigeant: Boolean(data.domiciliationChezDirigeant),
     societeDomiciliation: Boolean(data.societeDomiciliation),
     domiciliataire: data.domiciliataire?.denomination || null,
@@ -95,6 +133,11 @@ function contexte(data, { dossier = {}, cabinet = {}, date = new Date() } = {}) 
     dateSignature: dateFr(data.dateSignature) || dateFr(new Intl.DateTimeFormat('fr-CA', { timeZone: 'Europe/Paris' }).format(date)),
     cabinet: { denomination: cabinet.denomination || null, adresse: cabinet.adresse || null, representant: cabinet.representant || null },
     reference: dossier.reference || null,
+    // Société existante (modification) : SIREN et greffe, siège en texte si fourni par le RNE
+    siren: data.siren ? String(data.siren).replace(/\D/g, '').replace(/^(\d{3})(\d{3})(\d{3})$/, '$1 $2 $3') : null,
+    rcsVille: data.rcsVille || null,
+    societeCivile: forme === 'SCI',
+    cession: cession(data.cession, actions),
   };
 }
 
@@ -107,6 +150,10 @@ const LIBELLES = {
   'dirigeant.nationalite': 'nationalité du dirigeant', 'dirigeant.nomPere': 'nom du père du dirigeant',
   'dirigeant.nomMere': 'nom de jeune fille de la mère du dirigeant', 'cabinet.denomination': 'nom du cabinet mandataire',
   'cabinet.adresse': 'adresse du cabinet mandataire', 'cabinet.representant': 'représentant du cabinet mandataire',
+  'cession.dateStatuts': 'date des statuts', 'cession.dernierExercice': 'date de clôture du dernier exercice',
+  'cession.dateAcquisition': "date d'acquisition des parts par le cédant", 'cession.dateAgrement': "date de la décision d'agrément",
+  'cession.designation': 'nombre et numéros des parts cédées', 'cession.prixUnitaire': 'prix unitaire', 'cession.prixTotal': 'prix total',
+  rcsVille: 'ville du greffe (RCS)', siren: 'numéro SIREN',
 };
 
 function valeur(ctx, cle, courant) {

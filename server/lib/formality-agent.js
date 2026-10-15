@@ -27,6 +27,7 @@ const inpi = require('../inpi');
 const { getFormalitySummary, downloadAttachment } = require('./inpi-formality');
 const { buildCreationLiasse, buildEILiasse, createDraftWithPieces, PIECES, PIECES_EI } = require('./inpi-liasse');
 const rne = require('./inpi-rne');
+const greffes = require('./greffes');
 const annonces = require('./annonces-legales');
 const rneDocs = require('./rne-documents');
 const { createModificationDraft, appliquerOperations, baseModification, donneesManquantes } = require('./inpi-modification');
@@ -140,9 +141,42 @@ async function identiteCabinet(orgId) {
   return v;
 }
 
+// Société existante : identité officielle (RNE) complétée par les données du dossier, qui priment.
+const FORMES_RNE = { 6540: 'SCI', 5710: 'SAS', 5720: 'SASU', 5499: 'SARL', 5498: 'EURL' };
+async function avecFicheRne(ctx, data) {
+  const siren = String(data.siren || '').replace(/\D/g, '');
+  if (siren.length !== 9) return data;
+  let company;
+  try { company = await rne.getCompany(ctx.orgId, siren); } catch { return data; }
+  const f = rne.summarizeCompany(company);
+  const pm = company?.formality?.content?.personneMorale || {};
+  const adr = pm.adresseEntreprise?.adresse || {};
+  const typeVoie = VOIE_EN_CLAIR[adr.typeVoie] || adr.typeVoie;
+  const indice = { B: 'bis', T: 'ter', Q: 'quater' }[adr.indiceRepetition] || adr.indiceRepetition;
+  const siege = [[adr.numVoie, indice, typeVoie, adr.voie].filter(Boolean).join(' '), adr.complementLocalisation, `${adr.codePostal || ''} ${adr.commune || ''}`.trim()].filter(Boolean).join(', ');
+  const rnePart = {
+    denomination: f.denomination || undefined,
+    formeJuridique: FORMES_RNE[f.formeJuridique] || undefined,
+    capitalEuros: f.capital ?? undefined,
+    objet: f.objet || undefined,
+    siegeTexte: siege || undefined,
+    rcsVille: greffes.villeGreffe(adr.codeInseeCommune) || undefined,
+  };
+  // L'identité officielle prime ; le dossier ne complète que ce que le RNE ne porte pas (objet souvent absent)
+  const out = { ...data };
+  for (const [k, v] of Object.entries(rnePart)) if (v !== undefined && v !== null && v !== '') out[k] = v;
+  if (rnePart.siegeTexte) delete out.siege;
+  return out;
+}
+const VOIE_EN_CLAIR = {
+  BD: 'boulevard', AV: 'avenue', RUE: 'rue', CHE: 'chemin', IMP: 'impasse', PL: 'place', ALL: 'allée', QUAI: 'quai',
+  RTE: 'route', CRS: 'cours', SQ: 'square', PAS: 'passage', TRA: 'traverse', MTE: 'montée', LOT: 'lotissement',
+  RES: 'résidence', ESP: 'esplanade', FG: 'faubourg', HAM: 'hameau', PRV: 'parvis', PROM: 'promenade',
+};
+
 // Acte rempli par gabarit et rangé dans le dossier ; null si pas de gabarit.
-async function acteParGabarit(supa, ctx, dossier, nomGabarit, { label, docType, filename }) {
-  const data = dossier.metadata?.agent_data || {};
+async function acteParGabarit(supa, ctx, dossier, nomGabarit, { label, docType, filename, donnees }) {
+  const data = donnees || dossier.metadata?.agent_data || {};
   const cabinet = nomGabarit === 'mandat' ? await identiteCabinet(ctx.orgId) : {};
   const acte = gabarits.genererActe(nomGabarit, data, { dossier, cabinet });
   if (!acte) return null;
@@ -313,6 +347,25 @@ const TOOLS = [
         regimeImposition: { type: 'string', enum: ['IS', 'IR'] },
         regimeTVA: { type: 'string', enum: ['FRANCHISE_BASE', 'REEL_SIMPLIFIE', 'REEL_NORMAL'] },
         siren: { type: 'string', description: 'Pour une modification ou une cessation' },
+        cession: {
+          type: 'object',
+          description: "Cession de parts ou d'actions (acte rédigé par le gabarit du cabinet). Société : identité lue au RNE via siren.",
+          properties: {
+            cedant: { ...PERSONNE, properties: { ...PERSONNE.properties, regimeMatrimonial: { type: 'string', enum: ['CELIBATAIRE', 'COMMUNAUTE', 'SEPARATION', 'PARTICIPATION', 'COMMUNAUTE_UNIVERSELLE'] }, conjoint: PERSONNE } },
+            cessionnaire: { ...PERSONNE, properties: { ...PERSONNE.properties, regimeMatrimonial: { type: 'string', enum: ['CELIBATAIRE', 'COMMUNAUTE', 'SEPARATION', 'PARTICIPATION', 'COMMUNAUTE_UNIVERSELLE'] }, resident: { type: 'boolean', description: 'Résident fiscal français' } } },
+            nbParts: { type: 'integer', description: 'Nombre de parts ou actions cédées' },
+            numeroDe: { type: 'integer' },
+            numeroA: { type: 'integer' },
+            prixUnitaire: { type: 'number', description: 'Prix par part ou action, en euros' },
+            dateAgrement: { type: 'string', description: "Date de la décision d'agrément des associés, YYYY-MM-DD" },
+            dateAcquisitionCedant: { type: 'string', description: 'Date à laquelle le cédant a acquis les parts, YYYY-MM-DD' },
+            dateStatuts: { type: 'string', description: 'Date des statuts de la société, YYYY-MM-DD' },
+            dateDernierExercice: { type: 'string', description: 'Date de clôture du dernier exercice, YYYY-MM-DD' },
+            cessionnaireAssocie: { type: 'boolean', description: 'true si le cessionnaire est déjà associé' },
+            repartitionAvant: { type: 'array', items: { ...PERSONNE, properties: { ...PERSONNE.properties, nbParts: { type: 'integer' } } }, description: 'Associés et nombre de parts avant la cession' },
+            nbExemplaires: { type: 'integer' },
+          },
+        },
         operation: { type: 'string', description: "Pour une modification/cessation : description précise de l'opération (ex transfert de siège au …, nomination de …)" },
         dateEffet: { type: 'string', description: "Date d'effet de l'opération, YYYY-MM-DD" },
       },
@@ -330,7 +383,8 @@ const TOOLS = [
     description:
       "Rédige un acte annexe (.docx) à partir des données du dossier et l'ajoute aux pièces. Types : " +
       Object.entries(ACTES).map(([k, v]) => `${k} (${v})`).join(', ') +
-      '. Utilise "instructions" pour préciser le contenu (ex résolutions d\'un PV, titre d\'un document "autre").',
+      '. Utilise "instructions" pour préciser le contenu (ex résolutions d\'un PV, titre d\'un document "autre").' +
+      " Cession de parts ou d'actions : renseigne d'abord enregistrer_dossier.cession (cédant et son régime matrimonial, conjoint s'il est marié en communauté, cessionnaire et sa résidence, nombre et numéros des parts, prix unitaire, dates) et le siren : l'acte est alors rempli par le modèle du cabinet avec la fiche RNE. Rappelle au professionnel : PV d'agrément si le cessionnaire n'est pas associé, consentement du conjoint commun en biens (art. 1832-2 C. civ.), enregistrement de l'acte au service des impôts dans le mois — un acte non enregistré fait rejeter la formalité au greffe.",
     eager_input_streaming: true,
     input_schema: {
       type: 'object',
@@ -1006,10 +1060,13 @@ async function toolActe(supa, ctx, input) {
   const label = type === 'autre' && input.instructions ? input.instructions.slice(0, 80) : ACTES[type];
   // Attestation de domiciliation chez le dirigeant = attestation d'hébergement (gabarit) ;
   // chez une société de domiciliation, c'est le contrat de domiciliation fourni par le client.
-  const nomGabarit = GABARIT_PAR_ACTE[type] || (type === 'attestation_domiciliation' && data.domiciliationChezDirigeant ? 'attestation_hebergement' : null);
+  const nomGabarit = GABARIT_PAR_ACTE[type]
+    || (type === 'attestation_domiciliation' && data.domiciliationChezDirigeant ? 'attestation_hebergement' : null)
+    || (type === 'acte_cession' && data.cession?.nbParts ? 'acte_cession' : null);
   if (nomGabarit && !input.sur_mesure) {
     const nom = (s, n) => String(s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^A-Za-z0-9-]+/g, '_').replace(/^_+|_+$/g, '').slice(0, n);
-    const r = await acteParGabarit(supa, ctx, dossier, nomGabarit, { label, docType: type.toUpperCase(), filename: `${nom(label, 70)}-${nom(dossier.client_name, 30)}.docx` });
+    const donnees = nomGabarit === 'acte_cession' ? await avecFicheRne(ctx, data) : null;
+    const r = await acteParGabarit(supa, ctx, dossier, nomGabarit, { label, docType: type.toUpperCase(), filename: `${nom(label, 70)}-${nom(dossier.client_name, 30)}.docx`, donnees });
     if (r) return r;
   }
   if (type === 'attestation_domiciliation' && data.societeDomiciliation) {
