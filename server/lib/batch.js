@@ -18,7 +18,9 @@ const { runAgentTurn } = require('./formality-agent');
 
 const BUCKET = 'dossier-docs';
 const MAX_FORMALITES = 30;
-const CONCURRENCE = 2;
+// Formalités préparées en même temps (actes par gabarits : peu d'IA ; RNE et Guichet unique
+// protégés par leurs propres files)
+const CONCURRENCE = Number(process.env.LOT_CONCURRENCE || 6);
 
 const TYPES = {
   creation: { label: 'Création', type: 'CREATION' },

@@ -33,10 +33,14 @@ const { createModificationDraft, appliquerOperations, baseModification, donneesM
 const { deposerPieces, PIECES_MODIF } = require('./inpi-liasse');
 const { BUCKET } = require('./dossier-docs');
 const knowledge = require('./knowledge');
+const gabarits = require('./gabarits');
+const { mandataireBlocks } = require('./inpi-liasse');
 const ca = require('./inpi-comptes-annuels');
 const groupes = require('./groupes');
 
 const MAX_ITERATIONS = 12;
+// Outils qui créent ou modifient le dossier, le Guichet unique ou un lot : jamais en parallèle.
+const OUTILS_SEQUENTIELS = new Set(['enregistrer_dossier', 'creer_brouillon_inpi', 'creer_modification_inpi', 'deposer_comptes_annuels', 'preparer_lot', 'lancer_lot', 'modifier_groupe']);
 
 // Pièces jointes acceptées dans le chat (lues par Claude).
 const ATTACHMENT_TYPES = {
@@ -104,6 +108,53 @@ const MODELE_PAR_ACTE = {
   statuts_mis_a_jour: 'statuts_mis_a_jour',
 };
 
+// Actes remplis par gabarit (sans IA) : type d'acte → gabarit (data/gabarits)
+const GABARIT_PAR_ACTE = {
+  declaration_non_condamnation: 'non_condamnation',
+  liste_souscripteurs: 'liste_souscripteurs',
+  pouvoir_formalites: 'mandat',
+  attestation_hebergement: 'attestation_hebergement',
+};
+const GABARIT_STATUTS = { SASU: 'statuts_sasu', SAS: 'statuts_sas', HOLDING: 'statuts_sas', SARL: 'statuts_sarl', EURL: 'statuts_sarl' };
+
+// Identité du cabinet mandataire (pour le pouvoir) : déclarant du compte Guichet unique, mis en cache 24 h.
+const cacheCabinet = new Map();
+async function identiteCabinet(orgId) {
+  const hit = cacheCabinet.get(orgId);
+  if (hit && hit.exp > Date.now()) return hit.v;
+  let v = {};
+  try {
+    const { declarant } = await mandataireBlocks(inpi.forOrg(orgId));
+    const ind = declarant?.individu?.descriptionPersonne || {};
+    const adr = declarant?.entreprise?.adresse || declarant?.individu?.adresseDomicile || {};
+    v = {
+      denomination: declarant?.entrepriseMandataire?.denomination || null,
+      adresse: adr.voie ? [[adr.numVoie, adr.typeVoie, adr.voie].filter(Boolean).join(' '), `${adr.codePostal || ''} ${adr.commune || ''}`.trim()].join(', ') : null,
+      representant: [ind.prenoms?.[0], ind.nom].filter(Boolean).join(' ') || null,
+    };
+  } catch {}
+  cacheCabinet.set(orgId, { v, exp: Date.now() + 24 * 3600 * 1000 });
+  return v;
+}
+
+// Acte rempli par gabarit et rangé dans le dossier ; null si pas de gabarit.
+async function acteParGabarit(supa, ctx, dossier, nomGabarit, { label, docType, filename }) {
+  const data = dossier.metadata?.agent_data || {};
+  const cabinet = nomGabarit === 'mandat' ? await identiteCabinet(ctx.orgId) : {};
+  const acte = gabarits.genererActe(nomGabarit, data, { dossier, cabinet });
+  if (!acte) return null;
+  const buffer = await Packer.toBuffer(markdownToDocx(label, acte.markdown));
+  const doc = await storeDossierDocument(supa, dossier, { buffer, filename, docType, userId: ctx.userId });
+  const url = await signedUrl(supa, doc.file_path);
+  return {
+    result: {
+      document: doc.name, ajoute_aux_pieces: true, redige_par_gabarit: true, champs_a_completer: acte.trous,
+      rappel: acte.trous.length ? 'Demander ces informations (enregistrer_dossier) puis régénérer : un acte incomplet ne peut pas être signé ni déposé.' : undefined,
+    },
+    event: { kind: 'document', label, detail: acte.trous.length ? `${doc.name} · ${acte.trous.length} champ(s) à compléter` : doc.name, href: url, docHref: dossierUrl(dossier) },
+  };
+}
+
 // ─── Contrôles avant dépôt au Guichet unique ───────────────────────
 // Actes qui doivent être déposés SIGNÉS. Un acte rédigé par Legaly (doc_type de l'acte,
 // statut GENERE) n'est déposable qu'une fois signé (statut SIGNE). Les pièces jointes par
@@ -151,6 +202,9 @@ const PERSONNE = {
   type: 'object',
   properties: {
     numeroSecu: { type: 'string', description: 'N° de sécurité sociale (15 chiffres) — exigé pour un gérant de SARL/EURL/SCI et un entrepreneur individuel' },
+    nomPere: { type: 'string', description: 'Filiation (déclaration de non-condamnation) : nom et prénom du père' },
+    nomMere: { type: 'string', description: 'Filiation : nom de jeune fille et prénom de la mère' },
+    profession: { type: 'string' },
     email: { type: 'string' },
     telephone: { type: 'string' },
     situationMatrimoniale: { type: 'string', enum: ['CELIBATAIRE', 'MARIE', 'PACSE', 'DIVORCE', 'VEUF'] },
@@ -192,6 +246,8 @@ const TOOLS = [
         nbTitres: { type: 'integer', description: "Nombre total d'actions ou de parts" },
         capitalVariable: { type: 'boolean' },
         capitalMinimum: { type: 'number', description: 'Capital variable : plancher prévu par les statuts (euros)' },
+        banqueDepot: { type: 'string', description: 'Banque (ou notaire) dépositaire des fonds, avec agence' },
+        dateDepotFonds: { type: 'string', description: 'Date du dépôt des fonds, YYYY-MM-DD' },
         capitalMaximum: { type: 'number', description: 'Capital variable : plafond autorisé (euros)' },
         dureeAnnees: { type: 'integer' },
         dateClotureExercice: { type: 'string', description: 'MM-DD, ex 12-31' },
@@ -259,7 +315,7 @@ const TOOLS = [
     description:
       'Génère les statuts (.docx éditable) de la société à partir des données du dossier et les ajoute aux pièces. Uniquement pour une création SASU, SAS, EURL, SARL ou SCI, une fois dénomination, objet, capital, siège, dirigeant et associés renseignés.',
     eager_input_streaming: true,
-    input_schema: { type: 'object', properties: {} },
+    input_schema: { type: 'object', properties: { sur_mesure: { type: 'boolean', description: 'true seulement si le professionnel demande des clauses particulières : rédaction par IA (plus lente) au lieu du gabarit du cabinet' } } },
   },
   {
     name: 'rediger_acte',
@@ -271,6 +327,7 @@ const TOOLS = [
     input_schema: {
       type: 'object',
       properties: {
+        sur_mesure: { type: 'boolean', description: "true seulement si le professionnel demande une rédaction particulière : sinon l'acte est rempli instantanément depuis le gabarit du cabinet (non-condamnation, liste des souscripteurs, pouvoir, attestation d'hébergement)" },
         type: { type: 'string', enum: Object.keys(ACTES) },
         instructions: { type: 'string' },
       },
@@ -884,10 +941,15 @@ async function toolEnregistrer(supa, ctx, input) {
   };
 }
 
-async function toolStatuts(supa, ctx) {
+async function toolStatuts(supa, ctx, input = {}) {
   const dossier = await loadDossier(supa, ctx);
   if (!dossier) throw new Error("Aucun dossier : appelle d'abord enregistrer_dossier.");
   const forme = String(dossier.forme_juridique || '').toUpperCase();
+  if (!input.sur_mesure && GABARIT_STATUTS[forme]) {
+    const nomFichier = `Statuts-${String(dossier.client_name || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^A-Za-z0-9-]+/g, '_')}.docx`;
+    const r = await acteParGabarit(supa, ctx, dossier, GABARIT_STATUTS[forme], { label: `Statuts — ${dossier.client_name}`, docType: 'STATUTS', filename: nomFichier });
+    if (r) return r;
+  }
   const modeleStatuts = knowledge.modele(`statuts_${(forme === 'HOLDING' ? 'SAS' : forme).toLowerCase()}`);
   if (modeleStatuts) {
     const data = dossier.metadata?.agent_data || {};
@@ -933,6 +995,17 @@ async function toolActe(supa, ctx, input) {
   if (!dossier) throw new Error("Aucun dossier : appelle d'abord enregistrer_dossier.");
   const data = dossier.metadata?.agent_data || {};
   const label = type === 'autre' && input.instructions ? input.instructions.slice(0, 80) : ACTES[type];
+  // Attestation de domiciliation chez le dirigeant = attestation d'hébergement (gabarit) ;
+  // chez une société de domiciliation, c'est le contrat de domiciliation fourni par le client.
+  const nomGabarit = GABARIT_PAR_ACTE[type] || (type === 'attestation_domiciliation' && data.domiciliationChezDirigeant ? 'attestation_hebergement' : null);
+  if (nomGabarit && !input.sur_mesure) {
+    const nom = (s, n) => String(s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^A-Za-z0-9-]+/g, '_').replace(/^_+|_+$/g, '').slice(0, n);
+    const r = await acteParGabarit(supa, ctx, dossier, nomGabarit, { label, docType: type.toUpperCase(), filename: `${nom(label, 70)}-${nom(dossier.client_name, 30)}.docx` });
+    if (r) return r;
+  }
+  if (type === 'attestation_domiciliation' && data.societeDomiciliation) {
+    return { result: { non_redige: true, message: "Siège chez une société de domiciliation : la pièce à déposer est le contrat de domiciliation (ou l'attestation) fourni par le domiciliataire, à demander au client. Rien à rédiger." }, event: { kind: 'document', label: 'Contrat de domiciliation à demander au client' } };
+  }
 
   const brief = [
     `Acte demandé : ${ACTES[type]}.`,
@@ -1605,7 +1678,7 @@ async function runTool(name, input, ctx) {
   if (ctx.mode === 'client' && !CLIENT_TOOLS.has(name)) throw new Error('Outil indisponible dans l’espace entrepreneur.');
   switch (name) {
     case 'enregistrer_dossier': return toolEnregistrer(supa, ctx, input);
-    case 'generer_statuts': return toolStatuts(supa, ctx);
+    case 'generer_statuts': return toolStatuts(supa, ctx, input);
     case 'rediger_acte': return toolActe(supa, ctx, input);
     case 'etat_dossier': return toolEtat(supa, ctx);
     case 'creer_brouillon_inpi': return toolBrouillon(supa, ctx, input);
@@ -1718,7 +1791,7 @@ async function runAgentTurn({ history, input, attachments = [], ctx, emit, formR
   const mode = ctx.mode || 'cabinet';
   const reglages = mode === 'client'
       ? { model: MODELS.agent, system: [...systemBlocks(), { type: 'text', text: CLIENT_PROMPT }], tools: TOOLS.filter((t) => CLIENT_TOOLS.has(t.name)), effort: 'high', iterations: MAX_ITERATIONS, maxTokens: 16000, prix: PRICES }
-      : { model: MODELS.agent, system: systemBlocks(), tools: TOOLS, effort: 'high', iterations: MAX_ITERATIONS, maxTokens: 16000, prix: PRICES };
+      : { model: MODELS.agent, system: systemBlocks(), tools: TOOLS, effort: ctx.noForms ? 'medium' : 'high', iterations: MAX_ITERATIONS, maxTokens: 16000, prix: PRICES };
   let pendingForm = null;
   const usage = { calls: 0, input: 0, output: 0, cacheWrite: 0, cacheRead: 0 };
   ctx.draftUsage = { calls: 0, input: 0, output: 0, cacheWrite: 0, cacheRead: 0 };
@@ -1773,23 +1846,33 @@ async function runAgentTurn({ history, input, attachments = [], ctx, emit, formR
 
     const results = [];
     const formulaire = !ctx.noForms && toolUses.find((tu) => tu.name === 'poser_questions');
-    for (const tu of toolUses) {
-      if (tu.name === 'poser_questions') {
-        // Mode lot (aucun humain) : pas de formulaire, on continue avec [À COMPLÉTER]
-        if (ctx.noForms) results.push({ type: 'tool_result', tool_use_id: tu.id, is_error: true, content: 'Mode lot : aucune question possible. Laisse [À COMPLÉTER : …] et continue.' });
-        continue;
-      }
+    // Outils indépendants (rédactions, lectures) exécutés en parallèle ; ceux qui créent
+    // ou modifient le dossier ou le Guichet unique passent d'abord, un par un, dans l'ordre.
+    const executer = async (tu) => {
       emit('tool', { id: tu.id, name: tu.name, status: 'start', label: TOOL_LABELS[tu.name] || tu.name });
       try {
         const { result, event } = await runTool(tu.name, tu.input, ctx);
         emit('tool', { id: tu.id, name: tu.name, status: 'done', ...(event || { label: TOOL_LABELS[tu.name] }) });
-        results.push({ type: 'tool_result', tool_use_id: tu.id, content: JSON.stringify(result) });
+        return { type: 'tool_result', tool_use_id: tu.id, content: JSON.stringify(result) };
       } catch (e) {
         console.error('[agent tool]', tu.name, e.message);
         emit('tool', { id: tu.id, name: tu.name, status: 'error', label: TOOL_LABELS[tu.name] || tu.name, detail: e.message });
-        results.push({ type: 'tool_result', tool_use_id: tu.id, is_error: true, content: String(e.message).slice(0, 3000) });
+        return { type: 'tool_result', tool_use_id: tu.id, is_error: true, content: String(e.message).slice(0, 3000) };
+      }
+    };
+    const parId = new Map();
+    for (const tu of toolUses) {
+      if (tu.name === 'poser_questions') {
+        // Mode lot (aucun humain) : pas de formulaire, on continue avec [À COMPLÉTER]
+        if (ctx.noForms) parId.set(tu.id, { type: 'tool_result', tool_use_id: tu.id, is_error: true, content: 'Mode lot : aucune question possible. Laisse [À COMPLÉTER : …] et continue.' });
+      } else if (OUTILS_SEQUENTIELS.has(tu.name)) {
+        parId.set(tu.id, await executer(tu));
       }
     }
+    const paralleles = toolUses.filter((tu) => tu.name !== 'poser_questions' && !OUTILS_SEQUENTIELS.has(tu.name));
+    const resultats = await Promise.all(paralleles.map(executer));
+    paralleles.forEach((tu, k) => parId.set(tu.id, resultats[k]));
+    for (const tu of toolUses) if (parId.has(tu.id)) results.push(parId.get(tu.id));
     if (formulaire) {
       // Pause : le formulaire s'affiche ; les autres résultats repartiront avec les réponses.
       emit('form', { id: formulaire.id, ...formulaire.input });
