@@ -19,8 +19,8 @@ const inpi = require('../inpi');
 
 // ─── Codes relevés sur les liasses validées ───────────────────────
 const FORME_CODES = { SASU: '5710', SAS: '5710', HOLDING: '5710', SARL: '5499', EURL: '5499', SCI: '6540' };
-const ROLE_CODES = { PRESIDENT: '73', GERANT: '30' };
-const FORME_SOCIALE = { PRESIDENT: '1', GERANT: '3' };
+const ROLE_CODES = { PRESIDENT: '73', GERANT: '30', DG: '51' };
+const FORME_SOCIALE = { PRESIDENT: '1', GERANT: '3', DG: '1' };
 const REGIME_IS = '114';
 const TVA_CODES = { FRANCHISE_BASE: '310' };
 // Micro-entreprise : micro-BNC (libéral) 110, micro-BIC 116.
@@ -60,17 +60,13 @@ const FORME_EXERCICE = {
 };
 
 // Pays de naissance → code INSEE géographique (99xxx) et libellé.
-const PAYS = {
-  FRA: { code: null, label: 'FRANCE' },
-  DZA: { code: '99352', label: 'ALGERIE' }, MAR: { code: '99350', label: 'MAROC' }, TUN: { code: '99351', label: 'TUNISIE' },
-  TUR: { code: '99208', label: 'TURQUIE' }, PRT: { code: '99139', label: 'PORTUGAL' }, ESP: { code: '99134', label: 'ESPAGNE' },
-  ITA: { code: '99127', label: 'ITALIE' }, BEL: { code: '99131', label: 'BELGIQUE' }, DEU: { code: '99109', label: 'ALLEMAGNE' },
-  GBR: { code: '99132', label: 'ROYAUME-UNI' }, CHE: { code: '99140', label: 'SUISSE' }, SEN: { code: '99341', label: 'SENEGAL' },
-  MLI: { code: '99335', label: 'MALI' }, CIV: { code: '99326', label: "COTE D'IVOIRE" }, CMR: { code: '99322', label: 'CAMEROUN' },
-  COM: { code: '99397', label: 'COMORES' }, CHN: { code: '99216', label: 'CHINE' }, ROU: { code: '99114', label: 'ROUMANIE' },
-  POL: { code: '99122', label: 'POLOGNE' }, USA: { code: '99404', label: 'ETATS-UNIS' }, LBN: { code: '99205', label: 'LIBAN' },
-};
-const NATIONALITES = { FRA: 'FRANÇAISE', DZA: 'ALGÉRIENNE', MAR: 'MAROCAINE', TUN: 'TUNISIENNE', TUR: 'TURQUE', PRT: 'PORTUGAISE', ESP: 'ESPAGNOLE', ITA: 'ITALIENNE', BEL: 'BELGE' };
+// Pays (code officiel INSEE 99xxx, libellé) et nationalités : data/referentiels/pays.json
+// (INSEE, Code officiel géographique 2025). Clé : code ISO 3166 alpha-3.
+const REF_PAYS = require('../data/referentiels/pays.json');
+const PAYS = REF_PAYS.pays;
+const NATIONALITES = REF_PAYS.nationalites;
+// Pays désigné par son nom (« Maroc », « Côte d'Ivoire ») → code ISO3
+const ISO3_PAR_NOM = Object.fromEntries(Object.entries(PAYS).map(([iso, v]) => [v.label, iso]));
 
 const TYPES_VOIE = [
   ['boulevard', 'BD'], ['bd', 'BD'], ['avenue', 'AV'], ['av', 'AV'], ['rue', 'RUE'], ['chemin', 'CHE'], ['impasse', 'IMP'],
@@ -188,8 +184,14 @@ const sansAccents = (x) => String(x || '').normalize('NFD').replace(/[\u0300-\u0
 
 // Pays mentionné dans le lieu de naissance : « Oran (Algérie) », « Casablanca, Maroc ».
 function paysDansLieu(lieu) {
-  const L = sansAccents(lieu);
-  const code = Object.keys(PAYS).find((k) => k !== 'FRA' && new RegExp(`\\b${PAYS[k].label.replace(/[^A-Z' -]/g, '')}\\b`).test(L));
+  const L = sansAccents(lieu).replace(/[’`]/g, "'");
+  let code = Object.keys(PAYS).find((k) => k !== 'FRA' && new RegExp(`\b${PAYS[k].label.replace(/[^A-Z' -]/g, '')}\b`).test(L));
+  // Repli : comparaison sans espaces ni tirets (« Viêt Nam » / VIETNAM), libellés de 5 lettres et plus
+  if (!code) {
+    const compact = (x) => x.replace(/[\s'-]/g, '');
+    const Lc = compact(L);
+    code = Object.keys(PAYS).find((k) => k !== 'FRA' && compact(PAYS[k].label).length >= 5 && Lc.includes(compact(PAYS[k].label)));
+  }
   if (!code) return null;
   const ville = String(lieu).replace(/\s*[(,].*$/, '').trim();
   return { code, ville };
@@ -216,6 +218,11 @@ function telInpi(brut) {
 async function personneInpi(p, aCompleter, label) {
   const dansLieu = !p.paysNaissance ? paysDansLieu(p.lieuNaissance) : null;
   if (dansLieu) p = { ...p, paysNaissance: dansLieu.code, lieuNaissance: dansLieu.ville || p.lieuNaissance };
+  // Pays de naissance : code ISO3 ou nom du pays
+  if (p.paysNaissance && !PAYS[p.paysNaissance]) {
+    const iso = ISO3_PAR_NOM[sansAccents(p.paysNaissance).replace(/’/g, "'")];
+    if (iso) p = { ...p, paysNaissance: iso };
+  }
   const paysCode = p.paysNaissance || (p.nationalite === 'FRA' ? 'FRA' : '');
   const pays = PAYS[paysCode] || null;
   let naissance = {
@@ -242,7 +249,7 @@ async function personneInpi(p, aCompleter, label) {
     genre: p.sexe === 'F' ? '2' : p.sexe === 'M' ? '1' : '',
     dateDeNaissance: p.dateNaissance || '',
     ...naissance,
-    nationalite: NATIONALITES[p.nationalite] || '',
+    nationalite: NATIONALITES[p.nationalite] || (aCompleter.push(`${label} : nationalité ${p.nationalite || '(non renseignée)'} à sélectionner sur le Guichet unique`), ''),
     codeNationalite: p.nationalite || '',
     optionRgpd: 'N',
   };
@@ -305,6 +312,27 @@ async function buildCreationLiasse(data, dossier, client) {
   if (role === 'GERANT' && !dir.situationMatrimoniale) bloquants0.push('Situation matrimoniale du gérant');
   const dirAdresse = await adresseInpi(dir.adresse, aCompleter, 'Domicile du dirigeant');
 
+  // Autres dirigeants (co-gérants, directeur général) : même traitement que le premier.
+  const partDe = (p) => {
+    const a = (data.associes || []).find((x) => strip(x.nom) === strip(p.nom) && strip((x.prenoms || [])[0]) === strip((p.prenoms || [])[0]));
+    return a ? pourcentage(a, capital, (data.associes || []).length) : 0;
+  };
+  const autres = [];
+  for (const [i, o] of (data.autresDirigeants || []).entries()) {
+    const r = o.role || (role === 'GERANT' ? 'GERANT' : 'DG');
+    if (!ROLE_CODES[r]) { bloquants0.push(`Dirigeant ${i + 2} : rôle ${r} non pris en charge (GERANT ou DG)`); continue; }
+    if (r === 'GERANT' && o.nationalite === 'FRA' && !o.numeroSecu) bloquants0.push(`Co-gérant ${o.prenoms?.[0] || ''} ${o.nom || ''} : numéro de sécurité sociale`);
+    if (r === 'GERANT' && !o.situationMatrimoniale) bloquants0.push(`Co-gérant ${o.prenoms?.[0] || ''} ${o.nom || ''} : situation matrimoniale`);
+    autres.push({
+      personne: o, role: r,
+      desc: await personneInpi(o, aCompleter, `Dirigeant ${i + 2}`),
+      adr: await adresseInpi(o.adresse, aCompleter, `Domicile du dirigeant ${i + 2}`),
+      tns: r === 'GERANT' && (forme === 'SCI' || partDe(o) > 50),
+    });
+  }
+  const tousDirigeants = [{ personne: dir, role }, ...autres];
+  const indexDirigeant = (a) => tousDirigeants.findIndex((d) => strip(a.nom) === strip(d.personne.nom) && strip((a.prenoms || [])[0]) === strip((d.personne.prenoms || [])[0]));
+
   // Bénéficiaires effectifs : associés personnes physiques détenant 25 % ou plus.
   const associes = data.associes?.length ? data.associes
     : (unipersonnelle && dir.nom ? [{ ...dir, pourcentage: 100, apportEuros: capital }] : []);
@@ -312,11 +340,12 @@ async function buildCreationLiasse(data, dossier, client) {
   for (const [i, a] of associes.entries()) {
     const pct = pourcentage(a, capital, associes.length);
     if (pct < 25) continue;
-    const estDirigeant = strip(a.nom) === strip(dir.nom) && strip((a.prenoms || [])[0]) === strip((dir.prenoms || [])[0]);
-    const desc = estDirigeant ? dirDesc : await personneInpi(a, aCompleter, `Associé ${i + 1}`);
-    const adr = estDirigeant ? dirAdresse : await adresseInpi(a.adresse, aCompleter, `Domicile de l'associé ${i + 1}`);
+    const idx = indexDirigeant(a);
+    const estDirigeant = idx === 0;
+    const desc = estDirigeant ? dirDesc : idx > 0 ? autres[idx - 1].desc : await personneInpi(a, aCompleter, `Associé ${i + 1}`);
+    const adr = estDirigeant ? dirAdresse : idx > 0 ? autres[idx - 1].adr : await adresseInpi(a.adresse, aCompleter, `Domicile de l'associé ${i + 1}`);
     beneficiaires.push({
-      ...(estDirigeant ? { indexPouvoir: 0 } : {}),
+      ...(idx >= 0 ? { indexPouvoir: idx } : {}),
       beneficiaire: { descriptionPersonne: { dateEffetRoleDeclarant: dateDebut, ...desc }, ...(adr ? { adresseDomicile: adr } : {}) },
       modalite: {
         detentionPartDirecte: true, partsDirectesPleinePropriete: pct, partsDirectesNuePropriete: 0,
@@ -464,7 +493,20 @@ async function buildCreationLiasse(data, dossier, client) {
           isRepresentantLegal: false,
           indicateurSecondRoleEntreprise: false,
           beneficiaireEffectif: beneficiaires.some((b) => b.indexPouvoir === 0),
-        }],
+        }, ...autres.map((o, k) => ({
+          individu: {
+            ...(o.tns ? { voletSocial: { organismeAssuranceMaladieActuelle: 'R', activiteSimultanee: false, affiliationPamBiologiste: false, affiliationPamPharmacien: false, declarationMineur: false, indicateurActiviteAnterieure: false } } : {}),
+            descriptionPersonne: { ...o.desc, formeSociale: FORME_SOCIALE[o.role] || '1' },
+            ...(o.adr ? { adresseDomicile: o.adr } : {}),
+          },
+          roleEntreprise: ROLE_CODES[o.role],
+          statutPourLaFormalite: '1',
+          dateEffet: dateDebut,
+          typeDePersonne: 'INDIVIDU',
+          isRepresentantLegal: false,
+          indicateurSecondRoleEntreprise: false,
+          beneficiaireEffectif: beneficiaires.some((b) => b.indexPouvoir === k + 1),
+        }))],
         modeSelectionPouvoirs: 0,
       },
       etablissementPrincipal: {
@@ -740,7 +782,8 @@ async function deposerPieces(orgId, formalityId, pieces, carte) {
           langueDocument: 'fr',
           documentBase64: pdf.toString('base64'),
           documentExtension: 'pdf',
-          path: spec.path,
+          // Le Guichet unique ajoute lui-même l'index : « .x[0] » deviendrait « .x[0][0] »
+          path: spec.path.replace(/\[0\]$/, ''),
         },
       });
       deposees.push({ nom: nomDocument, categorie: spec.label });
@@ -811,7 +854,8 @@ async function createDraftWithPieces(orgId, payload, pieces) {
           langueDocument: 'fr',
           documentBase64: pdf.toString('base64'),
           documentExtension: 'pdf',
-          path: spec.path,
+          // Le Guichet unique ajoute lui-même l'index : « .x[0] » deviendrait « .x[0][0] »
+          path: spec.path.replace(/\[0\]$/, ''),
         },
       });
       deposees.push({ nom: nomDocument, categorie: spec.label });
@@ -822,4 +866,4 @@ async function createDraftWithPieces(orgId, payload, pieces) {
   return { formality, deposees, erreurs };
 }
 
-module.exports = { telInpi, creerSansDoublon, journalInpi, deposerPieces, PIECES_MODIF, buildCreationLiasse, buildEILiasse, createDraftWithPieces, mandataireBlocks, adresseInpi, personneInpi, categoriser, jqpaEntrepreneur, toPdf, parseVoie, PIECES, PIECES_EI, FORME_CODES };
+module.exports = { codeInseeCommune, telInpi, creerSansDoublon, journalInpi, deposerPieces, PIECES_MODIF, buildCreationLiasse, buildEILiasse, createDraftWithPieces, mandataireBlocks, adresseInpi, personneInpi, categoriser, jqpaEntrepreneur, toPdf, parseVoie, PIECES, PIECES_EI, FORME_CODES };

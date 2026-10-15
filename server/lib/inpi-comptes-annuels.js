@@ -160,7 +160,7 @@ async function deposerPiecesCA(client, id, pieces, confidentialite) {
           langueDocument: 'fr',
           documentBase64: pdf.toString('base64'),
           documentExtension: 'pdf',
-          path: '.piecesJointes[0]',
+          path: '.piecesJointes',
           ...(estConfidentielle(p.categorie, confidentialite) ? { confidentiel: true } : {}),
         },
       });

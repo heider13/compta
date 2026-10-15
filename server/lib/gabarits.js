@@ -92,7 +92,7 @@ function contexte(data, { dossier = {}, cabinet = {}, date = new Date() } = {}) 
     banqueDepot: data.banqueDepot || null,
     dateDepotFonds: dateFr(data.dateDepotFonds),
     villeSignature: ville,
-    dateSignature: dateFr(data.dateSignature) || dateFr(date.toISOString()),
+    dateSignature: dateFr(data.dateSignature) || dateFr(new Intl.DateTimeFormat('fr-CA', { timeZone: 'Europe/Paris' }).format(date)),
     cabinet: { denomination: cabinet.denomination || null, adresse: cabinet.adresse || null, representant: cabinet.representant || null },
     reference: dossier.reference || null,
   };

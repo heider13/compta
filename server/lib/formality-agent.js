@@ -115,7 +115,7 @@ const GABARIT_PAR_ACTE = {
   pouvoir_formalites: 'mandat',
   attestation_hebergement: 'attestation_hebergement',
 };
-const GABARIT_STATUTS = { SASU: 'statuts_sasu', SAS: 'statuts_sas', HOLDING: 'statuts_sas', SARL: 'statuts_sarl', EURL: 'statuts_sarl' };
+const GABARIT_STATUTS = { SASU: 'statuts_sasu', SAS: 'statuts_sas', HOLDING: 'statuts_sas', SARL: 'statuts_sarl', EURL: 'statuts_sarl', SCI: 'statuts_sci' };
 
 // Identité du cabinet mandataire (pour le pouvoir) : déclarant du compte Guichet unique, mis en cache 24 h.
 const cacheCabinet = new Map();
@@ -290,6 +290,11 @@ const TOOLS = [
         dirigeant: {
           ...PERSONNE,
           properties: { ...PERSONNE.properties, role: { type: 'string', description: 'PRESIDENT, GERANT, DG…' } },
+        },
+        autresDirigeants: {
+          type: 'array',
+          description: 'Dirigeants en plus du premier : co-gérants (SARL, EURL, SCI) ou directeur général (SAS)',
+          items: { ...PERSONNE, properties: { ...PERSONNE.properties, role: { type: 'string', enum: ['GERANT', 'DG'] } } },
         },
         associes: {
           type: 'array',
@@ -512,6 +517,7 @@ const TOOLS = [
     input_schema: {
       type: 'object',
       properties: {
+        sur_mesure: { type: 'boolean', description: "Avis de constitution : true seulement pour une rédaction particulière (IA) ; sinon rédigé instantanément avec toutes les mentions obligatoires" },
         type: { type: 'string', enum: Object.keys(annonces.TYPES) },
         siren: { type: 'string', description: 'Société déjà immatriculée (modification, dissolution, clôture…)' },
         instructions: { type: 'string' },
@@ -1010,9 +1016,17 @@ async function toolActe(supa, ctx, input) {
     return { result: { non_redige: true, message: "Siège chez une société de domiciliation : la pièce à déposer est le contrat de domiciliation (ou l'attestation) fourni par le domiciliataire, à demander au client. Rien à rédiger." }, event: { kind: 'document', label: 'Contrat de domiciliation à demander au client' } };
   }
 
+  // Société existante : la fiche RNE officielle (dénomination, forme, capital, siège, RCS,
+  // dirigeants) sert de base aux PV, statuts mis à jour, cessions et déclarations.
+  let fiche = null;
+  const sirenActe = String(data.siren || '').replace(/\D/g, '');
+  if (sirenActe.length === 9) {
+    try { fiche = rne.summarizeCompany(await rne.getCompany(ctx.orgId, sirenActe)); } catch { /* données du dossier seules */ }
+  }
   const brief = [
     `Acte demandé : ${ACTES[type]}.`,
     `Formalité : ${data.typeFormalite || dossier.type_formalite} — référence ${dossier.reference}.`,
+    ...(fiche ? ['Fiche RNE officielle de la société (source de référence pour son identité, son capital, son siège et ses dirigeants actuels) :', JSON.stringify(fiche, null, 2)] : []),
     'Données du dossier (JSON) :',
     JSON.stringify(data, null, 2),
     input.instructions ? `Instructions du professionnel : ${input.instructions}` : '',
@@ -1319,9 +1333,12 @@ async function toolModification(supa, ctx, input) {
     mutate: async (c) => { attendus = await appliquerOperations(c, operations, ctx.orgId); },
   });
   // Événements réellement retenus par le Guichet unique comparés aux opérations demandées
+  const LIBELLES_EVT = { '22M': 'dissolution', '40M': "cessation d'activité (mise en sommeil)", '35M': 'dirigeants', '42M': 'clôture de liquidation' };
   const nonRetenus = attendus.filter((e) => !events.includes(e));
   const ecart = nonRetenus.length
-    ? `Le Guichet unique n'a pas retenu : ${nonRetenus.join(', ')} (retenu : ${events.join(', ') || 'aucun'}). À déclarer manuellement sur le brouillon avant validation.`
+    ? (nonRetenus.includes('22M')
+      ? `Dissolution : le Guichet unique n'accepte pas cette déclaration par API. Sur le brouillon, dans « Modifications », cocher la dissolution (événements 22M et 40M) : toutes les données sont déjà renseignées (motif, date, liquidateur, annonce). Retenu automatiquement : ${events.join(', ') || 'aucun'}.`
+      : `Le Guichet unique n'a pas retenu : ${nonRetenus.map((e) => `${e} (${LIBELLES_EVT[e] || 'événement'})`).join(', ')} (retenu : ${events.join(', ') || 'aucun'}). À déclarer sur le brouillon avant validation.`)
     : null;
   const pieces = [];
   for (const p of plan) {
@@ -1531,7 +1548,15 @@ async function toolAnnonce(supa, ctx, input) {
     dossier: data,
     departement_siege: identite?.departement || annonces.departement(data.siege?.codePostal),
   };
-  const r = await annonces.redigerAnnonce({ type: input.type, donnees, instructions: input.instructions });
+  // Avis de constitution : rédigé sans IA (mentions R.210-3, greffe tiré du référentiel des communes)
+  let r;
+  if (input.type === 'constitution' && !input.sur_mesure) {
+    const { codeInseeCommune } = require('./inpi-liasse');
+    const commune = data.siege?.codePostal ? await codeInseeCommune(data.siege.codePostal, data.siege.commune).catch(() => null) : null;
+    r = annonces.avisConstitution(gabarits.contexte(data, { dossier }), require('./greffes').villeGreffe(commune?.code), donnees.departement_siege);
+  } else {
+    r = await annonces.redigerAnnonce({ type: input.type, donnees, instructions: input.instructions });
+  }
   if (ctx.draftUsage && r.usage) {
     ctx.draftUsage.calls += 1;
     ctx.draftUsage.input += r.usage.input_tokens || 0;

@@ -306,7 +306,7 @@ const OPERATIONS = {
       // Société civile (forme 65xx, ex. SCI 6540) : gérant = rôle 75 (relevé au RNE)
       roleEntreprise: (role === 'GERANT' && String(p.identite?.entreprise?.formeJuridique || '').startsWith('65'))
         ? '75'
-        : ({ PRESIDENT: '73', GERANT: '30', DG: '74' }[role] || role),
+        : ({ PRESIDENT: '73', GERANT: '30', DG: '51' }[role] || role),
       statutPourLaFormalite: '1',
       typeDePersonne: 'INDIVIDU',
       beneficiaireEffectif: false,
@@ -594,6 +594,11 @@ OPERATIONS.dissolution = async (next, { liquidateur, liquidateurExistant, lieuLi
     indicateurMaintienImmatriculationRegistre: true,
     indicateurDissolution: true,
     typeDissolution,
+    // Motif de cessation : 9 = dissolution, 11 = dissolution sans liquidation (TUP)
+    motifCessation: String(typeDissolution) === '2' ? '11' : '9',
+    dateEffet,
+    // Relevé sur une dissolution inscrite au RNE : 22M (dateDissolutionDisparition) et 40M
+    // (dateMiseEnSommeil) dans la même liasse, à la même date.
     dateDissolutionDisparition: dateEffet,
     ...(poursuiteActivite ? { indicateurPoursuiteActivite: true } : { dateMiseEnSommeil: dateEffet }),
     ...(publication ? { publiciteNominationLiquidateur: publication } : {}),
@@ -601,9 +606,10 @@ OPERATIONS.dissolution = async (next, { liquidateur, liquidateurExistant, lieuLi
     dateDissolutionDisparitionFromRNE: false,
     indicateurLocationTerresTVA: false,
   };
-  // Le Guichet unique ne retient aujourd'hui que la nomination du liquidateur (35M) :
-  // « dissolution » est attendu explicitement pour que l'écart soit signalé après création.
-  return ['dissolution', ...(nommerLiquidateur ? ['35M'] : [])];
+  // Événements d'une dissolution inscrite : 22M (dissolution) + 40M (mise en sommeil) + 35M
+  // (liquidateur). L'API formality_updates ne détecte que 35M (vérifié le 16/10/2026, aucune
+  // autre voie de l'API) : 22M et 40M sont signalés pour être cochés sur le brouillon.
+  return ['22M', '40M', ...(nommerLiquidateur ? ['35M'] : [])];
 };
 
 // Clôture de la liquidation (42M) : radiation. Si la dissolution n'est pas encore inscrite,

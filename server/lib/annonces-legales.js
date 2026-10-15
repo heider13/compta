@@ -257,4 +257,53 @@ async function publierAnnonce(/* { annonce, departement, journal, dossier } */) 
   );
 }
 
-module.exports = { TYPES, redigerAnnonce, departement, identiteSociete, publicationConfiguree, publierAnnonce };
+// ─── Avis de constitution SANS IA (mentions R.210-3, cohérent avec les gabarits de statuts) ───
+// Renvoie la même structure que redigerAnnonce. villeGreffe : ville du greffe compétent
+// (lib/greffes.js) ou null ; ctx : contexte des gabarits (lib/gabarits.js).
+function avisConstitution(ctx, villeGreffe, departementSiege) {
+  const manque = [];
+  const v = (x, libelle) => { if (x === null || x === undefined || x === '') { manque.push(libelle); return `[À COMPLÉTER : ${libelle}]`; } return x; };
+  const lignes = [];
+  lignes.push(`Aux termes d'un acte sous seing privé en date du ${v(ctx.dateSignature, "date de l'acte")} à ${v(ctx.villeSignature, "lieu de l'acte")}, il a été constitué une société présentant les caractéristiques suivantes :`);
+  lignes.push(`Dénomination : ${v(ctx.denomination, 'dénomination')}${ctx.sigle ? ` (sigle : ${ctx.sigle})` : ''}.`);
+  lignes.push(`Forme : ${v(ctx.formeLongue, 'forme')}.`);
+  lignes.push(ctx.capitalVariable
+    ? `Capital variable : ${v(ctx.capital, 'capital')}, minimum ${v(ctx.capitalMinimum, 'capital minimum')}.`
+    : `Capital : ${v(ctx.capital, 'capital')}.`);
+  lignes.push(`Siège social : ${v(ctx.siege, 'siège')}.`);
+  lignes.push(`Objet : ${v(ctx.objet, 'objet social').replace(/\s+/g, ' ').trim().replace(/\.$/, '')}.`);
+  lignes.push(`Durée : ${ctx.duree} ans à compter de son immatriculation au RCS.`);
+  const d = ctx.dirigeant || {};
+  lignes.push(`${v(d.role, 'qualité du dirigeant')} : ${v(d.civilite, 'civilité du dirigeant')} ${v(d.nomComplet, 'nom du dirigeant')}, demeurant ${v(d.adresse, 'adresse du dirigeant')}.`);
+  if (ctx.actions) {
+    lignes.push(ctx.unipersonnelle
+      ? "Admission aux assemblées et droit de vote : l'associé unique exerce les pouvoirs dévolus à la collectivité des associés ; chaque action donne droit à une voix."
+      : "Admission aux assemblées et droit de vote : tout associé peut participer aux décisions collectives ; chaque action donne droit à une voix.");
+    lignes.push('Transmission des actions : les actions sont librement cessibles.');
+  } else if (!ctx.unipersonnelle) {
+    lignes.push("Cession des parts : libre entre associés, soumise à l'agrément des associés pour les tiers.");
+  }
+  lignes.push(`Immatriculation au RCS de ${v(villeGreffe, 'ville du greffe compétent')}.`);
+  const texte = lignes.join('\n');
+  const presente = (x) => (x ? 'presente' : 'a_completer');
+  const controle = [
+    ["Date et forme de l'acte", presente(ctx.dateSignature && ctx.villeSignature)],
+    ['Dénomination sociale (et sigle le cas échéant)', presente(ctx.denomination)],
+    ['Forme juridique', presente(ctx.formeLongue)],
+    ['Montant du capital social (montant minimum si capital variable)', presente(ctx.capital && (!ctx.capitalVariable || ctx.capitalMinimum))],
+    ['Adresse du siège social', presente(ctx.siege)],
+    ['Objet social (résumé)', presente(ctx.objet)],
+    ['Durée de la société', 'presente'],
+    ['Noms, prénoms et adresse des dirigeants', presente(d.nomComplet && d.adresse && d.civilite)],
+    ["SAS/SASU : conditions d'admission aux assemblées et d'exercice du droit de vote", ctx.actions ? 'presente' : 'sans_objet'],
+    ["SAS/SASU : clauses d'agrément ou de transmission des actions", ctx.actions ? 'presente' : 'sans_objet'],
+    ['SARL/SCI : clauses de cession des parts', !ctx.actions && !ctx.unipersonnelle ? 'presente' : 'sans_objet'],
+    ['Greffe du tribunal où la société sera immatriculée au RCS', presente(villeGreffe)],
+  ].map(([mention, statut]) => ({ mention, statut }));
+  return {
+    annonces: [{ departement: departementSiege || '[À COMPLÉTER : département]', titre: 'Avis de constitution', texte, caracteres: texte.length }],
+    controle, a_completer: manque, observations: '', type: 'constitution', label: TYPES.constitution.label,
+  };
+}
+
+module.exports = { TYPES, redigerAnnonce, avisConstitution, departement, identiteSociete, publicationConfiguree, publierAnnonce };
