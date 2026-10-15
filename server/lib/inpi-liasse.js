@@ -29,33 +29,13 @@ const REGIME_MICRO = { INDEPENDANTE: '110' };
 // les autres codes sont provisoires et signalés au formaliste.
 const SITUATION_MATRIMONIALE = { CELIBATAIRE: '1', MARIE: '2', VEUF: '3', DIVORCE: '4', PACSE: '5' };
 
-// Catégorisation INPI de l'activité (obligatoire dès la création du brouillon),
-// relevée sur les formalités validées du cabinet : code APE → [cat1, cat2, cat3,
-// cat4, précision]. À défaut de code exact, on prend le secteur (2 premiers chiffres).
-const CATEGORISATION_APE = {
-  '1089Z': ['07', '02', '08', '', '99'],
-  '4322A': ['05', '04', '19', '', '14'], '4399C': ['05', '04', '15', '', '14'],
-  '4511Z': ['06', '01', '', '', '99'], '4520A': ['06', '01', '', '', '99'],
-  '4643Z': ['06', '02', '02', '', '09'], '4649Z': ['06', '02', '02', '', '09'], '4651Z': ['06', '02', '02', '', '09'],
-  '4669B': ['06', '02', '02', '', '09'], '4669C': ['06', '02', '02', '', '09'], '4690Z': ['06', '02', '02', '', '09'],
-  '4711B': ['06', '03', '01', '', '10'], '4724Z': ['06', '03', '01', '', '10'], '4742Z': ['06', '03', '01', '', '10'],
-  '4752A': ['06', '02', '02', '', '09'], '4778C': ['06', '03', '09', '', '10'],
-  '4791A': ['06', '05', '', '', '99'], '4791B': ['06', '05', '', '', '99'],
-  // Commerce sur éventaires et marchés : 06/04/01, précision 16 (relevé sur des fiches RNE acceptées)
-  '4781Z': ['06', '04', '01', '', '16'], '4782Z': ['06', '04', '01', '', '16'], '4789Z': ['06', '04', '01', '', '16'],
-  '4941A': ['07', '01', '11', '', '99'], '4941B': ['07', '01', '04', '01', '99'],
-  '5610A': ['07', '02', '03', '01', '99'], '5610C': ['07', '02', '03', '01', '99'],
-  '6201Z': ['02', '08', '09', '02', '04'],
-  '6820B': ['07', '06', '01', '01', '20'],
-  '7022Z': ['07', '04', '08', '01', '99'], '7112B': ['07', '04', '08', '01', '99'],
-  '8010Z': ['07', '09', '07', '', '99'], '9602A': ['07', '16', '01', '', '99'],
-};
-const CATEGORISATION_SECTEUR = {
-  10: ['07', '02', '08', '', '99'], 43: ['05', '04', '15', '', '14'], 45: ['06', '01', '', '', '99'],
-  46: ['06', '02', '02', '', '09'], 47: ['06', '03', '01', '', '10'], 49: ['07', '01', '11', '', '99'],
-  56: ['07', '02', '03', '01', '99'], 62: ['02', '08', '09', '02', '04'], 68: ['07', '06', '01', '01', '20'],
-  70: ['07', '04', '08', '01', '99'], 71: ['07', '04', '08', '01', '99'], 96: ['07', '16', '01', '', '99'],
-};
+// Catégorisation INPI de l'activité : lib/inpi-categorisation.js (relevés vérifiés +
+// apprentissage sur des fiches RNE acceptées, mémorisé par code APE).
+const { categoriser } = require('./inpi-categorisation');
+
+// Bloc « justificatif de qualification professionnelle artisanale » (JQPA), obligatoire
+// pour une activité artisanale réglementée (validé sur un brouillon accepté).
+const jqpaEntrepreneur = (forme, role = '1') => (forme === 'ARTISANALE_REGLEMENTEE' ? { jqpa: { optionJQPA: '1', codeRolePersonneQualifiee: role } } : {});
 
 // Journaux d'annonces légales reconnus par le Guichet unique, relevés sur les
 // formalités validées du cabinet (libellé exact attendu par l'INPI). Tout autre
@@ -71,14 +51,6 @@ function journalInpi(nom) {
     .replace(/[^a-z0-9]/g, '').replace(/^(les|la|le)/, '');
   const hit = JOURNAUX_RECONNUS.find((j) => norm(j) === norm(nom));
   return hit ? { journalPublication: hit } : { journalPublication: 'Autre', journalPublicationAutre: String(nom).trim() };
-}
-
-function categorisation(codeApe) {
-  const ape = String(codeApe || '').toUpperCase().replace(/[^0-9A-Z]/g, '');
-  if (!ape) return null;
-  if (CATEGORISATION_APE[ape]) return { codes: CATEGORISATION_APE[ape], exacte: true };
-  const secteur = CATEGORISATION_SECTEUR[Number(ape.slice(0, 2))];
-  return secteur ? { codes: secteur, exacte: false } : null;
 }
 
 // Forme d'exercice : valeurs attendues par le Guichet unique.
@@ -223,6 +195,24 @@ function paysDansLieu(lieu) {
   return { code, ville };
 }
 
+// Téléphone au format attendu par le Guichet unique : numéro national sans espace
+// + indicatif. « 07 48 27 12 83 », « +33 7 48… », « 0033… » → 0748271283 / +33.
+function telInpi(brut) {
+  let t = String(brut || '').replace(/[\s.\-()/]/g, '');
+  if (!t) return null;
+  let indicatif = '+33';
+  if (t.startsWith('00')) t = `+${t.slice(2)}`;
+  if (t.startsWith('+')) {
+    const m = /^\+(33|32|41|352|377|212|213|216|44|34|39|49|351|1)(\d+)$/.exec(t);
+    if (!m) return null;
+    indicatif = `+${m[1]}`;
+    t = m[1] === '33' ? `0${m[2]}` : m[2];
+  }
+  if (indicatif === '+33' && !/^0[1-9]\d{8}$/.test(t)) return null;
+  if (indicatif !== '+33' && !/^\d{6,12}$/.test(t)) return null;
+  return { telephone: t, phoneCode: indicatif };
+}
+
 async function personneInpi(p, aCompleter, label) {
   const dansLieu = !p.paysNaissance ? paysDansLieu(p.lieuNaissance) : null;
   if (dansLieu) p = { ...p, paysNaissance: dansLieu.code, lieuNaissance: dansLieu.ville || p.lieuNaissance };
@@ -301,9 +291,18 @@ async function buildCreationLiasse(data, dossier, client) {
   const siege = await adresseInpi(data.siege, aCompleter, 'Siège');
   const dir = data.dirigeant || {};
   const dirDesc = await personneInpi(dir, aCompleter, 'Dirigeant');
-  const tns = role === 'GERANT';
-  if (tns && dir.nationalite === 'FRA' && !dir.numeroSecu) bloquants0.push('Numéro de sécurité sociale du gérant (obligatoire pour un gérant de nationalité française)');
-  if (tns && !dir.situationMatrimoniale) bloquants0.push('Situation matrimoniale du gérant');
+  // Régime social : le gérant majoritaire (ou associé unique d'EURL) est travailleur non
+  // salarié ; un gérant minoritaire, égalitaire ou non associé est assimilé salarié.
+  const partGerant = (() => {
+    if (role !== 'GERANT') return 0;
+    if (unipersonnelle) return 100;
+    const a = (data.associes || []).find((x) => strip(x.nom) === strip(dir.nom) && strip((x.prenoms || [])[0]) === strip((dir.prenoms || [])[0]));
+    return a ? pourcentage(a, capital, (data.associes || []).length) : 0;
+  })();
+  const tns = role === 'GERANT' && (forme === 'SCI' || partGerant > 50);
+  // Exigés par le Guichet unique pour tout gérant (salarié ou non)
+  if (role === 'GERANT' && dir.nationalite === 'FRA' && !dir.numeroSecu) bloquants0.push('Numéro de sécurité sociale du gérant (obligatoire pour un gérant de nationalité française)');
+  if (role === 'GERANT' && !dir.situationMatrimoniale) bloquants0.push('Situation matrimoniale du gérant');
   const dirAdresse = await adresseInpi(dir.adresse, aCompleter, 'Domicile du dirigeant');
 
   // Bénéficiaires effectifs : associés personnes physiques détenant 25 % ou plus.
@@ -334,10 +333,14 @@ async function buildCreationLiasse(data, dossier, client) {
   }
   if (!beneficiaires.length) aCompleter.push('Bénéficiaires effectifs : aucun associé à 25 % ou plus identifié, à déclarer');
 
-  const formeExercice = FORME_EXERCICE[data.formeExercice] || (forme === 'SCI' ? 'GESTION_DE_BIENS' : 'COMMERCIALE');
+  let formeExercice = FORME_EXERCICE[data.formeExercice] || (forme === 'SCI' ? 'GESTION_DE_BIENS' : 'COMMERCIALE');
   // Bloquants : refusés par l'API dès la création du brouillon.
   const bloquants = [...bloquants0];
-  const cat = categorisation(data.codeApe);
+  const cat = data.codeApe ? await categoriser(dossier.organization_id, data.codeApe, formeExercice) : null;
+  if (cat?.alerte) {
+    aCompleter.push(`Forme d'exercice ${formeExercice} jamais retenue par le Guichet unique pour l'APE ${data.codeApe} : ${cat.alerte} utilisée (à confirmer)`);
+    formeExercice = cat.alerte;
+  }
   const annonce = data.annonceLegale || {};
   if (!annonce.journal || !annonce.datePublication) {
     bloquants.push("Annonce légale parue : nom du journal et date de parution (le Guichet unique les exige dès la création d'une société)");
@@ -346,10 +349,12 @@ async function buildCreationLiasse(data, dossier, client) {
   if (data.societeDomiciliation && (!domiciliataire.denomination || !domiciliataire.siren)) {
     bloquants.push('Société de domiciliation : dénomination et SIREN (siège domicilié)');
   }
+  if (data.capitalVariable && !(Number(data.capitalMinimum) > 0)) bloquants.push('Capital variable : capital minimum (plancher) prévu par les statuts');
+  if (data.capitalVariable && Number(data.capitalMaximum) > 0 && Number(data.capitalMaximum) < capital) bloquants.push('Capital variable : le capital maximum (plafond) est inférieur au capital initial');
   if (!data.datePremiereCloture) bloquants.push('Date de clôture du premier exercice (exigée par le Guichet unique, à reprendre à l\'identique dans les statuts)');
   if (!data.codeApe) bloquants.push("Code APE de l'activité (nécessaire pour la catégorie d'activité exigée par le Guichet unique)");
-  else if (!cat) bloquants.push(`Catégorie d'activité INPI inconnue pour le code APE ${data.codeApe} : préciser l'activité ou un code APE voisin`);
-  else if (!cat.exacte) aCompleter.push(`Catégorie d'activité déduite du secteur (APE ${data.codeApe}) : à vérifier sur le Guichet unique`);
+  else if (!cat) bloquants.push(`Catégorie d'activité INPI introuvable pour le code APE ${data.codeApe} (aucune formalité acceptée de référence) : vérifier le code APE`);
+  if (formeExercice === 'ARTISANALE_REGLEMENTEE') aCompleter.push('Activité artisanale réglementée : justificatif de qualification du dirigeant à joindre (pièce QUALIFICATION)');
   const tva = TVA_CODES[data.regimeTVA || 'FRANCHISE_BASE'];
   if (!tva) aCompleter.push(`Régime de TVA (${data.regimeTVA}) à sélectionner`);
   if (forme === 'SCI' || data.regimeImposition === 'IR') aCompleter.push("Régime d'imposition des bénéfices");
@@ -399,6 +404,10 @@ async function buildCreationLiasse(data, dossier, client) {
           montantCapitalCentime: Math.round(capital * 100),
           deviseCapital: 'EUR',
           capitalVariable: Boolean(data.capitalVariable),
+          ...(data.capitalVariable ? {
+            capitalMinimum: Number(data.capitalMinimum) || 0,
+            ...(Number(data.capitalMaximum) > 0 ? { capitalMaximum: Number(data.capitalMaximum) } : {}),
+          } : {}),
           indicateurAssocieUnique: unipersonnelle,
           ...(unipersonnelle ? { indicateurAssocieUniqueDirigeant: true } : {}),
           ...(role === 'GERANT' ? { natureGerance: '1' } : {}),
@@ -472,6 +481,7 @@ async function buildCreationLiasse(data, dossier, client) {
           dateDebut,
           exerciceActivite: 'P',
           formeExercice,
+          ...jqpaEntrepreneur(formeExercice, '2'),
           descriptionDetaillee: data.activitePrincipale || data.objet || '',
           ...(cat ? {
             categorisationActivite1: cat.codes[0],
@@ -482,7 +492,8 @@ async function buildCreationLiasse(data, dossier, client) {
           } : {}),
           rolePrincipalPourEntreprise: true,
           indicateurProlongement: false,
-          indicateurNonSedentaire: false,
+          indicateurNonSedentaire: cat?.codes[4] === '16',
+          ...(cat?.codes[4] === '16' ? { qualiteNonSedentaire: 'A' } : {}),
           indicateurArtisteAuteur: false,
           indicateurMarinProfessionnel: false,
           ...(data.codeApe ? { codeApe: data.codeApe } : {}),
@@ -540,18 +551,22 @@ async function buildEILiasse(data, dossier, client) {
   const p = data.dirigeant || {};
   const today = new Date().toISOString().slice(0, 10);
   const dateDebut = data.dateDebutActivite || today;
-  const formeExercice = FORME_EXERCICE[data.formeExercice] || 'COMMERCIALE';
+  let formeExercice = FORME_EXERCICE[data.formeExercice] || 'COMMERCIALE';
   const domicile = domicileEntreprise(data);
 
   if (p.nationalite === 'FRA' && !p.numeroSecu) bloquants.push("Numéro de sécurité sociale de l'entrepreneur");
   if (!p.situationMatrimoniale) bloquants.push("Situation matrimoniale de l'entrepreneur");
   if (!p.telephone) bloquants.push("Téléphone de l'entrepreneur (exigé par le Guichet unique)");
-  const cat = categorisation(data.codeApe);
+  else if (!telInpi(p.telephone)) bloquants.push(`Téléphone de l'entrepreneur invalide (${p.telephone}) : 10 chiffres pour un numéro français, ou indicatif international`);
+  const cat = data.codeApe ? await categoriser(dossier.organization_id, data.codeApe, formeExercice, { ei: true }) : null;
   if (!data.codeApe) bloquants.push("Code APE de l'activité");
-  else if (!cat) bloquants.push(`Catégorie d'activité INPI inconnue pour le code APE ${data.codeApe}`);
-  else if (!cat.exacte) aCompleter.push(`Catégorie d'activité déduite du secteur (APE ${data.codeApe}) : à vérifier`);
+  else if (!cat) bloquants.push(`Catégorie d'activité INPI introuvable pour le code APE ${data.codeApe} (aucune formalité acceptée de référence) : vérifier le code APE`);
+  if (cat?.alerte) {
+    aCompleter.push(`Forme d'exercice ${formeExercice} jamais retenue par le Guichet unique pour l'APE ${data.codeApe} : ${cat.alerte} utilisée (à confirmer)`);
+    formeExercice = cat.alerte;
+  }
+  // Activité artisanale réglementée : la pièce QUALIFICATION est exigée au dépôt (contrôle dans l'outil de brouillon)
   if (domicileEntreprise(data)) aCompleter.push("Adresse personnelle diffusée comme adresse de l'entreprise : si l'entrepreneur souhaite la non-diffusion, la demander sur le Guichet unique");
-  if (formeExercice === 'ARTISANALE_REGLEMENTEE') aCompleter.push('Activité artisanale réglementée : justificatif de qualification à joindre');
 
   const desc = await personneInpi(p, aCompleter, 'Entrepreneur');
   const domicileAdr = await adresseInpi(p.adresse, aCompleter, "Domicile de l'entrepreneur");
@@ -583,7 +598,7 @@ async function buildEILiasse(data, dossier, client) {
           regimeMicroSocial: { optionMicroSocial: true, periodiciteVersement: micro.periodicite === 'MENSUELLE' ? 'M' : 'T' },
           descriptionPersonne: { ...desc, statutVisAVisFormalite: '1', formeSociale: '2', indicateurDeNonSedentarite: false },
           ...(domicileAdr ? { adresseDomicile: domicileAdr } : {}),
-          ...(p.email || p.telephone ? { contact: { ...(p.email ? { mail: p.email } : {}), ...(p.telephone ? { telephone: p.telephone, phoneCode: '+33' } : {}) } } : {}),
+          ...(p.email || telInpi(p.telephone) ? { contact: { ...(p.email ? { mail: p.email } : {}), ...(telInpi(p.telephone) || {}) } } : {}),
         },
         contratDAppuiDeclare: false,
         insaisissabilite: { residencePrincipale: { residenceInsaisissable: true } },
@@ -618,6 +633,7 @@ async function buildEILiasse(data, dossier, client) {
           indicateurNonSedentaire: cat?.codes[4] === '16',
           ...(cat?.codes[4] === '16' ? { qualiteNonSedentaire: 'A' } : {}),
           formeExercice,
+          ...jqpaEntrepreneur(formeExercice, '1'),
           ...(cat ? {
             categorisationActivite1: cat.codes[0],
             categorisationActivite2: cat.codes[1],
@@ -735,30 +751,53 @@ async function deposerPieces(orgId, formalityId, pieces, carte) {
   return { deposees, erreurs };
 }
 
+async function enParallele(items, n, fn) {
+  const file = [...items];
+  await Promise.all(Array.from({ length: Math.min(n, file.length) }, async () => { while (file.length) await fn(file.shift()); }));
+}
+
+// Création d'une formalité sans doublon : sur erreur serveur (5xx, coupure), la
+// formalité a pu être créée quand même — on la cherche par referenceMandataire
+// avant de réessayer (2 essais au plus).
+async function creerSansDoublon(client, payload) {
+  const debut = Date.now() - 10000;
+  for (let essai = 1; essai <= 3; essai++) {
+    try {
+      return await client.createFormality(payload);
+    } catch (e) {
+      const v = e.payload?.violations;
+      if (Array.isArray(v) && v.length) {
+        throw Object.assign(new Error(`Le Guichet unique refuse la liasse (${v.length} point(s)) : ${v.map((x) => `${x.propertyPath} → ${x.message}`).join(' | ')}`), { status: e.status, violations: v });
+      }
+      const serveur = !e.status || e.status >= 500;
+      if (!serveur || essai === 3) throw e;
+      await new Promise((ok) => setTimeout(ok, 2000 * essai));
+      if (payload.referenceMandataire) {
+        try {
+          const r = await client.listFormalities({ itemsPerPage: 10, 'order[created]': 'desc' });
+          const trouvee = (r?.['hydra:member'] || []).find((f) => f.referenceMandataire === payload.referenceMandataire && new Date(f.created).getTime() >= debut);
+          if (trouvee) return trouvee;
+        } catch {}
+      }
+    }
+  }
+  throw new Error('Création de la formalité impossible.');
+}
+
 // Création du BROUILLON au Guichet unique puis dépôt des pièces.
 // pieces : [{ categorie, nom, buffer, mime }]
 async function createDraftWithPieces(orgId, payload, pieces) {
   const carte = payload.typePersonne === 'P' ? PIECES_EI : PIECES;
   const client = inpi.forOrg(orgId);
-  let formality;
-  try {
-    formality = await client.createFormality(payload);
-  } catch (e) {
-    const v = e.payload?.violations;
-    if (Array.isArray(v) && v.length) {
-      const err = new Error(`Le Guichet unique refuse la liasse (${v.length} point(s)) : ${v.map((x) => `${x.propertyPath} → ${x.message}`).join(' | ')}`);
-      err.status = e.status;
-      throw err;
-    }
-    throw e;
-  }
+  const formality = await creerSansDoublon(client, payload);
   const deposees = [];
   const erreurs = [];
-  for (const p of pieces) {
+  // Pièces déposées 3 par 3 (conversion PDF + envoi en parallèle)
+  await enParallele(pieces, 3, async (p) => {
     const spec = carte[p.categorie];
     if (!spec) {
       erreurs.push(`${p.nom} : catégorie inconnue`);
-      continue;
+      return;
     }
     try {
       const pdf = await toPdf(p.buffer, p.mime, p.nom);
@@ -779,8 +818,8 @@ async function createDraftWithPieces(orgId, payload, pieces) {
     } catch (e) {
       erreurs.push(`${p.nom} : ${String(e.message).slice(0, 200)}`);
     }
-  }
+  });
   return { formality, deposees, erreurs };
 }
 
-module.exports = { journalInpi, deposerPieces, PIECES_MODIF, buildCreationLiasse, buildEILiasse, createDraftWithPieces, mandataireBlocks, adresseInpi, personneInpi, categorisation, toPdf, parseVoie, PIECES, PIECES_EI, FORME_CODES };
+module.exports = { telInpi, creerSansDoublon, journalInpi, deposerPieces, PIECES_MODIF, buildCreationLiasse, buildEILiasse, createDraftWithPieces, mandataireBlocks, adresseInpi, personneInpi, categoriser, jqpaEntrepreneur, toPdf, parseVoie, PIECES, PIECES_EI, FORME_CODES };

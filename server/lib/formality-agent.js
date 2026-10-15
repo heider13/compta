@@ -94,7 +94,6 @@ const ACTES = {
 const MODELE_PAR_ACTE = {
   declaration_non_condamnation: 'non_condamnation',
   liste_souscripteurs: 'liste_souscripteurs',
-  attestation_domiciliation: 'attestation_hebergement',
   attestation_hebergement: 'attestation_hebergement',
   pouvoir_formalites: 'mandat',
   pv_decision: 'pv_assemblee',
@@ -104,6 +103,48 @@ const MODELE_PAR_ACTE = {
   acte_cession: 'acte_cession',
   statuts_mis_a_jour: 'statuts_mis_a_jour',
 };
+
+// ─── Contrôles avant dépôt au Guichet unique ───────────────────────
+// Actes qui doivent être déposés SIGNÉS. Un acte rédigé par Legaly (doc_type de l'acte,
+// statut GENERE) n'est déposable qu'une fois signé (statut SIGNE). Les pièces jointes par
+// le client (scans signés, documents officiels) sont acceptées telles quelles.
+const CATEGORIES_A_SIGNER = new Set([
+  'STATUTS', 'NON_CONDAMNATION', 'LISTE_SOUSCRIPTEURS', 'MANDAT', 'ATTESTATION_HEBERGEMENT',
+  'PV_DECISION', 'PV_MISE_EN_SOMMEIL', 'STATUTS_MIS_A_JOUR', 'ACTE_CESSION', 'PV_CLOTURE_LIQUIDATION',
+  'PV_CLOTURE_LIQUIDATION_ENREGISTRE', 'COMPTE_LIQUIDATION', 'RAPPORT_LIQUIDATEUR',
+  'PV_AFFECTATION', 'DECLARATION_CONFIDENTIALITE', 'REFUS_APPROBATION',
+]);
+const DOCS_FOURNIS = new Set(['PIECE_JOINTE', 'ACTE_RNE', 'COMPTES_ANNUELS']);
+function piecesNonSignees(plan) {
+  return plan
+    .filter((p) => CATEGORIES_A_SIGNER.has(p.categorie) && p.doc.status !== 'SIGNE' && !DOCS_FOURNIS.has(p.doc.doc_type))
+    .map((p) => p.doc.name);
+}
+const bloquantSignature = (noms) => `Actes non signés : ${noms.join(', ')}. Un acte rédigé doit être signé avant dépôt (signature électronique, ou version signée jointe par le client).`;
+
+// Champs laissés à compléter dans un acte rédigé
+const trousDe = (texte) => [...new Set(String(texte || '').match(/\[À COMPLÉTER[^\]]*\]|_{4,}/g) || [])];
+
+// Pièces exigées par le greffe selon l'opération (chaque entrée : catégories acceptées).
+const PIECES_PAR_OPERATION = {
+  siege: [['PV_DECISION'], ['STATUTS_MIS_A_JOUR'], ['ATTESTATION_PARUTION']],
+  denomination: [['PV_DECISION'], ['STATUTS_MIS_A_JOUR'], ['ATTESTATION_PARUTION']],
+  objet: [['PV_DECISION'], ['STATUTS_MIS_A_JOUR'], ['ATTESTATION_PARUTION']],
+  nomination: [['PV_DECISION'], ['ATTESTATION_PARUTION'], ['NON_CONDAMNATION'], ['IDENTITE_DIRIGEANT']],
+  revocation: [['PV_DECISION'], ['ATTESTATION_PARUTION']],
+  miseEnSommeil: [['PV_MISE_EN_SOMMEIL', 'PV_DECISION']],
+  dissolution: [['PV_DECISION'], ['ATTESTATION_PARUTION']],
+  clotureLiquidation: [['PV_CLOTURE_LIQUIDATION', 'PV_CLOTURE_LIQUIDATION_ENREGISTRE'], ['COMPTE_LIQUIDATION'], ['ATTESTATION_PARUTION']],
+  associes: [['ACTE_CESSION', 'PV_DECISION']],
+};
+function piecesManquantesModif(operations, categories, carte) {
+  const exigees = [];
+  for (const o of operations) for (const alt of PIECES_PAR_OPERATION[o.type] || []) {
+    if (!alt.some((c) => categories.has(c)) && !exigees.some((e) => e[0] === alt[0])) exigees.push(alt);
+  }
+  if (!categories.has('MANDAT')) exigees.push(['MANDAT']);
+  return exigees.map((alt) => alt.map((c) => carte[c]?.label || c).join(' ou '));
+}
 
 // ─── Définition des outils ────────────────────────────────────────
 const PERSONNE = {
@@ -150,6 +191,8 @@ const TOOLS = [
         capitalEuros: { type: 'number' },
         nbTitres: { type: 'integer', description: "Nombre total d'actions ou de parts" },
         capitalVariable: { type: 'boolean' },
+        capitalMinimum: { type: 'number', description: 'Capital variable : plancher prévu par les statuts (euros)' },
+        capitalMaximum: { type: 'number', description: 'Capital variable : plafond autorisé (euros)' },
         dureeAnnees: { type: 'integer' },
         dateClotureExercice: { type: 'string', description: 'MM-DD, ex 12-31' },
         datePremiereCloture: { type: 'string', description: 'YYYY-MM-DD' },
@@ -251,6 +294,7 @@ const TOOLS = [
       type: 'object',
       properties: {
         confirme: { type: 'boolean' },
+        completer_sur_guichet: { type: 'boolean', description: 'true seulement si le professionnel confirme explicitement qu’il ajoutera lui-même les pièces manquantes sur le Guichet unique' },
         pieces: {
           type: 'array',
           description: 'Documents du dossier à déposer (identifiants donnés par etat_dossier) et leur catégorie INPI.',
@@ -270,7 +314,7 @@ const TOOLS = [
   {
     name: 'creer_modification_inpi',
     description:
-      "Prépare une MODIFICATION (ou une mise en sommeil / cessation d'EI) au Guichet unique à partir de la fiche RNE à jour de l'entreprise. Opérations : objet (12M : objet, codeApe), denomination (10M), siege (60M : adresse), nomination (35M : personne, role GERANT|PRESIDENT|DG), revocation (35M : nom du dirigeant sortant), beneficiaires (38F : ajouts [{personne, pourcentage}], retraits [noms]), miseEnSommeil (40M), cessationEI (41P), activiteAjout (61M/61P+24P : description, codeApe, formeExercice), activiteSuppression (62M/62P : codeApe), etablissementSecondaire (54M : adresse, description, codeApe), associes (17M : entrée/sortie d'associé, associeUnique), domicileEI (16P : adresse), dissolution (formalité M — le Guichet unique reconnaît pour l'instant la nomination du liquidateur (35M), la dissolution est portée dans la liasse et à vérifier par le formaliste sur le brouillon : liquidateurExistant ou liquidateur, lieuLiquidation S/L/A, typeDissolution, annonce de nomination du liquidateur, poursuiteActivite si l'activité continue pendant la liquidation), clotureLiquidation (42M : radiation ; exige une dissolution déjà inscrite au RNE, sinon mettre « dissolution » puis « clotureLiquidation » dans la même liasse pour une dissolution-liquidation simultanée), complementEntreprise (pas un événement : objet social absent du RNE, par exemple repris d'une attestation d'immatriculation jointe), complementPersonne (pas un événement : complète un dirigeant existant dont le RNE n'a pas toutes les données — nom, dateNaissance, lieuNaissance, codePostalNaissance, paysNaissance, adresse — à demander au formaliste quand l'aperçu les signale). Pour une entreprise dont le RNE ne contient pas toutes les données des personnes inscrites (fréquent pour les entreprises anciennes ou reprises d'un autre cabinet), l'aperçu les liste en bloquants : les demander au formaliste puis les ajouter avec complementPersonne. Chaque opération peut avoir une dateEffet (YYYY-MM-DD). D'abord confirme=false (aperçu, rien n'est envoyé), puis confirme=true UNIQUEMENT après confirmation explicite du professionnel : crée le BROUILLON et dépose les pièces. Ne valide, ne signe et ne paie jamais. Catégories de pièces : " +
+      "Prépare une MODIFICATION (ou une mise en sommeil / cessation d'EI) au Guichet unique à partir de la fiche RNE à jour de l'entreprise. Opérations : objet (12M : objet, codeApe), denomination (10M), siege (60M : adresse), nomination (35M : personne, role GERANT|PRESIDENT|DG), revocation (35M : nom du dirigeant sortant), beneficiaires (38F : ajouts [{personne, pourcentage}], retraits [noms]), miseEnSommeil (40M), cessationEI (41P), activiteAjout (61M/61P+24P : description, codeApe, formeExercice), activiteSuppression (62M/62P : codeApe), etablissementSecondaire (54M : adresse, description, codeApe), associes (17M : entrée/sortie d'associé, associeUnique), domicileEI (16P : adresse), dissolution (formalité M — ATTENTION : le Guichet unique ne retient aujourd'hui que la nomination du liquidateur (35M) ; la dissolution doit être déclarée par le formaliste sur le brouillon, l'outil le signale après création : liquidateurExistant ou liquidateur, lieuLiquidation S/L/A, typeDissolution, annonce de nomination du liquidateur, poursuiteActivite si l'activité continue pendant la liquidation), clotureLiquidation (42M : radiation ; exige une dissolution déjà inscrite au RNE ; dissolution et clôture ne peuvent pas être dans la même liasse), complementEntreprise (pas un événement : objet social absent du RNE, par exemple repris d'une attestation d'immatriculation jointe), complementPersonne (pas un événement : complète un dirigeant existant dont le RNE n'a pas toutes les données — nom, dateNaissance, lieuNaissance, codePostalNaissance, paysNaissance, adresse — à demander au formaliste quand l'aperçu les signale). Pour une entreprise dont le RNE ne contient pas toutes les données des personnes inscrites (fréquent pour les entreprises anciennes ou reprises d'un autre cabinet), l'aperçu les liste en bloquants : les demander au formaliste puis les ajouter avec complementPersonne. Chaque opération peut avoir une dateEffet (YYYY-MM-DD). D'abord confirme=false (aperçu, rien n'est envoyé), puis confirme=true UNIQUEMENT après confirmation explicite du professionnel : crée le BROUILLON et dépose les pièces. Ne valide, ne signe et ne paie jamais. Catégories de pièces : " +
       Object.entries(PIECES_MODIF).map(([k, v]) => `${k} (${v.label})`).join(', ') + '.',
     eager_input_streaming: true,
     input_schema: {
@@ -278,6 +322,7 @@ const TOOLS = [
       properties: {
         siren: { type: 'string' },
         confirme: { type: 'boolean' },
+        completer_sur_guichet: { type: 'boolean', description: 'true seulement si le professionnel confirme explicitement qu\'il ajoutera lui-même les pièces manquantes sur le Guichet unique' },
         operations: {
           type: 'array',
           items: {
@@ -561,6 +606,13 @@ Le professionnel peut joindre des documents : pièces d'identité, statuts, proc
 - Les fichiers joints sont automatiquement rangés dans les pièces du dossier.
 </documents_joints>
 
+<actes_et_signature>
+- Tout acte rédigé par Legaly (statuts, déclaration de non-condamnation, pouvoir, liste des souscripteurs, PV, décisions) doit être SIGNÉ avant d'être déposé : les outils de brouillon refusent un acte généré non signé. Tant que la signature électronique n'est pas activée, demande au client de renvoyer dans ce chat les versions signées (scan ou PDF signé) et associe CES fichiers aux catégories de pièces.
+- Quand un outil de rédaction renvoie champs_a_completer, demande ces informations (poser_questions) puis régénère l'acte : un acte avec des champs à compléter ne doit jamais être envoyé à la signature ni déposé.
+- Pièces obligatoires : les outils les contrôlent. Ne mets completer_sur_guichet=true que si le professionnel dit explicitement qu'il les ajoutera lui-même sur le Guichet unique.
+- Après création, si le résultat contient ALERTE (requalification ou événement non retenu par le Guichet unique), signale-le en premier, clairement.
+</actes_et_signature>
+
 <questions>
 Quand il te manque des informations ou qu'une confirmation est nécessaire, utilise TOUJOURS poser_questions (formulaire interactif) au lieu de poser les questions en texte. Un seul formulaire à la fois, regroupant l'essentiel ; types adaptés (liste pour la forme juridique, date, montant, oui_non pour une confirmation, adresse…) ; valeurs connues ou par défaut pré-remplies pour que le professionnel n'ait qu'à vérifier. Tu peux écrire une phrase courte avant l'appel, rien après. Les réponses arrivent en résultat de l'outil ; un champ vide = information non fournie (ne l'invente pas). Si le professionnel répond en texte libre à la place, utilise son message.
 </questions>
@@ -781,7 +833,7 @@ async function toolEnregistrer(supa, ctx, input) {
         ...fields,
         user_id: ctx.userId,
         organization_id: ctx.orgId,
-        reference: `CMP-${Date.now().toString(36).toUpperCase()}`,
+        reference: `CMP-${Date.now().toString(36).toUpperCase()}${require('crypto').randomBytes(2).toString('hex').toUpperCase()}`,
         statut: 'DRAFT',
         assigned_to: ctx.userId,
         metadata: {
@@ -861,7 +913,7 @@ async function toolStatuts(supa, ctx) {
     });
     const url = await signedUrl(supa, doc.file_path);
     return {
-      result: { document: doc.name, ajoute_aux_pieces: true, redige_sur_modele_du_cabinet: true },
+      result: { document: doc.name, ajoute_aux_pieces: true, redige_sur_modele_du_cabinet: true, champs_a_completer: trousDe(draft.markdown), rappel: trousDe(draft.markdown).length ? 'Demander ces informations puis régénérer les statuts : un acte incomplet ne peut pas être signé ni déposé.' : undefined },
       event: { kind: 'document', label: 'Statuts rédigés (modèle du cabinet)', detail: doc.name, href: url, docHref: dossierUrl(dossier) },
     };
   }
@@ -916,7 +968,7 @@ async function toolActe(supa, ctx, input) {
   const doc = await storeDossierDocument(supa, dossier, { buffer, filename, docType: type.toUpperCase(), userId: ctx.userId });
   const url = await signedUrl(supa, doc.file_path);
   return {
-    result: { document: doc.name, ajoute_aux_pieces: true },
+    result: { document: doc.name, ajoute_aux_pieces: true, champs_a_completer: trousDe(draft.markdown), rappel: trousDe(draft.markdown).length ? 'Demander ces informations puis régénérer l\'acte : un acte incomplet ne peut pas être signé ni déposé.' : undefined },
     event: { kind: 'document', label, detail: doc.name, href: url, docHref: dossierUrl(dossier) },
   };
 }
@@ -959,7 +1011,7 @@ async function toolBrouillon(supa, ctx, input) {
   // Pièces demandées → documents du dossier
   const wanted = Array.isArray(input.pieces) ? input.pieces : [];
   const { data: docs } = await supa
-    .from('dossier_documents').select('id, name, file_path, mime_type, doc_type')
+    .from('dossier_documents').select('id, name, file_path, mime_type, doc_type, status')
     .eq('dossier_id', dossier.id);
   const byId = new Map((docs || []).map((d) => [String(d.id), d]));
   const plan = [];
@@ -984,6 +1036,14 @@ async function toolBrouillon(supa, ctx, input) {
   const { payload, aCompleter, bloquants } = estEI
     ? await buildEILiasse(data, dossier, client)
     : await buildCreationLiasse(data, dossier, client);
+  const nonSignees = piecesNonSignees(plan);
+  if (nonSignees.length) bloquants.push(bloquantSignature(nonSignees));
+  if (manquantes.length && input.completer_sur_guichet !== true) {
+    bloquants.push(`Pièces obligatoires manquantes : ${manquantes.join(', ')} (à joindre, ou confirmation explicite que le formaliste les ajoutera sur le Guichet unique)`);
+  }
+  if (estEI && payload.content.formeExerciceActivitePrincipale === 'ARTISANALE_REGLEMENTEE' && !categories.has('QUALIFICATION')) {
+    bloquants.push("Activité artisanale réglementée : justificatif de qualification professionnelle de l'entrepreneur (diplôme ou expérience), pièce QUALIFICATION");
+  }
 
   if (!input.confirme) {
     await supa.from('dossiers').update({ metadata: { ...meta, inpi_dry_run_at: new Date().toISOString() } }).eq('id', dossier.id);
@@ -1016,6 +1076,18 @@ async function toolBrouillon(supa, ctx, input) {
     pieces.push({ categorie: p.categorie, nom: p.doc.name, buffer: Buffer.from(await blob.arrayBuffer()), mime: p.doc.mime_type || 'application/pdf' });
   }
   const { formality, deposees, erreurs } = await createDraftWithPieces(ctx.orgId, payload, pieces);
+  // Relecture : le Guichet unique peut requalifier la forme d'exercice (catégorie d'activité)
+  let requalification = null;
+  try {
+    const relue = await client.getFormality(formality.id);
+    const envoyee = payload.content.formeExerciceActivitePrincipale;
+    const retenue = relue?.content?.formeExerciceActivitePrincipale;
+    if (envoyee && retenue && envoyee !== retenue) {
+      requalification = `Le Guichet unique a requalifié la forme d'exercice : ${envoyee} → ${retenue}. À vérifier sur le brouillon avant validation.`;
+      // Mémorisé : la prochaine formalité de ce code APE sera déclarée directement sous la forme retenue
+      await require('./inpi-categorisation').corriger(data.codeApe, envoyee, retenue);
+    }
+  } catch {}
 
   await supa.from('dossiers').update({
     metadata: {
@@ -1047,6 +1119,7 @@ async function toolBrouillon(supa, ctx, input) {
       pieces_manquantes: manquantes,
       champs_a_completer_par_le_formaliste: aCompleter,
       lien_guichet_unique: `https://guichet-unique.inpi.fr/${formality.id}`,
+      ...(requalification ? { ALERTE: requalification } : {}),
       etapes_formaliste: ['Ouvrir le brouillon (lien_guichet_unique)', 'Compléter les champs signalés', 'Valider la formalité', 'Signer électroniquement', 'Payer ou envoyer la délégation de paiement au client (même page)'],
     },
     event: {
@@ -1117,13 +1190,23 @@ async function toolModification(supa, ctx, input) {
     if (o.type === 'revocation' && !o.nom) bloquants.push('Nom du dirigeant sortant');
   }
 
+  if (operations.some((o) => o.type === 'dissolution') && operations.some((o) => o.type === 'clotureLiquidation')) {
+    bloquants.push("Dissolution et clôture de liquidation ne peuvent pas être déposées dans la même formalité (refus du Guichet unique) : déposer la dissolution, puis la clôture une fois la dissolution inscrite.");
+  }
+
   const dossier = await loadDossier(supa, ctx);
   const meta = dossier?.metadata || {};
   const wanted = Array.isArray(input.pieces) ? input.pieces : [];
   let docs = [];
-  if (dossier) ({ data: docs } = await supa.from('dossier_documents').select('id, name, file_path, mime_type').eq('dossier_id', dossier.id));
+  if (dossier) ({ data: docs } = await supa.from('dossier_documents').select('id, name, file_path, mime_type, doc_type, status').eq('dossier_id', dossier.id));
   const byId = new Map((docs || []).map((d) => [String(d.id), d]));
   const plan = wanted.filter((w) => byId.has(String(w.document_id)) && PIECES_MODIF[w.categorie]).map((w) => ({ doc: byId.get(String(w.document_id)), categorie: w.categorie }));
+  const nonSignees = piecesNonSignees(plan);
+  if (nonSignees.length) bloquants.push(bloquantSignature(nonSignees));
+  const manquantes = piecesManquantesModif(operations, new Set(plan.map((p) => p.categorie)), PIECES_MODIF);
+  if (manquantes.length && input.completer_sur_guichet !== true) {
+    bloquants.push(`Pièces obligatoires manquantes : ${manquantes.join(' ; ')} (à joindre, ou confirmation explicite que le formaliste les ajoutera sur le Guichet unique)`);
+  }
 
   if (!input.confirme) {
     const fiche = rne.summarizeCompany(await rne.getCompany(ctx.orgId, siren));
@@ -1132,9 +1215,9 @@ async function toolModification(supa, ctx, input) {
     let erreurOperation = null;
     try {
       const base = await baseModification(ctx.orgId, siren);
-      evenements = await appliquerOperations(base.next, operations);
+      evenements = await appliquerOperations(base.next, operations, ctx.orgId);
       bloquants.push(...donneesManquantes(base.next));
-    } catch (e) { erreurOperation = e.message; }
+    } catch (e) { erreurOperation = e.message; bloquants.push(e.message); }
     if (dossier) await supa.from('dossiers').update({ metadata: { ...meta, inpi_modif_preview_at: new Date().toISOString() } }).eq('id', dossier.id);
     return {
       result: {
@@ -1152,12 +1235,18 @@ async function toolModification(supa, ctx, input) {
   if (dossier && !meta.inpi_modif_preview_at) throw new Error("Fais d'abord un aperçu (confirme=false) et présente-le au professionnel.");
   if (meta.inpi_draft_id) throw new Error(`Un brouillon existe déjà pour ce dossier (formalité ${meta.inpi_draft_id}).`);
 
+  let attendus = [];
   const { formality, events } = await createModificationDraft(ctx.orgId, siren, {
     typeFormalite,
     reference: dossier?.reference,
     nomDossier: dossier?.client_name,
-    mutate: (c) => appliquerOperations(c, operations),
+    mutate: async (c) => { attendus = await appliquerOperations(c, operations, ctx.orgId); },
   });
+  // Événements réellement retenus par le Guichet unique comparés aux opérations demandées
+  const nonRetenus = attendus.filter((e) => !events.includes(e));
+  const ecart = nonRetenus.length
+    ? `Le Guichet unique n'a pas retenu : ${nonRetenus.join(', ')} (retenu : ${events.join(', ') || 'aucun'}). À déclarer manuellement sur le brouillon avant validation.`
+    : null;
   const pieces = [];
   for (const p of plan) {
     const { data: blob } = await supa.storage.from(BUCKET).download(p.doc.file_path);
@@ -1173,11 +1262,12 @@ async function toolModification(supa, ctx, input) {
   return {
     result: {
       brouillon_cree: true, formalite_inpi: formality.id, liasse: formality.liasseNumber, evenements_inpi: events,
+      ...(ecart ? { ALERTE: ecart } : {}),
       pieces_deposees: deposees, erreurs_depot: erreurs,
       lien_guichet_unique: `https://guichet-unique.inpi.fr/${formality.id}`,
       etapes_formaliste: ['Ouvrir le brouillon (lien_guichet_unique)', 'Vérifier et compléter', 'Valider', 'Signer électroniquement', 'Payer ou envoyer la délégation de paiement au client (même page)'],
     },
-    event: { kind: 'inpi', label: 'Brouillon de modification créé sur le Guichet unique', detail: `${formality.liasseNumber} · ${events.join(' + ')} · ${deposees.length} pièce(s)`, href: `/inpi/${formality.id}` },
+    event: { kind: 'inpi', label: ecart ? 'Brouillon créé — écart à corriger' : 'Brouillon de modification créé sur le Guichet unique', detail: `${formality.liasseNumber} · ${events.join(' + ')} · ${deposees.length} pièce(s)${ecart ? ' · ' + ecart : ''}`, href: `/inpi/${formality.id}` },
   };
 }
 
@@ -1276,7 +1366,7 @@ async function toolComptesAnnuels(supa, ctx, input) {
   const dossier = await loadDossier(supa, ctx);
   const meta = dossier?.metadata || {};
   let docs = [];
-  if (dossier) ({ data: docs } = await supa.from('dossier_documents').select('id, name, file_path, mime_type').eq('dossier_id', dossier.id));
+  if (dossier) ({ data: docs } = await supa.from('dossier_documents').select('id, name, file_path, mime_type, doc_type, status').eq('dossier_id', dossier.id));
   const byId = new Map((docs || []).map((d) => [String(d.id), d]));
   const wanted = Array.isArray(input.pieces) ? input.pieces : [];
   const plan = wanted.filter((w) => byId.has(String(w.document_id)) && ca.PIECES_CA[w.categorie]).map((w) => ({ doc: byId.get(String(w.document_id)), categorie: w.categorie }));
@@ -1286,6 +1376,8 @@ async function toolComptesAnnuels(supa, ctx, input) {
     categories: plan.map((p) => p.categorie),
   });
   if (introuvables.length) bloquants.push(`Documents introuvables dans le dossier : ${introuvables.join(', ')} (appelle etat_dossier)`);
+  const nonSigneesCA = piecesNonSignees(plan);
+  if (nonSigneesCA.length) bloquants.push(bloquantSignature(nonSigneesCA));
   if (input.cac && !plan.some((p) => p.categorie === 'RAPPORT_CAC')) bloquants.push('Pièce manquante : Rapport du commissaire aux comptes');
   if (confidentialite !== 'aucune') alertes.push('Confidentialité : à vérifier sur le Guichet unique au moment de la signature (l’option est portée par le dépôt, la mention « confidentielle » des pièces se contrôle à l’écran)');
 

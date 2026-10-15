@@ -163,11 +163,17 @@ async function requestImpl(orgId, path, { method = 'GET', body, query, headers =
       ...headers,
     });
 
-  const res = await fetch(url, {
-    method,
-    headers: build(auth),
-    body: body ? JSON.stringify(body) : undefined,
-  });
+  let res;
+  // Lectures : 2 nouvelles tentatives sur erreur serveur ou coupure réseau.
+  for (let essai = 1; ; essai++) {
+    try {
+      res = await fetch(url, { method, headers: build(auth), body: body ? JSON.stringify(body) : undefined, signal: AbortSignal.timeout(90000) });
+      if (method !== 'GET' || res.status < 500 || essai >= 3) break;
+    } catch (e) {
+      if (method !== 'GET' || essai >= 3) throw e;
+    }
+    await new Promise((ok) => setTimeout(ok, 1500 * essai));
+  }
 
   if (res.status === 401) {
     invalidateAuth(orgId);

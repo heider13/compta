@@ -161,7 +161,7 @@ async function lancer({ ctx, label, formalites }) {
       user_id: ctx.userId,
       organization_id: ctx.orgId,
       assigned_to: ctx.userId,
-      reference: `CMP-${(Date.now() + i).toString(36).toUpperCase()}`,
+      reference: `CMP-${Date.now().toString(36).toUpperCase()}${i.toString(36).toUpperCase()}${require('crypto').randomBytes(2).toString('hex').toUpperCase()}`,
       statut: 'DRAFT',
       metadata: {
         created_by_agent: true,

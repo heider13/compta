@@ -324,6 +324,11 @@ const OPERATIONS = {
     const cible = (p.composition.pouvoirs || []).find((x) =>
       String(x.individu?.descriptionPersonne?.nom || x.entreprise?.denomination || '').toUpperCase() === String(nom).toUpperCase());
     if (!cible) throw new Error(`Dirigeant « ${nom} » introuvable dans la fiche RNE.`);
+    // Il doit rester un représentant légal (gérant, président…) après la révocation.
+    const actifs = (p.composition.pouvoirs || []).filter((x) => x !== cible && !['2', '3'].includes(String(x.statutPourLaFormalite)));
+    if (!actifs.length) {
+      throw new Error(`Révocation impossible seule : « ${nom} » est le dernier dirigeant inscrit. Nommer son remplaçant dans la même formalité (opération nomination, placée avant la révocation).`);
+    }
     Object.assign(cible, { statutPourLaFormalite: '3', is34Or35MSuppressionTriggered: true, dateEffet34Or35M: dateEffet });
     p.composition.isModificationPouvoir = true;
     activitesInchangees(next);
@@ -381,7 +386,7 @@ OPERATIONS.miseEnSommeil = async (next, { dateEffet, deplacerEtablissement = tru
     indicateurDissolution: false, indicateurDisparitionPM: false, dateMiseEnSommeil: dateEffet,
     dateDissolutionDisparitionFromRNE: false, indicateurLocationTerresTVA: false,
   };
-  return ['dissolution'];
+  return ['40M'];
 };
 
 // 41P — cessation totale d'une entreprise individuelle (radiation).
@@ -404,23 +409,27 @@ OPERATIONS.cessationEI = async (next, { dateEffet }) => {
 };
 
 // ─── Cas plus rares (indicateurs relevés sur les modifications validées) ───
-const { categorisation, journalInpi } = require('./inpi-liasse');
+const { categoriser, jqpaEntrepreneur, journalInpi } = require('./inpi-liasse');
 const journalPublicationInpi = (nom) => journalInpi(nom);
 const blocDe = (next) => next.personneMorale || next.personnePhysique;
 const estPP = (next) => !next.personneMorale && Boolean(next.personnePhysique);
 const FORME_EXERCICE_INPI = { COMMERCIALE: 'COMMERCIALE', ARTISANALE: 'ARTISANALE', ARTISANALE_REGLEMENTEE: 'ARTISANALE_REGLEMENTEE', LIBERALE: 'INDEPENDANTE', INDEPENDANTE: 'INDEPENDANTE', CIVILE: 'GESTION_DE_BIENS' };
 
-function nouvelleActivite({ description, codeApe, formeExercice }, dateEffet, principale) {
-  const cat = categorisation(codeApe);
-  if (!cat) throw new Error(`Catégorie d'activité INPI inconnue pour le code APE ${codeApe || '(absent)'}.`);
+async function nouvelleActivite({ description, codeApe, formeExercice, _orgId }, dateEffet, principale) {
+  let forme = FORME_EXERCICE_INPI[formeExercice] || 'COMMERCIALE';
+  const cat = codeApe ? await categoriser(_orgId, codeApe, forme) : null;
+  if (!cat) throw new Error(`Catégorie d'activité INPI introuvable pour le code APE ${codeApe || '(absent)'} : vérifier le code APE.`);
+  if (cat.alerte) forme = cat.alerte;
   return {
     statutFormalite: 'A',
     indicateurPrincipal: Boolean(principale),
     indicateurProlongement: false,
     dateDebut: dateEffet,
     exerciceActivite: 'P',
-    indicateurNonSedentaire: false,
-    formeExercice: FORME_EXERCICE_INPI[formeExercice] || 'COMMERCIALE',
+    indicateurNonSedentaire: cat.codes[4] === '16',
+    ...(cat.codes[4] === '16' ? { qualiteNonSedentaire: 'A' } : {}),
+    formeExercice: forme,
+    ...jqpaEntrepreneur(forme, '2'),
     categorisationActivite1: cat.codes[0],
     categorisationActivite2: cat.codes[1],
     ...(cat.codes[2] ? { categorisationActivite3: cat.codes[2] } : {}),
@@ -437,11 +446,11 @@ function nouvelleActivite({ description, codeApe, formeExercice }, dateEffet, pr
 }
 
 // 61M / 61P (+ 24P pour une EI) — ajout d'une activité à l'établissement principal
-OPERATIONS.activiteAjout = async (next, { description, codeApe, formeExercice, principale = false, dateEffet }) => {
+OPERATIONS.activiteAjout = async (next, { description, codeApe, formeExercice, principale = false, dateEffet, _orgId }) => {
   const ep = blocDe(next).etablissementPrincipal;
   if (!ep) throw new Error("Pas d'établissement principal dans la fiche RNE.");
   for (const a of ep.activites || []) if (!a.statutFormalite || a.statutFormalite === 'I') a.statutFormalite = 'M';
-  const act = nouvelleActivite({ description, codeApe, formeExercice }, dateEffet, principale);
+  const act = await nouvelleActivite({ description, codeApe, formeExercice, _orgId }, dateEffet, principale);
   if (estPP(next)) Object.assign(act, { is24Or27PMTriggered: true, dateEffet24Or27PM: dateEffet });
   ep.activites = [...(ep.activites || []), act];
   ep.descriptionEtablissement = { ...(ep.descriptionEtablissement || {}), statutPourFormalite: '3' };
@@ -461,7 +470,7 @@ OPERATIONS.activiteSuppression = async (next, { codeApe, index, dateEffet }) => 
 };
 
 // 54M — ouverture d'un établissement secondaire
-OPERATIONS.etablissementSecondaire = async (next, { adresse, description, codeApe, formeExercice, dateEffet }) => {
+OPERATIONS.etablissementSecondaire = async (next, { adresse, description, codeApe, formeExercice, dateEffet, _orgId }) => {
   const b = blocDe(next);
   const adr = await adresseInpi(adresse, [], 'Établissement secondaire');
   if (!adr) throw new Error("Adresse de l'établissement secondaire incomplète.");
@@ -470,7 +479,7 @@ OPERATIONS.etablissementSecondaire = async (next, { adresse, description, codeAp
   if (b.etablissementPrincipal) {
     for (const a of b.etablissementPrincipal.activites || []) { a.statutFormalite = 'I'; a.rolePrincipalPourEntreprise = true; }
   }
-  const act = { ...nouvelleActivite({ description, codeApe, formeExercice }, dateEffet, true), rolePrincipalPourEntreprise: false };
+  const act = { ...(await nouvelleActivite({ description, codeApe, formeExercice, _orgId }, dateEffet, true)), rolePrincipalPourEntreprise: false };
   delete act.is61PMFTriggered;
   b.autresEtablissements = [...(b.autresEtablissements || []), {
     descriptionEtablissement: { rolePourEntreprise: '3', statutPourFormalite: '1', indicateurEtablissementPrincipal: false },
@@ -592,7 +601,9 @@ OPERATIONS.dissolution = async (next, { liquidateur, liquidateurExistant, lieuLi
     dateDissolutionDisparitionFromRNE: false,
     indicateurLocationTerresTVA: false,
   };
-  return ['40M'];
+  // Le Guichet unique ne retient aujourd'hui que la nomination du liquidateur (35M) :
+  // « dissolution » est attendu explicitement pour que l'écart soit signalé après création.
+  return ['dissolution', ...(nommerLiquidateur ? ['35M'] : [])];
 };
 
 // Clôture de la liquidation (42M) : radiation. Si la dissolution n'est pas encore inscrite,
@@ -652,12 +663,12 @@ OPERATIONS.complementPersonne = async (next, { nom, prenom, sexe, dateNaissance,
 };
 
 // Applique une liste d'opérations [{ type, ...params }] et renvoie les événements attendus.
-async function appliquerOperations(next, operations) {
+async function appliquerOperations(next, operations, orgId = null) {
   const events = [];
   for (const op of operations) {
     const fn = OPERATIONS[op.type];
     if (!fn) throw new Error(`Opération inconnue : ${op.type}`);
-    events.push(...(await fn(next, { dateEffet: op.dateEffet || new Date().toISOString().slice(0, 10), ...op })));
+    events.push(...(await fn(next, { dateEffet: op.dateEffet || new Date().toISOString().slice(0, 10), ...op, _orgId: orgId })));
   }
   return [...new Set(events)];
 }
