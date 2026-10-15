@@ -1715,4 +1715,4 @@ async function runAgentTurn({ history, input, attachments = [], ctx, emit, formR
   return { messages, dossierId: ctx.dossierId || null, usage, pendingForm };
 }
 
-module.exports = { runAgentTurn, resumeCommande, ACTES, ATTACHMENT_TYPES };
+module.exports = { runAgentTurn, runTool, resumeCommande, ACTES, ATTACHMENT_TYPES };

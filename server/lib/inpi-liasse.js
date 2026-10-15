@@ -41,6 +41,8 @@ const CATEGORISATION_APE = {
   '4711B': ['06', '03', '01', '', '10'], '4724Z': ['06', '03', '01', '', '10'], '4742Z': ['06', '03', '01', '', '10'],
   '4752A': ['06', '02', '02', '', '09'], '4778C': ['06', '03', '09', '', '10'],
   '4791A': ['06', '05', '', '', '99'], '4791B': ['06', '05', '', '', '99'],
+  // Commerce sur éventaires et marchés (précision 16 = commerce de détail sur marché)
+  '4781Z': ['06', '03', '01', '', '16'], '4782Z': ['06', '03', '01', '', '16'], '4789Z': ['06', '03', '01', '', '16'],
   '4941A': ['07', '01', '11', '', '99'], '4941B': ['07', '01', '04', '01', '99'],
   '5610A': ['07', '02', '03', '01', '99'], '5610C': ['07', '02', '03', '01', '99'],
   '6201Z': ['02', '08', '09', '02', '04'],
@@ -210,7 +212,20 @@ async function adresseInpi(a, aCompleter, label) {
   };
 }
 
+const sansAccents = (x) => String(x || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase();
+
+// Pays mentionné dans le lieu de naissance : « Oran (Algérie) », « Casablanca, Maroc ».
+function paysDansLieu(lieu) {
+  const L = sansAccents(lieu);
+  const code = Object.keys(PAYS).find((k) => k !== 'FRA' && new RegExp(`\\b${PAYS[k].label.replace(/[^A-Z' -]/g, '')}\\b`).test(L));
+  if (!code) return null;
+  const ville = String(lieu).replace(/\s*[(,].*$/, '').trim();
+  return { code, ville };
+}
+
 async function personneInpi(p, aCompleter, label) {
+  const dansLieu = !p.paysNaissance ? paysDansLieu(p.lieuNaissance) : null;
+  if (dansLieu) p = { ...p, paysNaissance: dansLieu.code, lieuNaissance: dansLieu.ville || p.lieuNaissance };
   const paysCode = p.paysNaissance || (p.nationalite === 'FRA' ? 'FRA' : '');
   const pays = PAYS[paysCode] || null;
   let naissance = {
@@ -530,6 +545,7 @@ async function buildEILiasse(data, dossier, client) {
 
   if (p.nationalite === 'FRA' && !p.numeroSecu) bloquants.push("Numéro de sécurité sociale de l'entrepreneur");
   if (!p.situationMatrimoniale) bloquants.push("Situation matrimoniale de l'entrepreneur");
+  if (!p.telephone) bloquants.push("Téléphone de l'entrepreneur (exigé par le Guichet unique)");
   const cat = categorisation(data.codeApe);
   if (!data.codeApe) bloquants.push("Code APE de l'activité");
   else if (!cat) bloquants.push(`Catégorie d'activité INPI inconnue pour le code APE ${data.codeApe}`);
@@ -598,7 +614,9 @@ async function buildEILiasse(data, dossier, client) {
           indicateurProlongement: false,
           dateDebut,
           exerciceActivite: 'P',
-          indicateurNonSedentaire: false,
+          // Vente sur les marchés : activité non sédentaire (ambulant)
+          indicateurNonSedentaire: cat?.codes[4] === '16',
+          ...(cat?.codes[4] === '16' ? { qualiteNonSedentaire: 'A' } : {}),
           formeExercice,
           ...(cat ? {
             categorisationActivite1: cat.codes[0],
