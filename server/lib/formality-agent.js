@@ -129,7 +129,10 @@ async function identiteCabinet(orgId) {
     const adr = declarant?.entreprise?.adresse || declarant?.individu?.adresseDomicile || {};
     v = {
       denomination: declarant?.entrepriseMandataire?.denomination || null,
-      adresse: adr.voie ? [[adr.numVoie, adr.typeVoie, adr.voie].filter(Boolean).join(' '), `${adr.codePostal || ''} ${adr.commune || ''}`.trim()].join(', ') : null,
+      // Le compte Guichet unique range souvent l'adresse complète dans complementLocalisation
+      adresse: (adr.voie || adr.complementLocalisation)
+        ? [[adr.numVoie, adr.typeVoie, adr.voie].filter(Boolean).join(' '), adr.complementLocalisation, `${adr.codePostal || ''} ${adr.commune || ''}`.trim()].filter(Boolean).join(', ')
+        : null,
       representant: [ind.prenoms?.[0], ind.nom].filter(Boolean).join(' ') || null,
     };
   } catch {}
