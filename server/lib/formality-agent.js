@@ -1096,7 +1096,9 @@ async function toolActe(supa, ctx, input) {
     chunks = await searchLegalChunks(`${ACTES[type]} ${data.formeJuridique || ''}`, { matchCount: 4, minSimilarity: 0.35 });
   } catch { /* rédaction possible sans sources */ }
 
-  const modeleActe = knowledge.modele(MODELE_PAR_ACTE[type]);
+  // Statuts mis à jour d'une SCI : les statuts de SCI du cabinet servent de modèle
+  const sci = String(data.formeJuridique || '').toUpperCase() === 'SCI' || String(fiche?.formeJuridique) === '6540';
+  const modeleActe = knowledge.modele(type === 'statuts_mis_a_jour' && sci ? 'statuts_sci' : MODELE_PAR_ACTE[type]);
   const draft = await draftDocument({ docType: 'autre', title: label, brief, chunks, modele: modeleActe });
   if (draft.refused) throw new Error('Rédaction refusée par le modèle.');
   if (ctx.draftUsage && draft.usage) {

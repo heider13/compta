@@ -34,7 +34,8 @@ function playbook() {
 function modele(categorie) {
   if (!/^[a-z_]+$/.test(String(categorie || ''))) return null;
   const text = readCached(path.join(DATA_DIR, 'modeles', `${categorie}.md`));
-  return text ? text.slice(0, MODELE_MAX_CHARS) : null;
+  // Des statuts tronqués perdraient leurs derniers articles (dissolution, liquidation, gérance)
+  return text ? text.slice(0, categorie.startsWith('statuts_') ? 60000 : MODELE_MAX_CHARS) : null;
 }
 
 function modelesDisponibles() {

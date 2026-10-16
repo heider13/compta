@@ -88,6 +88,7 @@ function personne(p = {}, role = null) {
     nomMere: p.nomMere || null,
     role: role ? (feminin && role === 'PRESIDENT' ? 'Présidente' : feminin && role === 'GERANT' ? 'Gérante' : ROLE[role] || role) : null,
     feminin,
+    situation: { MARIE: feminin ? 'mariée' : 'marié', PACSE: feminin ? 'liée par un pacte civil de solidarité' : 'lié par un pacte civil de solidarité', CELIBATAIRE: feminin ? 'célibataire' : 'célibataire', DIVORCE: feminin ? 'divorcée' : 'divorcé', VEUF: feminin ? 'veuve' : 'veuf' }[p.situationMatrimoniale] || null,
     apport: euros(p.apportEuros),
     nbTitres: p.nbTitres ?? null,
     pourcentage: p.pourcentage ?? null,
@@ -105,6 +106,16 @@ function contexte(data, { dossier = {}, cabinet = {}, date = new Date() } = {}) 
   const dir = personne(data.dirigeant, role);
   const associes = (data.associes?.length ? data.associes : unipersonnelle && data.dirigeant ? [{ ...data.dirigeant, apportEuros: capital, nbTitres, pourcentage: 100 }] : [])
     .map((a) => personne(a));
+  // Numérotation continue des titres (1 à N) dans l'ordre des associés, accords singulier/pluriel
+  let rang = 1;
+  for (const a of associes) {
+    const n = Number(a.nbTitres) || 0;
+    a.numeroDe = n ? rang : null;
+    a.numeroA = n ? rang + n - 1 : null;
+    rang += n;
+    a.titresDetenus = n ? `${n} ${actions ? 'action' : 'part'}${n > 1 ? 's' : ''}${actions ? '' : ` sociale${n > 1 ? 's' : ''}`}` : null;
+    a.numerotation = n ? (n === 1 ? `numérotée ${a.numeroDe}` : `numérotées de ${a.numeroDe} à ${a.numeroA}`) : null;
+  }
   const [mm, jj] = String(data.dateClotureExercice || '12-31').split('-');
   const ville = data.villeSignature || data.siege?.commune || null;
   return {
@@ -166,7 +177,11 @@ function valeur(ctx, cle, courant) {
 const vrai = (v) => (Array.isArray(v) ? v.length > 0 : Boolean(v));
 
 function rendre(gabarit, ctx, courant = null) {
-  let s = gabarit;
+  // Boucles d'abord : un {{#si .champ}} placé dans une boucle se lit sur l'élément courant
+  let s = gabarit.replace(/\{\{#chaque ([^}]+)\}\}([\s\S]*?)\{\{\/chaque\}\}/g, (_, cle, corps) => {
+    const v = valeur(ctx, cle.trim(), courant);
+    return (Array.isArray(v) ? v : []).map((el, i) => rendre(corps.replace(/\{\{@numero\}\}/g, String(i + 1)), ctx, el)).join('');
+  });
   // Blocs (du plus intérieur au plus extérieur)
   const BLOC = /\{\{#(si|sinon|chaque) ([^}]+)\}\}((?:(?!\{\{#(?:si|sinon|chaque) )[\s\S])*?)\{\{\/\1\}\}/;
   let m;
