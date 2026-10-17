@@ -145,7 +145,7 @@ async function parseResponse(res) {
   return payload;
 }
 
-async function requestImpl(orgId, path, { method = 'GET', body, query, headers = {} } = {}) {
+async function requestImpl(orgId, path, { method = 'GET', body, query, headers = {}, timeoutMs = 90000, essais = 3 } = {}) {
   const { auth, baseUrl } = await getAuthFor(orgId);
   const url = new URL(path.startsWith('http') ? path : `${baseUrl}${path}`);
   if (query) {
@@ -167,10 +167,10 @@ async function requestImpl(orgId, path, { method = 'GET', body, query, headers =
   // Lectures : 2 nouvelles tentatives sur erreur serveur ou coupure réseau.
   for (let essai = 1; ; essai++) {
     try {
-      res = await fetch(url, { method, headers: build(auth), body: body ? JSON.stringify(body) : undefined, signal: AbortSignal.timeout(90000) });
-      if (method !== 'GET' || res.status < 500 || essai >= 3) break;
+      res = await fetch(url, { method, headers: build(auth), body: body ? JSON.stringify(body) : undefined, signal: AbortSignal.timeout(timeoutMs) });
+      if (method !== 'GET' || res.status < 500 || essai >= essais) break;
     } catch (e) {
-      if (method !== 'GET' || essai >= 3) throw e;
+      if (method !== 'GET' || essai >= essais) throw e;
     }
     await new Promise((ok) => setTimeout(ok, 1500 * essai));
   }
@@ -182,6 +182,7 @@ async function requestImpl(orgId, path, { method = 'GET', body, query, headers =
       method,
       headers: build(retryAuth),
       body: body ? JSON.stringify(body) : undefined,
+      signal: AbortSignal.timeout(timeoutMs),
     });
     return parseResponse(retry);
   }
@@ -191,7 +192,7 @@ async function requestImpl(orgId, path, { method = 'GET', body, query, headers =
 async function rawFetchImpl(orgId, path, opts = {}) {
   const { auth, baseUrl } = await getAuthFor(orgId);
   const headers = applyAuth(auth, { ...DEFAULT_HEADERS, ...(opts.headers || {}) });
-  return fetch(`${baseUrl}${path}`, { ...opts, headers });
+  return fetch(`${baseUrl}${path}`, { signal: AbortSignal.timeout(60000), ...opts, headers });
 }
 
 function makeClient(orgId) {
@@ -199,7 +200,7 @@ function makeClient(orgId) {
     request: (path, opts) => requestImpl(orgId, path, opts),
     rawFetch: (path, opts) => rawFetchImpl(orgId, path, opts),
     listFormalities: (params) => requestImpl(orgId, '/api/formalities', { query: params }),
-    getFormality: (id, opts) => requestImpl(orgId, `/api/formalities/${id}`, { query: opts }),
+    getFormality: (id, opts, reseau = {}) => requestImpl(orgId, `/api/formalities/${id}`, { query: opts, ...reseau }),
     createFormality: (body) => requestImpl(orgId, '/api/formalities', { method: 'POST', body }),
     updateFormality: (id, body) => requestImpl(orgId, `/api/formalities/${id}`, { method: 'PUT', body }),
     deleteFormality: (id) => requestImpl(orgId, `/api/formalities/${id}`, { method: 'DELETE' }),

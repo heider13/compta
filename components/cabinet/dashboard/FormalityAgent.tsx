@@ -7,7 +7,7 @@
 // crée le dossier, génère les statuts et les actes annexes. Signature et dépôt
 // INPI restent des actions humaines depuis la page du dossier.
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { memo, useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import {
   AlertCircle, ArrowLeft, ArrowRight, Bot, CheckCircle2, FileText, FolderPlus, Loader2,
@@ -75,6 +75,10 @@ type SavedState = {
 };
 
 type PendingFile = { name: string; mime: string; size: number; data: string };
+
+// Tour interrompu (coupure réseau) : de quoi le relancer à l'identique
+type Tentative = { question: string; attachments: PendingFile[]; reponses?: Reponses; itemsAvant: Item[]; formEnAttente: PendingForm | null };
+type OptionsEnvoi = { depuisPanneau?: boolean; reprise?: Tentative };
 
 const EXAMPLES = [
   {
@@ -165,16 +169,33 @@ export function FormalityAgent(props: AgentProps = {}) {
   const ouvrir = useCallback(async (dossierId: string) => {
     setOuverte(await vpsApi<AgentResume>(`/api/lots/formalites/${dossierId}/historique`));
   }, []);
+  // Lien « Agent Formalités » d'un dossier : conversation propre à ce dossier
+  useEffect(() => {
+    if (props.inpiFormality || props.resume) return;
+    const id = new URL(window.location.href).searchParams.get('dossier');
+    if (!id || !/^[0-9a-f-]{36}$/i.test(id)) return;
+    vpsApi<{ dossier: AgentResume['dossier'] }>(`/api/dossiers/${id}/parcours`)
+      .then((e) => setOuverte({ dossier: e.dossier, messages: [], events: [], texte: '' }))
+      .catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   if (ouverte) {
     return (
       <div className="space-y-2">
         <button
           type="button"
-          onClick={() => setOuverte(null)}
+          onClick={() => {
+            setOuverte(null);
+            const url = new URL(window.location.href);
+            if (url.searchParams.has('dossier')) {
+              url.searchParams.delete('dossier');
+              window.history.replaceState(null, '', url.pathname + url.search + url.hash);
+            }
+          }}
           className="inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
         >
           <ArrowLeft className="size-4" /> Retour à la conversation principale
-          <span className="text-xs">· formalité du lot : {ouverte.dossier.denomination}</span>
+          <span className="text-xs">· {ouverte.dossier.denomination}</span>
         </button>
         <AgentChat key={ouverte.dossier.id} resume={ouverte} />
       </div>
@@ -212,7 +233,10 @@ function AgentChat({ inpiFormality, resume }: AgentProps) {
   const [dragging, setDragging] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [statut, setStatut] = useState<string | null>(null);
+  const [reprise, setReprise] = useState<Tentative | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const saisieRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -222,6 +246,9 @@ function AgentChat({ inpiFormality, resume }: AgentProps) {
       setHistory(saved.history ?? []);
       setDossier(saved.dossier ?? null);
       setPendingForm(saved.pendingForm ?? null);
+    } else if (resume && !resume.messages.length && !resume.events.length) {
+      // Chat d'un dossier ouvert depuis sa page : conversation neuve rattachée au dossier
+      setDossier(resume.dossier);
     } else if (resume) {
       // Première ouverture : on repart de la préparation faite par le lot
       setHistory(resume.messages);
@@ -239,7 +266,7 @@ function AgentChat({ inpiFormality, resume }: AgentProps) {
 
   // Demande pré-remplie depuis une autre page (?demande=…), à relire puis envoyer.
   useEffect(() => {
-    if (inpiFormality || resume) return;
+    if (inpiFormality) return;
     const url = new URL(window.location.href);
     const demande = url.searchParams.get('demande');
     if (!demande) return;
@@ -249,9 +276,10 @@ function AgentChat({ inpiFormality, resume }: AgentProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  const colle = useRef(true);
   useEffect(() => {
     const el = scrollRef.current;
-    if (el) el.scrollTop = el.scrollHeight;
+    if (el && (colle.current || items[items.length - 1]?.type === 'user')) el.scrollTop = el.scrollHeight;
   }, [items, busy]);
 
   const toolEvents = items
@@ -260,7 +288,7 @@ function AgentChat({ inpiFormality, resume }: AgentProps) {
   const documents = toolEvents.filter((e) => e.kind === 'document' && e.status === 'done');
   const pieces = toolEvents.filter((e) => e.kind === 'piece' && e.status === 'done');
   // Chaque étape terminée par l'agent relance la lecture du parcours (panneau de droite)
-  const etapesTerminees = toolEvents.filter((e) => e.status === 'done').length;
+  const etapesTerminees = toolEvents.filter((e) => e.status === 'done' && ['dossier', 'document', 'inpi', 'piece', 'pipeline'].includes(e.kind ?? '')).length;
 
   async function addFiles(list: FileList | File[]) {
     setError(null);
@@ -303,20 +331,27 @@ function AgentChat({ inpiFormality, resume }: AgentProps) {
     clearSaved(storageKey);
   }
 
-  async function send(text: string, reponses?: Reponses) {
+  async function send(text: string, reponses?: Reponses, opts: OptionsEnvoi = {}) {
     const question = text.trim();
-    if ((!question && files.length === 0 && !reponses) || busy) return;
-    const attachments = files;
-    const formEnAttente = pendingForm;
+    // Demande venue du panneau des étapes : le message en cours de saisie et les pièces restent
+    const attachments = opts.reprise ? opts.reprise.attachments : opts.depuisPanneau ? [] : files;
+    if ((!question && attachments.length === 0 && !reponses) || busy) return;
+    const formEnAttente = opts.reprise ? opts.reprise.formEnAttente : pendingForm;
+    const itemsAvant = opts.reprise ? opts.reprise.itemsAvant : items;
     setBusy(true);
     setError(null);
-    setInput('');
-    setFiles([]);
+    setReprise(null);
+    setStatut(null);
+    colle.current = true;
+    if (!opts.depuisPanneau && !opts.reprise) {
+      setInput('');
+      setFiles([]);
+    }
     setPendingForm(null);
 
     // Copie locale : l'état React n'est relu qu'à la fin du tour. Le formulaire en
     // attente passe en « répondu » (par le formulaire ou par message).
-    let localItems: Item[] = items.map((it) =>
+    let localItems: Item[] = itemsAvant.map((it) =>
       it.type === 'form' && !it.repondu ? { ...it, repondu: true, reponses: reponses ?? null } : it,
     );
     if (question || attachments.length) {
@@ -326,19 +361,31 @@ function AgentChat({ inpiFormality, resume }: AgentProps) {
     let localDossier = dossier;
     setItems(localItems);
 
+    // Texte en flux : regroupé et affiché une fois par image (pas un rendu par fragment)
+    let tampon = '';
+    let image: number | null = null;
+    const vider = () => {
+      if (image !== null) cancelAnimationFrame(image);
+      image = null;
+      if (!tampon) return;
+      const delta = tampon;
+      tampon = '';
+      const last = localItems[localItems.length - 1];
+      localItems = last?.type === 'assistant'
+        ? [...localItems.slice(0, -1), { type: 'assistant', text: last.text + delta }]
+        : [...localItems, { type: 'assistant', text: delta }];
+      setItems(localItems);
+    };
     const commit = (next: Item[]) => {
       localItems = next;
       setItems(next);
     };
     const appendText = (delta: string) => {
-      const last = localItems[localItems.length - 1];
-      if (last?.type === 'assistant') {
-        commit([...localItems.slice(0, -1), { type: 'assistant', text: last.text + delta }]);
-      } else {
-        commit([...localItems, { type: 'assistant', text: delta }]);
-      }
+      tampon += delta;
+      if (image === null) image = requestAnimationFrame(vider);
     };
     const upsertTool = (ev: ToolEvent) => {
+      vider();
       const idx = localItems.findIndex((i) => i.type === 'tool' && i.event.id === ev.id);
       const now = Date.now();
       if (idx >= 0) {
@@ -383,6 +430,7 @@ function AgentChat({ inpiFormality, resume }: AgentProps) {
       const reader = res.body.getReader();
       const dec = new TextDecoder();
       let buf = '';
+      let recuFin = false;
       for (;;) {
         const { done, value } = await reader.read();
         if (done) break;
@@ -394,12 +442,20 @@ function AgentChat({ inpiFormality, resume }: AgentProps) {
           const d = raw.match(/^data: (.+)$/m)?.[1];
           if (!t || !d) continue;
           const payload = JSON.parse(d);
-          if (t === 'text') appendText(payload.text);
-          else if (t === 'tool') upsertTool(payload as ToolEvent);
-          else if (t === 'form') {
+          if (t === 'text') {
+            setStatut(null);
+            appendText(payload.text);
+          } else if (t === 'status') setStatut(payload.label ?? null);
+          else if (t === 'tool') {
+            setStatut(null);
+            upsertTool(payload as ToolEvent);
+          } else if (t === 'form') {
+            vider();
             const { id, ...spec } = payload as FormSpec;
             commit([...localItems, { type: 'form', form: { ...spec, id } }]);
           } else if (t === 'done') {
+            vider();
+            recuFin = true;
             localPending = (payload.pending_form as PendingForm | null) ?? null;
             setPendingForm(localPending);
             setHistory(payload.messages);
@@ -409,17 +465,28 @@ function AgentChat({ inpiFormality, resume }: AgentProps) {
           }
         }
       }
+      if (!recuFin) throw Object.assign(new Error('Connexion interrompue avant la fin de la réponse.'), { coupure: true });
     } catch (e) {
+      vider();
       const msg = e instanceof Error ? e.message : 'Erreur inattendue';
       setError(
         /ANTHROPIC_API_KEY/.test(msg)
           ? "L'agent n'est pas encore configuré : la clé Anthropic manque sur le serveur."
-          : msg,
+          : /Failed to fetch|NetworkError|network/i.test(msg) ? 'Connexion au serveur perdue.' : msg,
       );
+      // Ce qui a été affiché est conservé ; le tour peut être relancé à l'identique
+      save(storageKey, { history, items: localItems, dossier: localDossier, pendingForm: formEnAttente });
+      setReprise({ question, attachments, reponses, itemsAvant, formEnAttente });
     } finally {
+      setStatut(null);
       setBusy(false);
+      requestAnimationFrame(() => saisieRef.current?.focus({ preventScroll: true }));
     }
   }
+  // Référence stable vers send : le panneau des étapes ne se redessine pas à chaque fragment
+  const sendRef = useRef(send);
+  sendRef.current = send;
+  const demanderDepuisPanneau = useCallback((message: string) => void sendRef.current(message, undefined, { depuisPanneau: true }), []);
 
   const started = items.length > 0;
   const canSend = !busy && (input.trim().length > 0 || files.length > 0);
@@ -592,7 +659,16 @@ function AgentChat({ inpiFormality, resume }: AgentProps) {
           <div className="grid lg:grid-cols-[minmax(0,1fr)_280px]">
             {/* Conversation */}
             <div className="flex min-w-0 flex-col border-b lg:border-b-0 lg:border-r">
-              <div ref={scrollRef} className="max-h-[520px] min-h-[260px] space-y-3 overflow-y-auto px-5 py-4">
+              <div
+                ref={scrollRef}
+                onScroll={(e) => {
+                  const el = e.currentTarget;
+                  colle.current = el.scrollHeight - el.scrollTop - el.clientHeight < 80;
+                }}
+                aria-live="polite"
+                aria-busy={busy}
+                className="max-h-[520px] min-h-[260px] space-y-3 overflow-y-auto px-5 py-4"
+              >
                 {grouper(items).map((g, gi, all) =>
                   g.kind === 'travail' ? (
                     <Travail key={`t-${g.cle}`} events={g.events} enCours={busy && gi === all.length - 1} />
@@ -612,7 +688,20 @@ function AgentChat({ inpiFormality, resume }: AgentProps) {
                 {busy && items[items.length - 1]?.type !== 'assistant' && items[items.length - 1]?.type !== 'tool' && (
                   <Travail events={[]} enCours />
                 )}
+                {busy && statut && (
+                  <p className="flex items-center gap-1.5 pl-9 text-xs text-muted-foreground">
+                    <Loader2 className="size-3 animate-spin" aria-hidden />
+                    {statut}
+                  </p>
+                )}
                 {error && <ErrorLine message={error} />}
+                {error && reprise && !busy && (
+                  <div className="pl-9">
+                    <Button type="button" size="sm" variant="outline" className="h-7 px-2.5 text-xs" onClick={() => void send(reprise.question, reprise.reponses, { reprise })}>
+                      <RotateCcw className="size-3" aria-hidden /> Réessayer
+                    </Button>
+                  </div>
+                )}
               </div>
               <form
                 onSubmit={(e) => {
@@ -633,9 +722,10 @@ function AgentChat({ inpiFormality, resume }: AgentProps) {
                         send(input);
                       }
                     }}
+                    ref={saisieRef}
                     rows={1}
                     placeholder="Répondez à l'agent, précisez votre demande ou joignez un document…"
-                    disabled={busy}
+                    readOnly={busy}
                     className="max-h-32 min-h-10 flex-1 resize-none rounded-md border bg-card px-3 py-2 text-sm outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/40 disabled:opacity-60"
                   />
                   <Button type="submit" size="icon" disabled={!canSend} aria-label="Envoyer">
@@ -663,11 +753,7 @@ function AgentChat({ inpiFormality, resume }: AgentProps) {
               {pieces.length > 0 && <SidebarList title="Pièces reçues" empty="" events={pieces} />}
 
               {dossier ? (
-                <ParcoursFormalite
-                  dossierId={dossier.id}
-                  version={etapesTerminees}
-                  onAsk={busy ? undefined : (message) => void send(message)}
-                />
+                <ParcoursFormalite dossierId={dossier.id} version={etapesTerminees} occupe={busy} onAsk={demanderDepuisPanneau} />
               ) : (
                 <p className="text-[11px] leading-snug text-muted-foreground">
                   Les étapes s&apos;afficheront ici : formalité, annonce légale, signature du client, signature de la formalité, paiement.
@@ -709,7 +795,7 @@ function SidebarList({ title, empty, events, external = false }: { title: string
   );
 }
 
-function ItemView({ item }: { item: Item }) {
+const ItemView = memo(function ItemView({ item }: { item: Item }) {
   if (item.type === 'user') {
     return (
       <div className="flex flex-col items-end gap-1.5">
@@ -778,7 +864,7 @@ function ItemView({ item }: { item: Item }) {
     );
   }
   return <div className={cls}>{body}</div>;
-}
+});
 
 // Étapes consécutives de l'agent regroupées en une ligne « A travaillé 17 s › »
 // (le suivi d'un lot reste affiché en entier).

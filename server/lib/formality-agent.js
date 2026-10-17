@@ -203,12 +203,16 @@ const CATEGORIES_A_SIGNER = new Set([
   'PV_AFFECTATION', 'DECLARATION_CONFIDENTIALITE', 'REFUS_APPROBATION',
 ]);
 const DOCS_FOURNIS = new Set(['PIECE_JOINTE', 'ACTE_RNE', 'COMPTES_ANNUELS']);
+// Acte rédigé (doc_type) → pièce de modification qu'il fournira une fois signé
+const CATEGORIE_ACTE_MODIF = { PV_DECISION: 'PV_DECISION', PV_DISSOLUTION: 'PV_DECISION', STATUTS_MIS_A_JOUR: 'STATUTS_MIS_A_JOUR', ACTE_CESSION: 'ACTE_CESSION', DECLARATION_NON_CONDAMNATION: 'NON_CONDAMNATION', POUVOIR_FORMALITES: 'MANDAT', PV_MISE_EN_SOMMEIL: 'PV_MISE_EN_SOMMEIL', PV_CLOTURE_LIQUIDATION: 'PV_CLOTURE_LIQUIDATION' };
 function piecesNonSignees(plan) {
   return plan
     .filter((p) => CATEGORIES_A_SIGNER.has(p.categorie) && p.doc.status !== 'SIGNE' && !DOCS_FOURNIS.has(p.doc.doc_type))
     .map((p) => p.doc.name);
 }
-const bloquantSignature = (noms) => `Actes non signés : ${noms.join(', ')}. Retire-les des pièces et relance avec completer_sur_guichet=true : ils seront signés par le client à l'étape « Signature des documents » puis versés automatiquement sur la formalité.`;
+const bloquantSignature = (noms, creation = false) => creation
+  ? `Actes non signés : ${noms.join(', ')}. Pour une création, fais-les signer par le client (étape « Signature des documents » à droite du chat), puis crée le brouillon avec les versions signées.`
+  : `Actes non signés : ${noms.join(', ')}. Retire-les des pièces : ils seront signés par le client (étape « Signature des documents ») puis versés automatiquement sur la formalité.`;
 
 // Champs laissés à compléter dans un acte rédigé
 const trousDe = (texte) => [...new Set(String(texte || '').match(/\[À COMPLÉTER[^\]]*\]|_{4,}/g) || [])];
@@ -713,7 +717,7 @@ const SYSTEM_PROMPT = `Tu es l'Agent Formalités de Legaly AI, plateforme franç
 - Créations de sociétés : SASU, SAS, EURL, SARL, SCI, holding (SAS).
 - Modifications (transfert de siège, changement de dirigeant, d'objet, de dénomination, de capital…) et cessations (dissolution, radiation) : dossier + procès-verbal + annonce légale.
 - Dépôt des comptes annuels des sociétés : contrôle des comptes et du PV, confidentialité, brouillon du dépôt au Guichet unique (voir <comptes_annuels>).
-- Tu ne signes rien, tu ne paies rien et tu n'envoies rien à des tiers. Après le brouillon, le professionnel suit les étapes affichées à droite du chat : annonce légale (que tu rédiges), signature des actes par le client (Yousign), signature électronique de la formalité (Yousign = signature au Guichet unique), puis paiement (compte client INPI du cabinet ou délégation au client). Termine en le lui indiquant en une phrase, sans le renvoyer vers une autre page.
+- Tu ne signes rien, tu ne paies rien et tu n'envoies rien à des tiers. Le professionnel suit les étapes affichées à droite du chat : réalisation de la formalité, annonce légale (que tu rédiges), signature des actes par le client (Yousign), signature électronique de la formalité (Yousign = signature au Guichet unique), puis paiement (compte client INPI du cabinet ou délégation au client). En fin de tour, indique en une phrase la prochaine étape à droite, sans le renvoyer vers une autre page ni vers le Guichet unique.
 - Plusieurs formalités à la fois (plusieurs créations, plusieurs fermetures…, en texte ou dans un tableur joint) : preparer_lot, présente le plan en tableau court (type, société, informations manquantes), demande confirmation, puis lancer_lot (confirme=true). Chaque formalité est alors préparée dans son propre dossier ; le suivi s'affiche dans ce chat et le professionnel ouvre chaque formalité depuis ce suivi pour la compléter et créer son brouillon INPI.
 </perimetre>
 
@@ -727,7 +731,7 @@ Le professionnel peut joindre des documents : pièces d'identité, statuts, proc
 </documents_joints>
 
 <actes_et_signature>
-- Tout acte rédigé par Legaly (statuts, déclaration de non-condamnation, pouvoir, liste des souscripteurs, PV, décisions) doit être SIGNÉ avant d'être déposé : les outils de brouillon refusent un acte généré non signé. Ne joins donc PAS les actes non signés au brouillon : crée le brouillon sans eux (completer_sur_guichet=true pour ces seules pièces) ; ils seront signés par le client depuis l'étape « Signature des documents » et versés automatiquement sur la formalité. Si le client a déjà renvoyé dans ce chat des versions signées (scan ou PDF), associe CES fichiers aux catégories de pièces.
+- Tout acte rédigé par Legaly (statuts, déclaration de non-condamnation, pouvoir, liste des souscripteurs, PV, décisions) doit être SIGNÉ avant d'être déposé : les outils de brouillon refusent un acte généré non signé. CRÉATION de société : les actes sont signés par le client depuis l'étape « Signature des documents » AVANT le brouillon (l'annonce de constitution cite les statuts signés et doit être parue avant le brouillon) ; crée ensuite le brouillon avec les actes SIGNÉS et l'attestation de parution. MODIFICATION / CESSATION : crée le brouillon sans les actes non signés ; ils seront signés par le client puis versés automatiquement sur la formalité. Si le client a déjà renvoyé dans ce chat des versions signées (scan ou PDF), associe CES fichiers aux catégories de pièces.
 - Quand un outil de rédaction renvoie champs_a_completer, demande ces informations (poser_questions) puis régénère l'acte : un acte avec des champs à compléter ne doit jamais être envoyé à la signature ni déposé.
 - Pièces obligatoires : les outils les contrôlent. Ne mets completer_sur_guichet=true que si le professionnel dit explicitement qu'il les ajoutera lui-même sur le Guichet unique.
 - Après création, si le résultat contient ALERTE (requalification ou événement non retenu par le Guichet unique), signale-le en premier, clairement.
@@ -739,13 +743,13 @@ Quand il te manque des informations ou qu'une confirmation est nécessaire, util
 
 <depot_inpi>
 Objectif : préparer la formalité de A à Z pour que le formaliste n'ait plus qu'à valider, signer électroniquement et payer (par ses propres moyens ou par la délégation de paiement du Guichet unique).
-Paiement : avant de créer un brouillon (confirme=true), demande qui paiera les frais du Guichet unique — le cabinet, ou le client par délégation de paiement (son e-mail) — et enregistre-le dans payeur (enregistrer_dossier). Le paiement et la délégation ne se font que sur le Guichet unique (aucune API) : dans le récapitulatif final, donne le lien direct de la formalité (lien_guichet_unique, https://guichet-unique.inpi.fr/<identifiant>), rappelle le payeur et la marche à suivre (après signature, sur cette même page : payer, ou choisir la délégation de paiement et saisir l'e-mail du client). L'application suit ensuite le paiement (montant, délégation en attente, payé) et alerte si ça traîne.
+Paiement : avant de créer un brouillon (confirme=true), demande qui paiera les frais du Guichet unique — le cabinet (compte client INPI), ou le client par délégation de paiement (son e-mail) — et enregistre-le dans payeur (enregistrer_dossier). Le paiement se fait depuis l'étape « Paiement » à droite du chat (compte client INPI du cabinet ou délégation au client) ; le lien du Guichet unique (lien_guichet_unique) ne sert qu'en secours, pour payer par carte. L'application suit ensuite le paiement (montant, délégation en attente, payé).
 1. Une fois le dossier complet et les actes rédigés, rappelle que les actes à signer (statuts, déclaration de non-condamnation, pouvoir, liste des souscripteurs) doivent être signés par le client, et demande les pièces que seul le client peut fournir : pièce d'identité du dirigeant, attestation de dépôt des fonds, justificatif du siège, attestation de parution de l'annonce. Elles se joignent dans ce chat.
-2. Le Guichet unique exige, dès la création du brouillon d'une société : l'annonce légale PARUE (journal et date de parution, à enregistrer dans annonceLegale) et la date de clôture du premier exercice ; et, si le siège est chez une société de domiciliation, sa dénomination et son SIREN. Ordre conseillé : rédiger l'annonce (rediger_annonce_legale, type constitution), la faire publier par le professionnel, puis créer le brouillon avec l'attestation de parution.
+2. Le Guichet unique exige, dès la création du brouillon d'une société : l'annonce légale PARUE (journal et date de parution, à enregistrer dans annonceLegale) et la date de clôture du premier exercice ; et, si le siège est chez une société de domiciliation, sa dénomination et son SIREN. Ordre : actes rédigés, annonce rédigée (rediger_annonce_legale, type constitution), signature des actes par le client (étape à droite), publication de l'annonce par le professionnel, puis brouillon avec les actes signés et l'attestation de parution. Demande dès le premier questionnaire si l'annonce est DÉJÀ parue (journal, date) : si oui, enregistre annonceLegale et ne la rédige pas.
 3. Appelle etat_dossier pour connaître les identifiants des documents, puis creer_brouillon_inpi avec confirme=false en associant chaque document à sa catégorie. Si l'aperçu signale des bloquants, demande les informations correspondantes avant toute création.
 4. Présente le récapitulatif : pièces qui seront déposées, pièces manquantes ou non signées, champs que le formaliste devra compléter. Demande une confirmation explicite (« Je crée le brouillon sur votre Guichet unique ? »).
 5. Seulement si le dernier message du professionnel confirme clairement, appelle creer_brouillon_inpi avec confirme=true.
-6. Indique ensuite les étapes restantes du formaliste sur le Guichet unique : compléter les champs signalés, vérifier, valider, signer électroniquement, payer (carte ou délégation de paiement au client).
+6. Indique ensuite, en une phrase, les étapes restantes à droite du chat : compléter les champs signalés, faire signer les actes, signer la formalité, payer ou déléguer le paiement.
 Pour une MODIFICATION (objet, dénomination, siège, dirigeant, bénéficiaires effectifs), une mise en sommeil ou la cessation d'une entreprise individuelle : lis d'abord la fiche RNE (lire_fiche_rne), puis les documents déposés (lister_documents_rne, et lire_document_rne sur les statuts les plus récents pour rédiger le PV et les statuts mis à jour à partir du texte en vigueur ; les joindre au dossier si utile), rédige les actes (PV, statuts mis à jour) et l'annonce (rediger_annonce_legale avec le siren : modification, transfert_siege, dissolution, cloture_liquidation… ; pas d'annonce pour une mise en sommeil ni pour une entreprise individuelle), puis utilise creer_modification_inpi avec la même logique aperçu → confirmation → brouillon. Un changement de dirigeant associé au capital s'accompagne en général d'une mise à jour des bénéficiaires effectifs (opération beneficiaires).
 La création de brouillon couvre les créations de SASU, SAS, EURL, SARL, SCI et d'entreprise individuelle (micro-entreprise : formeJuridique AE ; pas d'annonce légale ni de statuts, mais n° de sécurité sociale, situation matrimoniale, options du régime micro et pièce d'identité). Pour une modification ou une cessation, prépare les documents et guide le formaliste pour la saisie.
 </depot_inpi>
@@ -759,7 +763,7 @@ Dépôt des comptes annuels au greffe via le Guichet unique (outil deposer_compt
 5. EURL ou SASU dont l'associé unique personne physique est le dirigeant : le dépôt vaut approbation ; la décision d'affectation signée sert de PV_AFFECTATION.
 6. etat_dossier pour les identifiants des pièces, puis deposer_comptes_annuels confirme=false ; présente l'aperçu (pièces, bloquants, alertes de délai, frais indicatifs) ; confirmation explicite via poser_questions (oui_non) ; puis confirme=true.
 7. Récapitulatif : lien_guichet_unique, frais, payeur, étapes (vérifier, signer, payer ou délégation de paiement).
-Plusieurs dépôts à la fois (une liste de sociétés) : preparer_lot / lancer_lot avec le type comptes_annuels ; chaque dépôt est préparé dans sa formalité, le professionnel y joint les comptes et crée le brouillon depuis le suivi.
+Plusieurs dépôts à la fois (une liste de sociétés) : preparer_lot / lancer_lot avec le type comptes_annuels ; chaque dépôt est préparé dans sa formalité, le professionnel y joint les comptes et poursuit depuis les étapes de la formalité.
 </comptes_annuels>
 
 <groupes>
@@ -785,13 +789,13 @@ Pour une formalité déjà déposée au Guichet unique (régularisation demandé
 2. Dès que la forme et la dénomination (ou la société concernée) sont connues, appelle enregistrer_dossier, puis rappelle-le à chaque nouvelle information.
 3. Demande les informations manquantes par petits groupes logiques (au plus 5 questions à la fois, numérotées), en t'appuyant sur la liste "manquants" renvoyée par l'outil. Ne redemande jamais ce qui est déjà connu.
 4. Rédige toi-même l'objet social au format statutaire à partir de l'activité décrite, et déduis le code APE le plus probable ; présente-les pour validation.
-5. Quand les données d'une création sont complètes : generer_statuts, puis les actes du dossier de constitution adaptés à la forme (declaration_non_condamnation pour chaque dirigeant, liste_souscripteurs pour une SAS/SASU, attestation_domiciliation, pouvoir_formalites), puis rediger_annonce_legale (constitution). Pour une modification ou une cessation : pv_decision ou pv_dissolution, puis rediger_annonce_legale, puis pouvoir_formalites. Présente le texte de l'annonce et les informations à compléter ; une fois parue, enregistre journal et date de parution (annonceLegale) et demande l'attestation de parution.
-6. Termine par un récapitulatif : documents produits, informations à vérifier, et prochaines étapes humaines (relire les actes, fournir les pièces d'identité, déposer le capital et obtenir l'attestation de dépôt des fonds, publier l'annonce, envoyer en signature, valider, déposer à l'INPI).
+5. Quand les données d'une création sont complètes : generer_statuts, puis les actes du dossier de constitution adaptés à la forme (declaration_non_condamnation pour chaque dirigeant, liste_souscripteurs pour une SAS/SASU, attestation_domiciliation, pouvoir_formalites), puis rediger_annonce_legale (constitution) sauf si l'annonce est déjà parue. Pour une modification ou une cessation : pv_decision ou pv_dissolution, puis rediger_annonce_legale, puis pouvoir_formalites. Présente le texte de l'annonce et les informations à compléter ; une fois parue, enregistre journal et date de parution (annonceLegale) et demande l'attestation de parution (à joindre dans ce chat).
+6. Termine par un récapitulatif bref : documents produits, informations à vérifier, et la prochaine étape à droite du chat (faire signer les actes, publier l'annonce, signer la formalité, payer). Les pièces à fournir par le client (pièces d'identité, attestation de dépôt des fonds, attestation de parution) se joignent dans ce chat.
 </methode>
 
 <regles>
 - N'invente JAMAIS une donnée personnelle ou d'identification (nom, date ou lieu de naissance, adresse, SIREN, montant). Si elle manque, demande-la ; si le professionnel veut avancer sans, laisse le champ vide et signale-le.
-- Les valeurs par défaut usuelles sont acceptables si tu les annonces : durée 99 ans, clôture au 31 décembre, impôt sur les sociétés (IR pour une SCI), franchise en base de TVA.
+- Les valeurs par défaut usuelles sont acceptables si tu les annonces : durée 99 ans, clôture au 31 décembre, impôt sur les sociétés (IR pour une SCI), franchise en base de TVA. Le nombre de titres (actions ou parts) se demande toujours, prérempli (ex. 100) : ne fixe jamais la répartition du capital sans l'annoncer.
 - Vérifie la cohérence : somme des apports = capital, répartition des titres, dirigeant cohérent avec la forme (président pour SAS/SASU, gérant pour SARL/EURL/SCI), associé unique pour SASU/EURL, au moins deux associés pour SAS/SARL/SCI.
 - Signale les points d'attention juridiques utiles (capital faible, activité réglementée, apport en nature nécessitant un commissaire aux apports…) sans faire de longues dissertations.
 - Réponds en français, de façon concise et structurée (Markdown léger). Quand un outil échoue, explique simplement le problème et la marche à suivre.
@@ -876,6 +880,7 @@ function computeManquants(d) {
   if (!d.denomination) m.push('dénomination');
   if (!d.objet) m.push('objet social');
   if (!(Number(d.capitalEuros) > 0)) m.push('capital social');
+  if (!['AE', 'EI'].includes(String(forme || '').toUpperCase()) && !(Number(d.nbTitres) > 0)) m.push("nombre d'actions ou de parts (valeur nominale)");
   if (!hasAdresse(d.siege)) m.push('adresse du siège');
   m.push(...personneManquants(d.dirigeant, 'dirigeant'));
   const pluri = ['SAS', 'SARL', 'SCI', 'HOLDING'].includes(forme);
@@ -1137,7 +1142,7 @@ async function toolEtat(supa, ctx) {
       etapes: pipeline.steps.map((s) => ({ etape: s.title, statut: s.status, detail: s.detail })),
       documents: (documents || []).map((d) => ({ id: d.id, nom: d.name, type: d.doc_type, statut: d.status })),
     },
-    event: { kind: 'pipeline', label: 'Avancement du dossier', detail: `${pipeline.progress.percent} %`, href: `/dossiers/${dossier.id}/orchestrator`, pipeline },
+    event: { kind: 'pipeline', label: 'Avancement du dossier', detail: `${pipeline.progress.percent} %`, href: `/dossiers/${dossier.id}`, pipeline },
   };
 }
 
@@ -1186,7 +1191,7 @@ async function toolBrouillon(supa, ctx, input) {
     ? await buildEILiasse(data, dossier, client)
     : await buildCreationLiasse(data, dossier, client);
   const nonSignees = piecesNonSignees(plan);
-  if (nonSignees.length) bloquants.push(bloquantSignature(nonSignees));
+  if (nonSignees.length) bloquants.push(bloquantSignature(nonSignees, true));
   if (manquantes.length && input.completer_sur_guichet !== true) {
     bloquants.push(`Pièces obligatoires manquantes : ${manquantes.join(', ')} (à joindre, ou confirmation explicite que le formaliste les ajoutera sur le Guichet unique)`);
   }
@@ -1269,7 +1274,7 @@ async function toolBrouillon(supa, ctx, input) {
       champs_a_completer_par_le_formaliste: aCompleter,
       lien_guichet_unique: `https://guichet-unique.inpi.fr/${formality.id}`,
       ...(requalification ? { ALERTE: requalification } : {}),
-      etapes_formaliste: ['Ouvrir le brouillon (lien_guichet_unique)', 'Compléter les champs signalés', 'Valider la formalité', 'Signer électroniquement', 'Payer ou envoyer la délégation de paiement au client (même page)'],
+      etapes_formaliste: ['Compléter les champs signalés', 'Signer la formalité (étape « Signature électronique » à droite du chat)', 'Payer ou déléguer le paiement au client (étape « Paiement »)'], lien_guichet_unique_secours: 'Seulement pour payer par carte',
     },
     event: {
       kind: 'inpi',
@@ -1352,7 +1357,9 @@ async function toolModification(supa, ctx, input) {
   const plan = wanted.filter((w) => byId.has(String(w.document_id)) && PIECES_MODIF[w.categorie]).map((w) => ({ doc: byId.get(String(w.document_id)), categorie: w.categorie }));
   const nonSignees = piecesNonSignees(plan);
   if (nonSignees.length) bloquants.push(bloquantSignature(nonSignees));
-  const manquantes = piecesManquantesModif(operations, new Set(plan.map((p) => p.categorie)), PIECES_MODIF);
+  // Actes rédigés en attente de signature et attestation de parution : versés plus tard par le parcours
+  const enAttente = new Set(['ATTESTATION_PARUTION', ...(docs || []).filter((d) => d.status === 'GENERE').map((d) => CATEGORIE_ACTE_MODIF[d.doc_type]).filter(Boolean)]);
+  const manquantes = piecesManquantesModif(operations, new Set([...plan.map((p) => p.categorie), ...enAttente]), PIECES_MODIF);
   if (manquantes.length && input.completer_sur_guichet !== true) {
     bloquants.push(`Pièces obligatoires manquantes : ${manquantes.join(' ; ')} (à joindre, ou confirmation explicite que le formaliste les ajoutera sur le Guichet unique)`);
   }
@@ -1417,7 +1424,7 @@ async function toolModification(supa, ctx, input) {
       ...(ecart ? { ALERTE: ecart } : {}),
       pieces_deposees: deposees, erreurs_depot: erreurs,
       lien_guichet_unique: `https://guichet-unique.inpi.fr/${formality.id}`,
-      etapes_formaliste: ['Ouvrir le brouillon (lien_guichet_unique)', 'Vérifier et compléter', 'Valider', 'Signer électroniquement', 'Payer ou envoyer la délégation de paiement au client (même page)'],
+      etapes_formaliste: ['Vérifier et compléter les champs signalés', 'Faire signer les actes par le client (étape « Signature des documents »)', 'Signer la formalité (étape « Signature électronique »)', 'Payer ou déléguer le paiement au client (étape « Paiement »)'],
     },
     event: { kind: 'inpi', label: ecart ? 'Brouillon créé — écart à corriger' : 'Brouillon de modification créé sur le Guichet unique', detail: `${formality.liasseNumber} · ${events.join(' + ')} · ${deposees.length} pièce(s)${ecart ? ' · ' + ecart : ''}`, href: `/inpi/${formality.id}` },
   };
@@ -1878,7 +1885,7 @@ async function runAgentTurn({ history, input, attachments = [], ctx, emit, formR
   const mode = ctx.mode || 'cabinet';
   const reglages = mode === 'client'
       ? { model: MODELS.agent, system: [...systemBlocks(), { type: 'text', text: CLIENT_PROMPT }], tools: TOOLS.filter((t) => CLIENT_TOOLS.has(t.name)), effort: 'high', iterations: MAX_ITERATIONS, maxTokens: 16000, prix: PRICES }
-      : { model: MODELS.agent, system: systemBlocks(), tools: TOOLS, effort: ctx.noForms ? 'medium' : 'high', iterations: MAX_ITERATIONS, maxTokens: 16000, prix: PRICES };
+      : { model: MODELS.agent, system: systemBlocks(), tools: TOOLS, effort: process.env.AGENT_EFFORT || 'medium', iterations: MAX_ITERATIONS, maxTokens: 16000, prix: PRICES };
   let pendingForm = null;
   const usage = { calls: 0, input: 0, output: 0, cacheWrite: 0, cacheRead: 0 };
   ctx.draftUsage = { calls: 0, input: 0, output: 0, cacheWrite: 0, cacheRead: 0 };
@@ -1899,6 +1906,8 @@ async function runAgentTurn({ history, input, attachments = [], ctx, emit, formR
       messages,
     });
     stream.on('text', (delta) => emit('text', { text: delta }));
+    // Réflexion en cours : signalée tout de suite (rien d'autre n'est relayé pendant ce temps)
+    stream.on('streamEvent', (ev) => { if (ev?.type === 'content_block_start' && ev.content_block?.type === 'thinking') emit('status', { label: 'Réflexion…' }); });
 
     let message;
     try {

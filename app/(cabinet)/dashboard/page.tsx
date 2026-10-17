@@ -82,23 +82,24 @@ export default async function CabinetDashboardPage() {
     data: { user },
   } = await supabase.auth.getUser();
 
-  // Profil pour l'accueil "Bonjour {prénom}"
-  let firstName: string | null = null;
-  if (user) {
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('first_name')
-      .eq('id', user.id)
-      .maybeSingle();
-    firstName =
-      (profile?.first_name as string | null | undefined) ??
-      ((user.user_metadata?.first_name as string | undefined) ?? null);
-  }
-
   const monthStart = startOfCurrentMonthIso();
 
-  // KPI counts + répartition par type (count: 'exact', head: true) — pas de payload
+  // Tâches à traiter (assigned_to = moi OU non assignée)
+  let tasksQuery = supabase
+    .from('dossier_tasks')
+    .select('id, title, due_date, assigned_to, dossier_id, done, dossiers(id, reference, client_name)')
+    .eq('done', false)
+    .order('due_date', { ascending: true, nullsFirst: false })
+    .limit(5);
+  if (user) tasksQuery = tasksQuery.or(`assigned_to.eq.${user.id},assigned_to.is.null`);
+
+  // Toutes les lectures en parallèle : profil, compteurs (count head : pas de payload),
+  // dossiers récents, tâches et statut INPI
   const [
+    profileRes,
+    recentRes,
+    tasksRes,
+    inpiStatus,
     awaitingValidationRes,
     inProgressRes,
     clientsRes,
@@ -108,6 +109,14 @@ export default async function CabinetDashboardPage() {
     radiationRes,
     validatedTotalRes,
   ] = await Promise.all([
+    user ? supabase.from('profiles').select('first_name').eq('id', user.id).maybeSingle() : Promise.resolve({ data: null }),
+    supabase
+      .from('dossiers')
+      .select('id, reference, client_name, type_formalite, statut, updated_at, created_at')
+      .order('updated_at', { ascending: false, nullsFirst: false })
+      .limit(5),
+    tasksQuery,
+    getInpiCredentialsStatus(),
     supabase
       .from('dossiers')
       .select('id', { count: 'exact', head: true })
@@ -143,6 +152,10 @@ export default async function CabinetDashboardPage() {
       .eq('statut', 'VALIDATED'),
   ]);
 
+  // Profil pour l'accueil "Bonjour {prénom}"
+  const firstName =
+    ((profileRes.data as { first_name?: string | null } | null)?.first_name ?? null) ??
+    ((user?.user_metadata?.first_name as string | undefined) ?? null);
   const awaitingValidation = awaitingValidationRes.count ?? 0;
   const inProgress = inProgressRes.count ?? 0;
   const clientsCount = clientsRes.count ?? 0;
@@ -196,33 +209,10 @@ export default async function CabinetDashboardPage() {
   const avancementPct =
     avancementTotal > 0 ? Math.round((validatedTotal / avancementTotal) * 100) : 0;
 
-  // Dossiers récents (5 derniers)
-  const { data: recentData } = await supabase
-    .from('dossiers')
-    .select('id, reference, client_name, type_formalite, statut, updated_at, created_at')
-    .order('updated_at', { ascending: false, nullsFirst: false })
-    .limit(5);
-
-  const recentDossiers = (recentData ?? []) as RecentDossier[];
-
-  // Tâches à traiter
-  let tasksQuery = supabase
-    .from('dossier_tasks')
-    .select('id, title, due_date, assigned_to, dossier_id, done, dossiers(id, reference, client_name)')
-    .eq('done', false)
-    .order('due_date', { ascending: true, nullsFirst: false })
-    .limit(5);
-
-  if (user) {
-    // assigned_to = moi OU non assignée
-    tasksQuery = tasksQuery.or(`assigned_to.eq.${user.id},assigned_to.is.null`);
-  }
-
-  const { data: tasksData } = await tasksQuery;
-  const tasks = (tasksData ?? []) as unknown as TaskRow[];
+  const recentDossiers = (recentRes.data ?? []) as RecentDossier[];
+  const tasks = (tasksRes.data ?? []) as unknown as TaskRow[];
 
   const greetingName = firstName ?? '';
-  const inpiStatus = await getInpiCredentialsStatus();
   const inpiNotConfigured = !inpiStatus || !inpiStatus.configured;
 
   return (

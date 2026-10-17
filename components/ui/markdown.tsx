@@ -3,6 +3,7 @@
 // Rendu Markdown léger et stylé (sans plugin typography) pour les réponses de
 // l'assistant : titres, listes, gras, liens, code, tableaux, citations.
 
+import { memo } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { cn } from '@/lib/utils';
@@ -20,7 +21,8 @@ function sautsDeLigne(nodes: React.ReactNode): React.ReactNode {
   );
 }
 
-export function Markdown({ children, className }: { children: string; className?: string }) {
+// Mémorisé : un message déjà affiché n'est pas re-analysé à chaque fragment du suivant
+export const Markdown = memo(function Markdown({ children, className }: { children: string; className?: string }) {
   const source = children.replace(/<br\s*\/?>/gi, BR);
   return (
     <div className={cn('text-sm leading-relaxed', className)}>
@@ -81,4 +83,4 @@ export function Markdown({ children, className }: { children: string; className?
       </ReactMarkdown>
     </div>
   );
-}
+});

@@ -3,7 +3,6 @@ import { notFound, redirect } from 'next/navigation';
 import { revalidatePath } from 'next/cache';
 import {
   CheckCircle2,
-  ExternalLink,
   FileText,
   Paperclip,
   Send,
@@ -24,8 +23,6 @@ import { ParcoursFormalite } from '@/components/cabinet/dossier/ParcoursFormalit
 const VPS_BACKEND_URL =
   process.env.NEXT_PUBLIC_VPS_BACKEND_URL ?? 'https://0dao73k.cserverhost.cloud';
 
-const INPI_PORTAL_PROD = 'https://procedures-bis.inpi.fr/login';
-const INPI_PORTAL_DEMO = 'https://procedures-demo.inpi.fr/login';
 
 // Formes juridiques couvertes par le générateur de statuts backend
 // (server/lib/doc-generator.js — SUPPORTED_FORMES).
@@ -88,51 +85,6 @@ const DOC_ERROR_LABELS: Record<string, string> = {
   storage_upload_failed: 'Échec de l’enregistrement du document généré.',
 };
 
-type InpiLive = { amountCents: number | null; status: string | null } | null;
-
-async function fetchInpiLive(
-  orgId: string | null,
-  inpiRef: string | null,
-  accessToken: string | null,
-): Promise<InpiLive> {
-  if (!orgId || !inpiRef || !accessToken) return null;
-  try {
-    const res = await fetch(
-      `${VPS_BACKEND_URL}/api/formalites/${encodeURIComponent(inpiRef)}`,
-      {
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          'x-organization-id': orgId,
-        },
-        cache: 'no-store',
-        // 4 s : on n'attend pas indéfiniment l'INPI sur le chargement de page.
-        signal: AbortSignal.timeout(4000),
-      },
-    );
-    if (!res.ok) return null;
-    const j = (await res.json().catch(() => ({}))) as {
-      amount?: number;
-      cart?: { total?: number };
-      status?: string;
-    };
-    const total = j?.amount ?? j?.cart?.total ?? null;
-    // INPI renvoie le montant en EUR (float). On convertit en cents pour
-    // l'affichage homogène avec le reste du code.
-    const amountCents = total != null ? Math.round(Number(total) * 100) : null;
-    return { amountCents, status: j?.status ?? null };
-  } catch {
-    return null;
-  }
-}
-
-function formatEuros(cents: number | null): string {
-  if (cents == null) return '—';
-  return new Intl.NumberFormat('fr-FR', {
-    style: 'currency',
-    currency: 'EUR',
-    maximumFractionDigits: 2,
-  }).format(cents / 100);
-}
 
 export default async function DossierDetailPage({
   params,
@@ -148,31 +100,16 @@ export default async function DossierDetailPage({
   const { data: dossier } = await supabase.from('dossiers').select('*').eq('id', id).single();
   if (!dossier) notFound();
 
-  // Lit env INPI du cabinet pour pointer vers le bon portail (prod/demo).
-  // En parallèle, on prépare l'access token pour l'éventuel fetch live.
-  const [{ data: sessionData }, orgInfo] = await Promise.all([
-    supabase.auth.getSession(),
-    dossier.organization_id
-      ? supabase
-          .from('organizations')
-          .select('inpi_env')
-          .eq('id', dossier.organization_id)
-          .maybeSingle()
-      : Promise.resolve({ data: null }),
-  ]);
-  const accessToken = sessionData.session?.access_token ?? null;
-  const inpiEnv = (orgInfo.data?.inpi_env ?? 'prod') === 'demo' ? 'demo' : 'prod';
-  const inpiPortalUrl = inpiEnv === 'demo' ? INPI_PORTAL_DEMO : INPI_PORTAL_PROD;
 
-  const [{ data: observations }, { data: documents }, { data: tasks }, client, inpiLive] = await Promise.all([
+  const [{ data: observations }, { data: documents }, { data: tasks }, client] = await Promise.all([
     supabase.from('dossier_observations').select('*').eq('dossier_id', id).order('created_at', { ascending: true }),
     supabase.from('dossier_documents').select('*').eq('dossier_id', id).order('created_at', { ascending: true }),
     supabase.from('dossier_tasks').select('*').eq('dossier_id', id).order('done', { ascending: true }),
     dossier.client_id ? (await supabase.from('clients').select('id, denomination, siren').eq('id', dossier.client_id).single()).data : null,
-    fetchInpiLive(dossier.organization_id, dossier.inpi_reference, accessToken),
   ]);
 
-  const canSubmit = ['DRAFT', 'INTERNAL_AMENDMENT_PENDING'].includes(dossier.statut);
+  const meta = (dossier.metadata ?? {}) as { inpi_formality_id?: string; inpi_draft_id?: string };
+  const canSubmit = ['DRAFT', 'INTERNAL_AMENDMENT_PENDING'].includes(dossier.statut) && !meta.inpi_formality_id && !meta.inpi_draft_id;
 
   return (
     <div className="mx-auto w-full max-w-6xl space-y-6 p-4 sm:p-6">
@@ -199,7 +136,7 @@ export default async function DossierDetailPage({
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <Button asChild size="lg">
-            <Link href="/dashboard">
+            <Link href={`/dashboard?dossier=${id}`}>
               <Sparkles className="size-4" />
               Agent Formalités
             </Link>
@@ -230,49 +167,6 @@ export default async function DossierDetailPage({
 
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
         <div className="min-w-0 space-y-6">
-          {dossier.inpi_reference && (
-            <Card className="border-amber-300 bg-amber-50/70">
-              <CardHeader>
-                <CardTitle className="text-base text-amber-900">Frais légaux INPI</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <div className="flex flex-wrap items-baseline gap-6">
-                  <div>
-                    <p className="text-xs text-amber-800/80">Montant à régler sur l&apos;INPI</p>
-                    <p className="text-3xl font-semibold tracking-tight text-amber-950">
-                      {formatEuros(inpiLive?.amountCents ?? null)}
-                    </p>
-                  </div>
-                  {inpiLive?.status && (
-                    <div className="text-xs text-amber-800/80">
-                      <p>Statut INPI</p>
-                      <p className="font-mono text-sm text-amber-950">{inpiLive.status}</p>
-                    </div>
-                  )}
-                </div>
-                <p className="text-sm leading-relaxed text-amber-900/80">
-                  Le paiement des frais légaux (greffe, JAL, etc.) se fait directement sur le
-                  portail officiel INPI Guichet Unique — Legaly AI ne perçoit pas ces frais.
-                  Connectez-vous avec les identifiants INPI du cabinet
-                  {inpiEnv === 'demo' ? ' (environnement démo)' : ''} pour régler.
-                </p>
-                <div className="flex flex-wrap items-center gap-3">
-                  <Button asChild className="bg-amber-700 text-white hover:bg-amber-800">
-                    <a href={inpiPortalUrl} target="_blank" rel="noopener noreferrer">
-                      Régler sur le portail INPI
-                      <ExternalLink className="size-4" />
-                    </a>
-                  </Button>
-                  {inpiLive == null && (
-                    <span className="text-xs text-amber-800/70">
-                      Montant non disponible — connexion INPI requise pour rafraîchir.
-                    </span>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-          )}
-
           {client && (
             <Card>
               <CardHeader>
@@ -392,7 +286,7 @@ export default async function DossierDetailPage({
           </Card>
         </div>
 
-        <aside className="min-w-0 space-y-6">
+        <aside className="order-first min-w-0 space-y-6 lg:order-none">
           <Card>
             <CardContent className="pt-5">
               <ParcoursFormalite dossierId={id} />
