@@ -208,7 +208,7 @@ function piecesNonSignees(plan) {
     .filter((p) => CATEGORIES_A_SIGNER.has(p.categorie) && p.doc.status !== 'SIGNE' && !DOCS_FOURNIS.has(p.doc.doc_type))
     .map((p) => p.doc.name);
 }
-const bloquantSignature = (noms) => `Actes non signés : ${noms.join(', ')}. Un acte rédigé doit être signé avant dépôt (signature électronique, ou version signée jointe par le client).`;
+const bloquantSignature = (noms) => `Actes non signés : ${noms.join(', ')}. Retire-les des pièces et relance avec completer_sur_guichet=true : ils seront signés par le client à l'étape « Signature des documents » puis versés automatiquement sur la formalité.`;
 
 // Champs laissés à compléter dans un acte rédigé
 const trousDe = (texte) => [...new Set(String(texte || '').match(/\[À COMPLÉTER[^\]]*\]|_{4,}/g) || [])];
@@ -713,7 +713,7 @@ const SYSTEM_PROMPT = `Tu es l'Agent Formalités de Legaly AI, plateforme franç
 - Créations de sociétés : SASU, SAS, EURL, SARL, SCI, holding (SAS).
 - Modifications (transfert de siège, changement de dirigeant, d'objet, de dénomination, de capital…) et cessations (dissolution, radiation) : dossier + procès-verbal + annonce légale.
 - Dépôt des comptes annuels des sociétés : contrôle des comptes et du PV, confidentialité, brouillon du dépôt au Guichet unique (voir <comptes_annuels>).
-- Tu ne signes rien, tu ne déposes rien à l'INPI et tu n'envoies rien à des tiers : la signature électronique, la validation interne et le dépôt se font par le professionnel depuis la page du dossier.
+- Tu ne signes rien, tu ne paies rien et tu n'envoies rien à des tiers. Après le brouillon, le professionnel suit les étapes affichées à droite du chat : annonce légale (que tu rédiges), signature des actes par le client (Yousign), signature électronique de la formalité (Yousign = signature au Guichet unique), puis paiement (compte client INPI du cabinet ou délégation au client). Termine en le lui indiquant en une phrase, sans le renvoyer vers une autre page.
 - Plusieurs formalités à la fois (plusieurs créations, plusieurs fermetures…, en texte ou dans un tableur joint) : preparer_lot, présente le plan en tableau court (type, société, informations manquantes), demande confirmation, puis lancer_lot (confirme=true). Chaque formalité est alors préparée dans son propre dossier ; le suivi s'affiche dans ce chat et le professionnel ouvre chaque formalité depuis ce suivi pour la compléter et créer son brouillon INPI.
 </perimetre>
 
@@ -727,7 +727,7 @@ Le professionnel peut joindre des documents : pièces d'identité, statuts, proc
 </documents_joints>
 
 <actes_et_signature>
-- Tout acte rédigé par Legaly (statuts, déclaration de non-condamnation, pouvoir, liste des souscripteurs, PV, décisions) doit être SIGNÉ avant d'être déposé : les outils de brouillon refusent un acte généré non signé. Tant que la signature électronique n'est pas activée, demande au client de renvoyer dans ce chat les versions signées (scan ou PDF signé) et associe CES fichiers aux catégories de pièces.
+- Tout acte rédigé par Legaly (statuts, déclaration de non-condamnation, pouvoir, liste des souscripteurs, PV, décisions) doit être SIGNÉ avant d'être déposé : les outils de brouillon refusent un acte généré non signé. Ne joins donc PAS les actes non signés au brouillon : crée le brouillon sans eux (completer_sur_guichet=true pour ces seules pièces) ; ils seront signés par le client depuis l'étape « Signature des documents » et versés automatiquement sur la formalité. Si le client a déjà renvoyé dans ce chat des versions signées (scan ou PDF), associe CES fichiers aux catégories de pièces.
 - Quand un outil de rédaction renvoie champs_a_completer, demande ces informations (poser_questions) puis régénère l'acte : un acte avec des champs à compléter ne doit jamais être envoyé à la signature ni déposé.
 - Pièces obligatoires : les outils les contrôlent. Ne mets completer_sur_guichet=true que si le professionnel dit explicitement qu'il les ajoutera lui-même sur le Guichet unique.
 - Après création, si le résultat contient ALERTE (requalification ou événement non retenu par le Guichet unique), signale-le en premier, clairement.
@@ -1406,7 +1406,7 @@ async function toolModification(supa, ctx, input) {
   }
   const { deposees, erreurs } = await deposerPieces(ctx.orgId, formality.id, pieces, PIECES_MODIF);
   if (dossier) {
-    await supa.from('dossiers').update({ metadata: { ...meta, inpi_draft_id: String(formality.id), inpi_formality_id: String(formality.id), inpi_liasse: formality.liasseNumber || null, inpi_draft_created_at: new Date().toISOString() } }).eq('id', dossier.id);
+    await supa.from('dossiers').update({ metadata: { ...meta, inpi_draft_id: String(formality.id), inpi_formality_id: String(formality.id), inpi_liasse: formality.liasseNumber || null, inpi_draft_created_at: new Date().toISOString(), inpi_operations: operations.map((o) => o.type) } }).eq('id', dossier.id);
   }
   try {
     await supa.from('audit_logs').insert({ organization_id: ctx.orgId, user_id: ctx.userId, action: 'agent.inpi.modification_draft_created', resource_type: 'dossier', resource_id: dossier?.id || null, metadata: { inpi_formality_id: formality.id, events } });

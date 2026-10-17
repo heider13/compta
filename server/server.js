@@ -1023,6 +1023,7 @@ app.use('/api/dossiers', requireUser, requireOrg, signatureRoutes);
 app.use('/api/ocr', requireUser, requireOrg, ocrRoutes);
 app.use('/api/dossiers', requireUser, requireOrg, documentsRoutes);
 app.use('/api/dossiers', requireUser, requireOrg, orchestratorRoutes);
+app.use('/api/dossiers', requireUser, requireOrg, require('./routes/parcours'));
 app.use('/api/pappers-annonces', requireUser, requireOrg, pappersAnnoncesRoutes);
 app.use('/api/ai', requireUser, requireOrg, aiRoutes);
 app.use('/api/agent', requireUser, requireOrg, agentRoutes);

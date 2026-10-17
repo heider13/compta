@@ -20,6 +20,7 @@ import { Markdown } from '@/components/ui/markdown';
 import { cn } from '@/lib/utils';
 import { BatchProgress, OpenFormaliteContext, vpsApi } from './BatchProgress';
 import { AgentForm, type FormSpec, type Reponses } from './AgentForm';
+import { ParcoursFormalite } from '../dossier/ParcoursFormalite';
 
 const VPS = process.env.NEXT_PUBLIC_VPS_BACKEND_URL ?? 'https://0dao73k.cserverhost.cloud';
 const STORAGE_KEY = 'legaly_formality_agent_v1';
@@ -258,6 +259,8 @@ function AgentChat({ inpiFormality, resume }: AgentProps) {
     .map((i) => i.event);
   const documents = toolEvents.filter((e) => e.kind === 'document' && e.status === 'done');
   const pieces = toolEvents.filter((e) => e.kind === 'piece' && e.status === 'done');
+  // Chaque étape terminée par l'agent relance la lecture du parcours (panneau de droite)
+  const etapesTerminees = toolEvents.filter((e) => e.status === 'done').length;
 
   async function addFiles(list: FileList | File[]) {
     setError(null);
@@ -659,17 +662,17 @@ function AgentChat({ inpiFormality, resume }: AgentProps) {
               <SidebarList title="Documents produits" empty="Aucun document pour l'instant." events={documents} external />
               {pieces.length > 0 && <SidebarList title="Pièces reçues" empty="" events={pieces} />}
 
-              {dossier && (
-                <Button asChild size="sm" variant="outline" className="w-full">
-                  <Link href={`/dossiers/${dossier.id}/orchestrator`}>
-                    Signature et dépôt INPI
-                    <ArrowRight className="size-4" />
-                  </Link>
-                </Button>
+              {dossier ? (
+                <ParcoursFormalite
+                  dossierId={dossier.id}
+                  version={etapesTerminees}
+                  onAsk={busy ? undefined : (message) => void send(message)}
+                />
+              ) : (
+                <p className="text-[11px] leading-snug text-muted-foreground">
+                  Les étapes s&apos;afficheront ici : formalité, annonce légale, signature du client, signature de la formalité, paiement.
+                </p>
               )}
-              <p className="text-[11px] leading-snug text-muted-foreground">
-                L&apos;agent prépare tout ; vous relisez, faites signer et déposez depuis le dossier.
-              </p>
             </aside>
           </div>
         )}

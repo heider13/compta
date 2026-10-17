@@ -133,6 +133,16 @@ router.post(
     }
 
     const supa = getSupabaseAdmin();
+    // Parcours du chat (signature des actes par le client, signature de la formalité)
+    try {
+      if (await require('../lib/parcours').surWebhook(supa, signatureRequestId, eventName)) {
+        return res.status(200).json({ ok: true, parcours: true });
+      }
+    } catch (e) {
+      console.error(`[yousign-webhook] parcours : ${e.message}`);
+      return res.status(500).json({ error: 'processing_failed' });
+    }
+
     const dossier = await findDossierBySignatureRequest(supa, signatureRequestId);
     if (!dossier) {
       console.warn(`[yousign-webhook] aucun dossier ne référence ${signatureRequestId}`);

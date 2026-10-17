@@ -145,7 +145,7 @@ async function uploadDocument(signatureRequestId, { filename, base64Pdf, nature 
 
 // POST /signature_requests/:id/signers
 // fields: [{ document_id, type: 'signature', page: 1, x: 100, y: 700, width: 200, height: 50 }]
-async function addSigner(signatureRequestId, { firstName, lastName, email, phoneNumber, fields = [] }) {
+async function addSigner(signatureRequestId, { firstName, lastName, email, phoneNumber, fields = [], level, authMode }) {
   if (!signatureRequestId) throw new Error('addSigner: signatureRequestId required');
   if (!firstName || !lastName || !email) {
     throw new Error('addSigner: firstName, lastName, email required');
@@ -165,9 +165,9 @@ async function addSigner(signatureRequestId, { firstName, lastName, email, phone
     //   'electronic_signature' = simple (default)
     //   'advanced_electronic_signature' = avancée (eIDAS / RGS** équivalent)
     // Pour la modification/cessation INPI on veut "advanced".
-    signature_level: 'advanced_electronic_signature',
+    signature_level: level || 'advanced_electronic_signature',
     // Authentification supplémentaire : OTP SMS si téléphone fourni
-    signature_authentication_mode: phoneNumber ? 'otp_sms' : 'no_otp',
+    signature_authentication_mode: authMode || (phoneNumber ? 'otp_sms' : 'otp_email'),
     fields,
   };
 
@@ -213,7 +213,13 @@ async function downloadSignedDocument(signatureRequestId, documentId) {
   return Buffer.from(ab);
 }
 
+// POST /signature_requests/:id/cancel
+async function cancel(signatureRequestId, reason = 'contractualization_aborted') {
+  return ysFetch(`/signature_requests/${encodeURIComponent(signatureRequestId)}/cancel`, { method: 'POST', body: { reason } });
+}
+
 module.exports = {
+  cancel,
   createSignatureRequest,
   uploadDocument,
   addSigner,

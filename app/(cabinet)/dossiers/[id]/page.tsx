@@ -6,7 +6,6 @@ import {
   ExternalLink,
   FileText,
   Paperclip,
-  PenLine,
   Send,
   Sparkles,
   SquarePen,
@@ -20,6 +19,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
 import { cn } from '@/lib/utils';
+import { ParcoursFormalite } from '@/components/cabinet/dossier/ParcoursFormalite';
 
 const VPS_BACKEND_URL =
   process.env.NEXT_PUBLIC_VPS_BACKEND_URL ?? 'https://0dao73k.cserverhost.cloud';
@@ -199,9 +199,9 @@ export default async function DossierDetailPage({
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <Button asChild size="lg">
-            <Link href={`/dossiers/${id}/orchestrator`}>
+            <Link href="/dashboard">
               <Sparkles className="size-4" />
-              Orchestrateur IA
+              Agent Formalités
             </Link>
           </Button>
           <Button asChild variant="outline">
@@ -394,6 +394,11 @@ export default async function DossierDetailPage({
 
         <aside className="min-w-0 space-y-6">
           <Card>
+            <CardContent className="pt-5">
+              <ParcoursFormalite dossierId={id} />
+            </CardContent>
+          </Card>
+          <Card>
             <CardHeader>
               <CardTitle className="text-base">Actions</CardTitle>
             </CardHeader>
@@ -405,14 +410,6 @@ export default async function DossierDetailPage({
                     Soumettre pour validation
                   </Button>
                 </form>
-              )}
-              {dossier.statut === 'VALIDATED_INTERNAL' && (
-                <Button asChild className="w-full">
-                  <Link href={`/dossiers/${id}/sign`}>
-                    <PenLine className="size-4" />
-                    Demander la signature
-                  </Link>
-                </Button>
               )}
               {STATUTS_FORMES.includes(dossier.forme_juridique) && (
                 <div>
