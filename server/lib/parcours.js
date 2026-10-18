@@ -10,6 +10,8 @@
 //   5. paiement         compte client INPI du cabinet (POST /api/payment) ou délégation de
 //                       paiement au client (POST /api/delegation-payments)
 // Spécification : contrat d'interface « API mandataire de dépôt » INPI, chap. 3, 6, 7 et 9.
+// Le même parcours sert au dépôt des comptes annuels (§ 4 et 6.3) : identifiant « ca:<id> »,
+// routes /api/annual_accounts, champ annualAccount, pas d'annonce légale.
 //
 // Les signatures et le paiement sont toujours déclenchés par un humain (bouton) :
 // l'agent IA ne signe ni ne paie jamais.
@@ -19,6 +21,7 @@ const yousign = require('./yousign');
 const { toPdf, PIECES, PIECES_EI, PIECES_MODIF } = require('./inpi-liasse');
 const { paiementDe, emailsCabinet, lienGuichet } = require('./inpi-paiement');
 const { ACTES_UNIQUES } = require('./dossier-docs');
+const { PIECES_CA } = require('./inpi-comptes-annuels');
 
 const BUCKET = 'dossier-docs';
 const ETAPES = ['formalite', 'annonce', 'signature_client', 'signature_inpi', 'paiement'];
@@ -85,7 +88,7 @@ async function formaliteGU(orgId, id, { frais = false } = {}) {
     if (hit.f) return hit.f;
     throw hit.erreur;
   }
-  const p = inpi.forOrg(orgId).getFormality(id, undefined, frais ? {} : { timeoutMs: 8000, essais: 1 })
+  const p = inpi.forOrg(orgId).request(chemin(id), frais ? {} : { timeoutMs: 8000, essais: 1 })
     .then((f) => {
       cacheGU.set(k, { exp: Date.now() + TTL_GU, f, du: Date.now() });
       borner(cacheGU);
@@ -146,11 +149,17 @@ async function majParcours(supa, orgId, dossierId, patch, extra = {}) {
   await supa.from('dossiers').update({ metadata: { ...meta, ...extra, parcours } }).eq('id', dossierId).eq('organization_id', orgId);
   return parcours;
 }
-const formaliteId = (meta) => meta?.inpi_formality_id || meta?.inpi_draft_id || null;
+// Identifiant du dépôt : formalité (« 22085561 ») ou comptes annuels (« ca:4952518 »)
+const formaliteId = (meta) => meta?.inpi_formality_id || meta?.inpi_draft_id || (meta?.inpi_comptes_id ? `ca:${meta.inpi_comptes_id}` : null);
+const estComptes = (fid) => String(fid || '').startsWith('ca:');
+const idDepot = (fid) => (estComptes(fid) ? String(fid).slice(3) : String(fid));
+const chemin = (fid) => (estComptes(fid) ? `/api/annual_accounts/${idDepot(fid)}` : `/api/formalities/${idDepot(fid)}`);
+const iriDepot = (fid) => (estComptes(fid) ? { annualAccount: chemin(fid) } : { formality: chemin(fid) });
+const lienDepot = (fid) => (estComptes(fid) ? `/inpi/comptes/${idDepot(fid)}` : `/inpi/${fid}`);
 async function formaliteExige(supa, orgId, dossierId) {
   const dossier = await dossierExige(supa, orgId, dossierId);
   const fid = formaliteId(dossier.metadata);
-  if (!fid) throw erreur('Aucune formalité au Guichet unique pour ce dossier.', 400);
+  if (!fid) throw erreur('Aucun dépôt au Guichet unique pour ce dossier.', 400);
   return { dossier, fid };
 }
 const estEI = (data) => ['AE', 'EI', 'MICRO'].includes(String(data?.formeJuridique || '').toUpperCase());
@@ -186,7 +195,14 @@ function actesASigner(docs) {
 // Attestation de parution jointe par le formaliste (chat) ou rangée comme telle
 const estAttestation = (d) => d.doc_type === 'ATTESTATION_PARUTION' || (d.doc_type === 'PIECE_JOINTE' && /attestation.{0,20}parution|parution/i.test(d.name || ''));
 
-function categorieGU(docType, gu, data) {
+// Actes rédigés pour un dépôt des comptes → pièces du dépôt
+const CATEGORIE_CA = { PV_APPROBATION_COMPTES: 'PV_AFFECTATION', DECLARATION_CONFIDENTIALITE: 'DECLARATION_CONFIDENTIALITE', POUVOIR_FORMALITES: 'MANDAT' };
+
+function categorieGU(docType, gu, data, fid = null) {
+  if (estComptes(fid)) {
+    const c = CATEGORIE_CA[docType];
+    return c && PIECES_CA[c] ? { categorie: c, carte: PIECES_CA } : null;
+  }
   if (estCreation(data, gu)) {
     const c = docType === 'ATTESTATION_PARUTION' ? 'ATTESTATION_PARUTION' : CATEGORIE_CREATION[docType];
     const carte = estEI(data) ? PIECES_EI : PIECES;
@@ -198,17 +214,17 @@ function categorieGU(docType, gu, data) {
 
 async function verserPiece(orgId, fid, cat, nom, pdf) {
   const spec = cat.carte[cat.categorie];
-  return inpi.forOrg(orgId).request(`/api/formalities/${fid}/attachments`, {
+  return inpi.forOrg(orgId).request(`${chemin(fid)}/attachments`, {
     method: 'POST',
     body: {
       nomDocument: nom, typeDocument: spec.typeDocument, ...(spec.sousTypeDocument ? { sousTypeDocument: spec.sousTypeDocument } : {}),
-      langueDocument: 'fr', documentBase64: pdf.toString('base64'), documentExtension: 'pdf', path: spec.path.replace(/\[0\]$/, ''),
+      langueDocument: 'fr', documentBase64: pdf.toString('base64'), documentExtension: 'pdf', path: (spec.path || '.piecesJointes').replace(/\[0\]$/, ''),
     },
   });
 }
 async function regenererSynthese(orgId, fid) {
   // Pièces ajoutées → la synthèse doit être régénérée avant la signature (§ 6.4)
-  try { await inpi.forOrg(orgId).request(`/api/formalities/${fid}/refresh`, { timeoutMs: 30000, essais: 1 }); } catch { /* régénérée au moment de signer */ }
+  try { await inpi.forOrg(orgId).request(`${chemin(fid)}/refresh`, { timeoutMs: 30000, essais: 1 }); } catch { /* régénérée au moment de signer */ }
   oublierGU(orgId, fid);
 }
 
@@ -309,7 +325,7 @@ async function finaliserClient(supa, orgId, dossier, e, requestId, docsYS) {
     if (upErr) { erreurs.push(`${c.name} : enregistrement impossible`); continue; }
     // L'acte devient « signé » : la version signée remplace la version rédigée dans le dossier
     await supa.from('dossier_documents').update({ status: 'SIGNE', name: nom, file_path: chemin, mime_type: 'application/pdf', size_bytes: pdf.length }).eq('id', c.document_id);
-    const cat = categorieGU(c.doc_type, gu, data);
+    const cat = categorieGU(c.doc_type, gu, data, fid);
     if (fid && cat) {
       try {
         await verserPiece(orgId, fid, cat, nom, pdf);
@@ -340,7 +356,7 @@ async function reverserActes(supa, orgId, dossierId) {
     try {
       const { data: blob, error } = await supa.storage.from(BUCKET).download(r.chemin);
       if (error || !blob) throw new Error('PDF signé introuvable');
-      const cat = categorieGU(r.doc_type, gu, data);
+      const cat = categorieGU(r.doc_type, gu, data, fid);
       if (!cat) throw new Error('catégorie de pièce inconnue');
       await verserPiece(orgId, fid, cat, r.nom, Buffer.from(await blob.arrayBuffer()));
       versees.push(r.nom);
@@ -363,7 +379,7 @@ async function versementIgnore(supa, orgId, dossierId) {
 async function declarerSignature(orgId, fid, pieces) {
   await inpi.forOrg(orgId).request('/api/signatures', {
     method: 'POST',
-    body: { formality: `/api/formalities/${fid}`, signedDocument: `/api/attachments/${pieces.synthese}`, ...(pieces.be ? { beSignedDocument: `/api/attachments/${pieces.be}` } : {}) },
+    body: { ...iriDepot(fid), signedDocument: `/api/attachments/${pieces.synthese}`, ...(pieces.be ? { beSignedDocument: `/api/attachments/${pieces.be}` } : {}) },
   });
   oublierGU(orgId, fid);
 }
@@ -379,11 +395,11 @@ async function finaliserInpi(supa, orgId, dossier, e, requestId, docsYS) {
       const chemin = `signed/${dossier.id}/${requestId}-${role}.pdf`;
       await supa.storage.from(BUCKET).upload(chemin, pdf, { contentType: 'application/pdf', upsert: true });
       await supa.from('dossier_documents').insert({
-        dossier_id: dossier.id, name: role === 'be' ? 'Synthèse bénéficiaires effectifs signée.pdf' : `Synthèse de la formalité signée — ${dossier.metadata?.inpi_liasse || fid}.pdf`,
+        dossier_id: dossier.id, name: role === 'be' ? 'Synthèse bénéficiaires effectifs signée.pdf' : `Synthèse ${estComptes(fid) ? 'du dépôt des comptes' : 'de la formalité'} signée — ${dossier.metadata?.inpi_liasse || dossier.metadata?.inpi_comptes_liasse || idDepot(fid)}.pdf`,
         file_path: chemin, mime_type: 'application/pdf', size_bytes: pdf.length, status: 'SIGNE', doc_type: role === 'be' ? 'SYNTHESE_BE_SIGNEE' : 'SYNTHESE_SIGNEE',
       });
       // PJ_115 = synthèse signée ; PJ_120 = synthèse BE signée (§ 3.13 à 3.16, § 6.2)
-      const att = await client.request(`/api/formalities/${fid}/attachments`, {
+      const att = await client.request(`${chemin(fid)}/attachments`, {
         method: 'POST',
         body: { nomDocument: `synthese_signee_${role}.pdf`, typeDocument: role === 'be' ? 'PJ_120' : 'PJ_115', langueDocument: 'fr', documentBase64: pdf.toString('base64'), documentExtension: 'pdf' },
       });
@@ -434,7 +450,10 @@ async function etat(supa, orgId, dossierId) {
   if (!erreurGU && ancienne) erreurGU = `Guichet unique injoignable : statut du ${new Date(ancienne).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Paris' })}.`;
   const guInconnu = Boolean(fid && !gu);
   const statutGU = gu?.status || null;
-  const creation = estCreation(data, gu);
+  // Dépôt des comptes annuels, y compris avant la création de son brouillon
+  const comptes = estComptes(fid) || (!fid && Boolean(meta.inpi_comptes_preview_at || /comptes annuels|d[ée]p[oô]t des comptes/i.test(String(data.operation || ''))));
+  const creation = !comptes && estCreation(data, gu);
+  const liasse = meta.inpi_liasse || meta.inpi_comptes_liasse || gu?.liasseNumber || idDepot(fid || '');
   const etapes = [];
 
   // 1. Formalité. Création de société : le Guichet unique exige l'annonce PARUE dès le brouillon,
@@ -444,10 +463,10 @@ async function etat(supa, orgId, dossierId) {
   const actesRediges = docs.some((d) => d.doc_type && !NON_SIGNABLES.has(d.doc_type) && ['GENERE', 'SIGNE', 'TRANSMIS'].includes(d.status));
   const prepare = Boolean(fid) || (creation && actesRediges);
   etapes.push({
-    cle: 'formalite', titre: 'Réalisation de la formalité',
+    cle: 'formalite', titre: comptes ? 'Réalisation du dépôt des comptes' : 'Réalisation de la formalité',
     statut: !prepare ? 'a_faire' : bloquee ? 'bloque' : 'fait',
     detail: fid
-      ? `Brouillon ${meta.inpi_liasse || gu?.liasseNumber || fid} au Guichet unique${statutGU ? ` · ${STATUT_GU[statutGU] || statutGU}` : ''}`
+      ? `Brouillon ${liasse} au Guichet unique${statutGU ? ` · ${STATUT_GU[statutGU] || statutGU}` : ''}`
       : prepare ? 'Dossier et actes préparés · le brouillon sera créé au Guichet unique après la signature des actes et la parution de l’annonce.'
         : "L'agent rassemble les informations et rédige les actes.",
     erreur: erreurGU,
@@ -457,14 +476,16 @@ async function etat(supa, orgId, dossierId) {
       EXPIRED: 'Délai de régularisation expiré : ouvrez la formalité (une régularisation reste possible, sinon une nouvelle formalité est nécessaire).',
       AMENDMENT_PENDING: 'Le greffe demande une régularisation : ouvrez la formalité pour y répondre.',
     }[statutGU]] : undefined,
-    lien: fid ? `/inpi/${fid}` : null,
+    lien: fid ? lienDepot(fid) : null,
     actions: prepare ? [] : creation
       ? [{ type: 'demander', label: 'Rédiger les actes', message: 'Génère les statuts et les actes du dossier de constitution.' }]
-      : [{ type: 'demander', label: 'Créer le brouillon', message: 'Tout est prêt ? Crée le brouillon de la formalité au Guichet unique (sans les actes non signés, qui seront versés après la signature du client).' }],
+      : comptes
+        ? [{ type: 'demander', label: 'Créer le brouillon du dépôt', message: 'Tout est prêt ? Crée le brouillon du dépôt des comptes au Guichet unique (sans les actes non signés, qui seront versés après la signature du client).' }]
+        : [{ type: 'demander', label: 'Créer le brouillon', message: 'Tout est prêt ? Crée le brouillon de la formalité au Guichet unique (sans les actes non signés, qui seront versés après la signature du client).' }],
   });
 
   // 2. Annonce légale
-  const requise = annonceRequise(data, gu, meta);
+  const requise = !comptes && annonceRequise(data, gu, meta);
   const annonces = meta.annonces_legales || [];
   const attestations = docs.filter(estAttestation);
   const attestationVersee = p.annonce?.attestation_versee_id && attestations.some((d) => d.id === p.annonce.attestation_versee_id);
@@ -499,7 +520,7 @@ async function etat(supa, orgId, dossierId) {
     cle: 'annonce', titre: 'Annonce légale',
     statut: statutA,
     detail: !requise
-      ? "Pas d'annonce légale pour cette formalité."
+      ? comptes ? "Pas d'annonce légale pour un dépôt des comptes." : "Pas d'annonce légale pour cette formalité."
       : dejaTransmise && !annonces.length && !parue
         ? 'Formalité déjà transmise : annonce gérée hors de Legaly.'
         : attenteParution
@@ -562,7 +583,9 @@ async function etat(supa, orgId, dossierId) {
   else if (!fid && creation && prepare && !aSigner.length && !['attente', 'bloque'].includes(statutSC) && parue) statutSI = 'a_faire';
   else if (!fid || !A_SIGNER.has(statutGU || '')) statutSI = 'a_venir';
   else if (statutGU === 'AMENDMENT_SIGNATURE_PENDING') statutSI = 'a_faire';
-  else if (['attente', 'a_faire', 'bloque', 'a_venir'].includes(statutSC) && (aSigner.length || sc.statut === 'versement_incomplet')) statutSI = 'a_venir';
+  // Signature du client en cours ou actes signés pas encore versés : la synthèse n'est pas à jour
+  else if (['attente', 'bloque'].includes(statutSC) || verrous.has(`${dossier.id}|signature_client|${sc.request_id}`)) statutSI = 'a_venir';
+  else if (['a_faire', 'a_venir'].includes(statutSC) && aSigner.length) statutSI = 'a_venir';
   else statutSI = 'a_faire';
   const actionsSI = [];
   if (statutSI === 'a_faire' && !fid) {
@@ -575,7 +598,7 @@ async function etat(supa, orgId, dossierId) {
   if (statutSI === 'bloque') actionsSI.push({ type: 'recommencer_signature_inpi', label: 'Signer à nouveau', secondaire: true, confirmation: 'Recommencer la signature de la formalité avec une nouvelle demande Yousign ?' });
   if (statutSI === 'attente') actionsSI.push({ type: 'annuler_signature_inpi', label: 'Annuler', secondaire: true, confirmation: 'Annuler la signature Yousign en cours ? Vous pourrez la relancer.' });
   etapes.push({
-    cle: 'signature_inpi', titre: 'Signature électronique de la formalité',
+    cle: 'signature_inpi', titre: comptes ? 'Signature électronique du dépôt' : 'Signature électronique de la formalité',
     statut: statutSI,
     detail: statutSI === 'fait'
       ? `Formalité signée${si.mode === 'simple' ? ' (signature simple)' : si.mode === 'yousign' ? ' avec Yousign' : ''}.`
@@ -636,7 +659,7 @@ async function etat(supa, orgId, dossierId) {
   const termine = toutFait && Boolean(statutGU && TRANSMISE.has(statutGU));
   return {
     dossier: { id: dossier.id, reference: dossier.reference, denomination: dossier.client_name },
-    formalite: fid ? { id: fid, liasse: meta.inpi_liasse || gu?.liasseNumber || null, statut: statutGU, statut_label: STATUT_GU[statutGU] || statutGU } : null,
+    formalite: fid ? { id: fid, type: comptes ? 'comptes_annuels' : 'formalite', liasse, statut: statutGU, statut_label: STATUT_GU[statutGU] || statutGU } : null,
     etapes, courante, termine,
     // Rafraîchir plus souvent quand on attend un tiers (signataire, paiement)
     rafraichir_ms: termine ? 120000 : etapes.some((e) => e.statut === 'attente') ? 8000 : 30000,
@@ -700,6 +723,10 @@ async function signerFormalite(supa, orgId, dossierId, { user, profile }) {
   const { dossier, fid } = await formaliteExige(supa, orgId, dossierId);
   const enCours = dossier.metadata?.parcours?.signature_inpi;
   if (enCours?.statut === 'en_cours' && enCours.lien) return { ok: true, lien: enCours.lien };
+  const scEnCours = dossier.metadata?.parcours?.signature_client;
+  if (['envoyee', 'en_cours', 'versement_incomplet'].includes(scEnCours?.statut) || verrous.has(`${dossierId}|signature_client|${scEnCours?.request_id}`)) {
+    throw erreur('Les actes signés par le client ne sont pas encore tous versés : la synthèse ne serait pas à jour. Réessayez dans un instant.', 409);
+  }
   const gu = await formaliteGU(orgId, fid, { frais: true });
   if (!A_SIGNER.has(gu.status)) throw erreur(`La formalité n'est pas à signer (statut : ${STATUT_GU[gu.status] || gu.status}).`, 409);
   const prenom = profile?.first_name || user?.user_metadata?.first_name || '';
@@ -708,23 +735,35 @@ async function signerFormalite(supa, orgId, dossierId, { user, profile }) {
 
   const client = inpi.forOrg(orgId);
   // Synthèse à jour (pièces ajoutées après la création), puis téléchargement (§ 6.4, § 3.13, § 3.15)
-  try { await client.request(`/api/formalities/${fid}/refresh`, { timeoutMs: 30000, essais: 1 }); } catch { /* synthèse existante */ }
-  const telecharger = async (chemin) => {
+  try { await client.request(`${chemin(fid)}/refresh`, { timeoutMs: 30000, essais: 1 }); } catch { /* synthèse existante */ }
+  const telecharger = async (url) => {
+    if (!url) return null;
     // « Accept: application/pdf » est refusé (406) : en-têtes par défaut (*/*)
-    const r = await client.rawFetch(chemin);
+    const r = await client.rawFetch(url);
     if (!r.ok) return null;
     const buf = Buffer.from(await r.arrayBuffer());
     return buf.slice(0, 5).toString() === '%PDF-' ? buf : null;
   };
-  const [synthese, be] = await Promise.all([telecharger(`/api/formalities/${fid}/synthesis`), telecharger(`/api/formalities/${fid}/synthesis_be`)]);
-  if (!synthese) throw erreur('Synthèse de la formalité indisponible au Guichet unique, réessayez dans un instant.', 502);
+  let synthese = null;
+  let be = null;
+  if (estComptes(fid)) {
+    // Comptes annuels : dernière version de la pièce PJ_99 du dépôt (§ 6.3.1)
+    const atts = await client.request(`${chemin(fid)}/attachments`, { timeoutMs: 20000 });
+    const liste = Array.isArray(atts) ? atts : atts?.['hydra:member'] || [];
+    const pj99 = liste.filter((a) => a.typeDocument === 'PJ_99').sort((a, b) => Number(b.id ?? b.attachmentId) - Number(a.id ?? a.attachmentId))[0];
+    synthese = await telecharger(pj99 ? `/api/attachments/${pj99.id ?? pj99.attachmentId}/file` : null);
+  } else {
+    [synthese, be] = await Promise.all([telecharger(`${chemin(fid)}/synthesis`), telecharger(`${chemin(fid)}/synthesis_be`)]);
+  }
+  if (!synthese) throw erreur(`Synthèse ${estComptes(fid) ? 'du dépôt' : 'de la formalité'} indisponible au Guichet unique, réessayez dans un instant.`, 502);
 
   // Le formaliste signe lui-même, tout de suite : lien de signature direct (pas d'e-mail)
-  const sr = await yousign.createSignatureRequest({ name: `Signature formalité ${gu.liasseNumber || fid}`, deliveryMode: 'none' });
+  const libelle = gu.liasseNumber || idDepot(fid);
+  const sr = await yousign.createSignatureRequest({ name: `Signature ${estComptes(fid) ? 'dépôt des comptes' : 'formalité'} ${libelle}`, deliveryMode: 'none' });
   const docs = { synthese, ...(be ? { be } : {}) };
   const roles = Object.keys(docs);
   const uploads = await Promise.all(roles.map((role) => yousign.uploadDocument(sr.id, {
-    filename: role === 'be' ? `Synthese_BE_${gu.liasseNumber || fid}.pdf` : `Synthese_${gu.liasseNumber || fid}.pdf`, base64Pdf: docs[role].toString('base64'),
+    filename: role === 'be' ? `Synthese_BE_${libelle}.pdf` : `Synthese_${libelle}.pdf`, base64Pdf: docs[role].toString('base64'),
   })));
   const ys = Object.fromEntries(roles.map((r, i) => [r, uploads[i].id]));
   const signer = await yousign.addSigner(sr.id, {
@@ -743,10 +782,10 @@ async function signerFormalite(supa, orgId, dossierId, { user, profile }) {
 async function signatureSimple(supa, orgId, dossierId) {
   const { fid } = await formaliteExige(supa, orgId, dossierId);
   const gu = await formaliteGU(orgId, fid, { frais: true });
-  if (gu.typeFormalite !== 'C') throw erreur('La signature simple ne vaut que pour une création ; signez avec Yousign.', 400);
+  if (estComptes(fid) || gu.typeFormalite !== 'C') throw erreur('La signature simple ne vaut que pour une création ; signez avec Yousign.', 400);
   if (!A_SIGNER.has(gu.status)) throw erreur(`La formalité n'est pas à signer (statut : ${STATUT_GU[gu.status] || gu.status}).`, 409);
-  try { await inpi.forOrg(orgId).request(`/api/formalities/${fid}/refresh`, { timeoutMs: 30000, essais: 1 }); } catch { /* synthèse existante */ }
-  await inpi.forOrg(orgId).request('/api/signatures', { method: 'POST', body: { formality: `/api/formalities/${fid}` } });
+  try { await inpi.forOrg(orgId).request(`${chemin(fid)}/refresh`, { timeoutMs: 30000, essais: 1 }); } catch { /* synthèse existante */ }
+  await inpi.forOrg(orgId).request('/api/signatures', { method: 'POST', body: iriDepot(fid) });
   oublierGU(orgId, fid);
   await majParcours(supa, orgId, dossierId, { signature_inpi: { statut: 'signee', mode: 'simple', signee_le: new Date().toISOString(), erreur: null } });
   return { ok: true };
@@ -787,7 +826,7 @@ async function verserAttestation(supa, orgId, dossierId) {
   const doc = docs[docs.length - 1];
   if (!doc) throw erreur("Aucune attestation de parution jointe : déposez-la dans le chat.", 400);
   const gu = await formaliteGU(orgId, fid, { frais: true });
-  const cat = categorieGU('ATTESTATION_PARUTION', gu, dossier.metadata?.agent_data || {});
+  const cat = categorieGU('ATTESTATION_PARUTION', gu, dossier.metadata?.agent_data || {}, fid);
   if (!cat) throw erreur("Cette formalité n'attend pas d'attestation de parution.", 400);
   const { data: blob, error } = await supa.storage.from(BUCKET).download(doc.file_path);
   if (error || !blob) throw erreur('Lecture de l’attestation impossible.', 502);
@@ -810,7 +849,7 @@ async function payer(supa, orgId, dossierId, { confirme, montant_cents: montantV
   if (Number(montantVu) !== Number(total)) throw erreur('Le montant a changé depuis l’affichage : vérifiez puis confirmez à nouveau.', 409);
   const r = await inpi.forOrg(orgId).request('/api/payment', {
     method: 'POST',
-    body: { login: process.env.INPI_CCL_LOGIN, password: process.env.INPI_CCL_PASSWORD, paymentType: 'CCL', formality: `/api/formalities/${fid}` },
+    body: { login: process.env.INPI_CCL_LOGIN, password: process.env.INPI_CCL_PASSWORD, paymentType: 'CCL', ...iriDepot(fid) },
   });
   oublierGU(orgId, fid);
   await majParcours(supa, orgId, dossierId, { paiement: { mode: 'compte_client', paye_le: new Date().toISOString(), montant_cents: total, commande: r?.orderNum || null } });

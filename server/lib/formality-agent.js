@@ -717,7 +717,7 @@ const SYSTEM_PROMPT = `Tu es l'Agent Formalités de Legaly AI, plateforme franç
 - Créations de sociétés : SASU, SAS, EURL, SARL, SCI, holding (SAS).
 - Modifications (transfert de siège, changement de dirigeant, d'objet, de dénomination, de capital…) et cessations (dissolution, radiation) : dossier + procès-verbal + annonce légale.
 - Dépôt des comptes annuels des sociétés : contrôle des comptes et du PV, confidentialité, brouillon du dépôt au Guichet unique (voir <comptes_annuels>).
-- Tu ne signes rien, tu ne paies rien et tu n'envoies rien à des tiers. Le professionnel suit les étapes affichées à droite du chat : réalisation de la formalité, annonce légale (que tu rédiges), signature des actes par le client (Yousign), signature électronique de la formalité (Yousign = signature au Guichet unique), puis paiement (compte client INPI du cabinet ou délégation au client). En fin de tour, indique en une phrase la prochaine étape à droite, sans le renvoyer vers une autre page ni vers le Guichet unique. Exception : le dépôt des comptes annuels se signe et se paie sur le Guichet unique (lien_guichet_unique), pas dans ces étapes.
+- Tu ne signes rien, tu ne paies rien et tu n'envoies rien à des tiers. Le professionnel suit les étapes affichées à droite du chat : réalisation de la formalité, annonce légale (que tu rédiges), signature des actes par le client (Yousign), signature électronique de la formalité (Yousign = signature au Guichet unique), puis paiement (compte client INPI du cabinet ou délégation au client). En fin de tour, indique en une phrase la prochaine étape à droite, sans le renvoyer vers une autre page ni vers le Guichet unique. Le dépôt des comptes annuels suit les mêmes étapes (sans annonce légale) : PV d'approbation et déclaration de confidentialité rédigés par Legaly signés par le client, puis signature électronique du dépôt et paiement à droite du chat.
 - Plusieurs formalités à la fois (plusieurs créations, plusieurs fermetures…, en texte ou dans un tableur joint) : preparer_lot, présente le plan en tableau court (type, société, informations manquantes), demande confirmation, puis lancer_lot (confirme=true). Chaque formalité est alors préparée dans son propre dossier ; le suivi s'affiche dans ce chat et le professionnel ouvre chaque formalité depuis ce suivi pour la compléter et créer son brouillon INPI.
 </perimetre>
 
@@ -1530,9 +1530,12 @@ async function toolComptesAnnuels(supa, ctx, input) {
   const wanted = Array.isArray(input.pieces) ? input.pieces : [];
   const plan = wanted.filter((w) => byId.has(String(w.document_id)) && ca.PIECES_CA[w.categorie]).map((w) => ({ doc: byId.get(String(w.document_id)), categorie: w.categorie }));
   const introuvables = wanted.filter((w) => !byId.has(String(w.document_id))).map((w) => String(w.document_id));
+  // Actes rédigés par Legaly en attente de signature : versés au dépôt après la signature du client
+  const CATEGORIE_ACTE_CA = { PV_APPROBATION_COMPTES: 'PV_AFFECTATION', DECLARATION_CONFIDENTIALITE: 'DECLARATION_CONFIDENTIALITE' };
+  const enAttenteCA = (docs || []).filter((d) => d.status === 'GENERE' && CATEGORIE_ACTE_CA[d.doc_type]).map((d) => CATEGORIE_ACTE_CA[d.doc_type]);
   const { bloquants, alertes } = ca.controler({
     exercice, confidentialite, approuves, dateApprobation: input.date_approbation,
-    categories: plan.map((p) => p.categorie),
+    categories: [...plan.map((p) => p.categorie), ...enAttenteCA],
   });
   if (introuvables.length) bloquants.push(`Documents introuvables dans le dossier : ${introuvables.join(', ')} (appelle etat_dossier)`);
   const nonSigneesCA = piecesNonSignees(plan);
