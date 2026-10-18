@@ -18,6 +18,7 @@ const inpi = require('../inpi');
 const yousign = require('./yousign');
 const { toPdf, PIECES, PIECES_EI, PIECES_MODIF } = require('./inpi-liasse');
 const { paiementDe, emailsCabinet, lienGuichet } = require('./inpi-paiement');
+const { ACTES_UNIQUES } = require('./dossier-docs');
 
 const BUCKET = 'dossier-docs';
 const ETAPES = ['formalite', 'annonce', 'signature_client', 'signature_inpi', 'paiement'];
@@ -35,6 +36,8 @@ const A_SIGNER = new Set(['SIGNATURE_PENDING', 'AMENDMENT_SIGNATURE_PENDING']);
 const SIGNEE = new Set(['SIGNED', 'PAYMENT_PENDING', 'PAYMENT_VALIDATION_PENDING', 'PAID', 'RECEIVED', 'VALIDATION_PENDING', 'AMENDMENT_PENDING', 'AMENDMENT_PAYMENT_PENDING', 'AMENDED', 'EXPIRED', 'VALIDATED', 'REJECTED']);
 const PAYEE = new Set(['PAID', 'RECEIVED', 'VALIDATION_PENDING', 'AMENDMENT_PENDING', 'AMENDED', 'EXPIRED', 'VALIDATED', 'REJECTED']);
 const A_PAYER = new Set(['PAYMENT_PENDING', 'AMENDMENT_PAYMENT_PENDING']);
+// Formalité déjà transmise une fois au greffe (y compris une régularisation à signer)
+const DEJA_TRANSMISE = new Set([...SIGNEE, 'AMENDMENT_SIGNATURE_PENDING']);
 // Statuts qui demandent une intervention du formaliste (le parcours n'est pas terminé)
 const BLOQUANTS = new Set(['REJECTED', 'ERROR', 'AMENDMENT_PENDING', 'EXPIRED']);
 // Statuts où la formalité est réellement transmise au greffe
@@ -52,8 +55,6 @@ const CATEGORIE_MODIF = {
 };
 // Documents qui ne se signent pas (annonce, courriers, pièces du client)
 const NON_SIGNABLES = new Set(['ANNONCE_LEGALE', 'REPONSE_GREFFE', 'PIECE_JOINTE', 'ACTE_RNE', 'COMPTES_ANNUELS', 'AUTRE', 'ATTESTATION_PARUTION']);
-// Actes qui existent naturellement en plusieurs exemplaires (un par dirigeant)
-const MULTIPLES = new Set(['DECLARATION_NON_CONDAMNATION']);
 
 // Opérations de modification qui imposent une annonce légale
 const OPS_AVEC_ANNONCE = new Set(['siege', 'denomination', 'objet', 'nomination', 'revocation', 'dissolution', 'clotureLiquidation', 'capital', 'formeJuridique', 'duree']);
@@ -77,8 +78,8 @@ async function formaliteGU(orgId, id, { frais = false } = {}) {
   const k = `${orgId}|${id}`;
   const hit = cacheGU.get(k);
   const maintenant = Date.now();
-  if (!frais && hit?.p) return hit.p;
   if (!frais && hit?.f && hit.exp > maintenant) return hit.f;
+  if (!frais && hit?.p) return hit.p;
   if (!frais && hit?.echecJusqu > maintenant) {
     if (hit.f) return hit.f;
     throw hit.erreur;
@@ -95,7 +96,7 @@ async function formaliteGU(orgId, id, { frais = false } = {}) {
       if (hit?.f && !frais) return hit.f;
       throw e;
     });
-  cacheGU.set(k, { ...(hit || {}), p });
+  if (!frais) cacheGU.set(k, { ...(hit || {}), p });
   return p;
 }
 const oublierGU = (orgId, id) => cacheGU.delete(`${orgId}|${id}`);
@@ -173,7 +174,8 @@ function actesASigner(docs) {
   for (const d of docs) {
     if (!d.doc_type || NON_SIGNABLES.has(d.doc_type) || !['GENERE', 'SIGNE'].includes(d.status)) continue;
     const nom = String(d.name || '').replace(/ \(signé\)\.pdf$/i, '').replace(/\.(docx|pdf)$/i, '');
-    const cle = MULTIPLES.has(d.doc_type) ? `${d.doc_type}|${nom}` : d.doc_type;
+    // Acte unique : la version la plus récente ; acte multiple (un par dirigeant, PV distincts) : chaque document
+    const cle = ACTES_UNIQUES.has(d.doc_type) ? d.doc_type : `${d.doc_type}|${d.id}`;
     const prec = parCle.get(cle);
     if (!prec || String(d.created_at) > String(prec.created_at)) parCle.set(cle, d);
   }
@@ -258,6 +260,9 @@ async function synchroniser(supa, orgId, dossier) {
       } else if (['declined', 'expired'].includes(s?.status)) {
         await majParcours(supa, orgId, dossier.id, { [etape]: { statut: s.status === 'declined' ? 'refusee' : 'expiree', maj: new Date().toISOString() } });
         change = true;
+      } else if (['canceled', 'deleted'].includes(s?.status)) {
+        await majParcours(supa, orgId, dossier.id, { [etape]: { statut: 'annulee', maj: new Date().toISOString() } });
+        change = true;
       }
     } catch (err) {
       // Le panneau reste lisible ; la finalisation sera retentée au prochain rafraîchissement
@@ -324,6 +329,7 @@ async function finaliserClient(supa, orgId, dossier, e, requestId, docsYS) {
 async function reverserActes(supa, orgId, dossierId) {
   const { dossier, fid } = await formaliteExige(supa, orgId, dossierId);
   const sc = dossier.metadata?.parcours?.signature_client || {};
+  if (sc.statut !== 'versement_incomplet' || !sc.a_reverser?.length) throw erreur('Aucun versement à reprendre.', 409);
   const gu = await formaliteGU(orgId, fid, { frais: true });
   const data = dossier.metadata?.agent_data || {};
   const restants = [];
@@ -344,6 +350,13 @@ async function reverserActes(supa, orgId, dossierId) {
   }
   if (versees.length > (sc.versees || []).length) await regenererSynthese(orgId, fid);
   await majParcours(supa, orgId, dossierId, { signature_client: { statut: restants.length ? 'versement_incomplet' : 'signee', versees, erreurs, a_reverser: restants } });
+}
+
+async function versementIgnore(supa, orgId, dossierId) {
+  const dossier = await dossierExige(supa, orgId, dossierId);
+  const sc = dossier.metadata?.parcours?.signature_client || {};
+  if (sc.statut !== 'versement_incomplet') throw erreur('Aucun versement à reprendre.', 409);
+  await majParcours(supa, orgId, dossierId, { signature_client: { statut: 'signee', a_reverser: [], erreurs: [], versement_manuel: (sc.a_reverser || []).map((r) => r.nom) } });
 }
 
 async function declarerSignature(orgId, fid, pieces) {
@@ -387,7 +400,8 @@ async function finaliserInpi(supa, orgId, dossier, e, requestId, docsYS) {
 async function redeclarerSignature(supa, orgId, dossierId) {
   const { dossier, fid } = await formaliteExige(supa, orgId, dossierId);
   const si = dossier.metadata?.parcours?.signature_inpi || {};
-  if (!si.pieces?.synthese) throw erreur('Aucune synthèse signée versée : signez à nouveau avec Yousign.', 409);
+  const attendues = Object.keys(si.yousign_documents || { synthese: 1 });
+  if (!si.pieces?.synthese || attendues.some((r) => !si.pieces?.[r])) throw erreur('Toutes les synthèses signées n’ont pas été versées : signez à nouveau avec Yousign.', 409);
   try {
     await declarerSignature(orgId, fid, si.pieces);
   } catch (err) {
@@ -400,7 +414,9 @@ async function redeclarerSignature(supa, orgId, dossierId) {
 // ─── État du parcours (panneau de droite) ─────────────────────────
 async function etat(supa, orgId, dossierId) {
   let dossier = await dossierExige(supa, orgId, dossierId);
-  if (await synchroniser(supa, orgId, dossier)) dossier = await dossierExige(supa, orgId, dossierId);
+  const sync = synchroniser(supa, orgId, dossier).catch(() => false);
+  const changement = await Promise.race([sync, new Promise((ok) => setTimeout(() => ok(false), 3000))]);
+  if (changement) dossier = await dossierExige(supa, orgId, dossierId);
   const meta = dossier.metadata || {};
   const data = meta.agent_data || {};
   const p = meta.parcours || {};
@@ -434,7 +450,12 @@ async function etat(supa, orgId, dossierId) {
       : prepare ? 'Dossier et actes préparés · le brouillon sera créé au Guichet unique après la signature des actes et la parution de l’annonce.'
         : "L'agent rassemble les informations et rédige les actes.",
     erreur: erreurGU,
-    alertes: bloquee ? [statutGU === 'REJECTED' ? 'Formalité rejetée par le greffe : ouvrez-la pour lire le motif.' : statutGU === 'ERROR' ? 'Le Guichet unique signale une erreur sur cette formalité.' : 'Le greffe demande une régularisation : ouvrez la formalité pour y répondre.'] : undefined,
+    alertes: bloquee ? [{
+      REJECTED: 'Formalité rejetée par le greffe : ouvrez-la pour lire le motif.',
+      ERROR: 'Le Guichet unique signale une erreur sur cette formalité.',
+      EXPIRED: 'Délai de régularisation expiré : ouvrez la formalité (une régularisation reste possible, sinon une nouvelle formalité est nécessaire).',
+      AMENDMENT_PENDING: 'Le greffe demande une régularisation : ouvrez la formalité pour y répondre.',
+    }[statutGU]] : undefined,
     lien: fid ? `/inpi/${fid}` : null,
     actions: prepare ? [] : creation
       ? [{ type: 'demander', label: 'Rédiger les actes', message: 'Génère les statuts et les actes du dossier de constitution.' }]
@@ -447,18 +468,25 @@ async function etat(supa, orgId, dossierId) {
   const attestations = docs.filter(estAttestation);
   const attestationVersee = p.annonce?.attestation_versee_id && attestations.some((d) => d.id === p.annonce.attestation_versee_id);
   const signeeAuGU = Boolean(statutGU && SIGNEE.has(statutGU));
+  const dejaTransmise = Boolean(statutGU && DEJA_TRANSMISE.has(statutGU));
   const parue = attestations.length > 0 || Boolean(data.annonceLegale?.journal && data.annonceLegale?.datePublication);
-  const annonceOk = annonces.length > 0 || parue || signeeAuGU || p.annonce?.statut === 'faite';
+  const annonceOk = annonces.length > 0 || parue || dejaTransmise || p.annonce?.statut === 'faite';
+  // Création sans brouillon : le brouillon exige l'annonce PARUE ; l'étape reste à faire jusque-là
+  const attenteParution = requise && creation && !fid && !parue && p.annonce?.statut !== 'faite' && annonces.length > 0;
   let statutA;
   if (!requise) statutA = 'sans_objet';
-  else if (annonceOk) statutA = 'fait';
+  else if (annonceOk && !attenteParution) statutA = 'fait';
+  else if (attenteParution) statutA = 'a_faire';
   else statutA = prepare ? 'a_faire' : 'a_venir';
   const actionsA = [];
   if (requise && !annonceOk) {
     actionsA.push({ type: 'demander', label: "Rédiger l'annonce", message: "Rédige l'annonce légale de cette formalité." });
     actionsA.push({ type: 'annonce_faite', label: 'Déjà publiée', secondaire: true, confirmation: "L'annonce a déjà été publiée par ailleurs ? Joignez l'attestation de parution dans le chat dès que possible." });
   }
-  if (requise && fid && attestations.length && !attestationVersee && !signeeAuGU) {
+  if (attenteParution) {
+    actionsA.push({ type: 'annonce_faite', label: 'Annonce parue', secondaire: true, confirmation: "L'annonce est parue ? Joignez l'attestation de parution dans le chat : elle sera déposée avec le brouillon." });
+  }
+  if (requise && fid && attestations.length && !attestationVersee && !dejaTransmise) {
     actionsA.push({ type: 'verser_attestation', label: "Verser l'attestation au Guichet unique" });
   }
   etapes.push({
@@ -466,12 +494,14 @@ async function etat(supa, orgId, dossierId) {
     statut: statutA,
     detail: !requise
       ? "Pas d'annonce légale pour cette formalité."
-      : signeeAuGU && !annonces.length && !parue
-        ? 'Formalité déjà signée : annonce gérée hors de Legaly.'
-        : annonceOk
-          ? [annonces.length ? `${annonces[annonces.length - 1].label} rédigée` : p.annonce?.statut === 'faite' ? 'Publiée par ailleurs' : 'Annonce publiée',
-            attestationVersee ? 'attestation versée au Guichet unique' : attestations.length ? 'attestation de parution jointe' : 'à publier, puis joignez l’attestation de parution dans le chat'].join(' · ')
-          : 'Annonce légale à rédiger puis à publier.',
+      : dejaTransmise && !annonces.length && !parue
+        ? 'Formalité déjà transmise : annonce gérée hors de Legaly.'
+        : attenteParution
+          ? `${annonces[annonces.length - 1].label} rédigée · à publier : joignez l’attestation de parution dans le chat dès réception.`
+          : annonceOk
+            ? [annonces.length ? `${annonces[annonces.length - 1].label} rédigée` : p.annonce?.statut === 'faite' ? 'Publiée par ailleurs' : 'Annonce publiée',
+              attestationVersee ? 'attestation versée au Guichet unique' : attestations.length ? 'attestation de parution jointe' : p.annonce?.statut === 'faite' ? 'attestation de parution à joindre dans le chat' : 'à publier, puis joignez l’attestation de parution dans le chat'].join(' · ')
+            : 'Annonce légale à rédiger puis à publier.',
     documents: docs.filter((d) => d.doc_type === 'ANNONCE_LEGALE' || estAttestation(d)).map((d) => ({ id: d.id, nom: d.name })),
     actions: actionsA,
   });
@@ -506,7 +536,10 @@ async function etat(supa, orgId, dossierId) {
     alertes: sc.erreurs?.length ? sc.erreurs : undefined,
     signataires: ['a_faire', 'bloque'].includes(statutSC) && sc.statut !== 'versement_incomplet' ? signatairesProposes(data, sc.signataires) : undefined,
     actions: sc.statut === 'versement_incomplet'
-      ? [{ type: 'reverser_actes', label: 'Réessayer le versement' }]
+      ? [
+        { type: 'reverser_actes', label: 'Réessayer le versement' },
+        { type: 'versement_ignore', label: 'Pièce ajoutée sur le Guichet unique', secondaire: true, confirmation: 'Vous avez ajouté vous-même la ou les pièces signées sur le Guichet unique ? L’étape sera considérée comme faite.' },
+      ]
       : ['a_faire', 'bloque'].includes(statutSC)
         ? [{ type: 'signature_client', label: statutSC === 'bloque' ? 'Renvoyer en signature' : 'Envoyer en signature', ...yousignOff }]
         : statutSC === 'attente' ? [{ type: 'annuler_signature_client', label: 'Annuler la demande', secondaire: true, confirmation: 'Annuler la demande Yousign envoyée ? Les signataires ne pourront plus signer ; vous pourrez renvoyer une nouvelle demande.' }] : [],
@@ -522,6 +555,7 @@ async function etat(supa, orgId, dossierId) {
   else if (guInconnu) statutSI = 'inconnu';
   else if (!fid && creation && prepare && !aSigner.length && !['attente', 'bloque'].includes(statutSC) && parue) statutSI = 'a_faire';
   else if (!fid || !A_SIGNER.has(statutGU || '')) statutSI = 'a_venir';
+  else if (statutGU === 'AMENDMENT_SIGNATURE_PENDING') statutSI = 'a_faire';
   else if (['attente', 'a_faire', 'bloque', 'a_venir'].includes(statutSC) && (aSigner.length || sc.statut === 'versement_incomplet')) statutSI = 'a_venir';
   else if (!annonceFaite) statutSI = 'a_venir';
   else statutSI = 'a_faire';
@@ -533,6 +567,7 @@ async function etat(supa, orgId, dossierId) {
     if (creation) actionsSI.push({ type: 'signature_simple', label: 'Signature simple', secondaire: true, confirmation: 'Signer la formalité par signature électronique simple (création) ? La signature est définitive.' });
   }
   if (statutSI === 'bloque' && si.pieces?.synthese) actionsSI.push({ type: 'redeclarer_signature', label: 'Réessayer la transmission' });
+  if (statutSI === 'bloque') actionsSI.push({ type: 'recommencer_signature_inpi', label: 'Signer à nouveau', secondaire: true, confirmation: 'Recommencer la signature de la formalité avec une nouvelle demande Yousign ?' });
   if (statutSI === 'attente') actionsSI.push({ type: 'annuler_signature_inpi', label: 'Annuler', secondaire: true, confirmation: 'Annuler la signature Yousign en cours ? Vous pourrez la relancer.' });
   etapes.push({
     cle: 'signature_inpi', titre: 'Signature électronique de la formalité',
@@ -709,6 +744,12 @@ async function signatureSimple(supa, orgId, dossierId) {
   return { ok: true };
 }
 
+// Signature de la formalité en erreur : on repart de zéro (nouvelle demande Yousign)
+async function recommencerSignatureInpi(supa, orgId, dossierId) {
+  await dossierExige(supa, orgId, dossierId);
+  await majParcours(supa, orgId, dossierId, { signature_inpi: null });
+}
+
 async function annulerSignature(supa, orgId, dossierId, etape) {
   const dossier = await dossierExige(supa, orgId, dossierId);
   const e = dossier.metadata?.parcours?.[etape];
@@ -805,7 +846,7 @@ async function surWebhook(supa, requestId, eventName) {
 
 module.exports = {
   ETAPES, etat, envoyerSignatureClient, signerFormalite, signatureSimple, annulerSignature, payer, deleguer, surWebhook,
-  reverserActes, redeclarerSignature, annonceFaite, verserAttestation,
+  reverserActes, redeclarerSignature, annonceFaite, verserAttestation, versementIgnore, recommencerSignatureInpi,
   // tests
   _interne: { annonceRequise, actesASigner, categorieGU, signatairesProposes, champsSignature, telephoneE164, estAttestation },
 };

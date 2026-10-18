@@ -66,6 +66,8 @@ const SIMPLES = {
   'redeclarer-signature': ['redeclarerSignature', 'signature_inpi.redeclaree'],
   'annonce-faite': ['annonceFaite', 'annonce.faite'],
   'verser-attestation': ['verserAttestation', 'annonce.attestation_versee'],
+  'versement-ignore': ['versementIgnore', 'signature_client.versement_manuel'],
+  'recommencer-signature-inpi': ['recommencerSignatureInpi', 'signature_inpi.recommencee'],
 };
 for (const [chemin, [fn, action]] of Object.entries(SIMPLES)) {
   router.post(`/:id/parcours/${chemin}`, route(async (req, res) => {

@@ -268,6 +268,8 @@ function AgentChat({ inpiFormality, resume }: AgentProps) {
   useEffect(() => {
     if (inpiFormality) return;
     const url = new URL(window.location.href);
+    // Lien d'un dossier : la demande est pour le chat de ce dossier, ouvert juste après
+    if (!resume && url.searchParams.has('dossier')) return;
     const demande = url.searchParams.get('demande');
     if (!demande) return;
     setInput(demande.slice(0, 2000));
@@ -665,7 +667,6 @@ function AgentChat({ inpiFormality, resume }: AgentProps) {
                   const el = e.currentTarget;
                   colle.current = el.scrollHeight - el.scrollTop - el.clientHeight < 80;
                 }}
-                aria-live="polite"
                 aria-busy={busy}
                 className="max-h-[520px] min-h-[260px] space-y-3 overflow-y-auto px-5 py-4"
               >
@@ -688,8 +689,11 @@ function AgentChat({ inpiFormality, resume }: AgentProps) {
                 {busy && items[items.length - 1]?.type !== 'assistant' && items[items.length - 1]?.type !== 'tool' && (
                   <Travail events={[]} enCours />
                 )}
+                <p className="sr-only" role="status" aria-live="polite">
+                  {busy ? statut ?? 'L’agent travaille…' : error ? '' : items.length ? 'Réponse de l’agent terminée.' : ''}
+                </p>
                 {busy && statut && (
-                  <p className="flex items-center gap-1.5 pl-9 text-xs text-muted-foreground">
+                  <p className="flex items-center gap-1.5 pl-9 text-xs text-muted-foreground" aria-hidden>
                     <Loader2 className="size-3 animate-spin" aria-hidden />
                     {statut}
                   </p>
@@ -753,7 +757,7 @@ function AgentChat({ inpiFormality, resume }: AgentProps) {
               {pieces.length > 0 && <SidebarList title="Pièces reçues" empty="" events={pieces} />}
 
               {dossier ? (
-                <ParcoursFormalite dossierId={dossier.id} version={etapesTerminees} occupe={busy} onAsk={demanderDepuisPanneau} />
+                <ParcoursFormalite key={dossier.id} dossierId={dossier.id} version={etapesTerminees} occupe={busy} onAsk={demanderDepuisPanneau} />
               ) : (
                 <p className="text-[11px] leading-snug text-muted-foreground">
                   Les étapes s&apos;afficheront ici : formalité, annonce légale, signature du client, signature de la formalité, paiement.

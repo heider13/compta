@@ -66,10 +66,14 @@ function extractFromContent(content, dossier) {
   };
 }
 
-// Types jamais remplacés (pièces du client, annonces successives, documents libres) ; types
-// remplacés seulement à nom identique (une déclaration par dirigeant, des PV distincts).
-const REMPLACEMENT_EXCLU = new Set(['PIECE_JOINTE', 'ANNONCE_LEGALE', 'ACTE_RNE', 'COMPTES_ANNUELS', 'AUTRE', 'ATTESTATION_PARUTION']);
-const REMPLACEMENT_PAR_NOM = new Set(['DECLARATION_NON_CONDAMNATION', 'PV_DECISION', 'REPONSE_GREFFE']);
+// Actes qui n'existent qu'en un exemplaire par dossier : une nouvelle version remplace la
+// précédente non signée. Les autres (une déclaration par dirigeant, des PV ou cessions
+// distincts, pièces du client, annonces) ne sont jamais remplacés.
+const ACTES_UNIQUES = new Set([
+  'STATUTS', 'STATUTS_MIS_A_JOUR', 'LISTE_SOUSCRIPTEURS', 'POUVOIR_FORMALITES', 'ATTESTATION_HEBERGEMENT',
+  'ATTESTATION_DOMICILIATION', 'PV_DISSOLUTION', 'DECISION_NOMINATION', 'PV_MISE_EN_SOMMEIL', 'PV_CLOTURE_LIQUIDATION',
+  'DECLARATION_BENEFICIAIRES', 'PV_APPROBATION_COMPTES', 'DECLARATION_CONFIDENTIALITE', 'BAIL_COMMERCIAL',
+]);
 
 // Upload Storage + ligne dossier_documents. Le statut 'GENERE' n'existe pas sur
 // toutes les bases (enum doc_status d'origine : TRANSMIS/A_CORRIGER/OFFICIEL) :
@@ -118,13 +122,15 @@ async function storeDossierDocument(supa, dossier, { buffer, filename, docType, 
 
   // Acte régénéré : la nouvelle version remplace l'ancienne non signée (jamais une version signée),
   // pour ne pas envoyer deux fois le même acte en signature.
-  if (docType && !REMPLACEMENT_EXCLU.has(docType)) {
+  if (docType && ACTES_UNIQUES.has(docType)) {
     try {
-      let q = supa.from('dossier_documents').select('id, file_path')
+      const { data: anciensTous } = await supa.from('dossier_documents').select('id, file_path')
         .eq('dossier_id', dossier.id).eq('doc_type', docType).in('status', ['GENERE', 'TRANSMIS']).neq('id', doc.id);
-      if (REMPLACEMENT_PAR_NOM.has(docType)) q = q.eq('name', filename);
-      const { data: anciens } = await q;
-      if (anciens?.length) {
+      // Un acte envoyé en signature (demande Yousign en cours) n'est jamais supprimé
+      const sc = dossier.metadata?.parcours?.signature_client;
+      const enSignature = new Set(['envoyee', 'en_cours'].includes(sc?.statut) ? (sc.documents || []).map((d) => String(d.document_id)) : []);
+      const anciens = (anciensTous || []).filter((a) => !enSignature.has(String(a.id)));
+      if (anciens.length) {
         await supa.storage.from(BUCKET).remove(anciens.map((a) => a.file_path).filter(Boolean)).catch(() => {});
         await supa.from('dossier_documents').delete().in('id', anciens.map((a) => a.id));
       }
@@ -170,6 +176,7 @@ async function signedUrl(supa, filePath, seconds = 3600) {
 }
 
 module.exports = {
+  ACTES_UNIQUES,
   BUCKET,
   extractFromContent,
   storeDossierDocument,

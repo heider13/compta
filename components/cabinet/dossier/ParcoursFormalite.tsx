@@ -64,6 +64,8 @@ const ROUTES: Record<string, { route: string; corps?: object }> = {
   redeclarer_signature: { route: 'redeclarer-signature' },
   annonce_faite: { route: 'annonce-faite' },
   verser_attestation: { route: 'verser-attestation' },
+  versement_ignore: { route: 'versement-ignore' },
+  recommencer_signature_inpi: { route: 'recommencer-signature-inpi' },
 };
 
 const LIBELLE_STATUT: Record<Statut, string> = {
@@ -94,7 +96,7 @@ function ParcoursFormaliteBase({
   const [ouvert, setOuvert] = useState<string | null>(null); // formulaire ou confirmation : `${etape}:${type}`
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const seq = useRef(0); // ordre des réponses : une lecture plus ancienne ne remplace jamais une plus récente
-  const enVol = useRef(false);
+  const enVol = useRef<AbortController | null>(null);
   const echecs = useRef(0);
   const dernierFocus = useRef(0);
   const vivant = useRef(true);
@@ -105,16 +107,18 @@ function ParcoursFormaliteBase({
     timer.current = setTimeout(() => void chargerRef.current(), ms);
   }, []);
 
-  const charger = useCallback(async () => {
-    if (enVol.current) return;
+  const charger = useCallback(async (forcer = false) => {
+    if (enVol.current && !forcer) return;
     if (document.visibilityState !== 'visible' && etatRef.current) {
       planifier(etatRef.current.rafraichir_ms); // onglet caché : pas d'appel réseau
       return;
     }
-    enVol.current = true;
+    enVol.current?.abort(); // une lecture plus récente remplace celle en cours
     const n = ++seq.current;
     const ctrl = new AbortController();
-    const delai = setTimeout(() => ctrl.abort(), DELAI_LECTURE_MS);
+    enVol.current = ctrl;
+    let expire = false;
+    const delai = setTimeout(() => { expire = true; ctrl.abort(); }, DELAI_LECTURE_MS);
     try {
       const e = await vpsApi<Etat>(`/api/dossiers/${dossierId}/parcours`, { signal: ctrl.signal });
       if (!vivant.current || n !== seq.current) return;
@@ -126,12 +130,12 @@ function ParcoursFormaliteBase({
     } catch (e) {
       if (!vivant.current || n !== seq.current) return;
       echecs.current += 1;
-      setErreurLecture(ctrl.signal.aborted ? 'Le serveur met du temps à répondre…' : e instanceof Error ? e.message : 'Lecture du parcours impossible.');
+      setErreurLecture(expire ? 'Le serveur met du temps à répondre…' : e instanceof Error ? e.message : 'Lecture du parcours impossible.');
       // Nouvel essai de plus en plus espacé (8 s, 16 s, 32 s, 60 s max)
       planifier(Math.min(60000, 8000 * 2 ** (echecs.current - 1)));
     } finally {
       clearTimeout(delai);
-      enVol.current = false;
+      if (enVol.current === ctrl) enVol.current = null;
     }
   }, [dossierId, planifier]);
   const chargerRef = useRef(charger);
@@ -140,7 +144,7 @@ function ParcoursFormaliteBase({
   // Lecture initiale, puis après chaque étape utile de l'agent (anti-rebond 500 ms)
   useEffect(() => {
     vivant.current = true;
-    const t = setTimeout(() => void charger(), etatRef.current ? 500 : 0);
+    const t = setTimeout(() => void charger(true), etatRef.current ? 500 : 0);
     return () => clearTimeout(t);
   }, [charger, version]);
 
@@ -155,6 +159,7 @@ function ParcoursFormaliteBase({
     document.addEventListener('visibilitychange', onFocus);
     return () => {
       vivant.current = false;
+      enVol.current?.abort();
       if (timer.current) clearTimeout(timer.current);
       window.removeEventListener('focus', onFocus);
       document.removeEventListener('visibilitychange', onFocus);
@@ -165,6 +170,7 @@ function ParcoursFormaliteBase({
     setActionEnCours(cle);
     setErreurAction(null);
     ++seq.current; // invalide les lectures en vol
+    enVol.current?.abort();
     try {
       const e = await vpsApi<Etat & { lien?: string | null }>(`/api/dossiers/${dossierId}/parcours/${route}`, {
         method: 'POST',
@@ -178,7 +184,10 @@ function ParcoursFormaliteBase({
       planifier(e.rafraichir_ms);
       return e;
     } catch (e) {
-      if (vivant.current) setErreurAction({ etape, message: e instanceof Error ? e.message : 'Action impossible.' });
+      if (vivant.current) {
+        setErreurAction({ etape, message: e instanceof Error ? e.message : 'Action impossible.' });
+        planifier(etatRef.current?.rafraichir_ms ?? 30000);
+      }
       return null;
     } finally {
       if (vivant.current) setActionEnCours(null);
@@ -334,6 +343,9 @@ function ParcoursFormaliteBase({
                       );
                     })}
                   </div>
+                )}
+                {occupe && actions.some((a) => a.type === 'demander') && onAsk && (
+                  <p className="mt-1 text-[11px] leading-snug text-muted-foreground">Disponible quand l&apos;agent a terminé.</p>
                 )}
                 {raisons.map((a) => (
                   <p key={a.type} id={`raison-${e.cle}-${a.type}`} className="mt-1 text-[11px] leading-snug text-muted-foreground">
