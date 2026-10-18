@@ -12,13 +12,13 @@
 import { memo, useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import {
-  AlertCircle, Check, Clock, ExternalLink, FileText, HelpCircle, Loader2, Minus, Plus, Send, Trash2, X,
+  AlertCircle, AlertTriangle, Check, Clock, ExternalLink, FileText, HelpCircle, Loader2, Minus, Plus, Send, Trash2, X,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { vpsApi } from '@/components/cabinet/dashboard/BatchProgress';
 
-type Statut = 'fait' | 'a_faire' | 'attente' | 'bloque' | 'en_cours' | 'a_venir' | 'sans_objet' | 'inconnu';
+type Statut = 'fait' | 'a_faire' | 'attente' | 'bloque' | 'en_cours' | 'a_venir' | 'sans_objet' | 'inconnu' | 'passee';
 type Action = {
   type: string;
   label: string;
@@ -63,6 +63,7 @@ const ROUTES: Record<string, { route: string; corps?: object }> = {
   reverser_actes: { route: 'reverser-actes' },
   redeclarer_signature: { route: 'redeclarer-signature' },
   annonce_faite: { route: 'annonce-faite' },
+  annonce_passee: { route: 'annonce-passee' },
   verser_attestation: { route: 'verser-attestation' },
   versement_ignore: { route: 'versement-ignore' },
   recommencer_signature_inpi: { route: 'recommencer-signature-inpi' },
@@ -70,7 +71,7 @@ const ROUTES: Record<string, { route: string; corps?: object }> = {
 
 const LIBELLE_STATUT: Record<Statut, string> = {
   fait: 'terminée', a_faire: 'à faire', attente: 'en attente', bloque: 'bloquée', en_cours: 'en cours',
-  a_venir: 'à venir', sans_objet: 'sans objet', inconnu: 'statut indisponible',
+  a_venir: 'à venir', sans_objet: 'sans objet', inconnu: 'statut indisponible', passee: 'passée, à faire plus tard',
 };
 
 const DELAI_LECTURE_MS = 12000;
@@ -464,6 +465,7 @@ function Pastille({ statut, numero }: { statut: Statut; numero: number }) {
   if (statut === 'attente') return <span className={cn(base, 'border border-amber-300 bg-amber-50 text-amber-700')}><Clock className="size-3.5" aria-hidden />{sr}</span>;
   if (statut === 'en_cours') return <span className={cn(base, 'border border-amber-300 bg-amber-50 text-amber-700')}><Loader2 className="size-3.5 animate-spin" aria-hidden />{sr}</span>;
   if (statut === 'bloque') return <span className={cn(base, 'border border-destructive/40 bg-destructive/10 text-destructive')}><AlertCircle className="size-3.5" aria-hidden />{sr}</span>;
+  if (statut === 'passee') return <span className={cn(base, 'border border-amber-400 bg-amber-50 text-amber-700')}><AlertTriangle className="size-3.5" aria-hidden />{sr}</span>;
   if (statut === 'inconnu') return <span className={cn(base, 'border bg-card text-muted-foreground')}><HelpCircle className="size-3.5" aria-hidden />{sr}</span>;
   if (statut === 'a_faire') return <span className={cn(base, 'border-2 border-primary bg-card text-primary')}><span aria-hidden>{numero}</span>{sr}</span>;
   return <span className={cn(base, 'border bg-card text-muted-foreground')}><span aria-hidden>{numero}</span>{sr}</span>;

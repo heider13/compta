@@ -59,6 +59,7 @@ const NON_SIGNABLES = new Set(['ANNONCE_LEGALE', 'REPONSE_GREFFE', 'PIECE_JOINTE
 // Opérations de modification qui imposent une annonce légale
 const OPS_AVEC_ANNONCE = new Set(['siege', 'denomination', 'objet', 'nomination', 'revocation', 'dissolution', 'clotureLiquidation', 'capital', 'formeJuridique', 'duree']);
 
+const AVERTISSEMENT_ANNONCE = "N'oubliez pas : l'annonce légale est obligatoire pour cette formalité. Sans elle, la formalité sera nécessairement rejetée par le greffe si vous ne la complétez pas par la suite.";
 const yousignConfigure = () => Boolean(process.env.YOUSIGN_API_KEY);
 const paiementCompteConfigure = () => Boolean(process.env.INPI_CCL_LOGIN && process.env.INPI_CCL_PASSWORD);
 const erreur = (message, status) => Object.assign(new Error(message), { status });
@@ -471,17 +472,22 @@ async function etat(supa, orgId, dossierId) {
   const dejaTransmise = Boolean(statutGU && DEJA_TRANSMISE.has(statutGU));
   const parue = attestations.length > 0 || Boolean(data.annonceLegale?.journal && data.annonceLegale?.datePublication);
   const annonceOk = annonces.length > 0 || parue || dejaTransmise || p.annonce?.statut === 'faite';
-  // Création sans brouillon : le brouillon exige l'annonce PARUE ; l'étape reste à faire jusque-là
+  // L'annonce est une étape, jamais un préalable imposé : le formaliste peut la passer et
+  // poursuivre ; un avertissement rappelle alors qu'elle est obligatoire (rejet du greffe sinon).
+  const passee = p.annonce?.statut === 'passee';
   const attenteParution = requise && creation && !fid && !parue && p.annonce?.statut !== 'faite' && annonces.length > 0;
   let statutA;
   if (!requise) statutA = 'sans_objet';
   else if (annonceOk && !attenteParution) statutA = 'fait';
+  else if (passee) statutA = 'passee';
   else if (attenteParution) statutA = 'a_faire';
   else statutA = prepare ? 'a_faire' : 'a_venir';
+  const manqueAnnonce = requise && !annonceOk;
   const actionsA = [];
-  if (requise && !annonceOk) {
+  if (manqueAnnonce) {
     actionsA.push({ type: 'demander', label: "Rédiger l'annonce", message: "Rédige l'annonce légale de cette formalité." });
     actionsA.push({ type: 'annonce_faite', label: 'Déjà publiée', secondaire: true, confirmation: "L'annonce a déjà été publiée par ailleurs ? Joignez l'attestation de parution dans le chat dès que possible." });
+    if (!passee) actionsA.push({ type: 'annonce_passee', label: 'Passer cette étape', secondaire: true, confirmation: `${AVERTISSEMENT_ANNONCE} Passer quand même cette étape ?` });
   }
   if (attenteParution) {
     actionsA.push({ type: 'annonce_faite', label: 'Annonce parue', secondaire: true, confirmation: "L'annonce est parue ? Joignez l'attestation de parution dans le chat : elle sera déposée avec le brouillon." });
@@ -501,8 +507,9 @@ async function etat(supa, orgId, dossierId) {
           : annonceOk
             ? [annonces.length ? `${annonces[annonces.length - 1].label} rédigée` : p.annonce?.statut === 'faite' ? 'Publiée par ailleurs' : 'Annonce publiée',
               attestationVersee ? 'attestation versée au Guichet unique' : attestations.length ? 'attestation de parution jointe' : p.annonce?.statut === 'faite' ? 'attestation de parution à joindre dans le chat' : 'à publier, puis joignez l’attestation de parution dans le chat'].join(' · ')
-            : 'Annonce légale à rédiger puis à publier.',
+            : passee ? 'Étape passée : annonce légale à faire plus tard.' : 'Annonce légale à rédiger puis à publier.',
     documents: docs.filter((d) => d.doc_type === 'ANNONCE_LEGALE' || estAttestation(d)).map((d) => ({ id: d.id, nom: d.name })),
+    alertes: manqueAnnonce && (passee || fid) ? [AVERTISSEMENT_ANNONCE] : undefined,
     actions: actionsA,
   });
 
@@ -510,12 +517,11 @@ async function etat(supa, orgId, dossierId) {
   const aSigner = actesASigner(docs);
   const signes = docs.filter((d) => d.status === 'SIGNE' && !/^SYNTHESE/.test(d.doc_type || ''));
   const sc = p.signature_client || {};
-  const annonceFaite = !requise || annonceOk;
   let statutSC;
   if (['envoyee', 'en_cours'].includes(sc.statut)) statutSC = 'attente';
   else if (['refusee', 'expiree', 'versement_incomplet'].includes(sc.statut)) statutSC = 'bloque';
   else if (!aSigner.length) statutSC = signes.length || sc.statut === 'signee' ? 'fait' : 'sans_objet';
-  else if (!prepare || !(annonceFaite || annonces.length)) statutSC = 'a_venir';
+  else if (!prepare) statutSC = 'a_venir';
   else statutSC = 'a_faire';
   const yousignOff = { desactive: !yousignConfigure(), raison: yousignConfigure() ? null : 'Yousign n’est pas encore configuré (clé API à ajouter sur le serveur).' };
   etapes.push({
@@ -530,7 +536,7 @@ async function etat(supa, orgId, dossierId) {
           : statutSC === 'fait'
             ? `${signes.length} acte(s) signé(s)${(sc.versees || []).length ? `, ${sc.versees.length} versé(s) au Guichet unique` : ''}`
             : statutSC === 'sans_objet' ? 'Aucun acte rédigé à faire signer.'
-              : statutSC === 'a_venir' ? `${aSigner.length} acte(s) à faire signer, après ${prepare ? "la rédaction de l'annonce" : 'la préparation du dossier'}.`
+              : statutSC === 'a_venir' ? `${aSigner.length} acte(s) à faire signer, après la préparation du dossier.`
                 : `${aSigner.length} acte(s) à faire signer par le client.`,
     documents: (statutSC === 'fait' ? signes : aSigner).map((d) => ({ id: d.id, nom: d.name, signe: d.status === 'SIGNE' })),
     alertes: sc.erreurs?.length ? sc.erreurs : undefined,
@@ -557,7 +563,6 @@ async function etat(supa, orgId, dossierId) {
   else if (!fid || !A_SIGNER.has(statutGU || '')) statutSI = 'a_venir';
   else if (statutGU === 'AMENDMENT_SIGNATURE_PENDING') statutSI = 'a_faire';
   else if (['attente', 'a_faire', 'bloque', 'a_venir'].includes(statutSC) && (aSigner.length || sc.statut === 'versement_incomplet')) statutSI = 'a_venir';
-  else if (!annonceFaite) statutSI = 'a_venir';
   else statutSI = 'a_faire';
   const actionsSI = [];
   if (statutSI === 'a_faire' && !fid) {
@@ -580,9 +585,12 @@ async function etat(supa, orgId, dossierId) {
             : statutSI === 'a_faire' && !fid ? 'Actes signés et annonce parue : le brouillon peut être créé, puis signé.'
               : statutSI === 'a_faire' ? `Synthèse prête à signer${creation ? ' (création : signature simple acceptée)' : ' (signature électronique avancée exigée)'}.`
                 : creation && !fid
-                  ? aSigner.length || statutSC === 'attente' ? 'Après la signature des actes par le client.' : !parue ? "Après la parution de l'annonce : joignez l'attestation dans le chat." : 'Après la préparation du dossier.'
-                  : !fid ? 'Après la création du brouillon.' : !annonceFaite ? "Après l'annonce légale." : 'Après la signature des documents par le client.',
-    alertes: statutSI === 'a_faire' && fid && sansAttestation ? ["L'attestation de parution n'est pas encore jointe : le greffe la réclamera."] : undefined,
+                  ? aSigner.length || statutSC === 'attente' ? 'Après la signature des actes par le client.'
+                    : !parue ? "Le Guichet unique refuse de créer le brouillon d'une société sans annonce parue (journal et date de parution) : c'est une règle de l'INPI. Joignez l'attestation dans le chat dès réception."
+                      : 'Après la préparation du dossier.'
+                  : !fid ? 'Après la création du brouillon.' : 'Après la signature des documents par le client.',
+    alertes: statutSI === 'a_faire' && fid && manqueAnnonce ? [AVERTISSEMENT_ANNONCE]
+      : statutSI === 'a_faire' && fid && sansAttestation ? ["L'attestation de parution n'est pas encore jointe : le greffe la réclamera."] : undefined,
     lienSignature: statutSI === 'attente' ? si.lien || null : null,
     actions: actionsSI,
   });
@@ -768,6 +776,11 @@ async function annonceFaite(supa, orgId, dossierId) {
   await majParcours(supa, orgId, dossierId, { annonce: { statut: 'faite', le: new Date().toISOString() } });
 }
 
+async function annoncePassee(supa, orgId, dossierId) {
+  await dossierExige(supa, orgId, dossierId);
+  await majParcours(supa, orgId, dossierId, { annonce: { statut: 'passee', le: new Date().toISOString() } });
+}
+
 async function verserAttestation(supa, orgId, dossierId) {
   const { dossier, fid } = await formaliteExige(supa, orgId, dossierId);
   const docs = (await documentsDe(supa, dossierId)).filter(estAttestation);
@@ -846,7 +859,7 @@ async function surWebhook(supa, requestId, eventName) {
 
 module.exports = {
   ETAPES, etat, envoyerSignatureClient, signerFormalite, signatureSimple, annulerSignature, payer, deleguer, surWebhook,
-  reverserActes, redeclarerSignature, annonceFaite, verserAttestation, versementIgnore, recommencerSignatureInpi,
+  reverserActes, redeclarerSignature, annonceFaite, annoncePassee, verserAttestation, versementIgnore, recommencerSignatureInpi,
   // tests
   _interne: { annonceRequise, actesASigner, categorieGU, signatairesProposes, champsSignature, telephoneE164, estAttestation },
 };

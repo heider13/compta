@@ -65,6 +65,7 @@ const SIMPLES = {
   'reverser-actes': ['reverserActes', 'signature_client.reversement'],
   'redeclarer-signature': ['redeclarerSignature', 'signature_inpi.redeclaree'],
   'annonce-faite': ['annonceFaite', 'annonce.faite'],
+  'annonce-passee': ['annoncePassee', 'annonce.passee'],
   'verser-attestation': ['verserAttestation', 'annonce.attestation_versee'],
   'versement-ignore': ['versementIgnore', 'signature_client.versement_manuel'],
   'recommencer-signature-inpi': ['recommencerSignatureInpi', 'signature_inpi.recommencee'],
