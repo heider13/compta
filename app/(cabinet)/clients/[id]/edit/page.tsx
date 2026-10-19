@@ -3,7 +3,7 @@
 import { use, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Archive, ChevronRight, Loader2 } from 'lucide-react';
+import { Archive } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import {
   FORMES_JURIDIQUES,
@@ -17,7 +17,9 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
+import { Skeleton } from '@/components/ui/skeleton';
 import { Textarea } from '@/components/ui/textarea';
+import { PageHeader, PageShell } from '@/components/cabinet/PageHeader';
 
 interface PageProps {
   params: Promise<{ id: string }>;
@@ -186,81 +188,88 @@ export default function EditClientPage({ params }: PageProps) {
 
   if (loading) {
     return (
-      <div className="mx-auto w-full max-w-4xl p-4 sm:p-6">
-        <div className="flex items-center gap-2 rounded-xl border border-border bg-card px-6 py-10 text-sm text-muted-foreground">
-          <Loader2 className="size-4 animate-spin" />
-          Chargement…
+      <PageShell className="max-w-3xl">
+        <div className="space-y-2" role="status" aria-live="polite">
+          <span className="sr-only">Chargement…</span>
+          <Skeleton className="h-3 w-24" />
+          <Skeleton className="h-7 w-64" />
         </div>
-      </div>
+        <div className="space-y-5 rounded-xl border bg-card p-5">
+          <Skeleton className="h-4 w-48" />
+          {[0, 1, 2].map((i) => (
+            <div key={i} className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-2">
+                <Skeleton className="h-3 w-24" />
+                <Skeleton className="h-9 w-full" />
+              </div>
+              <div className="space-y-2">
+                <Skeleton className="h-3 w-24" />
+                <Skeleton className="h-9 w-full" />
+              </div>
+            </div>
+          ))}
+        </div>
+      </PageShell>
     );
   }
   if (!form) {
     return (
-      <div className="mx-auto w-full max-w-4xl space-y-4 p-4 sm:p-6">
-        <div className="flex items-center justify-between">
-          <h1>Modifier le client</h1>
-          <Button variant="ghost" asChild>
-            <Link href="/clients">← Retour</Link>
-          </Button>
-        </div>
+      <PageShell className="max-w-3xl">
+        <PageHeader
+          eyebrow="Clients"
+          title="Modifier le client"
+          actions={
+            <Button variant="ghost" size="sm" asChild>
+              <Link href="/clients">← Retour</Link>
+            </Button>
+          }
+        />
         <div
           role="alert"
           className="rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive"
         >
           {error ?? 'Client introuvable.'}
         </div>
-      </div>
+      </PageShell>
     );
   }
 
   return (
-    <div className="mx-auto w-full max-w-4xl space-y-6 p-4 sm:p-6">
-      {/* Fil d'ariane */}
-      <nav
-        aria-label="Fil d'ariane"
-        className="flex min-w-0 items-center gap-1.5 text-sm text-muted-foreground"
-      >
-        <Link href="/clients" className="transition-colors hover:text-foreground">
-          Clients
-        </Link>
-        <ChevronRight className="size-3.5 shrink-0" aria-hidden="true" />
-        <Link
-          href={`/clients/${id}`}
-          className="truncate transition-colors hover:text-foreground"
-        >
-          {form.denomination}
-        </Link>
-        <ChevronRight className="size-3.5 shrink-0" aria-hidden="true" />
-        <span className="font-medium text-foreground">Modifier</span>
-      </nav>
-
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="min-w-0">
-          <h1 className="truncate">Modifier le client</h1>
-          <p className="text-sm text-muted-foreground">{form.denomination}</p>
-        </div>
-        <div className="flex gap-2">
-          <Button variant="ghost" asChild>
-            <Link href={`/clients/${id}`}>Annuler</Link>
-          </Button>
-          <Button
-            type="button"
-            variant="outline"
-            onClick={handleArchive}
-            disabled={archiving || submitting}
-          >
-            <Archive className="size-4" />
-            {archiving ? 'Archivage…' : 'Archiver'}
-          </Button>
-        </div>
-      </div>
+    <PageShell className="max-w-3xl">
+      <PageHeader
+        eyebrow={
+          <>
+            Modifier
+            {form.siren && <span className="tabular-nums"> · SIREN {form.siren}</span>}
+          </>
+        }
+        title={<span className="block truncate">{form.denomination || 'Modifier le client'}</span>}
+        actions={
+          <>
+            <Button variant="ghost" size="sm" asChild>
+              <Link href={`/clients/${id}`}>Annuler</Link>
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={handleArchive}
+              disabled={archiving || submitting}
+              className="text-destructive hover:bg-destructive/10 hover:text-destructive"
+            >
+              <Archive className="size-4" />
+              {archiving ? 'Archivage…' : 'Archiver'}
+            </Button>
+          </>
+        }
+      />
 
       <form onSubmit={handleSubmit}>
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Informations de la société</CardTitle>
+        <Card className="gap-0 py-0">
+          <CardHeader className="border-b px-5 py-4 [.border-b]:pb-4">
+            <CardTitle className="text-sm">Informations de la société</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-4">
+          <CardContent className="space-y-4 p-5">
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-1.5">
                 <Label htmlFor="denomination">
@@ -281,6 +290,7 @@ export default function EditClientPage({ params }: PageProps) {
                   onChange={(e) => update('siren', e.target.value)}
                   inputMode="numeric"
                   maxLength={11}
+                  className="font-mono tabular-nums"
                 />
               </div>
             </div>
@@ -310,6 +320,7 @@ export default function EditClientPage({ params }: PageProps) {
                   id="code_naf"
                   value={form.code_naf}
                   onChange={(e) => update('code_naf', e.target.value)}
+                  className="font-mono"
                 />
               </div>
             </div>
@@ -333,6 +344,7 @@ export default function EditClientPage({ params }: PageProps) {
                   onChange={(e) => update('capital_social', e.target.value)}
                   min="0"
                   step="0.01"
+                  className="font-mono tabular-nums"
                 />
               </div>
             </div>
@@ -347,7 +359,7 @@ export default function EditClientPage({ params }: PageProps) {
             </div>
 
             <Separator className="my-2" />
-            <h3 className="text-sm font-semibold">Contact principal</h3>
+            <h3 className="label-mono">Contact principal</h3>
 
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-1.5">
@@ -407,7 +419,7 @@ export default function EditClientPage({ params }: PageProps) {
               </div>
             )}
 
-            <div className="flex justify-end gap-2 pt-2">
+            <div className="flex flex-wrap justify-end gap-2 border-t pt-4">
               <Button variant="ghost" asChild>
                 <Link href={`/clients/${id}`}>Annuler</Link>
               </Button>
@@ -418,6 +430,6 @@ export default function EditClientPage({ params }: PageProps) {
           </CardContent>
         </Card>
       </form>
-    </div>
+    </PageShell>
   );
 }

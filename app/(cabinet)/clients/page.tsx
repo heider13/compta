@@ -19,7 +19,9 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { StatCard } from '@/components/cabinet/dashboard/StatCard';
+import { StatCard, StatStrip } from '@/components/cabinet/dashboard/StatCard';
+import { PageHeader, PageShell } from '@/components/cabinet/PageHeader';
+import { EmptyState } from '@/components/cabinet/EmptyState';
 
 export const dynamic = 'force-dynamic';
 
@@ -55,6 +57,7 @@ export default async function ClientsPage() {
   const distinctFormes = new Set(
     clients.map((c) => c.forme_juridique).filter(Boolean),
   ).size;
+  const withSiren = clients.filter((c) => !!c.siren).length;
 
   const stats = [
     {
@@ -63,7 +66,6 @@ export default async function ClientsPage() {
       hint: 'Clients actifs',
       icon: Users,
       href: null,
-      tileClass: 'text-primary bg-[#ede7ff]',
     },
     {
       label: 'Ajoutées ce mois',
@@ -71,7 +73,6 @@ export default async function ClientsPage() {
       hint: 'Nouveaux clients',
       icon: CalendarPlus,
       href: null,
-      tileClass: 'text-[#7551e8] bg-[#f3f1fa]',
     },
     {
       label: 'Formes juridiques',
@@ -79,28 +80,36 @@ export default async function ClientsPage() {
       hint: 'Types représentés',
       icon: Building2,
       href: null,
-      tileClass: 'text-[#ff887b] bg-[#fff3f1]',
+    },
+    {
+      label: 'Immatriculées',
+      value: withSiren,
+      hint: 'Avec un SIREN connu',
+      icon: Building2,
+      href: null,
     },
   ];
 
   return (
-    <div className="mx-auto w-full max-w-7xl space-y-6 p-4 sm:p-6">
-      {/* Header */}
-      <div className="flex flex-wrap items-end justify-between gap-4">
-        <div className="min-w-0">
-          <h1>Clients</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            {clients.length}{' '}
+    <PageShell>
+      <PageHeader
+        eyebrow="Portefeuille"
+        title="Clients"
+        description={
+          <>
+            <span className="font-mono tabular-nums">{clients.length}</span>{' '}
             {clients.length > 1 ? 'entreprises gérées' : 'entreprise gérée'}
-          </p>
-        </div>
-        <Button asChild size="lg">
-          <Link href="/clients/new">
-            <Plus className="size-4" />
-            Nouveau client
-          </Link>
-        </Button>
-      </div>
+          </>
+        }
+        actions={
+          <Button asChild size="sm">
+            <Link href="/clients/new">
+              <Plus className="size-4" />
+              Nouveau client
+            </Link>
+          </Button>
+        }
+      />
 
       {error && (
         <div
@@ -111,104 +120,93 @@ export default async function ClientsPage() {
         </div>
       )}
 
-      {/* Stat row */}
       {clients.length > 0 && (
-        <div className="grid gap-4 [grid-template-columns:repeat(auto-fit,minmax(210px,1fr))]">
+        <StatStrip>
           {stats.map((s) => (
-            <div key={s.label} className="min-w-0">
-              <StatCard
-                label={s.label}
-                value={s.value}
-                hint={s.hint}
-                icon={s.icon}
-                href={s.href}
-                tileClass={s.tileClass}
-              />
-            </div>
+            <StatCard key={s.label} {...s} />
           ))}
-        </div>
+        </StatStrip>
       )}
 
-      {/* Liste des clients */}
-      <Card className="py-0">
-        <CardContent className="px-0">
+      <Card className="gap-0 py-0">
+        <CardContent className="p-0">
           {clients.length === 0 && !error ? (
-            <div className="flex flex-col items-center gap-4 px-6 py-16 text-center">
-              <div className="grid size-12 place-items-center rounded-full bg-accent text-primary">
-                <Building2 className="size-6" aria-hidden="true" />
-              </div>
-              <div className="space-y-1">
-                <p className="font-medium">Aucun client pour l&apos;instant</p>
-                <p className="text-sm text-muted-foreground">
-                  Commencez par enregistrer votre première entreprise.
-                </p>
-              </div>
-              <Button asChild variant="outline">
-                <Link href="/clients/new">
-                  <Plus className="size-4" />
-                  Nouveau client
-                </Link>
-              </Button>
-            </div>
+            <EmptyState
+              icon={Building2}
+              title="Aucun client pour l'instant"
+              description="Commencez par enregistrer votre première entreprise à partir de son SIREN."
+              action={
+                <Button asChild variant="outline" size="sm">
+                  <Link href="/clients/new">
+                    <Plus className="size-4" />
+                    Nouveau client
+                  </Link>
+                </Button>
+              }
+            />
           ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="w-14" />
-                  <TableHead>Dénomination</TableHead>
-                  <TableHead>SIREN</TableHead>
-                  <TableHead>Forme</TableHead>
-                  <TableHead>Ajouté le</TableHead>
-                  <TableHead className="w-24 text-right" />
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {clients.map((c) => (
-                  <TableRow
-                    key={c.id}
-                    className="group relative transition-colors hover:bg-[#f5f3fb]"
-                  >
-                    <TableCell className="pl-4">
-                      <Avatar className="size-8">
-                        <AvatarFallback className="bg-accent text-xs font-semibold text-primary">
-                          {getInitials(c.denomination)}
-                        </AvatarFallback>
-                      </Avatar>
-                    </TableCell>
-                    <TableCell className="max-w-64 font-medium">
-                      <Link
-                        href={`/clients/${c.id}`}
-                        className="block truncate after:absolute after:inset-0"
-                      >
-                        {c.denomination}
-                      </Link>
-                    </TableCell>
-                    <TableCell className="font-mono text-xs text-muted-foreground">
-                      {formatSiren(c.siren)}
-                    </TableCell>
-                    <TableCell>
-                      {c.forme_juridique ? (
-                        <Badge variant="secondary">{c.forme_juridique}</Badge>
-                      ) : (
-                        <span className="text-muted-foreground">—</span>
-                      )}
-                    </TableCell>
-                    <TableCell className="text-sm text-muted-foreground">
-                      {formatDateFr(c.created_at)}
-                    </TableCell>
-                    <TableCell className="pr-4 text-right">
-                      <ArrowRight
-                        className="ml-auto size-4 text-primary opacity-0 transition-opacity group-hover:opacity-100"
-                        aria-hidden="true"
-                      />
-                    </TableCell>
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-14" />
+                    <TableHead className="text-xs">Dénomination</TableHead>
+                    <TableHead className="text-xs">SIREN</TableHead>
+                    <TableHead className="text-xs">Forme</TableHead>
+                    <TableHead className="text-xs">Ajouté le</TableHead>
+                    <TableHead className="w-12 text-right" />
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                </TableHeader>
+                <TableBody>
+                  {clients.map((c) => (
+                    <TableRow
+                      key={c.id}
+                      className="group relative transition-colors hover:bg-muted/50"
+                    >
+                      <TableCell className="pl-4">
+                        <Avatar className="size-8 rounded-md">
+                          <AvatarFallback className="rounded-md border bg-background text-[11px] font-semibold text-muted-foreground">
+                            {getInitials(c.denomination)}
+                          </AvatarFallback>
+                        </Avatar>
+                      </TableCell>
+                      <TableCell className="max-w-64 font-medium">
+                        <Link
+                          href={`/clients/${c.id}`}
+                          className="block truncate after:absolute after:inset-0 focus-visible:outline-none"
+                        >
+                          {c.denomination}
+                        </Link>
+                      </TableCell>
+                      <TableCell className="font-mono text-xs tabular-nums text-muted-foreground">
+                        {formatSiren(c.siren)}
+                      </TableCell>
+                      <TableCell>
+                        {c.forme_juridique ? (
+                          <Badge variant="outline" className="font-normal">
+                            {c.forme_juridique}
+                          </Badge>
+                        ) : (
+                          <span className="text-muted-foreground">—</span>
+                        )}
+                      </TableCell>
+                      <TableCell className="font-mono text-xs tabular-nums text-muted-foreground">
+                        {formatDateFr(c.created_at)}
+                      </TableCell>
+                      <TableCell className="pr-4 text-right">
+                        <ArrowRight
+                          className="ml-auto size-4 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100"
+                          aria-hidden="true"
+                        />
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
           )}
         </CardContent>
       </Card>
-    </div>
+    </PageShell>
   );
 }

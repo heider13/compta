@@ -7,9 +7,13 @@ import { useEffect, useState } from 'react';
 import { Download, FileText, Loader2, Sparkles } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Markdown } from '@/components/ui/markdown';
+import { PageHeader, PageShell } from '@/components/cabinet/PageHeader';
+import { EmptyState } from '@/components/cabinet/EmptyState';
 
 const VPS = process.env.NEXT_PUBLIC_VPS_BACKEND_URL ?? 'https://0dao73k.cserverhost.cloud';
 
@@ -91,41 +95,36 @@ export default function DocumentsPage() {
   ];
 
   return (
-    <div className="mx-auto w-full max-w-7xl space-y-6 p-4 sm:p-6">
-      {/* Header */}
-      <div className="flex flex-wrap items-end justify-between gap-4">
-        <div className="flex min-w-0 items-center gap-3">
-          <span className="grid size-11 shrink-0 place-items-center rounded-xl bg-[#ede7ff] text-primary">
-            <FileText className="size-5" />
-          </span>
-          <div className="min-w-0">
-            <h1>Rédaction de documents</h1>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Génération de documents juridiques par l&apos;IA, appuyée sur le droit français.
-            </p>
-          </div>
-        </div>
-      </div>
+    <PageShell>
+      <PageHeader
+        eyebrow="Outils IA"
+        title="Rédaction de documents"
+        description="Génération de documents juridiques par l'IA, appuyée sur le droit français. Relisez toujours le projet avant usage."
+      />
 
-      <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)]">
-        <Card className="h-fit min-w-0">
-          <CardHeader>
-            <CardTitle className="text-base">Votre demande</CardTitle>
+      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.3fr)]">
+        <Card className="h-fit min-w-0 gap-0 py-0">
+          <CardHeader className="border-b px-5 py-4 [.border-b]:pb-4">
+            <CardTitle className="text-sm">Votre demande</CardTitle>
+            <CardDescription className="text-xs">Type de document et brief en langage naturel</CardDescription>
           </CardHeader>
-          <CardContent className="space-y-4">
+          <CardContent className="space-y-4 p-5">
             <div className="space-y-1.5">
               <Label htmlFor="docType">Type de document</Label>
               <select
                 id="docType"
                 value={docType}
                 onChange={(e) => setDocType(e.target.value)}
-                className="border-input flex h-10 w-full rounded-md border bg-[#f3f1fa] px-3 text-sm outline-none transition-colors focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/30"
+                className="border-input flex h-9 w-full rounded-md border bg-background px-3 text-sm shadow-xs outline-none transition-[color,box-shadow] focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
               >
                 {selectTypes.map((t) => <option key={t.id} value={t.id}>{t.label}</option>)}
               </select>
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="brief">Brief</Label>
+              <div className="flex items-baseline justify-between gap-2">
+                <Label htmlFor="brief">Brief</Label>
+                <span className="font-mono text-[11px] tabular-nums text-muted-foreground">{brief.length} car.</span>
+              </div>
               <Textarea
                 id="brief"
                 value={brief}
@@ -141,44 +140,61 @@ export default function DocumentsPage() {
               {busy ? <><Loader2 className="size-4 animate-spin" /> Rédaction…</> : <><Sparkles className="size-4" /> Générer le document</>}
             </Button>
             {error && (
-              <div role="alert" className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+              <div role="alert" className="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
                 {error}
               </div>
             )}
           </CardContent>
         </Card>
 
-        <Card className="min-h-[400px] min-w-0">
-          <CardHeader className="flex-row items-center justify-between space-y-0">
-            <CardTitle className="min-w-0 truncate text-base">{result ? result.title : 'Aperçu'}</CardTitle>
+        <Card className="min-h-[400px] min-w-0 gap-0 py-0">
+          <CardHeader className="flex flex-row items-center justify-between gap-3 border-b px-5 py-4 [.border-b]:pb-4">
+            <div className="min-w-0 space-y-1">
+              <p className="label-mono flex items-center gap-1.5">
+                {busy ? (
+                  <><span className="live-dot size-1.5 text-primary" aria-hidden /> Rédaction en cours</>
+                ) : result ? (
+                  <><span className="size-1.5 rounded-full bg-success" aria-hidden /> Projet généré</>
+                ) : (
+                  'Aperçu'
+                )}
+              </p>
+              <CardTitle className="min-w-0 truncate text-sm">{result ? result.title : 'Document'}</CardTitle>
+            </div>
             {result && (
               <Button size="sm" variant="outline" onClick={downloadDocx} className="shrink-0">
                 <Download className="size-4" /> Télécharger .docx
               </Button>
             )}
           </CardHeader>
-          <CardContent>
+          <CardContent className="p-0">
             {!result && !busy && (
-              <div className="grid place-items-center py-16 text-center text-sm text-muted-foreground">
-                <span className="mb-3 grid size-12 place-items-center rounded-full bg-[#ede7ff] text-primary">
-                  <Sparkles className="size-6" />
-                </span>
-                Le document généré s&apos;affichera ici.
-              </div>
+              <EmptyState
+                icon={FileText}
+                title="Aucun document généré"
+                description="Choisissez un type de document, décrivez votre besoin puis lancez la génération : le projet s'affichera ici."
+              />
             )}
             {busy && (
-              <div className="grid place-items-center py-16 text-primary">
-                <Loader2 className="size-6 animate-spin" />
+              <div className="space-y-3 p-5" aria-busy="true" aria-label="Rédaction en cours">
+                <Skeleton className="h-5 w-2/5" />
+                <Skeleton className="h-3.5 w-full" />
+                <Skeleton className="h-3.5 w-11/12" />
+                <Skeleton className="h-3.5 w-4/5" />
+                <Skeleton className="mt-5 h-4 w-1/3" />
+                <Skeleton className="h-3.5 w-full" />
+                <Skeleton className="h-3.5 w-10/12" />
+                <Skeleton className="h-3.5 w-3/4" />
               </div>
             )}
             {result && (
-              <pre className="max-h-[70vh] overflow-y-auto whitespace-pre-wrap rounded-lg bg-[#f5f3fb] p-4 font-sans text-sm leading-relaxed text-foreground">
-                {result.markdown}
-              </pre>
+              <div className="max-h-[70vh] overflow-y-auto px-6 py-5">
+                <Markdown>{result.markdown}</Markdown>
+              </div>
             )}
           </CardContent>
         </Card>
       </div>
-    </div>
+    </PageShell>
   );
 }

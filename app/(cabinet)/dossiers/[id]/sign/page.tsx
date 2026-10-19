@@ -4,13 +4,15 @@
 
 import Link from 'next/link';
 import { notFound, redirect } from 'next/navigation';
-import { CheckCircle2, ExternalLink, PenLine, RefreshCw } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, ExternalLink, PenLine, RefreshCw } from 'lucide-react';
 import { createClient } from '@/lib/supabase/server';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils';
+import { PageHeader, PageShell } from '@/components/cabinet/PageHeader';
+import { EmptyState } from '@/components/cabinet/EmptyState';
 
 export const dynamic = 'force-dynamic';
 
@@ -154,85 +156,104 @@ export default async function DossierSignPage({
   const okFlag = sp.ok === '1';
 
   return (
-    <div className="mx-auto w-full max-w-7xl space-y-6 p-4 sm:p-6">
-      <nav className="flex items-center gap-1.5 text-sm text-muted-foreground">
-        <Link href="/dossiers" className="hover:text-foreground">
-          Dossiers
-        </Link>
-        <span>›</span>
-        <span className="font-mono text-xs">{dossier.reference ?? dossier.id.slice(0, 8)}</span>
-        <span>›</span>
-        <span className="text-foreground">Signature</span>
-      </nav>
-
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Signature électronique</h1>
-        <p className="text-sm text-muted-foreground">
-          {dossier.client_name} · {dossier.type_formalite} ·{' '}
-          <span className="font-mono text-xs">{dossier.reference ?? dossier.id.slice(0, 8)}</span>
-        </p>
-      </div>
+    <PageShell>
+      <PageHeader
+        eyebrow={
+          <span className="inline-flex items-center gap-1.5">
+            <Link href="/dossiers" className="text-inherit no-underline hover:text-foreground">
+              Dossiers
+            </Link>
+            <span aria-hidden>/</span>
+            <Link href={`/dossiers/${dossier.id}`} className="normal-case tracking-normal text-inherit no-underline hover:text-foreground">
+              {dossier.reference ?? dossier.id.slice(0, 8)}
+            </Link>
+            <span aria-hidden>/</span>
+            <span>Signature</span>
+          </span>
+        }
+        title="Signature électronique"
+        description={
+          <>
+            {dossier.client_name} · {dossier.type_formalite} ·{' '}
+            <span className="font-mono text-xs">{dossier.reference ?? dossier.id.slice(0, 8)}</span>
+          </>
+        }
+      />
 
       {okFlag && (
-        <div className="flex items-center gap-2 rounded-lg border border-green-300 bg-green-50 px-4 py-3 text-sm text-green-800">
-          <CheckCircle2 className="size-4 shrink-0" />
+        <div className="flex items-center gap-2 rounded-lg border border-success/30 bg-success/10 px-4 py-3 text-sm">
+          <CheckCircle2 className="size-4 shrink-0 text-success" />
           Demande de signature envoyée. Le signataire va recevoir un email Yousign.
         </div>
       )}
       {errorCode && (
         <div
           role="alert"
-          className="rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive"
+          className="flex items-start gap-2 rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive"
         >
-          Erreur : <span className="font-mono text-xs">{errorCode}</span>
+          <AlertTriangle className="mt-0.5 size-4 shrink-0" />
+          <span>
+            Erreur : <span className="font-mono text-xs">{errorCode}</span>
+          </span>
         </div>
       )}
 
-      <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_320px]">
-        <div className="space-y-5">
+      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
+        <div className="min-w-0 space-y-6">
           {/* Statut courant */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Statut</CardTitle>
+          <Card className="gap-0 py-0">
+            <CardHeader className="flex flex-row items-center justify-between gap-3 border-b px-5 py-4 [.border-b]:pb-4">
+              <CardTitle className="text-sm">Statut</CardTitle>
+              {hasPending && !isSigned && !isDeclined && !isExpired && (
+                <span className="inline-flex items-center gap-1.5 font-mono text-[11px] text-muted-foreground">
+                  <span className="live-dot size-1.5 text-warning" />
+                  en attente
+                </span>
+              )}
             </CardHeader>
-            <CardContent>
+            <CardContent className="p-5">
               {!hasPending ? (
-                <p className="text-sm text-muted-foreground">
-                  Aucune demande de signature envoyée pour ce dossier.
-                </p>
+                <EmptyState
+                  icon={PenLine}
+                  title="Aucune demande de signature envoyée pour ce dossier."
+                  compact
+                />
               ) : (
-                <div className="grid gap-2.5 text-sm">
+                <div className="grid gap-3 text-sm">
                   <KvRow
                     label="État"
                     value={
-                      <strong
+                      <span
                         className={cn(
-                          'font-semibold',
-                          isSigned && 'text-green-700',
-                          (isDeclined || isExpired) && 'text-destructive',
+                          'inline-flex items-center gap-1.5 rounded-md border px-1.5 py-px font-mono text-xs font-semibold uppercase',
+                          isSigned
+                            ? 'border-success/30 bg-success/10 text-success'
+                            : isDeclined || isExpired
+                              ? 'border-destructive/30 bg-destructive/10 text-destructive'
+                              : 'border-warning/40 bg-warning/10 text-warning',
                         )}
                       >
                         {meta.signature_status ?? 'pending'}
-                      </strong>
+                      </span>
                     }
                   />
                   <KvRow label="Signataire" value={meta.signature_signer_email ?? '—'} />
                   <KvRow
                     label="Référence Yousign"
                     value={
-                      <span className="font-mono text-xs">{meta.signature_request_id}</span>
+                      <span className="font-mono text-xs break-all">{meta.signature_request_id}</span>
                     }
                   />
                   {meta.signature_requested_at && (
                     <KvRow
                       label="Envoyée le"
-                      value={new Date(meta.signature_requested_at).toLocaleString('fr-FR')}
+                      value={<span className="font-mono text-xs tabular-nums">{new Date(meta.signature_requested_at).toLocaleString('fr-FR')}</span>}
                     />
                   )}
                   {meta.signature_signed_at && (
                     <KvRow
                       label="Signée le"
-                      value={new Date(meta.signature_signed_at).toLocaleString('fr-FR')}
+                      value={<span className="font-mono text-xs tabular-nums">{new Date(meta.signature_signed_at).toLocaleString('fr-FR')}</span>}
                     />
                   )}
                   {meta.signature_link && !isSigned && (
@@ -252,15 +273,15 @@ export default async function DossierSignPage({
 
           {/* Formulaire */}
           {!isSigned && (
-            <Card>
-              <CardHeader>
-                <CardTitle>
+            <Card className="gap-0 py-0">
+              <CardHeader className="border-b px-5 py-4 [.border-b]:pb-4">
+                <CardTitle className="text-sm">
                   {hasPending && !isDeclined && !isExpired
                     ? 'Renvoyer / mettre à jour la demande'
                     : 'Envoyer la demande de signature'}
                 </CardTitle>
               </CardHeader>
-              <CardContent>
+              <CardContent className="p-5">
                 {hasPending && !isDeclined && !isExpired ? (
                   <form action={resendSignatureEmail} className="space-y-3">
                     <input type="hidden" name="dossierId" value={dossier.id} />
@@ -292,18 +313,18 @@ export default async function DossierSignPage({
                     </div>
                     <div className="space-y-1.5">
                       <Label htmlFor="phoneNumber">Téléphone (OTP SMS, optionnel)</Label>
-                      <Input id="phoneNumber" name="phoneNumber" placeholder="+33612345678" />
+                      <Input id="phoneNumber" name="phoneNumber" placeholder="+33612345678" className="font-mono" />
                     </div>
-                    <div className="flex justify-end">
-                      <Button type="submit" size="lg">
+                    <div className="flex flex-col-reverse gap-3 border-t pt-4 sm:flex-row sm:items-center sm:justify-between">
+                      <p className="text-xs text-muted-foreground">
+                        Signature avancée RGS via Yousign. Le signataire reçoit un email avec
+                        un lien sécurisé.
+                      </p>
+                      <Button type="submit" className="shrink-0">
                         <PenLine className="size-4" />
                         Envoyer la demande de signature
                       </Button>
                     </div>
-                    <p className="text-xs text-muted-foreground">
-                      Signature avancée RGS via Yousign. Le signataire reçoit un email avec
-                      un lien sécurisé.
-                    </p>
                   </form>
                 )}
               </CardContent>
@@ -311,35 +332,44 @@ export default async function DossierSignPage({
           )}
         </div>
 
-        <aside className="space-y-5">
-          <Card>
-            <CardHeader>
-              <CardTitle>Workflow</CardTitle>
+        <aside className="min-w-0 space-y-6">
+          <Card className="gap-0 py-0">
+            <CardHeader className="border-b px-5 py-4 [.border-b]:pb-4">
+              <CardTitle className="text-sm">Workflow</CardTitle>
             </CardHeader>
-            <CardContent>
-              <ol className="list-decimal space-y-1.5 pl-4 text-sm leading-relaxed text-muted-foreground">
-                <li>Admin valide le dossier (modif / cessation INPI).</li>
-                <li>Signature requise → cette page envoie au client.</li>
-                <li>Client signe sur Yousign (RGS avancée).</li>
-                <li>
-                  Webhook reçoit la signature → dossier passe à{' '}
-                  <strong className="text-foreground">VALIDATED_INTERNAL</strong>.
-                </li>
-                <li>Push automatique vers l&apos;INPI.</li>
+            <CardContent className="p-5">
+              <ol className="space-y-3 text-sm leading-relaxed text-muted-foreground">
+                {[
+                  <>Admin valide le dossier (modif / cessation INPI).</>,
+                  <>Signature requise → cette page envoie au client.</>,
+                  <>Client signe sur Yousign (RGS avancée).</>,
+                  <>
+                    Webhook reçoit la signature → dossier passe à{' '}
+                    <strong className="font-mono text-xs text-foreground">VALIDATED_INTERNAL</strong>.
+                  </>,
+                  <>Push automatique vers l&apos;INPI.</>,
+                ].map((txt, i) => (
+                  <li key={i} className="flex gap-3">
+                    <span className="mt-0.5 grid size-5 shrink-0 place-items-center rounded-full border bg-background font-mono text-[10px] font-semibold text-muted-foreground tabular-nums">
+                      {i + 1}
+                    </span>
+                    <span className="min-w-0">{txt}</span>
+                  </li>
+                ))}
               </ol>
             </CardContent>
           </Card>
         </aside>
       </div>
-    </div>
+    </PageShell>
   );
 }
 
 function KvRow({ label, value }: { label: string; value: React.ReactNode }) {
   return (
-    <div className="flex justify-between gap-3">
-      <span className="text-muted-foreground">{label}</span>
-      <span className="text-right font-medium">{value}</span>
+    <div className="flex items-center justify-between gap-3">
+      <span className="label-mono shrink-0">{label}</span>
+      <span className="min-w-0 text-right font-medium">{value}</span>
     </div>
   );
 }

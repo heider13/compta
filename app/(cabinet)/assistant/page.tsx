@@ -28,7 +28,10 @@ import {
 import { createClient } from '@/lib/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Kbd } from '@/components/ui/kbd';
 import { Markdown } from '@/components/ui/markdown';
+import { PageHeader, PageShell } from '@/components/cabinet/PageHeader';
+import { EmptyState } from '@/components/cabinet/EmptyState';
 import {
   Sheet,
   SheetContent,
@@ -356,7 +359,7 @@ export default function AssistantPage() {
         e.preventDefault();
         ask(input);
       }}
-      className="rounded-[22px] border bg-card p-3 shadow-[0_8px_30px_rgba(20,15,45,0.06)] transition-colors focus-within:border-primary/40"
+      className="rounded-xl border bg-card p-2 shadow-sm transition-[border-color,box-shadow] focus-within:border-primary/50 focus-within:ring-[3px] focus-within:ring-primary/15"
     >
       <textarea
         ref={textareaRef}
@@ -371,18 +374,19 @@ export default function AssistantPage() {
         placeholder="Dites-moi ce dont vous avez besoin… (question fiscale, comptable ou juridique)"
         rows={big ? 3 : 2}
         disabled={busy}
-        className="w-full resize-none border-0 bg-transparent px-2 pt-1.5 text-[15px] leading-relaxed outline-none placeholder:text-muted-foreground/70"
+        aria-label="Votre question"
+        className="w-full resize-none border-0 bg-transparent px-2 pt-1.5 text-sm leading-relaxed outline-none placeholder:text-muted-foreground disabled:opacity-60"
       />
       {/* Chip du document joint */}
       {attachment && (
-        <div className="mx-1 mb-1 inline-flex max-w-full items-center gap-2 rounded-lg border bg-muted/50 px-2.5 py-1.5 text-xs">
+        <div className="mx-1 mb-1 inline-flex max-w-full items-center gap-2 rounded-md border bg-background px-2 py-1 text-xs shadow-xs">
           <FileText className="size-3.5 shrink-0 text-primary" />
           <span className="truncate font-medium">{attachment.name}</span>
-          <span className="hidden shrink-0 text-muted-foreground sm:inline">· {attachment.summary}</span>
+          <span className="hidden shrink-0 font-mono text-[11px] text-muted-foreground sm:inline">· {attachment.summary}</span>
           <button
             type="button"
             onClick={() => setAttachment(null)}
-            className="ml-0.5 rounded p-0.5 hover:bg-muted"
+            className="ml-0.5 rounded p-0.5 text-muted-foreground hover:bg-muted hover:text-foreground"
             aria-label="Retirer le document"
           >
             <X className="size-3.5" />
@@ -390,7 +394,7 @@ export default function AssistantPage() {
         </div>
       )}
       <div className="flex items-center justify-between gap-2 px-1 pt-1">
-        <div className="flex items-center gap-2">
+        <div className="flex min-w-0 items-center gap-1.5">
           <input
             ref={fileRef}
             type="file"
@@ -405,24 +409,30 @@ export default function AssistantPage() {
             type="button"
             onClick={() => fileRef.current?.click()}
             disabled={attaching || busy}
-            className="inline-flex items-center gap-1.5 rounded-full border bg-background px-2.5 py-1 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted disabled:opacity-50"
+            className="inline-flex h-7 items-center gap-1.5 rounded-md px-2 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:opacity-50"
           >
-            {attaching ? <Loader2 className="size-3 animate-spin" /> : <Paperclip className="size-3" />}
-            Pièce jointe
+            {attaching ? <Loader2 className="size-3.5 animate-spin" /> : <Paperclip className="size-3.5" />}
+            {attaching ? 'Analyse…' : 'Pièce jointe'}
           </button>
-          <span className="hidden items-center gap-1.5 rounded-full border bg-muted/40 px-2.5 py-1 text-xs text-muted-foreground sm:inline-flex">
-            <Sparkles className="size-3" />
+          <span className="hidden items-center gap-1.5 rounded-md border bg-muted/40 px-2 py-0.5 font-mono text-[10.5px] text-muted-foreground sm:inline-flex">
+            <Sparkles className="size-3 text-primary" />
             Légifrance · BOFiP · CGI
           </span>
         </div>
-        <button
-          type="submit"
-          disabled={busy || (!input.trim() && !attachment)}
-          className="grid size-9 place-items-center rounded-full bg-primary text-primary-foreground transition-opacity hover:opacity-90 disabled:opacity-40"
-          aria-label="Envoyer"
-        >
-          {busy ? <Loader2 className="size-4 animate-spin" /> : <ArrowUp className="size-4" />}
-        </button>
+        <div className="flex shrink-0 items-center gap-2">
+          <span className="hidden items-center gap-1 text-[11px] text-muted-foreground md:inline-flex">
+            <Kbd>Entrée</Kbd> pour envoyer
+          </span>
+          <Button
+            type="submit"
+            size="icon"
+            disabled={busy || (!input.trim() && !attachment)}
+            className="size-8"
+            aria-label="Envoyer"
+          >
+            {busy ? <Loader2 className="size-4 animate-spin" /> : <ArrowUp className="size-4" />}
+          </Button>
+        </div>
       </div>
     </form>
   );
@@ -439,18 +449,17 @@ export default function AssistantPage() {
       </SheetTrigger>
       <SheetContent side="right" className="w-full p-0 sm:max-w-sm">
         <SheetHeader className="border-b">
-          <SheetTitle className="flex items-center gap-2 font-serif text-base">
-            <span className="grid size-7 place-items-center rounded-lg bg-accent text-primary">
-              <History className="size-4" />
-            </span>
+          <SheetTitle className="flex items-center gap-2 text-sm">
+            <History className="size-4 text-muted-foreground" />
             Historique des conversations
+            {conversations.length > 0 && (
+              <span className="font-mono text-xs font-normal tabular-nums text-muted-foreground">{conversations.length}</span>
+            )}
           </SheetTitle>
         </SheetHeader>
         <div className="min-h-0 flex-1 overflow-y-auto p-2">
           {conversations.length === 0 ? (
-            <p className="px-3 py-8 text-center text-sm text-muted-foreground">
-              Aucune conversation pour l'instant.
-            </p>
+            <EmptyState icon={MessageSquare} title="Aucune conversation pour l'instant" description="Vos échanges avec l'assistant apparaîtront ici." compact />
           ) : (
             <ul className="space-y-0.5">
               {conversations.map((c) => {
@@ -462,33 +471,28 @@ export default function AssistantPage() {
                       onClick={() => loadConversation(c.id)}
                       disabled={loadingConversation}
                       className={cn(
-                        'flex w-full items-start gap-2.5 rounded-xl px-3 py-2.5 text-left transition-colors hover:bg-[#f5f3fb] disabled:opacity-60',
-                        active && 'bg-accent',
+                        'flex w-full items-start gap-2.5 rounded-md px-3 py-2 text-left transition-colors hover:bg-muted/60 disabled:opacity-60',
+                        active && 'bg-brand-soft hover:bg-brand-soft',
                       )}
                     >
-                      <span
-                        className={cn(
-                          'mt-0.5 grid size-7 shrink-0 place-items-center rounded-lg',
-                          active ? 'bg-[#ede7ff] text-[#5b36d6]' : 'bg-muted text-muted-foreground',
-                        )}
-                      >
-                        <MessageSquare className="size-3.5" />
-                      </span>
+                      <MessageSquare
+                        className={cn('mt-0.5 size-4 shrink-0', active ? 'text-primary' : 'text-muted-foreground')}
+                      />
                       <span className="min-w-0 flex-1">
                         <span className="flex items-center gap-2">
                           <span
                             className={cn(
                               'truncate text-sm font-medium text-foreground',
-                              active && 'text-primary',
+                              active && 'text-brand-soft-foreground',
                             )}
                           >
                             {c.title || 'Conversation'}
                           </span>
                           {active && (
-                            <span className="size-1.5 shrink-0 rounded-full bg-[#ff887b]" aria-hidden />
+                            <span className="live-dot size-1.5 shrink-0 text-primary" aria-hidden />
                           )}
                         </span>
-                        <span className="mt-0.5 block truncate text-xs text-muted-foreground">
+                        <span className="mt-0.5 block truncate font-mono text-[11px] text-muted-foreground">
                           {shortDate(c.updated_at || c.created_at)}
                         </span>
                       </span>
@@ -506,54 +510,48 @@ export default function AssistantPage() {
   // ─── Écran d'accueil (aucun message) — façon Ordalie ─────
   if (messages.length === 0) {
     return (
-      <div className="mx-auto w-full max-w-3xl px-4 py-10 sm:px-6 sm:py-14">
-        <div className="mb-7 flex items-start justify-between gap-3">
-          <div className="min-w-0">
-            <h1 className="font-serif text-3xl font-medium tracking-tight text-foreground sm:text-4xl">
-              {greeting()}
-              {firstName ? ` ${firstName}` : ''},
-            </h1>
-            <p className="mt-1 text-lg text-muted-foreground">
-              quelle question souhaitez-vous éclaircir&nbsp;?
-            </p>
-          </div>
-          <div className="shrink-0 pt-1">{renderHistory()}</div>
-        </div>
+      <PageShell className="max-w-3xl">
+        <PageHeader
+          eyebrow={
+            <span className="inline-flex items-center gap-1.5">
+              <span className="live-dot size-1.5 text-success" aria-hidden />
+              Assistant IA · fiscal, comptable &amp; juridique
+            </span>
+          }
+          title={`${greeting()}${firstName ? ` ${firstName}` : ''}`}
+          description="Quelle question souhaitez-vous éclaircir ? Réponses sourcées (Légifrance, BOFiP, CGI) ; joignez un document pour l'analyser."
+          actions={renderHistory()}
+        />
 
         {renderComposer(true)}
 
         {error && (
-          <div role="alert" className="mt-3 rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+          <div role="alert" className="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
             {error}
           </div>
         )}
 
-        <div className="mt-10">
+        <div className="pt-2">
           <div className="mb-3 flex items-center justify-between">
-            <h2 className="text-sm font-semibold text-foreground">Par où commencer&nbsp;?</h2>
-            <span className="text-xs text-muted-foreground">{TASKS.length} tâches</span>
+            <h2 className="text-sm">Par où commencer&nbsp;?</h2>
+            <span className="font-mono text-[11px] tabular-nums text-muted-foreground">{TASKS.length} tâches</span>
           </div>
-          <div className="grid gap-3 sm:grid-cols-2">
-            {TASKS.map((t, i) => (
+          <div className="grid gap-2 sm:grid-cols-2">
+            {TASKS.map((t) => (
               <button
                 key={t.title}
                 type="button"
                 onClick={() => pickTask(t.prompt)}
-                className="group flex items-start gap-3 rounded-2xl border bg-card p-4 text-left transition-all hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-[0_10px_30px_rgba(20,15,45,0.08)]"
+                className="group flex items-start gap-3 rounded-lg border bg-card p-3 text-left shadow-xs transition-colors hover:border-brand-border hover:bg-muted/40"
               >
-                <span
-                  className={cn(
-                    'grid size-10 shrink-0 place-items-center rounded-xl',
-                    i % 2 === 0 ? 'bg-accent text-primary' : 'bg-primary/10 text-primary',
-                  )}
-                >
-                  <t.icon className="size-5" />
+                <span className="grid size-8 shrink-0 place-items-center rounded-md border bg-background text-muted-foreground transition-colors group-hover:border-brand-border group-hover:bg-brand-soft group-hover:text-brand-soft-foreground">
+                  <t.icon className="size-4" />
                 </span>
                 <span className="min-w-0 flex-1">
                   <span className="flex items-center gap-2">
                     <span className="truncate text-sm font-semibold text-foreground">{t.title}</span>
                     {t.tag && (
-                      <Badge variant="secondary" className="shrink-0 px-1.5 py-0 text-[10px] font-medium">
+                      <Badge variant="outline" className="shrink-0 px-1.5 py-0 font-mono text-[10px] font-normal text-muted-foreground">
                         {t.tag}
                       </Badge>
                     )}
@@ -567,19 +565,24 @@ export default function AssistantPage() {
             Réponses appuyées sur les sources officielles — ceci n’est pas une consultation juridique.
           </p>
         </div>
-      </div>
+      </PageShell>
     );
   }
 
   // ─── Écran de conversation ───────────────────────────────
   return (
     <div className="mx-auto flex h-[calc(100vh-4rem)] w-full max-w-3xl flex-col px-4 py-4 sm:px-6">
-      <div className="mb-3 flex items-center gap-3">
-        <span className="grid size-9 place-items-center rounded-xl bg-accent text-primary">
-          <Scale className="size-5" />
+      <div className="mb-3 flex flex-wrap items-center gap-3 border-b pb-3">
+        <span className="grid size-8 shrink-0 place-items-center rounded-md border border-brand-border bg-brand-soft text-brand-soft-foreground">
+          <Scale className="size-4" />
         </span>
         <div className="min-w-0">
-          <h1 className="font-serif text-lg font-medium tracking-tight">Assistant fiscal &amp; juridique</h1>
+          <h1 className="sr-only">Assistant fiscal &amp; juridique</h1>
+          <p className="truncate text-sm font-semibold" aria-hidden>Assistant fiscal &amp; juridique</p>
+          <p className="flex items-center gap-1.5 font-mono text-[11px] text-muted-foreground">
+            <span className={cn('live-dot size-1.5', busy ? 'text-primary' : 'text-success')} aria-hidden />
+            {busy ? 'génère une réponse' : `${messages.length} message${messages.length > 1 ? 's' : ''}`}
+          </p>
         </div>
         <div className="ml-auto flex items-center gap-2">
           {renderHistory()}
@@ -597,39 +600,41 @@ export default function AssistantPage() {
         </div>
       </div>
 
-      <div className="flex-1 space-y-4 overflow-y-auto pb-4">
+      <div className="flex-1 space-y-5 overflow-y-auto pb-4" aria-busy={busy}>
         {messages.map((m, i) => (
           <div key={i} className={cn('flex gap-3', m.role === 'user' && 'justify-end')}>
             {m.role === 'assistant' && (
-              <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-accent text-primary">
-                <Bot className="size-4" />
+              <span className="mt-0.5 grid size-6 shrink-0 place-items-center rounded-md border border-brand-border bg-brand-soft text-brand-soft-foreground">
+                <Bot className="size-3.5" />
               </span>
             )}
             <div
               className={cn(
-                'max-w-[85%] rounded-2xl px-4 py-3 text-sm leading-relaxed',
-                m.role === 'user' ? 'bg-primary text-primary-foreground' : 'border bg-card',
+                'min-w-0 text-sm leading-relaxed',
+                m.role === 'user'
+                  ? 'max-w-[85%] rounded-2xl rounded-br-md border bg-muted/60 px-3.5 py-2'
+                  : 'flex-1',
               )}
             >
               {m.role === 'assistant' && m.content === '' && busy ? (
-                <span className="inline-flex items-center gap-2 text-muted-foreground">
-                  <Loader2 className="size-3.5 animate-spin" /> Recherche dans les sources…
+                <span className="inline-flex items-center gap-2 pt-0.5 font-mono text-[11px] text-muted-foreground">
+                  <span className="live-dot size-1.5 text-primary" aria-hidden /> Recherche dans les sources…
                 </span>
               ) : m.role === 'assistant' ? (
                 <Markdown>{m.content}</Markdown>
               ) : (
-                <div className="whitespace-pre-wrap">{m.content}</div>
+                <div className="whitespace-pre-wrap break-words">{m.content}</div>
               )}
               {m.attachmentName && (
-                <div className="mt-2 inline-flex items-center gap-1.5 rounded-md bg-white/15 px-2 py-1 text-xs">
-                  <FileText className="size-3" />
+                <div className="mt-2 inline-flex items-center gap-1.5 rounded-md border bg-background px-2 py-1 font-mono text-[11px] text-muted-foreground">
+                  <FileText className="size-3 text-primary" />
                   <span className="max-w-[220px] truncate">{m.attachmentName}</span>
                 </div>
               )}
               {m.sources && m.sources.length > 0 && (
-                <div className="mt-3 border-t pt-2">
-                  <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                    Sources
+                <div className="mt-3 border-t pt-2.5">
+                  <p className="label-mono mb-1.5">
+                    Sources <span className="tabular-nums">· {m.sources.length}</span>
                   </p>
                   <div className="flex flex-wrap gap-1.5">
                     {m.sources.map((s) => (
@@ -641,10 +646,10 @@ export default function AssistantPage() {
                         className="inline-flex max-w-full items-center gap-1"
                         title={s.title}
                       >
-                        <Badge variant="secondary" className="max-w-[300px] cursor-pointer gap-1 font-normal hover:bg-accent">
-                          <span className="shrink-0 font-semibold text-primary">[{s.n}]</span>
+                        <Badge variant="outline" className="max-w-[300px] cursor-pointer gap-1 bg-background font-normal transition-colors hover:bg-accent">
+                          <span className="shrink-0 font-mono text-[10.5px] text-primary">[{s.n}]</span>
                           {s.source_label && (
-                            <span className="shrink-0 rounded bg-primary/10 px-1 text-[10px] font-medium text-primary">
+                            <span className="shrink-0 rounded bg-brand-soft px-1 font-mono text-[10px] text-brand-soft-foreground">
                               {s.source_label}
                             </span>
                           )}
@@ -663,7 +668,7 @@ export default function AssistantPage() {
       </div>
 
       {error && (
-        <div role="alert" className="mb-2 rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+        <div role="alert" className="mb-2 rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
           {error}
         </div>
       )}

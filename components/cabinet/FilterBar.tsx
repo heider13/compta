@@ -62,7 +62,8 @@ export function FilterBar({ filters, searchPlaceholder = 'Rechercher…' }: Filt
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder={searchPlaceholder}
-            className="bg-card pl-8"
+            aria-label={searchPlaceholder}
+            className="bg-background pl-8"
           />
         </div>
       </form>
@@ -75,11 +76,12 @@ export function FilterBar({ filters, searchPlaceholder = 'Rechercher…' }: Filt
             key={f.key}
             value={current}
             onChange={(e) => applyFilter(f.key, e.target.value)}
+            aria-label={f.label}
             className={cn(
-              'h-9 cursor-pointer rounded-md border border-input px-3 text-sm shadow-xs outline-none transition-colors focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50',
+              'h-9 min-w-0 flex-1 cursor-pointer rounded-md border border-input px-3 sm:flex-none text-sm shadow-xs outline-none transition-colors focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50',
               current
-                ? 'border-primary/40 bg-accent font-medium text-accent-foreground'
-                : 'bg-card text-foreground',
+                ? 'border-brand-border bg-brand-soft font-medium text-brand-soft-foreground'
+                : 'bg-background text-foreground',
             )}
           >
             <option value="">{f.label}</option>

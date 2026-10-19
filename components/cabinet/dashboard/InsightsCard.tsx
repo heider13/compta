@@ -24,17 +24,17 @@ export function InsightsCard({ awaitingValidation, inProgress }: InsightsCardPro
   }
 
   return (
-    <div className="flex h-full min-w-0 flex-col justify-between gap-6 rounded-xl p-6 text-white shadow-sm [background:linear-gradient(135deg,#5b36d6,#7551e8_55%,#ff887b)]">
+    <div className="ai-glow flex h-full min-w-0 flex-col justify-between gap-5 rounded-xl border border-brand-border bg-card p-5 shadow-xs">
       <div className="space-y-3">
-        <span className="inline-flex items-center gap-1.5 rounded-full bg-white/20 px-2.5 py-1 text-xs font-medium">
-          <Sparkles className="size-3.5" />
+        <span className="inline-flex items-center gap-1.5 rounded-md border border-brand-border bg-brand-soft px-2 py-0.5 font-mono text-[10.5px] uppercase tracking-wider text-brand-soft-foreground">
+          <Sparkles className="size-3" />
           Insights IA
         </span>
-        <p className="text-base font-medium leading-relaxed text-balance">{message}</p>
+        <p className="text-sm font-medium leading-relaxed text-balance text-foreground">{message}</p>
       </div>
       <Link
         href="/assistant"
-        className="inline-flex w-fit items-center gap-1.5 rounded-full bg-white px-4 py-2 text-sm font-semibold text-[#5b36d6] transition-colors hover:bg-white/90"
+        className="inline-flex h-8 w-fit items-center gap-1.5 rounded-md bg-primary px-3 text-sm font-medium text-primary-foreground shadow-xs transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50"
       >
         {cta}
         <ArrowRight className="size-4" />

@@ -1,24 +1,12 @@
 'use client';
 
 import Link from 'next/link';
-import { LogoMark } from '@/components/brand/Logo';
 import { usePathname } from 'next/navigation';
-import {
-  Network,
-  LayoutDashboard,
-  Scale,
-  FileSignature,
-  FileText,
-  Users,
-  CheckSquare,
-  User,
-  CreditCard,
-  KeyRound,
-  BookOpen,
-  Palette,
-  Webhook,
-} from 'lucide-react';
+import { BookOpen, ChevronsUpDown, CreditCard, LogOut, Plus, Search, User } from 'lucide-react';
 
+import { LogoMark } from '@/components/brand/Logo';
+import { NAV_SECTIONS, isNavActive, type NavSection } from '@/components/cabinet/nav';
+import { ouvrirPalette } from '@/components/cabinet/CommandPalette';
 import {
   Sidebar,
   SidebarContent,
@@ -29,102 +17,177 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
+  useSidebar,
 } from '@/components/ui/sidebar';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Kbd } from '@/components/ui/kbd';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { cn } from '@/lib/utils';
 
 interface CabinetSidebarProps {
   orgName: string;
   userLabel: string;
+  userEmail: string;
   userInitials: string;
+  plan?: string | null;
+  inpi: { configured: boolean; env: 'prod' | 'demo' };
 }
 
-interface NavItem {
-  href: string;
-  label: string;
-  matchPrefix: string;
-  alsoMatch?: string[];
-  exact?: boolean;
-  icon: React.ComponentType<{ className?: string }>;
-}
-
-const NAV_PILOTAGE: NavItem[] = [
-  { href: '/dashboard', label: 'Tableau de bord', matchPrefix: '/dashboard', exact: true, icon: LayoutDashboard },
-  { href: '/dossiers', label: 'Formalités', matchPrefix: '/dossiers', alsoMatch: ['/inpi'], icon: FileText },
-  { href: '/rne', label: 'Documents RNE', matchPrefix: '/rne', icon: BookOpen },
-  { href: '/clients', label: 'Clients', matchPrefix: '/clients', icon: Users },
-  { href: '/groupes', label: 'Groupes', matchPrefix: '/groupes', icon: Network },
-  { href: '/tasks', label: 'Tâches', matchPrefix: '/tasks', icon: CheckSquare },
-  { href: '/assistant', label: 'Assistant IA', matchPrefix: '/assistant', icon: Scale },
-  { href: '/documents', label: 'Rédiger un doc', matchPrefix: '/documents', icon: FileSignature },
-];
-
-const NAV_CABINET: NavItem[] = [
-  { href: '/profile', label: 'Mon compte', matchPrefix: '/profile', icon: User },
-  { href: '/billing', label: 'Facturation', matchPrefix: '/billing', icon: CreditCard },
-  { href: '/settings/inpi', label: 'Connexion INPI', matchPrefix: '/settings/inpi', icon: KeyRound },
-  { href: '/settings/branding', label: 'Marque blanche', matchPrefix: '/settings/branding', icon: Palette },
-  { href: '/settings/api-keys', label: 'API & webhooks', matchPrefix: '/settings/api', icon: Webhook },
-];
-
-function isActive(item: NavItem, pathname: string): boolean {
-  if (item.exact) return pathname === item.matchPrefix;
-  return [item.matchPrefix, ...(item.alsoMatch ?? [])].some((p) => pathname === p || pathname.startsWith(`${p}/`));
-}
-
-function NavGroup({ label, items, pathname }: { label: string; items: NavItem[]; pathname: string }) {
+function NavGroup({ section, pathname }: { section: NavSection; pathname: string }) {
+  const { isMobile, setOpenMobile } = useSidebar();
   return (
     <SidebarGroup>
-      <SidebarGroupLabel>{label}</SidebarGroupLabel>
+      <SidebarGroupLabel className="font-mono text-[10.5px] uppercase tracking-wider">{section.label}</SidebarGroupLabel>
       <SidebarMenu>
-        {items.map((item) => (
-          <SidebarMenuItem key={item.href}>
-            <SidebarMenuButton asChild isActive={isActive(item, pathname)} tooltip={item.label}>
-              <Link href={item.href}>
-                <item.icon className="size-4" />
-                <span>{item.label}</span>
-              </Link>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
-        ))}
+        {section.items.map((item) => {
+          const active = isNavActive(item, pathname);
+          return (
+            <SidebarMenuItem key={item.href}>
+              <SidebarMenuButton
+                asChild
+                isActive={active}
+                tooltip={item.label}
+                className="relative data-[active=true]:bg-background data-[active=true]:font-medium data-[active=true]:shadow-xs data-[active=true]:ring-1 data-[active=true]:ring-border"
+              >
+                <Link href={item.href} onClick={() => isMobile && setOpenMobile(false)}>
+                  <item.icon className={cn('size-4', active && 'text-primary')} />
+                  <span>{item.label}</span>
+                </Link>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+          );
+        })}
       </SidebarMenu>
     </SidebarGroup>
   );
 }
 
-export function CabinetSidebar({ orgName, userLabel, userInitials }: CabinetSidebarProps) {
+export function CabinetSidebar({ orgName, userLabel, userEmail, userInitials, plan, inpi }: CabinetSidebarProps) {
   const pathname = usePathname() ?? '';
+  const planLabel = (plan && plan.charAt(0).toUpperCase() + plan.slice(1)) || 'Cabinet';
 
   return (
-    <Sidebar collapsible="icon">
-      <SidebarHeader>
-        <div className="flex items-center gap-2.5 px-2 py-1.5">
-          <LogoMark size={30} onDark className="shrink-0" />
-          <div className="grid min-w-0 group-data-[collapsible=icon]:hidden">
-            <span className="truncate text-sm font-semibold text-sidebar-foreground">
-              <span className="font-bold text-[#ff887b]">L</span>egaly&nbsp;
-              <span className="font-bold text-[#ff887b]">AI</span>
-            </span>
-            <span className="truncate text-xs text-sidebar-foreground/60">{orgName}</span>
-          </div>
+    <Sidebar collapsible="icon" variant="inset">
+      <SidebarHeader className="gap-3">
+        <SidebarMenu>
+          <SidebarMenuItem>
+            <SidebarMenuButton size="lg" asChild className="hover:bg-sidebar-accent">
+              <Link href="/dashboard">
+                <span className="grid size-8 shrink-0 place-items-center rounded-lg border bg-background shadow-xs">
+                  <LogoMark size={22} />
+                </span>
+                <span className="grid min-w-0 flex-1 text-left leading-tight">
+                  <span className="truncate text-sm font-semibold tracking-tight text-foreground">Legaly AI</span>
+                  <span className="truncate text-xs text-muted-foreground">{orgName}</span>
+                </span>
+              </Link>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+        </SidebarMenu>
+
+        <div className="grid gap-1.5 group-data-[collapsible=icon]:hidden">
+          <Link
+            href="/dossiers/new"
+            className="inline-flex h-8 items-center justify-center gap-1.5 rounded-md bg-primary px-3 text-sm font-medium text-primary-foreground shadow-xs transition-colors hover:bg-primary/90"
+          >
+            <Plus className="size-4" />
+            Nouvelle formalité
+          </Link>
+          <button
+            type="button"
+            onClick={ouvrirPalette}
+            className="flex h-8 items-center gap-2 rounded-md border bg-background px-2.5 text-sm text-muted-foreground shadow-xs transition-colors hover:text-foreground"
+          >
+            <Search className="size-3.5" />
+            <span className="flex-1 text-left">Rechercher…</span>
+            <Kbd>⌘K</Kbd>
+          </button>
         </div>
       </SidebarHeader>
 
       <SidebarContent>
-        <NavGroup label="Pilotage" items={NAV_PILOTAGE} pathname={pathname} />
-        <NavGroup label="Cabinet" items={NAV_CABINET} pathname={pathname} />
+        {NAV_SECTIONS.map((section) => (
+          <NavGroup key={section.label} section={section} pathname={pathname} />
+        ))}
       </SidebarContent>
 
       <SidebarFooter>
-        <div className="flex items-center gap-2.5 rounded-lg px-2 py-1.5 group-data-[collapsible=icon]:justify-center">
-          <Avatar className="size-8">
-            <AvatarFallback className="bg-sidebar-accent text-xs font-semibold text-sidebar-accent-foreground">
-              {userInitials}
-            </AvatarFallback>
-          </Avatar>
-          <span className="truncate text-sm text-sidebar-foreground group-data-[collapsible=icon]:hidden">
-            {userLabel}
+        <Link
+          href="/settings/inpi"
+          className="flex items-center gap-2 rounded-md border bg-background px-2.5 py-2 text-xs shadow-xs transition-colors hover:bg-sidebar-accent group-data-[collapsible=icon]:hidden"
+        >
+          <span className={cn('live-dot shrink-0', inpi.configured ? 'text-success' : 'text-warning')} />
+          <span className="min-w-0 flex-1">
+            <span className="block truncate font-medium text-foreground">
+              {inpi.configured ? 'Guichet unique connecté' : 'Guichet unique à connecter'}
+            </span>
+            <span className="block truncate font-mono text-[10.5px] text-muted-foreground">
+              INPI · {inpi.configured ? (inpi.env === 'demo' ? 'démo' : 'production') : 'non configuré'}
+            </span>
           </span>
-        </div>
+        </Link>
+
+        <SidebarMenu>
+          <SidebarMenuItem>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <SidebarMenuButton size="lg" className="data-[state=open]:bg-sidebar-accent">
+                  <Avatar className="size-8 rounded-lg">
+                    <AvatarFallback className="rounded-lg bg-brand-soft text-xs font-semibold text-brand-soft-foreground">
+                      {userInitials}
+                    </AvatarFallback>
+                  </Avatar>
+                  <span className="grid min-w-0 flex-1 text-left leading-tight">
+                    <span className="truncate text-sm font-medium text-foreground">{userLabel}</span>
+                    <span className="truncate text-xs text-muted-foreground">Abonnement {planLabel}</span>
+                  </span>
+                  <ChevronsUpDown className="ml-auto size-4 text-muted-foreground" />
+                </SidebarMenuButton>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent side="top" align="start" className="w-(--radix-dropdown-menu-trigger-width) min-w-56">
+                <DropdownMenuLabel className="grid gap-0.5">
+                  <span className="truncate text-sm font-medium">{userLabel}</span>
+                  <span className="truncate text-xs font-normal text-muted-foreground">{userEmail}</span>
+                </DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem asChild>
+                  <Link href="/profile">
+                    <User className="size-4" />
+                    Mon compte
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link href="/billing">
+                    <CreditCard className="size-4" />
+                    Facturation
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <a href="/app.html">
+                    <BookOpen className="size-4" />
+                    Guide formalités
+                  </a>
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <form action="/auth/logout" method="post">
+                  <DropdownMenuItem asChild>
+                    <button type="submit" className="w-full">
+                      <LogOut className="size-4" />
+                      Se déconnecter
+                    </button>
+                  </DropdownMenuItem>
+                </form>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </SidebarMenuItem>
+        </SidebarMenu>
       </SidebarFooter>
     </Sidebar>
   );

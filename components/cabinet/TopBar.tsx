@@ -1,99 +1,77 @@
 'use client';
 
+import { Fragment } from 'react';
 import Link from 'next/link';
-import { Plus, Sparkles, BookOpen, CreditCard, User, ChevronDown } from 'lucide-react';
+import { usePathname } from 'next/navigation';
+import { BookOpen, Search } from 'lucide-react';
 
 import { NotificationBell } from '@/components/cabinet/NotificationBell';
+import { breadcrumbsFor } from '@/components/cabinet/nav';
+import { ouvrirPalette } from '@/components/cabinet/CommandPalette';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
+import { Kbd } from '@/components/ui/kbd';
 import { Separator } from '@/components/ui/separator';
 import { SidebarTrigger } from '@/components/ui/sidebar';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
+  Breadcrumb,
+  BreadcrumbItem,
+  BreadcrumbLink,
+  BreadcrumbList,
+  BreadcrumbPage,
+  BreadcrumbSeparator,
+} from '@/components/ui/breadcrumb';
 
-interface TopBarProps {
-  userLabel: string;
-  userEmail: string;
-  userInitials: string;
-  plan?: string | null;
-}
-
-export function TopBar({ userLabel, userEmail, userInitials, plan }: TopBarProps) {
-  const planLabel = (plan && plan.charAt(0).toUpperCase() + plan.slice(1)) || 'Cabinet';
+export function TopBar() {
+  const pathname = usePathname() ?? '';
+  const crumbs = breadcrumbsFor(pathname);
 
   return (
-    <header className="sticky top-0 z-10 flex h-14 items-center gap-3 border-b bg-background px-4">
+    <header className="sticky top-0 z-20 flex h-14 shrink-0 items-center gap-2 border-b bg-background/80 px-3 backdrop-blur-md supports-[backdrop-filter]:bg-background/70 sm:px-4 md:rounded-t-xl">
       <SidebarTrigger className="-ml-1" />
-      <Separator orientation="vertical" className="h-5" />
+      <Separator orientation="vertical" className="mr-1 data-[orientation=vertical]:h-4" />
 
-      <Button asChild size="sm">
-        <Link href="/dossiers/new">
-          <Plus className="size-4" />
-          Nouvelle formalité
-        </Link>
+      <Breadcrumb className="min-w-0 flex-1">
+        <BreadcrumbList className="flex-nowrap">
+          {crumbs.map((c, i) => {
+            const last = i === crumbs.length - 1;
+            return (
+              <Fragment key={c.href}>
+                {i > 0 && <BreadcrumbSeparator className={i < crumbs.length - 1 ? 'hidden md:block' : undefined} />}
+                <BreadcrumbItem className={!last ? 'hidden md:inline-flex' : 'min-w-0'}>
+                  {last ? (
+                    <BreadcrumbPage className="truncate font-medium">{c.label}</BreadcrumbPage>
+                  ) : (
+                    <BreadcrumbLink asChild>
+                      <Link href={c.href}>{c.label}</Link>
+                    </BreadcrumbLink>
+                  )}
+                </BreadcrumbItem>
+              </Fragment>
+            );
+          })}
+        </BreadcrumbList>
+      </Breadcrumb>
+
+      <button
+        type="button"
+        onClick={ouvrirPalette}
+        className="hidden h-8 w-64 items-center gap-2 rounded-md border bg-muted/40 px-2.5 text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground md:flex"
+      >
+        <Search className="size-3.5" />
+        <span className="flex-1 text-left">Rechercher un dossier…</span>
+        <Kbd className="bg-background">⌘K</Kbd>
+      </button>
+      <Button variant="ghost" size="icon" className="md:hidden" onClick={ouvrirPalette} aria-label="Rechercher">
+        <Search className="size-4" />
       </Button>
 
-      <div className="flex flex-1 justify-center">
-        <Link href="/billing" className="hidden sm:block">
-          <Badge className="gap-1.5 rounded-full bg-gradient-to-r from-primary to-accent-foreground px-3.5 py-1.5 text-white shadow-sm transition-opacity hover:opacity-90">
-            <Sparkles className="size-3" />
-            Abonnement {planLabel}
-          </Badge>
-        </Link>
-      </div>
-
-      <Button asChild variant="ghost" size="sm" className="hidden text-muted-foreground lg:inline-flex">
-        <a href="/app.html">
+      <Button asChild variant="ghost" size="icon" className="hidden text-muted-foreground lg:inline-flex" aria-label="Guide formalités">
+        <a href="/app.html" title="Guide formalités">
           <BookOpen className="size-4" />
-          Guide formalités
         </a>
       </Button>
 
       <NotificationBell />
-
-      <DropdownMenu>
-        <DropdownMenuTrigger className="flex items-center gap-2 rounded-full py-1 pl-1 pr-2 transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
-          <Avatar className="size-8">
-            <AvatarFallback className="bg-accent text-xs font-semibold text-accent-foreground">
-              {userInitials}
-            </AvatarFallback>
-          </Avatar>
-          <ChevronDown className="size-3.5 text-muted-foreground" />
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" className="w-56">
-          <DropdownMenuLabel className="grid gap-0.5">
-            <span className="truncate text-sm font-medium">{userLabel}</span>
-            <span className="truncate text-xs font-normal text-muted-foreground">{userEmail}</span>
-          </DropdownMenuLabel>
-          <DropdownMenuSeparator />
-          <DropdownMenuItem asChild>
-            <Link href="/profile">
-              <User className="size-4" />
-              Mon compte
-            </Link>
-          </DropdownMenuItem>
-          <DropdownMenuItem asChild>
-            <Link href="/billing">
-              <CreditCard className="size-4" />
-              Facturation
-            </Link>
-          </DropdownMenuItem>
-          <DropdownMenuSeparator />
-          <DropdownMenuItem asChild>
-            <a href="/app.html">
-              <BookOpen className="size-4" />
-              Guide formalités
-            </a>
-          </DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
     </header>
   );
 }

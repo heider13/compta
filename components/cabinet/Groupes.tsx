@@ -12,10 +12,24 @@ import {
   Plus, RefreshCw, Search, Trash2, XCircle,
 } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
+import { Skeleton } from '@/components/ui/skeleton';
+import { PageHeader } from '@/components/cabinet/PageHeader';
+import { EmptyState } from '@/components/cabinet/EmptyState';
 import { cn } from '@/lib/utils';
+
+// Bandeau d'erreur commun (tokens d'état, plus de couleurs en dur)
+function Erreur({ children }: { children: React.ReactNode }) {
+  return (
+    <p role="alert" className="!m-0 flex items-start gap-2 rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+      <XCircle className="mt-0.5 size-4 shrink-0" />
+      <span>{children}</span>
+    </p>
+  );
+}
 
 const VPS = process.env.NEXT_PUBLIC_VPS_BACKEND_URL ?? 'https://0dao73k.cserverhost.cloud';
 
@@ -93,45 +107,77 @@ export function GroupesListe() {
   }
 
   return (
-    <div className="space-y-5">
-      <div>
-        <h1>Groupes</h1>
-        <p className="!m-0 mt-1 text-sm text-muted-foreground">
-          Holdings, filiales et sous-filiales de vos clients : l’arbre du groupe, les détentions, les points d’attention et le suivi de chaque société.
-        </p>
-      </div>
+    <div className="space-y-6">
+      <PageHeader
+        eyebrow="Portefeuille"
+        title="Groupes"
+        description="Holdings, filiales et sous-filiales de vos clients : l’arbre du groupe, les détentions, les points d’attention et le suivi de chaque société."
+      />
 
-      <Card className="border-[#e4dcff] bg-[#f7f4ff]">
-        <CardHeader className="pb-3">
-          <CardTitle className="flex items-center gap-2 text-base"><Network className="size-4 text-primary" /> Nouveau groupe</CardTitle>
-          <CardDescription>
+      <Card className="gap-0 py-0">
+        <CardHeader className="border-b px-5 py-4 [.border-b]:pb-4">
+          <CardTitle className="flex items-center gap-2 text-sm"><Network className="size-4 text-primary" /> Nouveau groupe</CardTitle>
+          <CardDescription className="text-xs">
             Saisissez le SIREN de la société de tête. Les sociétés qu’elle dirige sont retrouvées au RNE, sur trois niveaux ; vous complétez ensuite les pourcentages de détention.
           </CardDescription>
         </CardHeader>
-        <CardContent>
-          <form onSubmit={creer} className="flex flex-col gap-2 sm:flex-row">
-            <Input value={siren} onChange={(e) => setSiren(e.target.value)} placeholder="SIREN de la holding (9 chiffres)" inputMode="numeric" className="sm:w-64" disabled={creation} />
-            <Input value={nom} onChange={(e) => setNom(e.target.value)} placeholder="Nom du groupe (facultatif)" className="sm:w-64" disabled={creation} />
+        <CardContent className="p-5">
+          <form onSubmit={creer} className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
+            <div className="relative sm:w-64">
+              <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
+              <Input value={siren} onChange={(e) => setSiren(e.target.value)} placeholder="SIREN de la holding (9 chiffres)" aria-label="SIREN de la société de tête" inputMode="numeric" className="pl-9 font-mono tabular-nums placeholder:font-sans" disabled={creation} />
+            </div>
+            <Input value={nom} onChange={(e) => setNom(e.target.value)} placeholder="Nom du groupe (facultatif)" aria-label="Nom du groupe" className="sm:w-64" disabled={creation} />
             <Button type="submit" disabled={creation}>
-              {creation ? <><Loader2 className="size-4 animate-spin" /> Recherche des filiales au RNE…</> : <><Search className="size-4" /> Construire l’arbre</>}
+              {creation ? <><Loader2 className="size-4 animate-spin" /> Recherche des filiales au RNE…</> : <><Network className="size-4" /> Construire l’arbre</>}
             </Button>
           </form>
+          {creation && (
+            <p className="!m-0 mt-3 flex items-center gap-2 font-mono text-[11px] text-muted-foreground">
+              <span className="live-dot size-1.5 text-primary" aria-hidden="true" />
+              Interrogation du RNE · mandats sur 3 niveaux
+            </p>
+          )}
         </CardContent>
       </Card>
 
-      {erreur && <p className="rounded-md bg-[#fff1ef] p-3 text-sm text-[#c2410c]">{erreur}</p>}
+      {erreur && <Erreur>{erreur}</Erreur>}
 
-      {!groupes && !erreur && <div className="flex items-center gap-2 text-sm text-muted-foreground"><Loader2 className="size-4 animate-spin" /> Chargement…</div>}
-      {groupes && !groupes.length && <p className="text-sm text-muted-foreground">Aucun groupe pour l’instant.</p>}
+      {!groupes && !erreur && (
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3" role="status" aria-live="polite">
+          <span className="sr-only">Chargement…</span>
+          {[0, 1, 2].map((i) => (
+            <div key={i} className="space-y-2 rounded-xl border bg-card p-4">
+              <Skeleton className="h-4 w-2/3" />
+              <Skeleton className="h-3 w-1/2" />
+              <Skeleton className="h-3 w-3/4" />
+            </div>
+          ))}
+        </div>
+      )}
+      {groupes && !groupes.length && (
+        <Card className="py-0">
+          <EmptyState icon={Network} title="Aucun groupe pour l’instant" description="Saisissez le SIREN d’une holding ci-dessus pour construire son arbre." />
+        </Card>
+      )}
       {groupes && groupes.length > 0 && (
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {groupes.map((g) => (
-            <Link key={g.id} href={`/groupes/${g.id}`} className="no-underline">
-              <Card className="h-full transition-colors hover:border-primary/50">
-                <CardContent className="space-y-1 py-4">
-                  <div className="flex items-center gap-2 font-medium text-foreground"><Network className="size-4 text-primary" /> {g.nom}</div>
-                  <p className="!m-0 text-xs text-muted-foreground">Tête : {g.tete || '—'}</p>
-                  <p className="!m-0 text-xs text-muted-foreground">{g.nb_entites} société(s) · mis à jour le {dateFr(g.updated_at)}</p>
+            <Link key={g.id} href={`/groupes/${g.id}`} className="group no-underline focus-visible:outline-none">
+              <Card className="h-full gap-0 py-0 transition-colors group-hover:bg-muted/40 group-focus-visible:ring-2 group-focus-visible:ring-ring">
+                <CardContent className="space-y-3 p-4">
+                  <div className="flex items-center gap-2.5">
+                    <span className="grid size-8 shrink-0 place-items-center rounded-md border bg-background">
+                      <Network className="size-4 text-primary" />
+                    </span>
+                    <span className="min-w-0 flex-1 truncate text-sm font-medium text-foreground">{g.nom}</span>
+                    <ChevronRight className="size-4 shrink-0 text-muted-foreground/0 transition-colors group-hover:text-muted-foreground" />
+                  </div>
+                  <p className="!m-0 truncate text-xs text-muted-foreground">Tête : {g.tete || '—'}</p>
+                  <p className="!m-0 flex items-center justify-between gap-2 font-mono text-[11px] text-muted-foreground">
+                    <span className="tabular-nums">{g.nb_entites} société(s)</span>
+                    <span className="tabular-nums">MAJ {dateFr(g.updated_at)}</span>
+                  </p>
                 </CardContent>
               </Card>
             </Link>
@@ -193,8 +239,28 @@ export function GroupeDetail({ id }: { id: string }) {
     return m;
   }, [d]);
 
-  if (erreur && !d) return <p className="rounded-md bg-[#fff1ef] p-3 text-sm text-[#c2410c]">{erreur}</p>;
-  if (!d || !arbre) return <div className="flex items-center gap-2 text-sm text-muted-foreground"><Loader2 className="size-4 animate-spin" /> Chargement du groupe…</div>;
+  if (erreur && !d) return <Erreur>{erreur}</Erreur>;
+  if (!d || !arbre) {
+    return (
+      <div className="space-y-6" role="status" aria-live="polite">
+        <span className="sr-only">Chargement du groupe…</span>
+        <div className="space-y-2">
+          <Skeleton className="h-3 w-24" />
+          <Skeleton className="h-7 w-72" />
+          <Skeleton className="h-3 w-56" />
+        </div>
+        <div className="space-y-0 overflow-hidden rounded-xl border bg-card">
+          {[0, 1, 2, 3, 4].map((i) => (
+            <div key={i} className="flex items-center gap-2 border-b px-4 py-3 last:border-0" style={{ paddingLeft: 16 + (i === 0 ? 0 : i < 3 ? 22 : 44) }}>
+              <Skeleton className="size-6 rounded-md" />
+              <Skeleton className="h-4 w-48" />
+              <Skeleton className="ml-auto h-6 w-24" />
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
 
   const manquants = d.liens.filter((l) => l.pourcentage == null).length;
   const aVerifier = d.liens.filter((l) => l.a_verifier).length;
@@ -212,26 +278,27 @@ export function GroupeDetail({ id }: { id: string }) {
     const cyclique = vu.has(e.id);
     return (
       <Fragment key={`${lien?.id ?? 'r'}-${e.id}`}>
-        <div className={cn('group flex flex-col gap-2 border-b px-3 py-2.5 last:border-0 lg:flex-row lg:items-center', !e.active && 'opacity-60')}>
+        <div className={cn('group flex flex-col gap-2 border-b px-4 py-2.5 transition-colors last:border-0 hover:bg-muted/50 lg:flex-row lg:items-center', !e.active && 'opacity-60')}>
           <div className="flex min-w-0 flex-1 items-start gap-1.5" style={{ paddingLeft: niveau * 22 }}>
             {fils.length > 0 && premier && !cyclique ? (
               <button type="button" onClick={() => setReplies((p) => { const n = new Set(p); if (n.has(e.id)) n.delete(e.id); else n.add(e.id); return n; })} className="mt-0.5 text-muted-foreground hover:text-foreground" aria-label={replie ? 'Déplier' : 'Replier'}>
                 {replie ? <ChevronRight className="size-4" /> : <ChevronDown className="size-4" />}
               </button>
             ) : <span className="w-4 shrink-0" />}
-            <span className={cn('mt-0.5 grid size-6 shrink-0 place-items-center rounded-md', e.tete ? 'bg-primary text-primary-foreground' : 'bg-[#ede7ff] text-primary')}>
+            <span className={cn('mt-0.5 grid size-6 shrink-0 place-items-center rounded-md border', e.tete ? 'border-primary bg-primary text-primary-foreground' : 'bg-background text-muted-foreground')}>
               <Building2 className="size-3.5" />
             </span>
             <div className="min-w-0">
               <div className="flex flex-wrap items-center gap-1.5">
-                <span className="font-medium">{e.denomination}</span>
-                {e.forme && <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground">{e.forme}</span>}
-                {!e.active && <span className="rounded bg-[#fff1ef] px-1.5 py-0.5 text-[10px] text-[#c2410c]">cessée</span>}
-                {e.a_verifier && <span className="rounded bg-amber-50 px-1.5 py-0.5 text-[10px] text-amber-800">à vérifier</span>}
-                {alertes.length > 0 && <span title={alertes.map((a) => a.texte).join('\n')} className="inline-flex items-center gap-0.5 rounded bg-amber-50 px-1.5 py-0.5 text-[10px] text-amber-800"><AlertTriangle className="size-3" /> {alertes.length}</span>}
+                <span className="text-sm font-medium">{e.denomination}</span>
+                {e.tete && <Badge variant="outline" className="h-5 border-brand-border bg-brand-soft px-1.5 text-[10px] text-brand-soft-foreground">tête</Badge>}
+                {e.forme && <Badge variant="outline" className="h-5 px-1.5 text-[10px] font-normal text-muted-foreground">{e.forme}</Badge>}
+                {!e.active && <Badge variant="outline" className="h-5 border-destructive/30 bg-destructive/10 px-1.5 text-[10px] text-destructive">cessée</Badge>}
+                {e.a_verifier && <Badge variant="outline" className="h-5 border-warning/40 bg-warning/10 px-1.5 text-[10px] text-warning">à vérifier</Badge>}
+                {alertes.length > 0 && <span title={alertes.map((a) => a.texte).join('\n')} className="inline-flex h-5 items-center gap-0.5 rounded-md border border-warning/40 bg-warning/10 px-1.5 font-mono text-[10px] text-warning"><AlertTriangle className="size-3" /> {alertes.length}</span>}
               </div>
               <div className="text-xs text-muted-foreground">
-                {sirenFmt(e.siren)}{e.ville ? ` · ${e.ville}` : ''}
+                <span className="font-mono tabular-nums">{sirenFmt(e.siren)}</span>{e.ville ? ` · ${e.ville}` : ''}
                 {!premier && ' · détaillée plus haut'}
                 {premier && autresMeres.length > 0 && ` · aussi détenue par ${autresMeres.map((l) => arbre.parId.get(l.parent_id)?.denomination).join(', ')}`}
               </div>
@@ -243,19 +310,19 @@ export function GroupeDetail({ id }: { id: string }) {
           )}
 
           <div className="flex min-w-0 flex-wrap items-center gap-3 text-xs lg:max-w-[260px] lg:justify-end">
-            {!e.tete && d.detentions[e.id] != null && <span className="text-muted-foreground" title="Détention indirecte par la tête du groupe">Tête : <strong className="text-foreground">{d.detentions[e.id]} %</strong></span>}
+            {!e.tete && d.detentions[e.id] != null && <span className="text-muted-foreground" title="Détention indirecte par la tête du groupe">Tête : <strong className="font-mono font-semibold tabular-nums text-foreground">{d.detentions[e.id]} %</strong></span>}
             {s?.echeance_comptes && (
-              <span className={cn('inline-flex items-center gap-1', s.echeance_comptes.en_retard ? 'text-[#c2410c]' : s.echeance_comptes.a_faire ? 'text-amber-700' : 'text-muted-foreground')} title={`Clôture ${dateFr(s.echeance_comptes.cloture)}`}>
+              <span className={cn('inline-flex items-center gap-1', s.echeance_comptes.en_retard ? 'text-destructive' : s.echeance_comptes.a_faire ? 'text-warning' : 'text-muted-foreground')} title={`Clôture ${dateFr(s.echeance_comptes.cloture)}`}>
                 <CalendarClock className="size-3.5" />
                 {s.echeance_comptes.premier_exercice ? `1re clôture ${dateFr(s.echeance_comptes.cloture)}` : s.echeance_comptes.a_faire ? `Comptes avant le ${dateFr(s.echeance_comptes.limite)}` : `Comptes à jour`}
               </span>
             )}
-            {s?.verification_en_attente && <span className="text-muted-foreground" title="Les comptes déposés sont relus au registre en arrière-plan">Comptes : vérification au RNE…</span>}
+            {s?.verification_en_attente && <span className="inline-flex items-center gap-1.5 text-muted-foreground" title="Les comptes déposés sont relus au registre en arrière-plan"><span className="live-dot size-1.5 text-primary" aria-hidden="true" />Comptes : vérification au RNE…</span>}
             {s?.formalites_en_cours && s.formalites_en_cours.length > 0 && (
-              <Link href={`/inpi/${s.formalites_en_cours[0].id}`} className="text-primary">{s.formalites_en_cours.length} formalité(s)</Link>
+              <Link href={`/inpi/${s.formalites_en_cours[0].id}`} className="font-mono text-primary tabular-nums hover:underline">{s.formalites_en_cours.length} formalité(s)</Link>
             )}
             {premier && (
-              <button type="button" onClick={() => setAjout({ parent: e.id })} className="text-muted-foreground opacity-0 transition-opacity hover:text-primary group-hover:opacity-100" title="Ajouter une filiale"><Plus className="size-4" /></button>
+              <button type="button" onClick={() => setAjout({ parent: e.id })} className="rounded text-muted-foreground opacity-0 transition-opacity hover:text-primary focus-visible:opacity-100 group-hover:opacity-100" title="Ajouter une filiale" aria-label={`Ajouter une filiale à ${e.denomination}`}><Plus className="size-4" /></button>
             )}
             {!e.tete && premier && (
               <SupprimerBouton occupe={occupe === e.id} onConfirm={() => action(e.id, () => api(`/${id}/entites/${e.id}`, { method: 'DELETE' }))} />
@@ -280,19 +347,20 @@ export function GroupeDetail({ id }: { id: string }) {
   };
 
   return (
-    <div className="space-y-5">
-      <Link href="/groupes" className="inline-flex items-center gap-1 text-sm text-muted-foreground no-underline hover:text-foreground"><ArrowLeft className="size-4" /> Tous les groupes</Link>
-
-      <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
-        <div>
+    <div className="space-y-6">
+      <header className="flex flex-wrap items-end justify-between gap-x-6 gap-y-4">
+        <div className="min-w-0 space-y-1.5">
+          <Link href="/groupes" className="label-mono inline-flex items-center gap-1 no-underline hover:text-foreground"><ArrowLeft className="size-3" /> Tous les groupes</Link>
           <NomGroupe nom={d.groupe.nom} onSave={(nom) => action('nom', () => api(`/${id}`, { method: 'PATCH', body: { nom } }))} />
-          <p className="!m-0 mt-1 text-sm text-muted-foreground">
-            {d.entites.length} société(s) · {d.liens.length} lien(s)
-            {manquants > 0 && <> · <span className="text-amber-700">{manquants} pourcentage(s) à compléter</span></>}
-            {aVerifier > 0 && <> · {aVerifier} lien(s) à vérifier</>}
+          <p className="!m-0 flex flex-wrap items-center gap-x-2 gap-y-1 font-mono text-xs text-muted-foreground tabular-nums">
+            <span>{d.entites.length} société(s)</span>
+            <span aria-hidden="true">·</span>
+            <span>{d.liens.length} lien(s)</span>
+            {manquants > 0 && <><span aria-hidden="true">·</span><span className="text-warning">{manquants} pourcentage(s) à compléter</span></>}
+            {aVerifier > 0 && <><span aria-hidden="true">·</span><span>{aVerifier} lien(s) à vérifier</span></>}
           </p>
         </div>
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <Button asChild size="sm"><Link href={`/dashboard?demande=${demande}`}><Bot className="size-4" /> Agir sur le groupe</Link></Button>
           <Button size="sm" variant="outline" onClick={() => void chargerSuivi()} disabled={chargeSuivi}>
             {chargeSuivi ? <Loader2 className="size-4 animate-spin" /> : <CalendarClock className="size-4" />} {suivi ? 'Actualiser le suivi' : 'Charger le suivi'}
@@ -302,55 +370,55 @@ export function GroupeDetail({ id }: { id: string }) {
           </Button>
           <SupprimerBouton libelle="Supprimer le groupe" occupe={occupe === 'suppr'} onConfirm={() => action('suppr', async () => { await api(`/${id}`, { method: 'DELETE' }); router.push('/groupes'); })} />
         </div>
-      </div>
+      </header>
 
-      {erreur && <p className="rounded-md bg-[#fff1ef] p-3 text-sm text-[#c2410c]">{erreur}</p>}
+      {erreur && <Erreur>{erreur}</Erreur>}
 
       {suivi && retards > 0 && (
-        <p className="flex items-center gap-2 rounded-md bg-[#fff1ef] p-3 text-sm text-[#c2410c]"><AlertTriangle className="size-4" /> {retards} société(s) du groupe ont un dépôt de comptes en retard.</p>
+        <p className="!m-0 flex items-center gap-2 rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive"><AlertTriangle className="size-4 shrink-0" /> {retards} société(s) du groupe ont un dépôt de comptes en retard.</p>
       )}
 
       {suivi && [...suivi.values()].some((x) => x.verification_en_attente) && (
-        <p className="flex items-center gap-2 rounded-md bg-muted p-3 text-sm text-muted-foreground">
-          <Loader2 className="size-4 animate-spin" /> {[...suivi.values()].filter((x) => x.verification_en_attente).length} société(s) en cours de vérification au registre (comptes déposés), une toutes les 10 secondes pour respecter les limites du RNE. Actualisez le suivi dans quelques minutes.
+        <p className="!m-0 flex items-start gap-2 rounded-lg border bg-muted/40 px-4 py-3 text-sm text-muted-foreground">
+          <span className="live-dot mt-1.5 size-1.5 shrink-0 text-primary" aria-hidden="true" /> <span><span className="font-mono tabular-nums text-foreground">{[...suivi.values()].filter((x) => x.verification_en_attente).length}</span> société(s) en cours de vérification au registre (comptes déposés), une toutes les 10 secondes pour respecter les limites du RNE. Actualisez le suivi dans quelques minutes.</span>
         </p>
       )}
 
-      <div className="grid gap-5 2xl:grid-cols-[1fr_360px]">
-        <Card className="min-w-0">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-base">Arbre du groupe</CardTitle>
-            <CardDescription>Liens trouvés au RNE à partir des mandats exercés par les sociétés du groupe. Complétez les pourcentages de détention (non publics) : ils servent aux contrôles et à la détention indirecte.</CardDescription>
+      <div className="grid gap-6 2xl:grid-cols-[1fr_360px]">
+        <Card className="min-w-0 gap-0 py-0">
+          <CardHeader className="border-b px-5 py-4 [.border-b]:pb-4">
+            <CardTitle className="text-sm">Arbre du groupe</CardTitle>
+            <CardDescription className="text-xs">Liens trouvés au RNE à partir des mandats exercés par les sociétés du groupe. Complétez les pourcentages de détention (non publics) : ils servent aux contrôles et à la détention indirecte.</CardDescription>
           </CardHeader>
-          <CardContent className="p-0">
-            <div className="border-t">{arbre.racines.map((r) => rendu(r, null, 0, new Set(), true))}</div>
+          <CardContent className="overflow-x-auto p-0">
+            <div>{arbre.racines.map((r) => rendu(r, null, 0, new Set(), true))}</div>
           </CardContent>
         </Card>
 
-        <div className="space-y-5">
-          <Card>
-            <CardHeader className="pb-2"><CardTitle className="text-base">Points d’attention</CardTitle></CardHeader>
-            <CardContent className="space-y-2 pt-0">
-              {!d.controles.length && <p className="text-sm text-muted-foreground">Aucun point relevé.</p>}
+        <div className="space-y-6">
+          <Card className="gap-0 py-0">
+            <CardHeader className="border-b px-5 py-4 [.border-b]:pb-4"><CardTitle className="text-sm">Points d’attention</CardTitle></CardHeader>
+            <CardContent className="space-y-2.5 p-5">
+              {!d.controles.length && <p className="!m-0 flex items-center gap-2 text-sm text-muted-foreground"><Check className="size-4 text-success" /> Aucun point relevé.</p>}
               {manquants > 0 && (
                 <div className="flex gap-2 text-sm"><Info className="mt-0.5 size-4 shrink-0 text-primary" /><span>{manquants} pourcentage(s) de détention à compléter dans l’arbre (non publics : statuts, PV, liste des filiales et participations).</span></div>
               )}
               {d.controles.filter((c) => !/non renseigné/.test(c.texte)).sort((a, b) => ['erreur', 'attention', 'info'].indexOf(a.niveau) - ['erreur', 'attention', 'info'].indexOf(b.niveau)).slice(0, 25).map((c, i) => (
                 <div key={i} className="flex gap-2 text-sm">
-                  {c.niveau === 'erreur' ? <XCircle className="mt-0.5 size-4 shrink-0 text-[#c2410c]" /> : c.niveau === 'attention' ? <AlertTriangle className="mt-0.5 size-4 shrink-0 text-amber-600" /> : <Info className="mt-0.5 size-4 shrink-0 text-primary" />}
+                  {c.niveau === 'erreur' ? <XCircle className="mt-0.5 size-4 shrink-0 text-destructive" /> : c.niveau === 'attention' ? <AlertTriangle className="mt-0.5 size-4 shrink-0 text-warning" /> : <Info className="mt-0.5 size-4 shrink-0 text-primary" />}
                   <span>{c.texte}</span>
                 </div>
               ))}
             </CardContent>
           </Card>
           {!!d.groupe.metadata?.meres_possibles?.length && (
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-base">Société mère possible</CardTitle>
-                <CardDescription>Dirigeant personne morale de la tête : le groupe peut remonter plus haut.</CardDescription>
+            <Card className="gap-0 py-0">
+              <CardHeader className="border-b px-5 py-4 [.border-b]:pb-4">
+                <CardTitle className="text-sm">Société mère possible</CardTitle>
+                <CardDescription className="text-xs">Dirigeant personne morale de la tête : le groupe peut remonter plus haut.</CardDescription>
               </CardHeader>
-              <CardContent className="space-y-1 pt-0 text-sm">
-                {d.groupe.metadata.meres_possibles.map((m) => <div key={m.siren}>{m.denomination} <span className="text-xs text-muted-foreground">({sirenFmt(m.siren)}{m.qualite ? ` · ${m.qualite}` : ''})</span></div>)}
+              <CardContent className="divide-y p-0 text-sm">
+                {d.groupe.metadata.meres_possibles.map((m) => <div key={m.siren} className="px-5 py-3">{m.denomination} <span className="text-xs text-muted-foreground">(<span className="font-mono tabular-nums">{sirenFmt(m.siren)}</span>{m.qualite ? ` · ${m.qualite}` : ''})</span></div>)}
               </CardContent>
             </Card>
           )}
@@ -377,7 +445,7 @@ function LienEditeur({ lien, occupe, onSave }: { lien: Lien; occupe: boolean; on
         <input
           value={valeur} onChange={(e) => setValeur(e.target.value)} onBlur={enregistrer} onKeyDown={(e) => e.key === 'Enter' && (e.target as HTMLInputElement).blur()}
           inputMode="decimal" placeholder="?" aria-label="Pourcentage de détention"
-          className={cn('h-7 w-16 rounded-md border bg-background px-2 text-right tabular-nums outline-none focus:border-primary', lien.pourcentage == null && 'border-amber-300 bg-amber-50/60')}
+          className={cn('h-7 w-16 rounded-md border bg-background px-2 text-right font-mono tabular-nums shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50', lien.pourcentage == null && 'border-warning/40 bg-warning/10')}
         />
         <span>%</span>
       </label>
@@ -401,7 +469,7 @@ function SupprimerBouton({ onConfirm, occupe, libelle }: { onConfirm: () => void
     );
   }
   return (
-    <button type="button" onClick={() => (confirme ? onConfirm() : setConfirme(true))} className={cn('text-xs', confirme ? 'font-medium text-destructive' : 'text-muted-foreground opacity-0 transition-opacity hover:text-destructive group-hover:opacity-100')} title="Retirer du groupe">
+    <button type="button" onClick={() => (confirme ? onConfirm() : setConfirme(true))} className={cn('rounded text-xs', confirme ? 'font-medium text-destructive' : 'text-muted-foreground opacity-0 transition-opacity hover:text-destructive focus-visible:opacity-100 group-hover:opacity-100')} title="Retirer du groupe" aria-label="Retirer du groupe">
       {confirme ? 'Retirer ?' : <Trash2 className="size-4" />}
     </button>
   );
@@ -420,14 +488,14 @@ function AjoutFiliale({ parent, niveau, occupe, onAnnuler, onAjouter }: {
   return (
     <form
       onSubmit={(e) => { e.preventDefault(); if (valide) onAjouter({ siren: s || undefined, denomination: denomination.trim() || undefined, pourcentage: pourcentage ? Number(pourcentage.replace(',', '.')) : null, direction: direction.trim() || undefined }); }}
-      className="flex flex-col gap-2 border-b bg-muted/30 px-3 py-3 sm:flex-row sm:flex-wrap sm:items-center"
-      style={{ paddingLeft: 12 + niveau * 22 }}
+      className="flex flex-col gap-2 border-b bg-muted/40 px-4 py-3 sm:flex-row sm:flex-wrap sm:items-center"
+      style={{ paddingLeft: 16 + niveau * 22 }}
     >
-      <span className="text-xs text-muted-foreground">Filiale de {parent.denomination} :</span>
-      <Input value={siren} onChange={(e) => setSiren(e.target.value)} placeholder="SIREN" inputMode="numeric" className="h-8 sm:w-32" />
-      <Input value={denomination} onChange={(e) => setDenomination(e.target.value)} placeholder="ou dénomination (société étrangère…)" className="h-8 sm:w-60" />
-      <Input value={pourcentage} onChange={(e) => setPourcentage(e.target.value)} placeholder="% détenu" inputMode="decimal" className="h-8 sm:w-24" />
-      <Input value={direction} onChange={(e) => setDirection(e.target.value)} placeholder="Mandat (facultatif)" className="h-8 sm:w-40" />
+      <span className="label-mono">Filiale de {parent.denomination}</span>
+      <Input value={siren} onChange={(e) => setSiren(e.target.value)} placeholder="SIREN" aria-label="SIREN de la filiale" inputMode="numeric" className="h-8 bg-background font-mono tabular-nums placeholder:font-sans sm:w-32" />
+      <Input value={denomination} onChange={(e) => setDenomination(e.target.value)} placeholder="ou dénomination (société étrangère…)" aria-label="Dénomination de la filiale" className="h-8 bg-background sm:w-60" />
+      <Input value={pourcentage} onChange={(e) => setPourcentage(e.target.value)} placeholder="% détenu" aria-label="Pourcentage détenu" inputMode="decimal" className="h-8 bg-background font-mono tabular-nums placeholder:font-sans sm:w-24" />
+      <Input value={direction} onChange={(e) => setDirection(e.target.value)} placeholder="Mandat (facultatif)" aria-label="Mandat" className="h-8 bg-background sm:w-40" />
       <div className="flex gap-2">
         <Button size="sm" type="submit" disabled={!valide || occupe}>{occupe ? <Loader2 className="size-4 animate-spin" /> : <Plus className="size-4" />} Ajouter</Button>
         <Button size="sm" type="button" variant="ghost" onClick={onAnnuler}>Annuler</Button>
@@ -441,7 +509,7 @@ function NomGroupe({ nom, onSave }: { nom: string; onSave: (nom: string) => void
   const [v, setV] = useState(nom);
   useEffect(() => setV(nom), [nom]);
   if (!edition) {
-    return <h1 className="!m-0 cursor-text" onClick={() => setEdition(true)} title="Renommer">{nom}</h1>;
+    return <h1 className="!m-0 cursor-text text-balance decoration-muted-foreground/40 decoration-dashed underline-offset-4 hover:underline" onClick={() => setEdition(true)} title="Renommer">{nom}</h1>;
   }
   return (
     <form onSubmit={(e) => { e.preventDefault(); setEdition(false); if (v.trim() && v.trim() !== nom) onSave(v.trim()); }}>

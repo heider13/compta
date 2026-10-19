@@ -16,6 +16,9 @@ import { FormalityAgent } from '@/components/cabinet/dashboard/FormalityAgent';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
+import { Skeleton } from '@/components/ui/skeleton';
+import { PageHeader } from '@/components/cabinet/PageHeader';
+import { EmptyState } from '@/components/cabinet/EmptyState';
 import { PaiementCard, type Paiement } from '@/components/cabinet/Paiement';
 
 const VPS = process.env.NEXT_PUBLIC_VPS_BACKEND_URL ?? 'https://0dao73k.cserverhost.cloud';
@@ -146,18 +149,28 @@ export function InpiFormalityDetail({ id }: { id: string }) {
 
   if (loading && !data) {
     return (
-      <div className="flex items-center justify-center gap-2 py-24 text-sm text-muted-foreground">
-        <Loader2 className="size-4 animate-spin" />
-        Lecture de la formalité au Guichet unique…
+      <div className="space-y-6">
+        <div className="space-y-3" aria-busy="true" aria-label="Lecture de la formalité au Guichet unique">
+          <Skeleton className="h-3 w-32" />
+          <Skeleton className="h-8 w-72 max-w-full" />
+          <p className="flex items-center gap-2 font-mono text-[11px] text-muted-foreground">
+            <span className="live-dot size-1.5 text-success" />
+            Lecture de la formalité au Guichet unique…
+          </p>
+        </div>
+        <div className="grid gap-6 lg:grid-cols-3">
+          <Skeleton className="h-64 rounded-xl lg:col-span-2" />
+          <Skeleton className="h-40 rounded-xl" />
+        </div>
       </div>
     );
   }
 
   if (!data) {
     return (
-      <div className="space-y-4">
-        <BackLink />
-        <p className="flex items-start gap-2 rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive">
+      <div className="space-y-6">
+        <PageHeader eyebrow={<BackLink />} title="Formalité INPI" />
+        <p className="flex items-start gap-2 rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
           <AlertTriangle className="mt-0.5 size-4 shrink-0" />
           {error ?? 'Formalité introuvable.'}
         </p>
@@ -173,52 +186,79 @@ export function InpiFormalityDetail({ id }: { id: string }) {
   const label = `${data.societe ?? 'Sans nom'} (liasse ${data.liasse})`;
 
   return (
-    <div className="space-y-5">
-      <BackLink />
-
-      {/* En-tête */}
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <div className="min-w-0">
-          <div className="flex flex-wrap items-center gap-2">
-            <h1 className="truncate">{data.societe ?? '(sans nom)'}</h1>
+    <div className="space-y-6">
+      <PageHeader
+        eyebrow={<BackLink />}
+        title={
+          <span className="flex flex-wrap items-center gap-x-3 gap-y-2">
+            <span className="min-w-0 break-words">{data.societe ?? '(sans nom)'}</span>
             <StatusBadge statut={data.statut} />
-          </div>
-          <p className="mt-1 text-sm text-muted-foreground">
-            {data.typeLabel} · liasse <span className="font-mono">{data.liasse}</span>
-            {data.siren && <> · SIREN <span className="font-mono">{data.siren}</span></>}
-            {data.referenceMandataire && <> · réf. {data.referenceMandataire}</>}
-          </p>
-          <p className="mt-0.5 text-xs text-muted-foreground">
-            Statut au {formatDate(data.dateStatut)}
-            {data.dateSignature && <> · signée le {formatDate(data.dateSignature)}{data.lieuSignature ? ` à ${data.lieuSignature}` : ''}</>}
-          </p>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          {data.siren && (
-            <Button asChild variant="outline" size="sm">
-              <Link href={`/rne?siren=${data.siren}`}>
-                <FileText className="size-4" /> Documents RNE
-              </Link>
+          </span>
+        }
+        actions={
+          <>
+            <Button variant="ghost" size="sm" onClick={load} disabled={loading}>
+              <RefreshCw className={cn('size-4', loading && 'animate-spin')} />
+              Actualiser
             </Button>
+            {data.siren && (
+              <Button asChild variant="outline" size="sm">
+                <Link href={`/rne?siren=${data.siren}`}>
+                  <FileText className="size-4" /> Documents RNE
+                </Link>
+              </Button>
+            )}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => openFile(`${VPS}/api/formalites/${encodeURIComponent(id)}/synthesis`, 'synthese', `synthese-${data.liasse}.pdf`, false)}
+              disabled={busyPiece === 'synthese'}
+            >
+              {busyPiece === 'synthese' ? <Loader2 className="size-4 animate-spin" /> : <FileText className="size-4" />}
+              Synthèse INPI
+            </Button>
+          </>
+        }
+      >
+        <dl className="flex flex-wrap gap-x-5 gap-y-1.5 pt-1 text-xs">
+          <div className="flex items-center gap-1.5">
+            <dt className="label-mono">Type</dt>
+            <dd>{data.typeLabel}</dd>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <dt className="label-mono">Liasse</dt>
+            <dd className="font-mono tabular-nums">{data.liasse}</dd>
+          </div>
+          {data.siren && (
+            <div className="flex items-center gap-1.5">
+              <dt className="label-mono">SIREN</dt>
+              <dd className="font-mono tabular-nums">{data.siren}</dd>
+            </div>
           )}
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => openFile(`${VPS}/api/formalites/${encodeURIComponent(id)}/synthesis`, 'synthese', `synthese-${data.liasse}.pdf`, false)}
-            disabled={busyPiece === 'synthese'}
-          >
-            {busyPiece === 'synthese' ? <Loader2 className="size-4 animate-spin" /> : <FileText className="size-4" />}
-            Synthèse INPI
-          </Button>
-          <Button variant="ghost" size="sm" onClick={load} disabled={loading}>
-            <RefreshCw className={cn('size-4', loading && 'animate-spin')} />
-            Actualiser
-          </Button>
-        </div>
-      </div>
+          {data.referenceMandataire && (
+            <div className="flex items-center gap-1.5">
+              <dt className="label-mono">Réf.</dt>
+              <dd className="font-mono">{data.referenceMandataire}</dd>
+            </div>
+          )}
+          <div className="flex items-center gap-1.5">
+            <dt className="label-mono">Statut au</dt>
+            <dd className="font-mono tabular-nums">{formatDate(data.dateStatut)}</dd>
+          </div>
+          {data.dateSignature && (
+            <div className="flex items-center gap-1.5">
+              <dt className="label-mono">Signée le</dt>
+              <dd>
+                <span className="font-mono tabular-nums">{formatDate(data.dateSignature)}</span>
+                {data.lieuSignature ? ` à ${data.lieuSignature}` : ''}
+              </dd>
+            </div>
+          )}
+        </dl>
+      </PageHeader>
 
       {error && (
-        <p className="flex items-start gap-2 rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive">
+        <p className="flex items-start gap-2 rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
           <AlertTriangle className="mt-0.5 size-4 shrink-0" />
           {error}
         </p>
@@ -226,23 +266,23 @@ export function InpiFormalityDetail({ id }: { id: string }) {
 
       {/* Demandes du greffe en cours */}
       {data.demandesEnCours.length > 0 && (
-        <Card className="gap-0 border-[#ffd2cb] bg-[#fff8f6] py-0">
+        <Card className="gap-0 border-warning/40 bg-warning/10 py-0">
           <CardContent className="space-y-3 p-5">
-            <p className="flex items-center gap-2 text-sm font-semibold text-[#c2410c]">
-              <AlertTriangle className="size-4" />
+            <p className="flex items-center gap-2 text-sm font-semibold">
+              <AlertTriangle className="size-4 text-warning" />
               Régularisation demandée par le {data.demandesEnCours[0].partenaire?.toLowerCase() ?? 'greffe'}
             </p>
             {data.demandesEnCours.map((d) => (
               <div key={d.id} className="space-y-2">
-                <p className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                <p className="flex flex-wrap items-center gap-2 font-mono text-[11px] text-muted-foreground">
                   <CalendarClock className="size-3.5" />
                   Demande du {formatDate(d.date, true)}
-                  {d.echeance && <span className="font-medium text-[#c2410c]">· à traiter avant le {formatDate(d.echeance)}</span>}
+                  {d.echeance && <span className="font-medium text-foreground">· à traiter avant le {formatDate(d.echeance)}</span>}
                 </p>
                 <ul className="space-y-1.5">
                   {d.objets.map((o, i) => (
                     <li key={i} className="rounded-lg border bg-card px-3 py-2 text-sm">
-                      <span className="block text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{o.libelle}</span>
+                      <span className="label-mono mb-0.5 block">{o.libelle}</span>
                       {o.observation || '—'}
                     </li>
                   ))}
@@ -254,9 +294,9 @@ export function InpiFormalityDetail({ id }: { id: string }) {
       )}
 
       {rejets.length > 0 && data.statut === 'REJECTED' && (
-        <Card className="gap-0 border-red-200 bg-red-50/60 py-0">
+        <Card className="gap-0 border-destructive/30 bg-destructive/10 py-0">
           <CardContent className="space-y-1 p-5 text-sm">
-            <p className="font-semibold text-red-700">Motif du rejet</p>
+            <p className="font-semibold text-destructive">Motif du rejet</p>
             {rejets.map((r, i) => (
               <p key={i} className="whitespace-pre-wrap">
                 {r.observation ?? ''} {r.motifsRejet ? JSON.stringify(r.motifsRejet) : ''}
@@ -273,28 +313,31 @@ export function InpiFormalityDetail({ id }: { id: string }) {
       {/* Agent de régularisation */}
       <FormalityAgent inpiFormality={{ id: String(data.id), label, aTraiter }} />
 
-      <div className="grid gap-5 lg:grid-cols-3">
+      <div className="grid gap-6 lg:grid-cols-3">
         {/* Pièces déposées */}
         <Card className="min-w-0 gap-0 py-0 lg:col-span-2">
-          <CardHeader className="border-b py-4">
-            <CardTitle className="text-base">Pièces de la formalité ({data.pieces.length})</CardTitle>
-            <CardDescription>Tous les documents déposés au Guichet unique pour cette formalité.</CardDescription>
+          <CardHeader className="border-b px-5 py-4 [.border-b]:pb-4">
+            <CardTitle className="flex items-center gap-2 text-sm">
+              Pièces de la formalité
+              <span className="rounded-md border bg-muted px-1.5 py-px font-mono text-[11px] font-normal text-muted-foreground tabular-nums">{data.pieces.length}</span>
+            </CardTitle>
+            <CardDescription className="text-xs">Tous les documents déposés au Guichet unique pour cette formalité.</CardDescription>
           </CardHeader>
           <CardContent className="p-0">
             {data.pieces.length === 0 ? (
-              <p className="py-10 text-center text-sm text-muted-foreground">Aucune pièce.</p>
+              <EmptyState icon={FileText} title="Aucune pièce." compact />
             ) : (
               <ul className="divide-y">
                 {data.pieces.map((p) => (
-                  <li key={p.id} className="flex items-center gap-3 px-5 py-3">
-                    <span className="grid size-9 shrink-0 place-items-center rounded-lg bg-[#f3efff] text-primary">
-                      <FileText className="size-4" />
+                  <li key={p.id} className="flex items-center gap-3 px-5 py-3 transition-colors hover:bg-muted/50">
+                    <span className="grid size-8 shrink-0 place-items-center rounded-md border bg-background font-mono text-[9px] font-semibold uppercase text-muted-foreground">
+                      {p.extension ? p.extension.replace('.', '').slice(0, 4) : <FileText className="size-4" />}
                     </span>
                     <span className="min-w-0 flex-1">
                       <span className="block truncate text-sm font-medium">{p.nom}</span>
                       <span className="block truncate text-[11px] text-muted-foreground">
-                        {DEPOSANT_LABELS[p.deposant] ?? p.deposant} · {formatDate(p.date)} · {formatSize(p.taille)} · {p.type}
-                        {p.conformite && p.conformite !== 'VALID' && <span className="font-medium text-[#c2410c]"> · {p.conformite}</span>}
+                        {DEPOSANT_LABELS[p.deposant] ?? p.deposant} · <span className="font-mono tabular-nums">{formatDate(p.date)} · {formatSize(p.taille)}</span> · {p.type}
+                        {p.conformite && p.conformite !== 'VALID' && <span className="font-medium text-warning"> · {p.conformite}</span>}
                       </span>
                     </span>
                     <Button
@@ -325,41 +368,44 @@ export function InpiFormalityDetail({ id }: { id: string }) {
         </Card>
 
         {/* Informations et historique */}
-        <div className="min-w-0 space-y-5">
+        <div className="min-w-0 space-y-6">
           {data.observationDeclarant && (
             <Card className="gap-0 py-0">
-              <CardContent className="space-y-1 p-5">
-                <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Observation du déclarant</p>
+              <CardContent className="space-y-1.5 p-5">
+                <p className="label-mono">Observation du déclarant</p>
                 <p className="whitespace-pre-wrap text-sm">{data.observationDeclarant}</p>
               </CardContent>
             </Card>
           )}
           <Card className="gap-0 py-0">
-            <CardContent className="p-5">
+            <CardContent className="p-0">
               <button
                 type="button"
                 onClick={() => setShowHistory(!showHistory)}
-                className="flex w-full items-center justify-between text-left"
+                aria-expanded={showHistory}
+                className="flex w-full items-center justify-between rounded-xl px-5 py-4 text-left transition-colors hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
               >
-                <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                  Régularisations traitées ({historique.length})
+                <span className="flex items-center gap-2 text-sm font-semibold">
+                  Régularisations traitées
+                  <span className="rounded-md border bg-muted px-1.5 py-px font-mono text-[11px] font-normal text-muted-foreground tabular-nums">{historique.length}</span>
                 </span>
                 <ChevronDown className={cn('size-4 text-muted-foreground transition-transform', showHistory && 'rotate-180')} />
               </button>
               {showHistory && (
                 historique.length === 0 ? (
-                  <p className="mt-3 text-sm text-muted-foreground">Aucune.</p>
+                  <p className="border-t px-5 py-4 text-sm text-muted-foreground">Aucune.</p>
                 ) : (
-                  <ul className="mt-3 space-y-3">
+                  <ol className="space-y-4 border-t px-5 py-4">
                     {historique.map((d) => (
-                      <li key={d.id} className="text-sm">
-                        <span className="block text-[11px] text-muted-foreground">{formatDate(d.date, true)} · {d.partenaire}</span>
+                      <li key={d.id} className="relative border-l pl-4 text-sm">
+                        <span className="absolute -left-[3.5px] top-1.5 size-1.5 rounded-full bg-success" aria-hidden="true" />
+                        <span className="block font-mono text-[11px] text-muted-foreground">{formatDate(d.date, true)} · {d.partenaire}</span>
                         {d.objets.map((o, i) => (
                           <span key={i} className="block">{o.observation || o.libelle}</span>
                         ))}
                       </li>
                     ))}
-                  </ul>
+                  </ol>
                 )
               )}
             </CardContent>
@@ -372,9 +418,9 @@ export function InpiFormalityDetail({ id }: { id: string }) {
 
 function BackLink() {
   return (
-    <Link href="/inpi" className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground">
-      <ArrowLeft className="size-4" />
-      <Landmark className="size-4" />
+    <Link href="/inpi" className="inline-flex items-center gap-1.5 text-inherit no-underline hover:text-foreground">
+      <ArrowLeft className="size-3" />
+      <Landmark className="size-3" />
       Déposées à l&apos;INPI
     </Link>
   );

@@ -6,32 +6,34 @@ import Link from 'next/link';
 import { XCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
+import { PageShell } from '@/components/cabinet/PageHeader';
 
 export const dynamic = 'force-dynamic';
 
 export default function BillingCancelPage() {
   return (
-    <div className="mx-auto w-full max-w-3xl p-4 sm:p-6">
-      <Card className="mt-10">
-        <CardContent className="flex flex-col items-center py-10 text-center">
-          <span className="mb-5 grid size-16 place-items-center rounded-2xl bg-muted text-muted-foreground">
-            <XCircle className="size-9" aria-hidden="true" />
+    <PageShell className="max-w-3xl">
+      <Card className="mt-6 gap-0 overflow-hidden py-0 sm:mt-10">
+        <CardContent className="flex flex-col items-center px-6 py-10 text-center">
+          <span className="mb-5 grid size-12 place-items-center rounded-xl border bg-background text-muted-foreground shadow-xs">
+            <XCircle className="size-5" aria-hidden="true" />
           </span>
-          <h1 className="text-2xl font-semibold tracking-tight">Paiement annulé</h1>
+          <p className="label-mono mb-2">Checkout interrompu</p>
+          <h1 className="text-balance">Paiement annulé</h1>
           <p className="mt-3 max-w-sm text-sm leading-relaxed text-muted-foreground">
             Vous avez annulé le paiement avant la fin du processus. Aucun montant
             n&apos;a été débité. Vous pouvez réessayer à tout moment.
           </p>
-          <div className="mt-6 flex flex-wrap justify-center gap-3">
-            <Button asChild>
-              <Link href="/billing">Retour à la facturation</Link>
-            </Button>
-            <Button variant="outline" asChild>
-              <Link href="/dashboard">Tableau de bord</Link>
-            </Button>
-          </div>
         </CardContent>
+        <div className="flex flex-wrap justify-center gap-2 border-t bg-muted/40 px-6 py-4">
+          <Button asChild size="sm">
+            <Link href="/billing">Retour à la facturation</Link>
+          </Button>
+          <Button variant="outline" size="sm" asChild>
+            <Link href="/dashboard">Tableau de bord</Link>
+          </Button>
+        </div>
       </Card>
-    </div>
+    </PageShell>
   );
 }

@@ -4,13 +4,14 @@ import { ArrowLeft } from 'lucide-react';
 import { createClient } from '@/lib/supabase/server';
 import { updateDossier } from '@/lib/server-actions/dossiers';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { PageHeader, PageShell } from '@/components/cabinet/PageHeader';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 
 // Select natif stylé : le formulaire poste via Server Action (FormData).
 const selectClass =
-  'border-input flex h-10 w-full cursor-pointer rounded-md border bg-card px-3 py-1 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50';
+  'border-input flex h-9 w-full cursor-pointer rounded-md border bg-background px-3 py-1 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50';
 
 export default async function EditDossierPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -33,35 +34,38 @@ export default async function EditDossierPage({ params }: { params: Promise<{ id
   }
 
   return (
-    <div className="mx-auto w-full max-w-3xl space-y-6 p-4 sm:p-6">
-      <nav>
-        <Link
-          href={`/dossiers/${id}`}
-          className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"
-        >
-          <ArrowLeft className="size-4" />
-          Retour au dossier
-        </Link>
-      </nav>
+    <PageShell className="max-w-3xl">
+      <PageHeader
+        eyebrow={
+          <Link href={`/dossiers/${id}`} className="inline-flex items-center gap-1.5 text-inherit no-underline hover:text-foreground">
+            <ArrowLeft className="size-3" />
+            Retour au dossier
+            {dossier.reference && <span className="normal-case tracking-normal">· {dossier.reference}</span>}
+          </Link>
+        }
+        title="Modifier le dossier"
+        description={
+          <>
+            Métadonnées de pilotage. Le contenu INPI s&apos;édite via{' '}
+            <a
+              href={`/app.html?route=nouveau&type=${dossier.forme_juridique || dossier.type_formalite}&d=${id}`}
+              className="font-medium text-primary hover:underline"
+            >
+              le wizard
+            </a>
+            .
+          </>
+        }
+      />
 
-      <div>
-        <h1>Modifier le dossier</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Métadonnées de pilotage. Le contenu INPI s&apos;édite via{' '}
-          <a
-            href={`/app.html?route=nouveau&type=${dossier.forme_juridique || dossier.type_formalite}&d=${id}`}
-            className="font-medium text-primary hover:underline"
-          >
-            le wizard
-          </a>
-          .
-        </p>
-      </div>
-
-      <form action={action} className="space-y-6">
-        <Card>
-          <CardContent className="grid gap-4 pt-6">
-            <div className="min-w-0 space-y-1.5">
+      <form action={action}>
+        <Card className="gap-0 py-0">
+          <CardHeader className="border-b px-5 py-4 [.border-b]:pb-4">
+            <CardTitle className="text-sm">Pilotage</CardTitle>
+            <CardDescription className="text-xs">{dossier.client_name}</CardDescription>
+          </CardHeader>
+          <CardContent className="grid gap-4 p-5 sm:grid-cols-2">
+            <div className="min-w-0 space-y-1.5 sm:col-span-2">
               <Label htmlFor="client_id">Client lié</Label>
               <select id="client_id" name="client_id" defaultValue={dossier.client_id || ''} className={selectClass}>
                 <option value="">— Aucun —</option>
@@ -86,6 +90,7 @@ export default async function EditDossierPage({ params }: { params: Promise<{ id
                 type="date"
                 name="internal_due_date"
                 defaultValue={dossier.internal_due_date || ''}
+                className="font-mono tabular-nums"
               />
             </div>
             <div className="min-w-0 space-y-1.5">
@@ -107,14 +112,14 @@ export default async function EditDossierPage({ params }: { params: Promise<{ id
               <Input id="tags" name="tags" defaultValue={(dossier.tags || []).join(', ')} placeholder="urgent, vip" />
             </div>
           </CardContent>
+          <div className="flex justify-end gap-2 border-t bg-muted/40 px-5 py-4">
+            <Button asChild variant="ghost">
+              <Link href={`/dossiers/${id}`}>Annuler</Link>
+            </Button>
+            <Button type="submit">Enregistrer</Button>
+          </div>
         </Card>
-        <div className="flex justify-end gap-2.5">
-          <Button asChild variant="ghost">
-            <Link href={`/dossiers/${id}`}>Annuler</Link>
-          </Button>
-          <Button type="submit">Enregistrer</Button>
-        </div>
       </form>
-    </div>
+    </PageShell>
   );
 }

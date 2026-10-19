@@ -6,11 +6,14 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { AlertTriangle, CheckCircle2, FileDown, Hourglass, Loader2, RefreshCw, Search, XCircle } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, FileDown, Hourglass, Landmark, Loader2, RefreshCw, Search, XCircle } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { StatusBadge } from '@/components/cabinet/StatusBadge';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
+import { Card } from '@/components/ui/card';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { EmptyState } from '@/components/cabinet/EmptyState';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
 import { FormalitesTabs } from '@/components/cabinet/FormalitesTabs';
@@ -157,10 +160,10 @@ export function InpiFormalities() {
   }, [items, filter, type, query]);
 
   const kpis = [
-    { key: 'todo' as FilterKey, label: 'À traiter', hint: 'Régularisation, signature ou paiement', value: counts.todo, icon: AlertTriangle, tone: 'text-[#ff887b] bg-[#fff3f1]' },
-    { key: 'progress' as FilterKey, label: 'En cours', hint: 'Reçues ou en validation', value: counts.progress, icon: Hourglass, tone: 'text-primary bg-[#ede7ff]' },
-    { key: 'validated' as FilterKey, label: 'Validées', hint: 'Acceptées par le greffe', value: counts.validated, icon: CheckCircle2, tone: 'text-green-700 bg-green-50' },
-    { key: 'rejected' as FilterKey, label: 'Rejetées', hint: 'Refusées', value: counts.rejected, icon: XCircle, tone: 'text-red-700 bg-red-50' },
+    { key: 'todo' as FilterKey, label: 'À traiter', hint: 'Régularisation, signature ou paiement', value: counts.todo, icon: AlertTriangle, highlight: true },
+    { key: 'progress' as FilterKey, label: 'En cours', hint: 'Reçues ou en validation', value: counts.progress, icon: Hourglass, highlight: false },
+    { key: 'validated' as FilterKey, label: 'Validées', hint: 'Acceptées par le greffe', value: counts.validated, icon: CheckCircle2, highlight: false },
+    { key: 'rejected' as FilterKey, label: 'Rejetées', hint: 'Refusées', value: counts.rejected, icon: XCircle, highlight: false },
   ];
 
   const enAttente = items.filter((f) => f.paiement && (f.paiement.statut === 'a_payer' || f.paiement.statut === 'delegation_en_attente'));
@@ -168,143 +171,174 @@ export function InpiFormalities() {
   const enRetard = enAttente.filter((f) => (f.paiement?.jours_attente ?? 0) >= 3).length;
 
   return (
-    <div className="space-y-5">
-      <FormalitesTabs />
+    <div className="space-y-6">
+      <FormalitesTabs
+        description="Toutes les formalités de votre compte mandataire au Guichet unique, en temps réel. Cliquez sur une ligne pour voir ses pièces et ses régularisations."
+        actions={
+          <Button variant="outline" size="sm" onClick={load} disabled={loading}>
+            <RefreshCw className={cn('size-4', loading && 'animate-spin')} />
+            Actualiser
+          </Button>
+        }
+      />
+
       {enAttente.length > 0 && (
-        <p className="flex flex-wrap items-center gap-2 rounded-lg border border-[#ffd2cb] bg-[#fff8f6] px-3 py-2 text-sm">
-          <AlertTriangle className="size-4 text-[#ff887b]" />
-          <strong>{enAttente.length} formalité(s) en attente de paiement</strong> ({euros(totalAttente)})
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-xl border border-warning/40 bg-warning/10 px-4 py-3 text-sm">
+          <AlertTriangle className="size-4 shrink-0 text-warning" />
+          <span>
+            <span className="font-medium">{enAttente.length} formalité(s) en attente de paiement</span>{' '}
+            <span className="font-mono tabular-nums">({euros(totalAttente)})</span>
+          </span>
           {enRetard > 0 && <span className="text-muted-foreground">· dont {enRetard} depuis plus de 3 jours</span>}
           <span className="text-muted-foreground">· {enAttente.filter((f) => f.paiement?.statut === 'delegation_en_attente').length} délégation(s) envoyée(s) au client</span>
-        </p>
-      )}
-      <div className="flex flex-wrap items-end justify-between gap-4">
-        <div className="min-w-0">
-          <p className="text-sm text-muted-foreground">
-            Toutes les formalités de votre compte mandataire au Guichet unique, en temps réel. Cliquez sur une ligne pour voir ses pièces et ses régularisations.
-            {!loading && !error && ` ${total} formalité${total > 1 ? 's' : ''}.`}
-          </p>
         </div>
-        <Button variant="outline" size="sm" onClick={load} disabled={loading}>
-          <RefreshCw className={cn('size-4', loading && 'animate-spin')} />
-          Actualiser
-        </Button>
-      </div>
+      )}
 
-      <div className="grid gap-3 [grid-template-columns:repeat(auto-fit,minmax(190px,1fr))]">
-        {kpis.map(({ key, label, hint, value, icon: Icon, tone }) => (
-          <button
-            key={key}
-            type="button"
-            onClick={() => setFilter(filter === key ? 'all' : key)}
-            className={cn(
-              'flex min-w-0 items-center gap-3 rounded-xl border bg-card p-4 text-left transition-colors hover:border-primary/40',
-              filter === key && 'border-primary ring-[3px] ring-primary/15',
-            )}
-          >
-            <span className={cn('grid size-10 shrink-0 place-items-center rounded-lg', tone)}>
-              <Icon className="size-5" />
-            </span>
-            <span className="min-w-0">
-              <span className="block text-2xl font-semibold tabular-nums">{loading ? '…' : value}</span>
-              <span className="block truncate text-sm font-medium">{label}</span>
-              <span className="block truncate text-[11px] text-muted-foreground">{hint}</span>
-            </span>
-          </button>
-        ))}
-      </div>
-
-      <Card className="gap-0 py-0">
-        <CardContent className="space-y-3 p-4">
-          <div className="flex flex-wrap items-center gap-2">
-            <div className="relative min-w-56 flex-1">
-              <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                placeholder="Rechercher une société, un n° de liasse…"
-                className="pl-9"
-              />
-            </div>
-            <select
-              value={type}
-              onChange={(e) => setType(e.target.value)}
-              className="h-9 cursor-pointer rounded-md border bg-card px-3 text-sm"
-              aria-label="Type de formalité"
+      {/* Bande d'indicateurs cliquables : filtre rapide */}
+      <div className="grid grid-cols-2 overflow-hidden rounded-xl border bg-card shadow-xs lg:grid-cols-4 [&>*]:border-border max-lg:[&>*:nth-child(-n+2)]:border-b max-lg:[&>*:nth-child(odd)]:border-r lg:[&>*:not(:last-child)]:border-r">
+        {kpis.map(({ key, label, hint, value, icon: Icon, highlight }) => {
+          const active = filter === key;
+          return (
+            <button
+              key={key}
+              type="button"
+              onClick={() => setFilter(filter === key ? 'all' : key)}
+              aria-pressed={active}
+              className={cn(
+                'relative flex min-w-0 flex-col gap-3 p-4 text-left transition-colors hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset sm:p-5',
+                active && 'bg-muted/40 after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 after:bg-primary',
+              )}
             >
-              <option value="">Tous les types</option>
-              <option value="C">Création</option>
-              <option value="M">Modification</option>
-              <option value="R">Radiation</option>
-            </select>
+              <span className="flex min-w-0 items-center gap-2 text-sm text-muted-foreground">
+                <Icon className={cn('size-4 shrink-0', highlight ? 'text-primary' : 'text-muted-foreground/70')} />
+                <span className="truncate">{label}</span>
+              </span>
+              <span className="flex items-baseline gap-2">
+                {loading ? (
+                  <Skeleton className="h-8 w-12" />
+                ) : (
+                  <span className="font-mono text-3xl font-semibold tracking-tight tabular-nums">{value}</span>
+                )}
+                {highlight && !loading && value > 0 && <span className="live-dot size-1.5 text-primary" />}
+              </span>
+              <span className="truncate text-xs text-muted-foreground">{hint}</span>
+            </button>
+          );
+        })}
+      </div>
+
+      <Card className="gap-0 overflow-hidden py-0">
+        <div className="flex flex-wrap items-center gap-2 border-b p-3">
+          <div className="relative min-w-52 flex-1 basis-60">
+            <Search className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Rechercher une société, un n° de liasse…"
+              aria-label="Rechercher une formalité"
+              className="bg-background pl-8"
+            />
           </div>
-          <div className="flex flex-wrap gap-1.5">
+          <select
+            value={type}
+            onChange={(e) => setType(e.target.value)}
+            className="h-9 min-w-0 flex-1 cursor-pointer rounded-md border border-input bg-background px-3 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 sm:flex-none"
+            aria-label="Type de formalité"
+          >
+            <option value="">Tous les types</option>
+            <option value="C">Création</option>
+            <option value="M">Modification</option>
+            <option value="R">Radiation</option>
+          </select>
+          <div className="flex w-full max-w-full overflow-x-auto rounded-md border bg-muted p-0.5 sm:w-auto" role="group" aria-label="Filtrer par état">
             {FILTERS.map((f) => (
               <button
                 key={f.key}
                 type="button"
                 onClick={() => setFilter(f.key)}
+                aria-pressed={filter === f.key}
                 className={cn(
-                  'rounded-full border px-3 py-1 text-xs font-medium transition-colors',
-                  filter === f.key ? 'border-primary bg-accent text-foreground' : 'bg-card text-muted-foreground hover:text-foreground',
+                  'inline-flex shrink-0 items-center gap-1.5 rounded-[5px] px-2.5 py-1 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+                  filter === f.key ? 'bg-background text-foreground shadow-xs' : 'text-muted-foreground hover:text-foreground',
                 )}
               >
                 {f.label}
-                {f.key !== 'all' && !loading && ` (${counts[f.key as Exclude<FilterKey, 'all'>]})`}
+                {f.key !== 'all' && !loading && (
+                  <span className="font-mono text-[10px] text-muted-foreground tabular-nums">{counts[f.key as Exclude<FilterKey, 'all'>]}</span>
+                )}
               </button>
             ))}
           </div>
-        </CardContent>
+        </div>
 
         {error && (
-          <p className="mx-4 mb-4 flex items-start gap-2 rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive">
+          <p className="m-3 flex items-start gap-2 rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
             <AlertTriangle className="mt-0.5 size-4 shrink-0" />
             {error}
           </p>
         )}
 
         {loading ? (
-          <div className="flex items-center justify-center gap-2 border-t py-16 text-sm text-muted-foreground">
-            <Loader2 className="size-4 animate-spin" />
-            Lecture du Guichet unique INPI…
+          <div className="space-y-0 divide-y" aria-busy="true" aria-label="Lecture du Guichet unique INPI">
+            <p className="flex items-center gap-2 px-4 py-2.5 font-mono text-[11px] text-muted-foreground">
+              <span className="live-dot size-1.5 text-success" />
+              Lecture du Guichet unique INPI…
+            </p>
+            {Array.from({ length: 6 }).map((_, i) => (
+              <div key={i} className="flex items-center gap-4 px-4 py-3">
+                <Skeleton className="h-3 w-20" />
+                <Skeleton className="h-3 flex-1" />
+                <Skeleton className="h-5 w-20 rounded-full" />
+                <Skeleton className="hidden h-3 w-24 sm:block" />
+              </div>
+            ))}
           </div>
         ) : visible.length === 0 ? (
-          <p className="border-t py-16 text-center text-sm text-muted-foreground">
-            {items.length === 0 ? 'Aucune formalité trouvée sur votre compte INPI.' : 'Aucune formalité ne correspond aux filtres.'}
-          </p>
+          <EmptyState
+            icon={Landmark}
+            title={items.length === 0 ? 'Aucune formalité trouvée sur votre compte INPI.' : 'Aucune formalité ne correspond aux filtres.'}
+          />
         ) : (
-          <div className="overflow-x-auto border-t">
-            <table className="w-full min-w-[820px] text-sm">
-              <thead>
-                <tr className="border-b bg-muted/40 text-left text-xs uppercase tracking-wider text-muted-foreground">
-                  <th className="px-4 py-2.5 font-medium">Date</th>
-                  <th className="px-4 py-2.5 font-medium">Société / dossier</th>
-                  <th className="px-4 py-2.5 font-medium">Type</th>
-                  <th className="px-4 py-2.5 font-medium">Statut</th>
-                  <th className="px-4 py-2.5 font-medium">Paiement</th>
-                  <th className="px-4 py-2.5 font-medium">N° de liasse</th>
-                  <th className="px-4 py-2.5" />
-                </tr>
-              </thead>
-              <tbody className="divide-y">
+          <>
+            <div className="flex items-center gap-2 border-b bg-muted/40 px-4 py-2 font-mono text-[11px] text-muted-foreground">
+              <span className="live-dot size-1.5 text-success" />
+              Guichet unique · <span className="text-foreground tabular-nums">{visible.length}</span>
+              {visible.length !== total && <span className="tabular-nums">/ {total}</span>} formalité{total > 1 ? 's' : ''}
+            </div>
+            <Table className="min-w-[820px]">
+              <TableHeader>
+                <TableRow className="hover:bg-transparent">
+                  <TableHead className="px-4 text-xs">Date</TableHead>
+                  <TableHead className="px-4 text-xs">Société / dossier</TableHead>
+                  <TableHead className="px-4 text-xs">Type</TableHead>
+                  <TableHead className="px-4 text-xs">Statut</TableHead>
+                  <TableHead className="px-4 text-xs">Paiement</TableHead>
+                  <TableHead className="px-4 text-xs">N° de liasse</TableHead>
+                  <TableHead className="px-4"><span className="sr-only">Actions</span></TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
                 {visible.map((f) => (
-                  <tr
+                  <TableRow
                     key={String(f.id)}
                     onClick={() => router.push(`/inpi/${f.id}`)}
-                    className={cn('cursor-pointer hover:bg-[#f8f6fd]', TO_HANDLE.includes(f.status ?? '') && 'bg-[#fff8f6]')}
+                    className={cn('cursor-pointer hover:bg-muted/50', TO_HANDLE.includes(f.status ?? '') && 'bg-warning/5')}
                   >
-                    <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">{formatDate(f.statusDate)}</td>
-                    <td className="max-w-64 px-4 py-3">
+                    <TableCell className="px-4 py-3 font-mono text-xs text-muted-foreground tabular-nums">
+                      {TO_HANDLE.includes(f.status ?? '') && <span className="mr-2 inline-block size-1.5 rounded-full bg-warning align-middle" aria-hidden="true" />}
+                      {formatDate(f.statusDate)}
+                    </TableCell>
+                    <TableCell className="max-w-64 px-4 py-3">
                       <span className="block truncate font-medium">{f.companyName || f.nomDossier || '(sans nom)'}</span>
                       {f.referenceMandataire && (
-                        <span className="block truncate text-[11px] text-muted-foreground">Réf. {f.referenceMandataire}</span>
+                        <span className="block truncate font-mono text-[11px] text-muted-foreground">Réf. {f.referenceMandataire}</span>
                       )}
-                    </td>
-                    <td className="whitespace-nowrap px-4 py-3">{TYPE_LABELS[f.typeFormalite ?? ''] ?? f.typeFormalite ?? '—'}</td>
-                    <td className="whitespace-nowrap px-4 py-3"><StatusBadge statut={f.status ?? ''} /></td>
-                    <td className="whitespace-nowrap px-4 py-3"><PaiementBadge p={f.paiement} /></td>
-                    <td className="whitespace-nowrap px-4 py-3 font-mono text-xs">{f.liasseNumber ?? '—'}</td>
-                    <td className="whitespace-nowrap px-4 py-3 text-right">
+                    </TableCell>
+                    <TableCell className="px-4 py-3">{TYPE_LABELS[f.typeFormalite ?? ''] ?? f.typeFormalite ?? '—'}</TableCell>
+                    <TableCell className="px-4 py-3"><StatusBadge statut={f.status ?? ''} /></TableCell>
+                    <TableCell className="px-4 py-3"><PaiementBadge p={f.paiement} /></TableCell>
+                    <TableCell className="px-4 py-3 font-mono text-xs tabular-nums">{f.liasseNumber ?? '—'}</TableCell>
+                    <TableCell className="px-4 py-3 text-right">
                       <Button
                         variant="ghost"
                         size="sm"
@@ -318,12 +352,12 @@ export function InpiFormalities() {
                         {downloading === f.id ? <Loader2 className="size-4 animate-spin" /> : <FileDown className="size-4" />}
                         Synthèse
                       </Button>
-                    </td>
-                  </tr>
+                    </TableCell>
+                  </TableRow>
                 ))}
-              </tbody>
-            </table>
-          </div>
+              </TableBody>
+            </Table>
+          </>
         )}
       </Card>
     </div>

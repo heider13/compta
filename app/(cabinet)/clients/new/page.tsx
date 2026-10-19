@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeft, ChevronRight, PenLine } from 'lucide-react';
+import { ArrowLeft, Check, PenLine } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { SirenSearch } from '@/components/cabinet/SirenSearch';
 import {
@@ -24,6 +24,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { Textarea } from '@/components/ui/textarea';
+import { PageHeader, PageShell } from '@/components/cabinet/PageHeader';
+import { cn } from '@/lib/utils';
 
 type Step = 'search' | 'confirm';
 
@@ -166,59 +168,84 @@ export default function NewClientPage() {
   }
 
   return (
-    <div className="mx-auto w-full max-w-4xl space-y-6 p-4 sm:p-6">
-      {/* Fil d'ariane */}
-      <nav
-        aria-label="Fil d'ariane"
-        className="flex min-w-0 items-center gap-1.5 text-sm text-muted-foreground"
-      >
-        <Link href="/clients" className="transition-colors hover:text-foreground">
-          Clients
-        </Link>
-        <ChevronRight className="size-3.5 shrink-0" aria-hidden="true" />
-        <span className="font-medium text-foreground">Nouveau client</span>
-      </nav>
+    <PageShell className="max-w-3xl">
+      <PageHeader
+        eyebrow="Clients"
+        title="Nouveau client"
+        description={
+          step === 'search'
+            ? 'Retrouvez l’entreprise par son SIREN : les données du registre sont pré-remplies.'
+            : 'Vérifiez et complétez les informations avant de créer la fiche.'
+        }
+        actions={
+          <Button variant="ghost" size="sm" asChild>
+            <Link href="/clients">Annuler</Link>
+          </Button>
+        }
+      />
 
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="min-w-0">
-          <h1 className="truncate">Nouveau client</h1>
-          <p className="text-sm text-muted-foreground">
-            Étape {step === 'search' ? '1' : '2'} sur 2 —{' '}
-            {step === 'search' ? 'recherche par SIREN' : 'informations complémentaires'}
-          </p>
-        </div>
-        <Button variant="ghost" asChild>
-          <Link href="/clients">Annuler</Link>
-        </Button>
-      </div>
+      {/* Indicateur d'étapes */}
+      <ol className="flex items-center gap-2 text-xs" aria-label="Étapes">
+        {[
+          { key: 'search', n: 1, label: 'Recherche SIREN' },
+          { key: 'confirm', n: 2, label: 'Informations' },
+        ].map((s, i) => {
+          const active = step === s.key;
+          const done = step === 'confirm' && s.key === 'search';
+          return (
+            <li key={s.key} className="flex items-center gap-2" aria-current={active ? 'step' : undefined}>
+              {i > 0 && <span className="h-px w-6 bg-border sm:w-10" aria-hidden="true" />}
+              <span
+                className={cn(
+                  'grid size-5 place-items-center rounded-full border font-mono text-[10px] tabular-nums',
+                  active && 'border-primary bg-primary text-primary-foreground',
+                  done && 'border-success/30 bg-success/10 text-success',
+                  !active && !done && 'text-muted-foreground',
+                )}
+              >
+                {done ? <Check className="size-3" /> : s.n}
+              </span>
+              <span className={cn(active ? 'font-medium text-foreground' : 'text-muted-foreground')}>
+                {s.label}
+              </span>
+            </li>
+          );
+        })}
+      </ol>
 
       {step === 'search' && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Recherche entreprise</CardTitle>
-            <CardDescription>
+        <Card className="gap-0 py-0">
+          <CardHeader className="border-b px-5 py-4 [.border-b]:pb-4">
+            <CardTitle className="text-sm">Recherche entreprise</CardTitle>
+            <CardDescription className="text-xs">
               Saisissez le SIREN pour pré-remplir automatiquement les données depuis le
               registre national des entreprises.
             </CardDescription>
           </CardHeader>
-          <CardContent className="space-y-5">
+          <CardContent className="space-y-5 p-5">
             <SirenSearch onSelect={handlePappersSelect} />
             <Separator />
-            <Button type="button" variant="outline" onClick={handleManual}>
-              <PenLine className="size-4" />
-              Saisie manuelle (pas de SIREN)
-            </Button>
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <p className="text-xs text-muted-foreground">Entreprise en cours de création ou sans SIREN ?</p>
+              <Button type="button" variant="outline" size="sm" onClick={handleManual}>
+                <PenLine className="size-4" />
+                Saisie manuelle (pas de SIREN)
+              </Button>
+            </div>
           </CardContent>
         </Card>
       )}
 
       {step === 'confirm' && (
         <form onSubmit={handleSubmit}>
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Informations de la société</CardTitle>
+          <Card className="gap-0 py-0">
+            <CardHeader className="border-b px-5 py-4 [.border-b]:pb-4">
+              <CardTitle className="text-sm">Informations de la société</CardTitle>
+              <CardDescription className="text-xs">
+                {pappers ? 'Pré-rempli depuis le registre national des entreprises.' : 'Saisie manuelle.'}
+              </CardDescription>
             </CardHeader>
-            <CardContent className="space-y-4">
+            <CardContent className="space-y-4 p-5">
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="space-y-1.5">
                   <Label htmlFor="denomination">
@@ -239,6 +266,7 @@ export default function NewClientPage() {
                     onChange={(e) => update('siren', e.target.value)}
                     inputMode="numeric"
                     maxLength={11}
+                    className="font-mono tabular-nums"
                   />
                 </div>
               </div>
@@ -269,6 +297,7 @@ export default function NewClientPage() {
                     value={form.code_naf}
                     onChange={(e) => update('code_naf', e.target.value)}
                     placeholder="6920Z"
+                    className="font-mono"
                   />
                 </div>
               </div>
@@ -295,7 +324,7 @@ export default function NewClientPage() {
               </div>
 
               <Separator className="my-2" />
-              <h3 className="text-sm font-semibold">Contact principal</h3>
+              <h3 className="label-mono">Contact principal</h3>
 
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="space-y-1.5">
@@ -356,7 +385,7 @@ export default function NewClientPage() {
                 </div>
               )}
 
-              <div className="flex justify-end gap-2 pt-2">
+              <div className="flex flex-wrap justify-end gap-2 border-t pt-4">
                 <Button
                   type="button"
                   variant="ghost"
@@ -374,6 +403,6 @@ export default function NewClientPage() {
           </Card>
         </form>
       )}
-    </div>
+    </PageShell>
   );
 }

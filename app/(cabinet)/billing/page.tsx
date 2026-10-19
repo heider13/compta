@@ -10,7 +10,7 @@
 // Stripe est indispo (graceful degradation).
 
 import Link from 'next/link';
-import { AlertTriangle, Download, ExternalLink } from 'lucide-react';
+import { AlertTriangle, Building2, Download, ExternalLink, FileText, Receipt } from 'lucide-react';
 import { createClient } from '@/lib/supabase/server';
 import {
   getStripe,
@@ -26,6 +26,7 @@ import {
   Card,
   CardContent,
   CardDescription,
+  CardFooter,
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
@@ -38,6 +39,8 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { cn } from '@/lib/utils';
+import { PageHeader, PageShell } from '@/components/cabinet/PageHeader';
+import { EmptyState } from '@/components/cabinet/EmptyState';
 
 export const dynamic = 'force-dynamic';
 
@@ -81,11 +84,11 @@ function formatDateFr(input: string | number | null): string {
 function statusBadge(status: Invoice['status']): { label: string; className: string } {
   switch (status) {
     case 'paid':
-      return { label: 'Payée', className: 'bg-[#ede7ff] text-[#2b1769]' };
+      return { label: 'Payée', className: 'border-success/30 bg-success/10 text-success' };
     case 'overdue':
-      return { label: 'En retard', className: 'bg-red-100 text-red-800' };
+      return { label: 'En retard', className: 'border-destructive/30 bg-destructive/10 text-destructive' };
     case 'sent':
-      return { label: 'Envoyée', className: 'bg-blue-100 text-blue-800' };
+      return { label: 'Envoyée', className: 'border-brand-border bg-brand-soft text-brand-soft-foreground' };
     case 'draft':
       return { label: 'Brouillon', className: 'bg-muted text-muted-foreground' };
     case 'cancelled':
@@ -131,14 +134,15 @@ export default async function BillingPage() {
   const org = (membership as unknown as MembershipRow | null)?.organizations ?? null;
   if (!org) {
     return (
-      <div className="mx-auto w-full max-w-2xl p-6">
-        <Card>
-          <CardHeader>
-            <CardTitle>Aucun cabinet</CardTitle>
-            <CardDescription>Votre compte n&apos;est rattaché à aucun cabinet.</CardDescription>
-          </CardHeader>
+      <PageShell className="max-w-3xl">
+        <Card className="py-0">
+          <EmptyState
+            icon={Building2}
+            title="Aucun cabinet"
+            description="Votre compte n'est rattaché à aucun cabinet."
+          />
         </Card>
-      </div>
+      </PageShell>
     );
   }
 
@@ -201,99 +205,99 @@ export default async function BillingPage() {
   const stripeConfigured = isStripeConfigured();
 
   return (
-    <div className="mx-auto w-full max-w-5xl space-y-6 p-4 sm:p-6">
-      <div className="min-w-0">
-        <h1>Facturation</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Gérez votre abonnement Legaly AI et consultez l&apos;historique de
-          facturation de votre cabinet.
-        </p>
-      </div>
+    <PageShell className="max-w-5xl">
+      <PageHeader
+        eyebrow="Compte"
+        title="Facturation"
+        description="Gérez votre abonnement Legaly AI et consultez l'historique de facturation de votre cabinet."
+      />
 
       {!stripeConfigured && (
-        <Card className="border-amber-300 bg-amber-50">
-          <CardContent className="flex items-start gap-3 py-4 text-sm text-amber-900">
-            <AlertTriangle className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
-            <div>
-              <p className="font-semibold">Stripe non configuré.</p>
-              <p className="mt-1 text-amber-800/90">
-                La variable d&apos;environnement{' '}
-                <code className="rounded bg-white/70 px-1 font-mono text-xs">STRIPE_SECRET_KEY</code>{' '}
-                est manquante. Le checkout et le portail client sont désactivés. Voir{' '}
-                <code className="rounded bg-white/70 px-1 font-mono text-xs">SETUP-STRIPE.md</code>.
-              </p>
-            </div>
-          </CardContent>
-        </Card>
+        <div className="flex items-start gap-3 rounded-xl border border-warning/40 bg-warning/10 px-4 py-3 text-sm">
+          <AlertTriangle className="mt-0.5 size-4 shrink-0 text-warning" aria-hidden="true" />
+          <div className="min-w-0">
+            <p className="font-medium">Stripe non configuré.</p>
+            <p className="mt-1 text-muted-foreground">
+              La variable d&apos;environnement{' '}
+              <code className="rounded bg-background px-1 font-mono text-xs text-foreground">STRIPE_SECRET_KEY</code>{' '}
+              est manquante. Le checkout et le portail client sont désactivés. Voir{' '}
+              <code className="rounded bg-background px-1 font-mono text-xs text-foreground">SETUP-STRIPE.md</code>.
+            </p>
+          </div>
+        </div>
       )}
 
       {stripeFetchError && (
-        <Card className="border-amber-300 bg-amber-50">
-          <CardContent className="flex items-start gap-3 py-4 text-sm text-amber-900">
-            <AlertTriangle className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
-            <div>
-              <p className="font-semibold">Lecture Stripe impossible.</p>
-              <p className="mt-1 text-amber-800/90">{stripeFetchError}</p>
-            </div>
-          </CardContent>
-        </Card>
+        <div className="flex items-start gap-3 rounded-xl border border-warning/40 bg-warning/10 px-4 py-3 text-sm">
+          <AlertTriangle className="mt-0.5 size-4 shrink-0 text-warning" aria-hidden="true" />
+          <div className="min-w-0">
+            <p className="font-medium">Lecture Stripe impossible.</p>
+            <p className="mt-1 break-words font-mono text-xs text-muted-foreground">{stripeFetchError}</p>
+          </div>
+        </div>
       )}
 
       {/* ─── Bloc abonnement actif ─────────────────────────────────── */}
       {sub.hasActiveSubscription ? (
-        <Card>
-          <CardHeader className="flex-row items-center justify-between space-y-0">
-            <CardTitle className="text-base">Abonnement</CardTitle>
-            <Badge className="bg-primary text-primary-foreground hover:bg-primary">Plan actif</Badge>
+        <Card className="gap-0 py-0">
+          <CardHeader className="flex flex-row items-center justify-between gap-2 border-b px-5 py-4 [.border-b]:pb-4">
+            <div className="min-w-0 space-y-1">
+              <CardTitle className="text-sm">Abonnement</CardTitle>
+              <CardDescription className="text-xs">Géré par Stripe</CardDescription>
+            </div>
+            <Badge variant="outline" className="gap-1.5 border-success/30 bg-success/10 font-normal text-success">
+              <span className="live-dot size-1.5" aria-hidden="true" />
+              Plan actif
+            </Badge>
           </CardHeader>
-          <CardContent className="space-y-5">
-            <div className="grid gap-5 sm:grid-cols-3">
-              <div className="min-w-0">
-                <p className="text-xs text-muted-foreground">Plan</p>
-                <p className="text-lg font-semibold">{planLabel(sub.plan)}</p>
+          <CardContent className="p-0">
+            <dl className="grid divide-y sm:grid-cols-3 sm:divide-x sm:divide-y-0">
+              <div className="min-w-0 space-y-1.5 p-5">
+                <dt className="label-mono">Plan</dt>
+                <dd className="text-lg font-semibold">{planLabel(sub.plan)}</dd>
               </div>
-              <div className="min-w-0">
-                <p className="text-xs text-muted-foreground">Statut</p>
-                <p className="text-lg font-semibold">
+              <div className="min-w-0 space-y-1.5 p-5">
+                <dt className="label-mono">Statut</dt>
+                <dd className="text-lg font-semibold">
                   {sub.status === 'trialing'
                     ? 'Période d’essai'
                     : sub.status === 'active'
                       ? 'Actif'
                       : (sub.status ?? '—')}
-                </p>
+                </dd>
               </div>
-              <div className="min-w-0">
-                <p className="text-xs text-muted-foreground">
+              <div className="min-w-0 space-y-1.5 p-5">
+                <dt className="label-mono">
                   {sub.cancelAtPeriodEnd ? 'Fin de l’abonnement' : 'Prochain renouvellement'}
-                </p>
-                <p className="text-lg font-semibold">{formatDateFr(sub.currentPeriodEnd)}</p>
+                </dt>
+                <dd className="font-mono text-lg font-semibold tabular-nums">{formatDateFr(sub.currentPeriodEnd)}</dd>
               </div>
-            </div>
+            </dl>
 
             {sub.cancelAtPeriodEnd && (
-              <p className="text-sm font-medium text-destructive">
+              <p className="flex items-center gap-2 border-t bg-destructive/10 px-5 py-3 text-sm font-medium text-destructive">
+                <AlertTriangle className="size-4 shrink-0" aria-hidden="true" />
                 Votre abonnement sera annulé le {formatDateFr(sub.currentPeriodEnd)}.
               </p>
             )}
-
-            <div className="space-y-2">
-              <form action={createPortalSessionForm}>
-                <Button type="submit" disabled={!stripeConfigured}>
-                  Gérer mon abonnement
-                  <ExternalLink className="size-4" />
-                </Button>
-              </form>
-              <p className="text-xs text-muted-foreground">
-                Vous serez redirigé vers le portail client Stripe pour modifier votre
-                moyen de paiement, changer de plan ou télécharger vos factures.
-              </p>
-            </div>
           </CardContent>
+          <CardFooter className="flex-wrap justify-between gap-3 border-t bg-muted/40 px-5 py-3 [.border-t]:pt-3">
+            <p className="max-w-md text-xs text-muted-foreground">
+              Vous serez redirigé vers le portail client Stripe pour modifier votre
+              moyen de paiement, changer de plan ou télécharger vos factures.
+            </p>
+            <form action={createPortalSessionForm}>
+              <Button type="submit" size="sm" disabled={!stripeConfigured}>
+                Gérer mon abonnement
+                <ExternalLink className="size-4" />
+              </Button>
+            </form>
+          </CardFooter>
         </Card>
       ) : (
         <section className="space-y-4">
-          <div>
-            <h2 className="text-lg font-semibold tracking-tight">Choisissez un plan</h2>
+          <div className="space-y-1">
+            <h2 className="text-base font-semibold tracking-tight">Choisissez un plan</h2>
             <p className="text-sm text-muted-foreground">
               Sans engagement. Annulable à tout moment depuis le portail client.
             </p>
@@ -346,124 +350,138 @@ export default async function BillingPage() {
       )}
 
       {/* ─── Tableau des factures ──────────────────────────────────── */}
-      <Card>
-        <CardHeader className="flex-row items-center justify-between space-y-0">
-          <CardTitle className="text-base">Factures</CardTitle>
-          <span className="text-xs text-muted-foreground">Facturation Legaly AI → cabinet</span>
+      <Card className="gap-0 py-0">
+        <CardHeader className="flex flex-row items-center justify-between gap-2 border-b px-5 py-4 [.border-b]:pb-4">
+          <div className="min-w-0 space-y-1">
+            <CardTitle className="text-sm">Factures</CardTitle>
+            <CardDescription className="text-xs">Facturation Legaly AI → cabinet</CardDescription>
+          </div>
+          <span className="shrink-0 font-mono text-xs text-muted-foreground tabular-nums">{invoices.length}</span>
         </CardHeader>
-        <CardContent>
+        <CardContent className="p-0">
           {invoices.length === 0 ? (
-            <p className="py-10 text-center text-sm text-muted-foreground">
-              Aucune facture pour le moment.
-            </p>
+            <EmptyState icon={Receipt} title="Aucune facture pour le moment" />
           ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Date</TableHead>
-                  <TableHead>Numéro</TableHead>
-                  <TableHead>Description</TableHead>
-                  <TableHead className="text-right">Montant</TableHead>
-                  <TableHead>Statut</TableHead>
-                  <TableHead className="text-right">PDF</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {invoices.map((inv) => {
-                  const meta = (inv.metadata ?? {}) as Record<string, unknown>;
-                  const pdfUrl =
-                    (meta.invoice_pdf as string | undefined) ??
-                    (meta.hosted_invoice_url as string | undefined) ??
-                    null;
-                  const sBadge = statusBadge(inv.status);
-                  return (
-                    <TableRow key={inv.id}>
-                      <TableCell className="text-muted-foreground">
-                        {formatDateFr(inv.created_at)}
-                      </TableCell>
-                      <TableCell className="font-mono text-xs text-muted-foreground">
-                        {inv.number ?? inv.stripe_invoice_id ?? '—'}
-                      </TableCell>
-                      <TableCell>
-                        Abonnement Legaly AI
-                        {inv.due_date ? ` — échéance ${formatDateFr(inv.due_date)}` : ''}
-                      </TableCell>
-                      <TableCell className="text-right font-medium">
-                        {formatMoney(inv.amount_cents, inv.currency)}
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant="secondary" className={cn('font-normal', sBadge.className)}>
-                          {sBadge.label}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-right">
-                        {pdfUrl ? (
-                          <Button variant="ghost" size="sm" asChild>
-                            <a href={pdfUrl} target="_blank" rel="noopener noreferrer">
-                              <Download className="size-3.5" />
-                              Télécharger
-                            </a>
-                          </Button>
-                        ) : (
-                          <span className="text-xs text-muted-foreground/60">—</span>
-                        )}
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="pl-5 text-xs">Date</TableHead>
+                    <TableHead className="text-xs">Numéro</TableHead>
+                    <TableHead className="text-xs">Description</TableHead>
+                    <TableHead className="text-right text-xs">Montant</TableHead>
+                    <TableHead className="text-xs">Statut</TableHead>
+                    <TableHead className="pr-5 text-right text-xs">PDF</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {invoices.map((inv) => {
+                    const meta = (inv.metadata ?? {}) as Record<string, unknown>;
+                    const pdfUrl =
+                      (meta.invoice_pdf as string | undefined) ??
+                      (meta.hosted_invoice_url as string | undefined) ??
+                      null;
+                    const sBadge = statusBadge(inv.status);
+                    return (
+                      <TableRow key={inv.id} className="hover:bg-muted/50">
+                        <TableCell className="pl-5 font-mono text-xs text-muted-foreground tabular-nums">
+                          {formatDateFr(inv.created_at)}
+                        </TableCell>
+                        <TableCell className="font-mono text-xs text-muted-foreground">
+                          {inv.number ?? inv.stripe_invoice_id ?? '—'}
+                        </TableCell>
+                        <TableCell className="text-sm">
+                          Abonnement Legaly AI
+                          {inv.due_date ? ` — échéance ${formatDateFr(inv.due_date)}` : ''}
+                        </TableCell>
+                        <TableCell className="text-right font-mono text-xs font-medium tabular-nums">
+                          {formatMoney(inv.amount_cents, inv.currency)}
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant="outline" className={cn('font-normal', sBadge.className)}>
+                            {sBadge.label}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="pr-5 text-right">
+                          {pdfUrl ? (
+                            <Button variant="ghost" size="sm" asChild>
+                              <a href={pdfUrl} target="_blank" rel="noopener noreferrer">
+                                <Download className="size-3.5" />
+                                Télécharger
+                              </a>
+                            </Button>
+                          ) : (
+                            <span className="text-xs text-muted-foreground/60">—</span>
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </div>
           )}
         </CardContent>
       </Card>
 
       {/* ─── Factures clients (débours de formalités) ───────────────── */}
-      <Card>
-        <CardHeader className="flex-row items-center justify-between space-y-0">
-          <CardTitle className="text-base">Factures clients</CardTitle>
-          <span className="text-xs text-muted-foreground">Frais officiels refacturés (débours)</span>
+      <Card className="gap-0 py-0">
+        <CardHeader className="flex flex-row items-center justify-between gap-2 border-b px-5 py-4 [.border-b]:pb-4">
+          <div className="min-w-0 space-y-1">
+            <CardTitle className="text-sm">Factures clients</CardTitle>
+            <CardDescription className="text-xs">Frais officiels refacturés (débours)</CardDescription>
+          </div>
+          <span className="shrink-0 font-mono text-xs text-muted-foreground tabular-nums">{clientInvoices.length}</span>
         </CardHeader>
-        <CardContent>
+        <CardContent className="p-0">
           {clientInvoices.length === 0 ? (
-            <p className="py-8 text-center text-sm text-muted-foreground">
-              Aucune facture client. Depuis une formalité déposée à l&apos;INPI, « Refacturer les frais au client » crée une facture en brouillon.
-            </p>
+            <EmptyState
+              icon={FileText}
+              title="Aucune facture client"
+              description="Depuis une formalité déposée à l'INPI, « Refacturer les frais au client » crée une facture en brouillon."
+            />
           ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Date</TableHead>
-                  <TableHead>Description</TableHead>
-                  <TableHead className="text-right">Montant</TableHead>
-                  <TableHead>Statut</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {clientInvoices.map((inv) => {
-                  const meta = (inv.metadata ?? {}) as Record<string, unknown>;
-                  const sBadge = statusBadge(inv.status);
-                  return (
-                    <TableRow key={inv.id}>
-                      <TableCell className="text-muted-foreground">{formatDateFr(inv.created_at)}</TableCell>
-                      <TableCell>
-                        {(meta.libelle as string | undefined) ?? 'Frais de formalité'}
-                        {inv.dossier_id && (
-                          <Link href={`/dossiers/${inv.dossier_id}`} className="ml-2 text-xs text-primary hover:underline">
-                            dossier
-                          </Link>
-                        )}
-                      </TableCell>
-                      <TableCell className="text-right font-medium">{formatMoney(inv.amount_cents, inv.currency)}</TableCell>
-                      <TableCell>
-                        <Badge variant="secondary" className={cn('font-normal', sBadge.className)}>
-                          {sBadge.label}
-                        </Badge>
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="pl-5 text-xs">Date</TableHead>
+                    <TableHead className="text-xs">Description</TableHead>
+                    <TableHead className="text-right text-xs">Montant</TableHead>
+                    <TableHead className="pr-5 text-xs">Statut</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {clientInvoices.map((inv) => {
+                    const meta = (inv.metadata ?? {}) as Record<string, unknown>;
+                    const sBadge = statusBadge(inv.status);
+                    return (
+                      <TableRow key={inv.id} className="hover:bg-muted/50">
+                        <TableCell className="pl-5 font-mono text-xs text-muted-foreground tabular-nums">
+                          {formatDateFr(inv.created_at)}
+                        </TableCell>
+                        <TableCell className="text-sm">
+                          {(meta.libelle as string | undefined) ?? 'Frais de formalité'}
+                          {inv.dossier_id && (
+                            <Link href={`/dossiers/${inv.dossier_id}`} className="ml-2 text-xs text-primary hover:underline">
+                              dossier
+                            </Link>
+                          )}
+                        </TableCell>
+                        <TableCell className="text-right font-mono text-xs font-medium tabular-nums">
+                          {formatMoney(inv.amount_cents, inv.currency)}
+                        </TableCell>
+                        <TableCell className="pr-5">
+                          <Badge variant="outline" className={cn('font-normal', sBadge.className)}>
+                            {sBadge.label}
+                          </Badge>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </div>
           )}
         </CardContent>
       </Card>
@@ -474,6 +492,6 @@ export default async function BillingPage() {
           Contactez le support
         </Link>
       </p>
-    </div>
+    </PageShell>
   );
 }

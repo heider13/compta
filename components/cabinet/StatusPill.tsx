@@ -25,22 +25,22 @@ const STATUS_MAP: Record<string, StatusMeta> = {
 };
 
 const TONE_CLASSES: Record<Tone, string> = {
-  gray: 'bg-muted text-muted-foreground',
-  blue: 'bg-blue-50 text-blue-700 [a&]:hover:bg-blue-100',
-  amber: 'bg-amber-50 text-amber-700 [a&]:hover:bg-amber-100',
-  orange: 'bg-orange-50 text-orange-700 [a&]:hover:bg-orange-100',
-  green: 'bg-emerald-50 text-emerald-700 [a&]:hover:bg-emerald-100',
-  red: 'bg-red-50 text-red-700 [a&]:hover:bg-red-100',
-  violet: 'bg-accent text-accent-foreground',
+  blue: 'border-blue-200 bg-blue-50 text-blue-700 dark:border-blue-500/30 dark:bg-blue-500/10 dark:text-blue-300',
+  amber: 'border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-300',
+  orange: 'border-orange-200 bg-orange-50 text-orange-700 dark:border-orange-500/30 dark:bg-orange-500/10 dark:text-orange-300',
+  green: 'border-success/30 bg-success/10 text-success',
+  red: 'border-destructive/30 bg-destructive/10 text-destructive',
+  gray: 'border-border bg-muted text-muted-foreground',
+  violet: 'border-brand-border bg-brand-soft text-brand-soft-foreground',
 };
 
 const DOT_CLASSES: Record<Tone, string> = {
-  gray: 'bg-muted-foreground/60',
   blue: 'bg-blue-500',
   amber: 'bg-amber-500',
   orange: 'bg-orange-500',
-  green: 'bg-emerald-500',
-  red: 'bg-red-500',
+  green: 'bg-success',
+  red: 'bg-destructive',
+  gray: 'bg-muted-foreground/60',
   violet: 'bg-primary',
 };
 
@@ -53,8 +53,8 @@ export function StatusPill({ statut, withDot = true }: StatusPillProps) {
   const meta = STATUS_MAP[statut] ?? { label: statut, tone: 'gray' as const };
   return (
     <Badge
-      variant="secondary"
-      className={cn('gap-1.5 rounded-full border-transparent font-medium', TONE_CLASSES[meta.tone])}
+      variant="outline"
+      className={cn('gap-1.5 font-medium', TONE_CLASSES[meta.tone])}
     >
       {withDot && (
         <span

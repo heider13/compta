@@ -40,8 +40,8 @@ type Item = {
 
 const STATUTS: Record<Item['status'], { label: string; cls: string; icon: typeof Check }> = {
   en_attente: { label: 'En attente', cls: 'bg-muted text-muted-foreground', icon: Clock },
-  en_cours: { label: 'En préparation', cls: 'bg-[#ede7ff] text-primary', icon: Loader2 },
-  pret: { label: 'Prête', cls: 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300', icon: Check },
+  en_cours: { label: 'En préparation', cls: 'bg-brand-soft text-brand-soft-foreground', icon: Loader2 },
+  pret: { label: 'Prête', cls: 'bg-success/10 text-success', icon: Check },
   erreur: { label: 'Erreur', cls: 'bg-destructive/10 text-destructive', icon: AlertTriangle },
 };
 
@@ -75,25 +75,29 @@ export function BatchProgress({ batch }: { batch: { id: string; label: string; t
   const total = items?.length ?? batch.total;
 
   return (
-    <div className="ml-9 rounded-lg border bg-card text-xs">
-      <div className="flex items-center gap-2 border-b px-3 py-2">
-        <Layers className="size-4 text-primary" />
+    <div className="ml-9 overflow-hidden rounded-lg border bg-card text-xs shadow-xs">
+      <div className="flex items-center gap-2 border-b bg-muted/30 px-3 py-2">
+        {actif ? (
+          <span className="live-dot size-1.5 shrink-0 text-primary" aria-hidden />
+        ) : (
+          <Layers className="size-3.5 shrink-0 text-muted-foreground" />
+        )}
         <span className="min-w-0 flex-1 truncate font-medium">{batch.label}</span>
-        <span className="text-muted-foreground">{prets}/{total} prête(s)</span>
+        <span className="font-mono text-[11px] tabular-nums text-muted-foreground">{prets}/{total} prête(s)</span>
       </div>
-      <div className="h-1 bg-muted">
-        <div className="h-full bg-primary transition-all" style={{ width: `${(prets / Math.max(1, total)) * 100}%` }} />
+      <div className="h-0.5 bg-muted" role="progressbar" aria-valuenow={prets} aria-valuemin={0} aria-valuemax={total} aria-label="Formalités prêtes">
+        <div className="h-full bg-primary transition-[width] duration-500" style={{ width: `${(prets / Math.max(1, total)) * 100}%` }} />
       </div>
-      {error && <p className="px-3 py-2 text-destructive">{error}</p>}
+      {error && <p className="border-b bg-destructive/10 px-3 py-2 text-destructive">{error}</p>}
       {!items ? (
-        <p className="flex items-center gap-2 px-3 py-2 text-muted-foreground"><Loader2 className="size-3.5 animate-spin" /> Chargement du suivi…</p>
+        <p className="flex items-center gap-2 px-3 py-2.5 font-mono text-[11px] text-muted-foreground"><Loader2 className="size-3.5 animate-spin" /> Chargement du suivi…</p>
       ) : (
         <ul className="divide-y">
           {items.map((it) => {
             const s = STATUTS[it.status] ?? STATUTS.en_attente;
             return (
-              <li key={it.dossier_id} className="flex flex-wrap items-center gap-2 px-3 py-2">
-                <span className="w-4 text-muted-foreground">{it.index + 1}</span>
+              <li key={it.dossier_id} className="flex flex-wrap items-center gap-2 px-3 py-2 transition-colors hover:bg-muted/40">
+                <span className="w-5 shrink-0 font-mono text-[11px] tabular-nums text-muted-foreground">{String(it.index + 1).padStart(2, '0')}</span>
                 <span className="min-w-0 flex-1">
                   <span className="block truncate font-medium">{it.societe}</span>
                   <span className="block truncate text-[11px] text-muted-foreground">
@@ -102,7 +106,7 @@ export function BatchProgress({ batch }: { batch: { id: string; label: string; t
                     {it.erreur ? ` · ${it.erreur}` : it.manquants.length ? ` · ${it.manquants.length} info(s) à compléter` : ''}
                   </span>
                 </span>
-                <span className={cn('inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium', s.cls)}>
+                <span className={cn('inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 font-mono text-[10.5px] font-medium', s.cls)}>
                   <s.icon className={cn('size-3', it.status === 'en_cours' && 'animate-spin')} /> {s.label}
                 </span>
                 {it.reprise && open && (
@@ -132,6 +136,7 @@ export function BatchProgress({ batch }: { batch: { id: string; label: string; t
                     variant="ghost"
                     className="h-7 px-2"
                     title="Relancer la préparation"
+                    aria-label={`Relancer la préparation de ${it.societe}`}
                     disabled={busy !== null}
                     onClick={async () => {
                       setBusy(it.dossier_id);

@@ -1,3 +1,5 @@
+// Ancien compteur compact (pastille + libellé). Pour une bande d'indicateurs,
+// préférer StatCard/StatStrip de components/cabinet/dashboard/StatCard.
 import Link from 'next/link';
 import { ChevronRight } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
@@ -11,32 +13,31 @@ interface StatCardProps {
   href?: string;
 }
 
+// Tons ramenés aux tokens de la charte (marque, états, graphiques)
 const TONE_CLASSES: Record<NonNullable<StatCardProps['tone']>, string> = {
-  gray: 'bg-muted text-foreground',
-  violet: 'bg-primary text-primary-foreground',
-  blue: 'bg-blue-500 text-white',
-  orange: 'bg-orange-500 text-white',
-  amber: 'bg-amber-500 text-white',
-  green: 'bg-emerald-500 text-white',
-  red: 'bg-red-500 text-white',
+  gray: 'border bg-muted text-foreground',
+  violet: 'border border-brand-border bg-brand-soft text-brand-soft-foreground',
+  blue: 'border border-chart-1/30 bg-chart-1/10 text-chart-1',
+  orange: 'border border-warning/40 bg-warning/10 text-warning',
+  amber: 'border border-warning/40 bg-warning/10 text-warning',
+  green: 'border border-success/30 bg-success/10 text-success',
+  red: 'border border-destructive/30 bg-destructive/10 text-destructive',
 };
 
 export function StatCard({ count, label, sublabel, tone = 'gray', href }: StatCardProps) {
   const content = (
-    <Card className={cn('h-full py-0', href && 'transition-shadow hover:shadow-md')}>
-      <CardContent className="flex items-center gap-4 px-5 py-4">
+    <Card className={cn('h-full gap-0 py-0', href && 'transition-colors hover:bg-muted/40')}>
+      <CardContent className="flex items-center gap-4 p-4">
         <span
           className={cn(
-            'grid size-12 shrink-0 place-items-center rounded-full text-lg font-semibold',
+            'grid size-11 shrink-0 place-items-center rounded-lg font-mono text-lg font-semibold tabular-nums',
             TONE_CLASSES[tone],
           )}
         >
           {count}
         </span>
         <div className="min-w-0 flex-1">
-          <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-            {label}
-          </p>
+          <p className="label-mono">{label}</p>
           {sublabel && <p className="truncate text-sm font-medium">{sublabel}</p>}
         </div>
         {href && <ChevronRight className="size-4 shrink-0 text-muted-foreground" />}
@@ -45,7 +46,10 @@ export function StatCard({ count, label, sublabel, tone = 'gray', href }: StatCa
   );
   if (href) {
     return (
-      <Link href={href} className="block no-underline">
+      <Link
+        href={href}
+        className="block rounded-xl no-underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+      >
         {content}
       </Link>
     );

@@ -3,83 +3,94 @@
 
 @custom-variant dark (&:is(.dark *));
 
-/* ─── Design tokens Compta — violet brand, style shadcn/ui ─── */
-:root {
-  --radius: 0.85rem;
+/* ─── Design tokens Legaly — base neutre zinc (shadcn/ui), accent violet de marque ───
+   html:root : prime sur le :root de globals.css (variables de la landing). */
+html:root {
+  --radius: 0.625rem;
 
-  /* Canvas légèrement teinté violet → les cartes blanches prennent du relief */
-  --app-canvas: #f5f3fb;
-  --font-display-app: 'Fraunces', 'Instrument Serif', Georgia, serif;
+  --app-canvas: oklch(1 0 0);
+  --font-display-app: 'Geist', ui-sans-serif, system-ui, sans-serif;
 
-  --background: #ffffff;
-  --foreground: #17122a;
-  --card: #ffffff;
-  --card-foreground: #17122a;
-  --popover: #ffffff;
-  --popover-foreground: #17122a;
+  --background: oklch(1 0 0);
+  --foreground: oklch(0.141 0.005 285.823);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.141 0.005 285.823);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.141 0.005 285.823);
 
-  /* Brand : violet Compta */
-  --primary: #5b36d6;
-  --primary-foreground: #ffffff;
+  /* Violet Legaly */
+  --primary: oklch(0.488 0.217 285.5);
+  --primary-foreground: oklch(0.985 0 0);
 
-  --secondary: #f3f1fa;
-  --secondary-foreground: #3a2f5c;
-  --muted: #f3f1fa;
-  --muted-foreground: #6c688a;
-  --accent: #ede7ff;
-  --accent-foreground: #4827b0;
+  --secondary: oklch(0.967 0.001 286.375);
+  --secondary-foreground: oklch(0.21 0.006 285.885);
+  --muted: oklch(0.967 0.001 286.375);
+  --muted-foreground: oklch(0.552 0.016 285.938);
+  /* Surfaces de survol neutres, comme shadcn */
+  --accent: oklch(0.967 0.001 286.375);
+  --accent-foreground: oklch(0.21 0.006 285.885);
+  /* Teinte de marque douce (mise en avant, sélection, IA) */
+  --brand-soft: oklch(0.962 0.025 290);
+  --brand-soft-foreground: oklch(0.43 0.2 285.5);
+  --brand-border: oklch(0.89 0.06 290);
 
-  --destructive: #dc2626;
-  --destructive-foreground: #ffffff;
+  --destructive: oklch(0.577 0.245 27.325);
+  --destructive-foreground: oklch(0.985 0 0);
+  --success: oklch(0.6 0.15 155);
+  --warning: oklch(0.72 0.16 70);
 
-  --border: #e8e5f3;
-  --input: #ded9ec;
-  --ring: #957af5;
+  --border: oklch(0.92 0.004 286.32);
+  --input: oklch(0.92 0.004 286.32);
+  --ring: oklch(0.65 0.17 288);
 
-  --chart-1: #5b36d6;
-  --chart-2: #7551e8;
-  --chart-3: #957af5;
-  --chart-4: #b9a4ff;
-  --chart-5: #d9cdff;
+  --chart-1: oklch(0.488 0.217 285.5);
+  --chart-2: oklch(0.62 0.19 290);
+  --chart-3: oklch(0.75 0.13 292);
+  --chart-4: oklch(0.72 0.15 30);
+  --chart-5: oklch(0.87 0.06 292);
 
-  --sidebar: #14102a;
-  --sidebar-foreground: #dcdae3;
-  --sidebar-primary: #7551e8;
-  --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: #241d45;
-  --sidebar-accent-foreground: #ffffff;
-  --sidebar-border: #2b2352;
-  --sidebar-ring: #957af5;
+  --sidebar: oklch(0.985 0.001 286);
+  --sidebar-foreground: oklch(0.37 0.013 285.805);
+  --sidebar-primary: oklch(0.488 0.217 285.5);
+  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-accent: oklch(0.955 0.003 286);
+  --sidebar-accent-foreground: oklch(0.141 0.005 285.823);
+  --sidebar-border: oklch(0.92 0.004 286.32);
+  --sidebar-ring: oklch(0.65 0.17 288);
 }
 
-.dark {
-  --background: #0e0b1a;
-  --foreground: #f2f0f6;
-  --card: #1c1830;
-  --card-foreground: #f2f0f6;
-  --popover: #1c1830;
-  --popover-foreground: #f2f0f6;
-  --primary: #957af5;
-  --primary-foreground: #0e0b1a;
-  --secondary: #2d2842;
-  --secondary-foreground: #f2f0f6;
-  --muted: #2d2842;
-  --muted-foreground: #8e8a9f;
-  --accent: #3a1f8c;
-  --accent-foreground: #ece6ff;
-  --destructive: #ef4444;
-  --destructive-foreground: #ffffff;
-  --border: #2d2842;
-  --input: #2d2842;
-  --ring: #7551e8;
-  --sidebar: #0e0b1a;
-  --sidebar-foreground: #dcdae3;
-  --sidebar-primary: #7551e8;
-  --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: #241d45;
-  --sidebar-accent-foreground: #ffffff;
-  --sidebar-border: #2b2352;
-  --sidebar-ring: #957af5;
+html.dark {
+  --app-canvas: oklch(0.141 0.005 285.823);
+  --background: oklch(0.141 0.005 285.823);
+  --foreground: oklch(0.985 0 0);
+  --card: oklch(0.21 0.006 285.885);
+  --card-foreground: oklch(0.985 0 0);
+  --popover: oklch(0.21 0.006 285.885);
+  --popover-foreground: oklch(0.985 0 0);
+  --primary: oklch(0.7 0.16 290);
+  --primary-foreground: oklch(0.141 0.005 285.823);
+  --secondary: oklch(0.274 0.006 286.033);
+  --secondary-foreground: oklch(0.985 0 0);
+  --muted: oklch(0.274 0.006 286.033);
+  --muted-foreground: oklch(0.705 0.015 286.067);
+  --accent: oklch(0.274 0.006 286.033);
+  --accent-foreground: oklch(0.985 0 0);
+  --brand-soft: oklch(0.3 0.08 288);
+  --brand-soft-foreground: oklch(0.88 0.07 290);
+  --brand-border: oklch(0.4 0.1 288);
+  --destructive: oklch(0.704 0.191 22.216);
+  --destructive-foreground: oklch(0.985 0 0);
+  --border: oklch(1 0 0 / 10%);
+  --input: oklch(1 0 0 / 15%);
+  --ring: oklch(0.6 0.15 290);
+  --sidebar: oklch(0.21 0.006 285.885);
+  --sidebar-foreground: oklch(0.85 0.005 286);
+  --sidebar-primary: oklch(0.7 0.16 290);
+  --sidebar-primary-foreground: oklch(0.141 0.005 285.823);
+  --sidebar-accent: oklch(0.274 0.006 286.033);
+  --sidebar-accent-foreground: oklch(0.985 0 0);
+  --sidebar-border: oklch(1 0 0 / 10%);
+  --sidebar-ring: oklch(0.6 0.15 290);
 }
 
 @theme inline {
@@ -99,6 +110,12 @@
   --color-accent-foreground: var(--accent-foreground);
   --color-destructive: var(--destructive);
   --color-destructive-foreground: var(--destructive-foreground);
+  --color-brand-soft: var(--brand-soft);
+  --color-brand-soft-foreground: var(--brand-soft-foreground);
+  --color-brand-border: var(--brand-border);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-canvas: var(--app-canvas);
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
@@ -120,6 +137,8 @@
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) + 4px);
   --font-serif: var(--font-display-app);
+  --font-sans: 'Geist', ui-sans-serif, system-ui, sans-serif;
+  --font-mono: 'Geist Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
 }
 
 @layer base {
@@ -130,28 +149,100 @@
     @apply bg-background text-foreground;
   }
 
-  /* ─── Coquille de l'app cabinet : canvas teinté + titres élégants ───
-     Le canvas légèrement violet fait ressortir les cartes blanches ;
-     les titres de page passent en serif Fraunces, plus léger et raffiné
-     (moins « grossier » que le sans-serif gras). */
+  /* ─── Coquille de l'app cabinet : sobre, technique, lisible ─── */
   .cabinet-canvas {
     background-color: var(--app-canvas);
+    font-family: 'Geist', ui-sans-serif, system-ui, sans-serif;
+    font-feature-settings: 'ss01', 'cv11';
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
   }
   .cabinet-canvas h1 {
-    font-family: var(--font-display-app);
-    font-weight: 500;
-    letter-spacing: -0.01em;
+    font-size: 1.5rem;
+    line-height: 2rem;
+    font-weight: 600;
+    letter-spacing: -0.025em;
   }
-  /* Titres secondaires (sections) : serif discret également */
   .cabinet-canvas h2 {
-    font-family: var(--font-display-app);
-    font-weight: 500;
-    letter-spacing: -0.005em;
+    font-weight: 600;
+    letter-spacing: -0.015em;
   }
-  /* Titres de cartes : on garde le sans-serif, juste un poil resserré */
   .cabinet-canvas [data-slot='card-title'] {
     letter-spacing: -0.01em;
   }
+}
+
+@layer utilities {
+  /* Trame de points discrète : signature « tech » des en-têtes */
+  .bg-dot-grid {
+    background-image: radial-gradient(color-mix(in oklab, var(--foreground) 9%, transparent) 1px, transparent 1px);
+    background-size: 16px 16px;
+  }
+  .mask-fade-b {
+    mask-image: linear-gradient(to bottom, black 30%, transparent);
+  }
+  /* Libellé technique : petites capitales mono */
+  .label-mono {
+    font-family: 'Geist Mono', ui-monospace, monospace;
+    font-size: 0.6875rem;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--muted-foreground);
+  }
+  /* Point d'état « en direct » */
+  .live-dot {
+    position: relative;
+    display: inline-block;
+    width: 0.5rem;
+    height: 0.5rem;
+    border-radius: 9999px;
+    background: currentColor;
+  }
+  .live-dot::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background: currentColor;
+    animation: live-ping 1.8s cubic-bezier(0, 0, 0.2, 1) infinite;
+  }
+  /* Bordure lumineuse animée (éléments IA) */
+  .ai-glow {
+    position: relative;
+    isolation: isolate;
+  }
+  .ai-glow::before {
+    content: '';
+    position: absolute;
+    inset: -1px;
+    z-index: -1;
+    border-radius: inherit;
+    padding: 1px;
+    background: conic-gradient(from var(--ai-angle, 0deg), transparent 0 60%, var(--chart-2) 75%, var(--chart-4) 85%, transparent 100%);
+    -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    animation: ai-spin 8s linear infinite;
+    opacity: 0.45;
+    transition: opacity 0.4s;
+  }
+  .ai-glow[data-actif='true']::before {
+    opacity: 1;
+    animation-duration: 2.4s;
+  }
+}
+
+@property --ai-angle {
+  syntax: '<angle>';
+  inherits: false;
+  initial-value: 0deg;
+}
+@keyframes ai-spin {
+  to { --ai-angle: 360deg; }
+}
+@keyframes live-ping {
+  75%, 100% { transform: scale(2.4); opacity: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .live-dot::after, .ai-glow::before { animation: none; }
 }

@@ -49,34 +49,36 @@ export function PlanCard({
   return (
     <Card
       className={cn(
-        'relative h-full',
-        accent && 'border-primary/40 bg-gradient-to-b from-accent/40 to-card shadow-md',
+        'relative h-full gap-0 py-0',
+        accent && 'border-brand-border bg-gradient-to-b from-brand-soft/60 to-card shadow-md',
         isCurrent && 'ring-2 ring-primary',
         disabled && 'opacity-60',
       )}
     >
       {accent && highlight && (
-        <Badge className="absolute -top-3 left-1/2 -translate-x-1/2 gap-1 px-3">
+        <Badge className="absolute -top-3 left-1/2 -translate-x-1/2 gap-1 px-3 font-mono text-[10px] tracking-wide">
           <Sparkles className="size-3" />
           {highlight.toUpperCase()}
         </Badge>
       )}
 
       {isCurrent && (
-        <Badge className="absolute right-4 top-4 bg-green-600 text-white hover:bg-green-600">
+        <Badge variant="outline" className="absolute right-4 top-4 gap-1.5 border-success/30 bg-success/10 text-success">
+          <span className="live-dot size-1.5" aria-hidden="true" />
           Plan actuel
         </Badge>
       )}
 
-      <CardHeader>
-        <CardTitle className="text-xl">{name}</CardTitle>
-        <CardDescription className="min-h-10">{description}</CardDescription>
+      <CardHeader className="px-5 pt-6 pb-4">
+        <p className="label-mono">{planId}</p>
+        <CardTitle className="text-base">{name}</CardTitle>
+        <CardDescription className="min-h-10 text-xs">{description}</CardDescription>
       </CardHeader>
 
-      <CardContent className="flex h-full flex-col">
-        <div className="mb-6 flex items-baseline gap-1">
-          <span className="text-4xl font-semibold tracking-tight text-foreground">{price}</span>
-          {priceSuffix && <span className="text-sm text-muted-foreground">{priceSuffix}</span>}
+      <CardContent className="flex h-full flex-col px-5 pb-6">
+        <div className="mb-5 flex items-baseline gap-1">
+          <span className="font-mono text-3xl font-semibold tracking-tight text-foreground tabular-nums">{price}</span>
+          {priceSuffix && <span className="text-xs text-muted-foreground">{priceSuffix}</span>}
         </div>
 
         {mode === 'subscribe' && !isCurrent && (
@@ -95,7 +97,7 @@ export function PlanCard({
         )}
 
         {mode === 'subscribe' && isCurrent && (
-          <div className="mb-6 rounded-md bg-muted px-4 py-2.5 text-center text-sm text-muted-foreground">
+          <div className="mb-6 rounded-md border bg-muted px-4 py-2 text-center text-sm text-muted-foreground">
             Vous êtes sur ce plan
           </div>
         )}
@@ -109,11 +111,11 @@ export function PlanCard({
           </Button>
         )}
 
-        <ul className="grid gap-2.5">
+        <ul className="grid gap-2.5 border-t pt-5">
           {features.map((f) => (
-            <li key={f} className="flex items-start gap-2.5 text-sm text-foreground/80">
+            <li key={f} className="flex items-start gap-2.5 text-sm text-muted-foreground">
               <Check className="mt-0.5 size-4 shrink-0 text-primary" />
-              <span>{f}</span>
+              <span className="text-foreground/80">{f}</span>
             </li>
           ))}
         </ul>

@@ -1,12 +1,13 @@
 import { InpiFormalityDetail } from '@/components/cabinet/InpiFormalityDetail';
+import { PageShell } from '@/components/cabinet/PageHeader';
 
 export const dynamic = 'force-dynamic';
 
 export default async function InpiFormalityPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   return (
-    <div className="mx-auto w-full max-w-7xl p-4 sm:p-6">
+    <PageShell>
       <InpiFormalityDetail id={id} />
-    </div>
+    </PageShell>
   );
 }

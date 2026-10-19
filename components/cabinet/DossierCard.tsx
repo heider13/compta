@@ -24,71 +24,28 @@ export function DossierCard({ dossier, showStatus = false }: DossierCardProps) {
   return (
     <Link
       href={`/dossiers/${dossier.id}`}
-      className="app-card app-card-pad"
-      style={{
-        display: 'flex',
-        flexDirection: 'column',
-        gap: 8,
-        textDecoration: 'none',
-        color: 'inherit',
-        padding: '12px 14px',
-        transition: 'border-color .12s, box-shadow .12s, transform .12s',
-      }}
+      className="flex min-w-0 flex-col gap-2 rounded-lg border bg-card px-3.5 py-3 text-foreground no-underline shadow-xs transition-colors hover:border-foreground/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
     >
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          gap: 8,
-        }}
-      >
-        <span
-          className="mono"
-          style={{
-            fontSize: 11,
-            color: 'var(--ink-500)',
-            letterSpacing: '0.02em',
-          }}
-        >
+      <div className="flex items-center justify-between gap-2">
+        <span className="truncate font-mono text-[11px] tracking-wide text-muted-foreground">
           {dossier.reference ?? '—'}
         </span>
         {dossier.forme_juridique && (
-          <span className="pill violet" style={{ fontSize: 10, padding: '2px 8px' }}>
+          <span className="shrink-0 rounded-md border border-brand-border bg-brand-soft px-1.5 py-px font-mono text-[10px] font-medium text-brand-soft-foreground">
             {dossier.forme_juridique}
           </span>
         )}
       </div>
 
-      <div
-        style={{
-          fontWeight: 600,
-          fontSize: 14,
-          color: 'var(--ink-900)',
-          overflow: 'hidden',
-          textOverflow: 'ellipsis',
-          whiteSpace: 'nowrap',
-        }}
-      >
-        {dossier.client_name}
-      </div>
+      <div className="truncate text-sm font-semibold">{dossier.client_name}</div>
 
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          gap: 8,
-          fontSize: 12,
-          color: 'var(--ink-500)',
-        }}
-      >
-        <span>{typeFormaliteLabel(dossier.type_formalite)}</span>
-        <span>{formatRelative(dateRef)}</span>
+      <div className="flex items-center justify-between gap-2 text-xs text-muted-foreground">
+        <span className="truncate">{typeFormaliteLabel(dossier.type_formalite)}</span>
+        <span className="shrink-0 font-mono text-[11px] tabular-nums">{formatRelative(dateRef)}</span>
       </div>
 
       {showStatus && (
-        <div style={{ marginTop: 2 }}>
+        <div className="mt-0.5">
           <StatusPill statut={dossier.statut} />
         </div>
       )}

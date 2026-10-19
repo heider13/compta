@@ -12,6 +12,7 @@ import {
 import { createClient } from '@/lib/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Markdown } from '@/components/ui/markdown';
 import { cn } from '@/lib/utils';
 
 const VPS = process.env.NEXT_PUBLIC_VPS_BACKEND_URL ?? 'https://0dao73k.cserverhost.cloud';
@@ -97,39 +98,59 @@ export function FloatingAssistant() {
           type="button"
           onClick={() => setOpen(true)}
           aria-label="Ouvrir l'assistant IA"
-          className="fixed bottom-6 right-6 z-50 grid size-14 place-items-center rounded-full bg-primary text-primary-foreground shadow-lg transition-transform hover:scale-105"
+          title="Assistant IA"
+          className="fixed bottom-5 right-5 z-50 grid size-12 place-items-center rounded-full bg-primary text-primary-foreground shadow-lg ring-4 ring-brand-soft transition-[transform,box-shadow] hover:scale-105 hover:shadow-xl focus-visible:outline-none focus-visible:ring-ring/50 sm:bottom-6 sm:right-6"
         >
-          <MessageCircle className="size-6" />
-          <span className="absolute -right-0.5 -top-0.5 grid size-5 place-items-center rounded-full bg-amber-400 text-[10px]">
-            <Sparkles className="size-3 text-amber-950" />
+          <MessageCircle className="size-5" />
+          <span className="absolute -right-0.5 -top-0.5 grid size-4.5 place-items-center rounded-full border-2 border-background bg-brand-soft text-brand-soft-foreground">
+            <Sparkles className="size-2.5" />
           </span>
         </button>
       )}
 
       {/* Panneau */}
       {open && (
-        <div className="fixed bottom-6 right-6 z-50 flex h-[560px] max-h-[80vh] w-[380px] max-w-[calc(100vw-2rem)] flex-col overflow-hidden rounded-2xl border bg-card shadow-2xl">
-          <div className="flex items-center gap-2 border-b bg-sidebar px-4 py-3 text-sidebar-foreground">
-            <span className="grid size-8 place-items-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground">
+        <div
+          role="dialog"
+          aria-label="Assistant Legaly AI"
+          className="fixed bottom-4 right-4 z-50 flex h-[560px] max-h-[80vh] w-[380px] max-w-[calc(100vw-2rem)] flex-col overflow-hidden rounded-xl border bg-card shadow-2xl animate-in fade-in-0 slide-in-from-bottom-2 duration-200 sm:bottom-6 sm:right-6"
+        >
+          <div className="flex items-center gap-2.5 border-b px-3.5 py-2.5">
+            <span className="grid size-7 shrink-0 place-items-center rounded-md border border-brand-border bg-brand-soft text-brand-soft-foreground">
               <Bot className="size-4" />
             </span>
-            <div className="flex-1">
-              <p className="text-sm font-semibold">Assistant Legaly AI</p>
-              <p className="text-[11px] text-sidebar-foreground/60">Fiscal · comptable · juridique</p>
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-sm font-semibold">Assistant Legaly AI</p>
+              <p className="flex items-center gap-1.5 font-mono text-[10.5px] text-muted-foreground">
+                <span className={cn('live-dot size-1.5', busy ? 'text-primary' : 'text-success')} aria-hidden />
+                {busy ? 'en cours' : 'fiscal · comptable · juridique'}
+              </p>
             </div>
-            <Link href="/assistant" aria-label="Ouvrir en plein écran" className="rounded p-1 hover:bg-white/10">
-              <Maximize2 className="size-4" />
+            <Link
+              href="/assistant"
+              aria-label="Ouvrir en plein écran"
+              title="Ouvrir en plein écran"
+              className="grid size-7 place-items-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+            >
+              <Maximize2 className="size-3.5" />
             </Link>
-            <button type="button" onClick={() => setOpen(false)} aria-label="Fermer" className="rounded p-1 hover:bg-white/10">
+            <button
+              type="button"
+              onClick={() => setOpen(false)}
+              aria-label="Fermer"
+              className="grid size-7 place-items-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+            >
               <X className="size-4" />
             </button>
           </div>
 
-          <div className="flex-1 space-y-3 overflow-y-auto p-3">
+          <div className="flex-1 space-y-4 overflow-y-auto p-3.5" aria-busy={busy}>
             {messages.length === 0 && (
-              <div className="rounded-xl border border-dashed p-4 text-center">
-                <Sparkles className="mx-auto mb-2 size-6 text-primary" />
-                <p className="mb-3 text-xs text-muted-foreground">
+              <div className="flex flex-col items-center px-3 py-6 text-center">
+                <span className="mb-3 grid size-10 place-items-center rounded-lg border bg-background shadow-xs">
+                  <Sparkles className="size-4.5 text-primary" />
+                </span>
+                <p className="mb-3 max-w-60 text-xs text-muted-foreground">
                   Une question fiscale ou juridique ? Je réponds avec les sources officielles.
                 </p>
                 <div className="flex flex-wrap justify-center gap-1.5">
@@ -138,7 +159,7 @@ export function FloatingAssistant() {
                       key={q.label}
                       type="button"
                       onClick={() => ask(q.q)}
-                      className="rounded-full border bg-muted/40 px-2.5 py-1 text-xs hover:border-primary/50 hover:bg-accent"
+                      className="rounded-full border bg-background px-2.5 py-1 text-xs shadow-xs transition-colors hover:border-brand-border hover:bg-brand-soft hover:text-brand-soft-foreground"
                     >
                       {q.label}
                     </button>
@@ -149,29 +170,33 @@ export function FloatingAssistant() {
             {messages.map((m, i) => (
               <div key={i} className={cn('flex gap-2', m.role === 'user' && 'justify-end')}>
                 {m.role === 'assistant' && (
-                  <span className="grid size-6 shrink-0 place-items-center rounded-md bg-accent text-primary">
-                    <Bot className="size-3.5" />
+                  <span className="mt-0.5 grid size-5 shrink-0 place-items-center rounded-md border border-brand-border bg-brand-soft text-brand-soft-foreground">
+                    <Bot className="size-3" />
                   </span>
                 )}
                 <div
                   className={cn(
-                    'max-w-[85%] rounded-xl px-3 py-2 text-[13px] leading-relaxed',
-                    m.role === 'user' ? 'bg-primary text-primary-foreground' : 'border bg-card',
+                    'min-w-0 text-[13px] leading-relaxed',
+                    m.role === 'user'
+                      ? 'max-w-[85%] rounded-2xl rounded-br-md border bg-muted/60 px-3 py-1.5'
+                      : 'flex-1',
                   )}
                 >
                   {m.role === 'assistant' && m.content === '' && busy ? (
-                    <span className="inline-flex items-center gap-1.5 text-muted-foreground">
-                      <Loader2 className="size-3 animate-spin" /> Recherche…
+                    <span className="inline-flex items-center gap-1.5 font-mono text-[11px] text-muted-foreground">
+                      <span className="live-dot size-1.5 text-primary" aria-hidden /> Recherche…
                     </span>
+                  ) : m.role === 'assistant' ? (
+                    <Markdown className="text-[13px]">{m.content}</Markdown>
                   ) : (
-                    <div className="whitespace-pre-wrap">{m.content}</div>
+                    <div className="whitespace-pre-wrap break-words">{m.content}</div>
                   )}
                   {m.sources && m.sources.length > 0 && (
                     <div className="mt-2 flex flex-wrap gap-1 border-t pt-1.5">
                       {m.sources.slice(0, 4).map((s) => (
                         <a key={s.n} href={s.url ?? '#'} target="_blank" rel="noreferrer noopener">
-                          <Badge variant="secondary" className="max-w-[200px] cursor-pointer gap-1 truncate text-[10px] font-normal hover:bg-accent">
-                            {s.source_label && <span className="font-semibold text-primary">{s.source_label}</span>}
+                          <Badge variant="outline" className="max-w-[200px] cursor-pointer gap-1 truncate bg-background text-[10px] font-normal transition-colors hover:bg-accent">
+                            {s.source_label && <span className="font-mono text-brand-soft-foreground">{s.source_label}</span>}
                             <span className="truncate">{s.title}</span>
                             <ExternalLink className="size-2 shrink-0" />
                           </Badge>
@@ -187,16 +212,17 @@ export function FloatingAssistant() {
 
           <form
             onSubmit={(e) => { e.preventDefault(); ask(input); }}
-            className="flex items-center gap-2 border-t p-2.5"
+            className="flex items-center gap-2 border-t bg-muted/30 p-2.5"
           >
             <input
               value={input}
               onChange={(e) => setInput(e.target.value)}
               placeholder="Votre question…"
               disabled={busy}
-              className="flex-1 rounded-lg border bg-background px-3 py-2 text-[13px] outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+              aria-label="Votre question"
+              className="h-9 min-w-0 flex-1 rounded-md border bg-background px-3 text-[13px] shadow-xs outline-none transition-[color,box-shadow] focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:opacity-60"
             />
-            <Button type="submit" size="icon" className="size-9 shrink-0" disabled={busy || !input.trim()}>
+            <Button type="submit" size="icon" className="size-9 shrink-0" disabled={busy || !input.trim()} aria-label="Envoyer">
               {busy ? <Loader2 className="size-4 animate-spin" /> : <Send className="size-4" />}
             </Button>
           </form>

@@ -240,9 +240,9 @@ function ParcoursFormaliteBase({
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between gap-2">
-        <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Étapes de la formalité</p>
-        <span className="text-[11px] tabular-nums text-muted-foreground">
-          {faites}/{applicables.length}
+        <p className="label-mono">Étapes de la formalité</p>
+        <span className="rounded-md border bg-muted px-1.5 py-px font-mono text-[11px] tabular-nums text-muted-foreground">
+          <span className="text-foreground">{faites}</span>/{applicables.length}
         </span>
       </div>
       <div
@@ -253,16 +253,16 @@ function ParcoursFormaliteBase({
         aria-valuemax={applicables.length}
         aria-valuenow={faites}
       >
-        <div className="h-full rounded-full bg-primary transition-[width] duration-500" style={{ width: `${pct}%` }} />
+        <div className="h-full rounded-full bg-gradient-to-r from-primary to-chart-2 transition-[width] duration-500" style={{ width: `${pct}%` }} />
       </div>
       {erreurLecture && (
-        <p className="flex items-center gap-1.5 text-[11px] text-amber-700">
+        <p className="flex items-center gap-1.5 font-mono text-[11px] text-warning">
           <AlertCircle className="size-3 shrink-0" />
           {erreurLecture}
         </p>
       )}
 
-      <ol className="relative">
+      <ol className="relative pt-1">
         {etat.etapes.map((e, i) => {
           const courante = etat.courante === e.cle;
           const derniere = i === etat.etapes.length - 1;
@@ -274,31 +274,47 @@ function ParcoursFormaliteBase({
               {!derniere && (
                 <span
                   aria-hidden
-                  className={cn('absolute left-[11px] top-7 h-[calc(100%-1.5rem)] w-px', e.statut === 'fait' || e.statut === 'sans_objet' ? 'bg-primary/40' : 'bg-border')}
+                  className={cn('absolute left-[11px] top-7 h-[calc(100%-1.5rem)] w-px', e.statut === 'fait' || e.statut === 'sans_objet' ? 'bg-primary/50' : 'bg-border')}
                 />
               )}
               <Pastille statut={e.statut} numero={i + 1} />
               <div className="min-w-0 flex-1">
-                <p className={cn('min-h-6 pt-0.5 text-sm leading-5', courante ? 'font-semibold' : 'font-medium', attenue && 'text-muted-foreground')}>
-                  {e.titre}
-                </p>
+                <div className="flex min-h-6 items-start justify-between gap-2 pt-0.5">
+                  <p className={cn('text-sm leading-5', courante ? 'font-semibold' : 'font-medium', attenue && 'text-muted-foreground')}>
+                    {e.titre}
+                  </p>
+                  <span
+                    aria-hidden
+                    className={cn(
+                      'mt-0.5 inline-flex max-w-[50%] items-center gap-1 rounded border px-1 py-px text-right font-mono text-[10px] leading-4 uppercase tracking-wide',
+                      e.statut === 'fait' ? 'border-brand-border bg-brand-soft text-brand-soft-foreground'
+                        : e.statut === 'bloque' ? 'border-destructive/30 bg-destructive/10 text-destructive'
+                          : e.statut === 'attente' || e.statut === 'en_cours' || e.statut === 'passee' ? 'border-warning/40 bg-warning/10 text-warning'
+                            : courante || e.statut === 'a_faire' ? 'border-primary/40 text-primary'
+                              : 'text-muted-foreground',
+                    )}
+                  >
+                    {courante && <span className="live-dot size-1 text-primary" />}
+                    {LIBELLE_STATUT[e.statut]}
+                  </span>
+                </div>
                 <p className={cn('mt-0.5 text-xs leading-snug', e.statut === 'bloque' ? 'text-destructive' : 'text-muted-foreground')}>{e.detail}</p>
-                {e.erreur && <p className="mt-1 text-xs leading-snug text-amber-700">{e.erreur}</p>}
+                {e.erreur && <p className="mt-1 text-xs leading-snug text-warning">{e.erreur}</p>}
                 {e.alertes?.map((a) => (
-                  <p key={a} className="mt-1 flex items-start gap-1 text-xs leading-snug text-amber-700">
+                  <p key={a} className="mt-1 flex items-start gap-1 text-xs leading-snug text-warning">
                     <AlertCircle className="mt-0.5 size-3 shrink-0" />
                     {a}
                   </p>
                 ))}
                 {e.documents && e.documents.length > 0 && !attenue && (
-                  <ul className="mt-1.5 space-y-0.5">
+                  <ul className="mt-1.5 space-y-0.5 border-l pl-2">
                     {e.documents.slice(0, 6).map((d) => (
-                      <li key={d.id} className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
-                        {d.signe ? <Check className="size-3 shrink-0 text-emerald-600" aria-label="signé" /> : <FileText className="size-3 shrink-0" aria-hidden />}
+                      <li key={d.id} className="flex items-center gap-1.5 font-mono text-[11px] text-muted-foreground">
+                        {d.signe ? <Check className="size-3 shrink-0 text-success" aria-label="signé" /> : <FileText className="size-3 shrink-0" aria-hidden />}
                         <span className="truncate" title={d.nom}>{d.nom}</span>
                       </li>
                     ))}
-                    {e.documents.length > 6 && <li className="text-[11px] text-muted-foreground">+ {e.documents.length - 6} autre(s)</li>}
+                    {e.documents.length > 6 && <li className="font-mono text-[11px] text-muted-foreground">+ {e.documents.length - 6} autre(s)</li>}
                   </ul>
                 )}
                 {e.lien && e.cle === 'formalite' && (
@@ -378,8 +394,8 @@ function ParcoursFormaliteBase({
                 {actions
                   .filter((a) => a.confirmation && ouvert === `${e.cle}:${a.type}`)
                   .map((a) => (
-                    <div key={a.type} className="mt-2 rounded-md border border-amber-300 bg-amber-50 p-2.5" role="alertdialog" aria-label={a.label}>
-                      <p className="text-xs leading-snug text-amber-900">{a.confirmation}</p>
+                    <div key={a.type} className="mt-2 rounded-md border border-warning/40 bg-warning/10 p-2.5" role="alertdialog" aria-label={a.label}>
+                      <p className="text-xs leading-snug text-foreground">{a.confirmation}</p>
                       <div className="mt-2 flex flex-wrap gap-1.5">
                         <Button type="button" size="sm" className="h-7 px-2.5 text-xs" disabled={actionEnCours !== null} onClick={() => confirmer(e, a)} autoFocus>
                           {actionEnCours === a.type && <Loader2 className="size-3 animate-spin" aria-hidden />}
@@ -407,7 +423,7 @@ function ParcoursFormaliteBase({
       </ol>
 
       {etat.termine && (
-        <p className="rounded-md bg-emerald-50 px-2.5 py-2 text-xs leading-snug text-emerald-800">
+        <p className="rounded-md border border-success/30 bg-success/10 px-2.5 py-2 text-xs leading-snug text-foreground">
           Formalité signée et payée, transmise au greffe.{' '}
           {lienFormalite && (
             <Link href={lienFormalite} className="font-medium underline">
@@ -427,8 +443,8 @@ function Squelette({ erreur, onRetry }: { erreur: string | null; onRetry: () => 
   return (
     <div className="space-y-3" aria-busy="true" aria-label="Chargement des étapes de la formalité">
       <div className="flex items-center justify-between">
-        <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Étapes de la formalité</p>
-        <span className="h-3 w-6 animate-pulse rounded bg-muted" />
+        <p className="label-mono">Étapes de la formalité</p>
+        <span className="h-4 w-8 animate-pulse rounded-md bg-muted" />
       </div>
       <div className="h-1 rounded-full bg-muted" />
       {erreur ? (
@@ -442,7 +458,7 @@ function Squelette({ erreur, onRetry }: { erreur: string | null; onRetry: () => 
           </span>
         </p>
       ) : null}
-      <ol>
+      <ol className="pt-1">
         {[0, 1, 2, 3, 4].map((i) => (
           <li key={i} className="flex min-h-[72px] gap-3 pb-4">
             <span className="size-6 shrink-0 animate-pulse rounded-full bg-muted" />
@@ -458,16 +474,16 @@ function Squelette({ erreur, onRetry }: { erreur: string | null; onRetry: () => 
 }
 
 function Pastille({ statut, numero }: { statut: Statut; numero: number }) {
-  const base = 'relative z-10 mt-0.5 grid size-6 shrink-0 place-items-center rounded-full text-[11px] font-semibold';
+  const base = 'relative z-10 mt-0.5 grid size-6 shrink-0 place-items-center rounded-full font-mono text-[11px] font-semibold tabular-nums';
   const sr = <span className="sr-only">Étape {numero}, {LIBELLE_STATUT[statut]}</span>;
   if (statut === 'fait') return <span className={cn(base, 'bg-primary text-primary-foreground')}><Check className="size-3.5" aria-hidden />{sr}</span>;
   if (statut === 'sans_objet') return <span className={cn(base, 'border bg-card text-muted-foreground')}><Minus className="size-3" aria-hidden />{sr}</span>;
-  if (statut === 'attente') return <span className={cn(base, 'border border-amber-300 bg-amber-50 text-amber-700')}><Clock className="size-3.5" aria-hidden />{sr}</span>;
-  if (statut === 'en_cours') return <span className={cn(base, 'border border-amber-300 bg-amber-50 text-amber-700')}><Loader2 className="size-3.5 animate-spin" aria-hidden />{sr}</span>;
+  if (statut === 'attente') return <span className={cn(base, 'border border-warning/40 bg-warning/10 text-warning')}><Clock className="size-3.5" aria-hidden />{sr}</span>;
+  if (statut === 'en_cours') return <span className={cn(base, 'border border-warning/40 bg-warning/10 text-warning')}><Loader2 className="size-3.5 animate-spin" aria-hidden />{sr}</span>;
   if (statut === 'bloque') return <span className={cn(base, 'border border-destructive/40 bg-destructive/10 text-destructive')}><AlertCircle className="size-3.5" aria-hidden />{sr}</span>;
-  if (statut === 'passee') return <span className={cn(base, 'border border-amber-400 bg-amber-50 text-amber-700')}><AlertTriangle className="size-3.5" aria-hidden />{sr}</span>;
+  if (statut === 'passee') return <span className={cn(base, 'border border-warning/40 bg-warning/10 text-warning')}><AlertTriangle className="size-3.5" aria-hidden />{sr}</span>;
   if (statut === 'inconnu') return <span className={cn(base, 'border bg-card text-muted-foreground')}><HelpCircle className="size-3.5" aria-hidden />{sr}</span>;
-  if (statut === 'a_faire') return <span className={cn(base, 'border-2 border-primary bg-card text-primary')}><span aria-hidden>{numero}</span>{sr}</span>;
+  if (statut === 'a_faire') return <span className={cn(base, 'border-2 border-primary bg-brand-soft text-primary')}><span aria-hidden>{numero}</span>{sr}</span>;
   return <span className={cn(base, 'border bg-card text-muted-foreground')}><span aria-hidden>{numero}</span>{sr}</span>;
 }
 
@@ -491,10 +507,10 @@ function FormSignataires({
   const emails = liste.map((s) => s.email.trim().toLowerCase());
   const doublon = emails.some((m, i) => m && emails.indexOf(m) !== i);
   const valide = liste.length > 0 && !doublon && liste.every((s) => s.prenom.trim() && s.nom.trim() && EMAIL.test(s.email.trim()) && telValide(s.telephone));
-  const champ = 'h-8 w-full min-w-0 rounded-md border bg-card px-2 text-xs outline-none focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/30';
+  const champ = 'h-8 w-full min-w-0 rounded-md border bg-background px-2 text-xs outline-none focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/30';
   return (
     <form
-      className="mt-2 space-y-2 rounded-md border bg-card p-2.5"
+      className="mt-2 space-y-2 rounded-md border bg-muted/40 p-2.5"
       onSubmit={(ev) => {
         ev.preventDefault();
         if (valide && !enCours) onEnvoyer(liste.map((s) => ({ ...s, email: s.email.trim() })));
@@ -555,7 +571,7 @@ function FormDelegation({ initial, enCours, onEnvoyer, onAnnuler }: { initial: s
   const valide = EMAIL.test(email.trim());
   return (
     <form
-      className="mt-2 space-y-2 rounded-md border bg-card p-2.5"
+      className="mt-2 space-y-2 rounded-md border bg-muted/40 p-2.5"
       onSubmit={(ev) => {
         ev.preventDefault();
         if (valide && !enCours) onEnvoyer(email.trim());
@@ -569,7 +585,7 @@ function FormDelegation({ initial, enCours, onEnvoyer, onAnnuler }: { initial: s
         value={email}
         onChange={(e) => setEmail(e.target.value)}
         autoFocus
-        className="h-8 w-full rounded-md border bg-card px-2 text-xs outline-none focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/30"
+        className="h-8 w-full rounded-md border bg-background px-2 text-xs outline-none focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/30"
       />
       <div className="flex flex-wrap gap-1.5">
         <Button type="submit" size="sm" className="h-7 px-2.5 text-xs" disabled={!valide || enCours}>

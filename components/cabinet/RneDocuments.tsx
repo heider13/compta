@@ -7,11 +7,15 @@
 import { useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import {
-  AlertTriangle, BookOpen, Check, Download, Eye, FileText, FolderPlus, Loader2, Lock, Search,
+  AlertTriangle, BookOpen, Check, Download, Eye, FileText, FolderPlus, Landmark, Loader2, Lock, Search,
 } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Skeleton } from '@/components/ui/skeleton';
+import { PageHeader } from '@/components/cabinet/PageHeader';
+import { EmptyState } from '@/components/cabinet/EmptyState';
 
 const VPS = process.env.NEXT_PUBLIC_VPS_BACKEND_URL ?? 'https://0dao73k.cserverhost.cloud';
 const INSEE_AVIS = 'https://api-avis-situation-sirene.insee.fr/identification/pdf';
@@ -154,27 +158,30 @@ export function RneDocuments() {
   const row = (d: Doc) => {
     const k = `${d.kind}-${d.id}`;
     return (
-      <li key={k} className="flex flex-wrap items-center justify-between gap-3 py-3">
-        <div className="min-w-0 flex-1">
-          <p className="flex items-center gap-1.5 text-sm font-medium">
-            <FileText className="size-4 shrink-0 text-muted-foreground" />
-            <span className="truncate">{d.libelle}</span>
-            {d.confidentiel && <Lock className="size-3.5 shrink-0 text-muted-foreground" aria-label="Confidentiel" />}
-          </p>
-          <p className="mt-0.5 text-xs text-muted-foreground">
-            Déposé le {formatDate(d.dateDepot)}
-            {d.decisions && d.decisions.length > 0 && <> · {d.decisions.join(' ; ')}</>}
-          </p>
+      <li key={k} className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 px-5 py-3 transition-colors hover:bg-muted/50">
+        <div className="flex min-w-0 flex-1 items-start gap-3">
+          <span className="mt-0.5 grid size-8 shrink-0 place-items-center rounded-md border bg-background text-muted-foreground">
+            {d.confidentiel ? <Lock className="size-4" aria-label="Confidentiel" /> : <FileText className="size-4" />}
+          </span>
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-sm font-medium">{d.libelle}</p>
+            <p className="mt-0.5 text-xs text-muted-foreground">
+              <span className="font-mono tabular-nums">Déposé le {formatDate(d.dateDepot)}</span>
+              {d.decisions && d.decisions.length > 0 && <> · {d.decisions.join(' ; ')}</>}
+            </p>
+          </div>
         </div>
         {d.confidentiel ? (
-          <span className="text-xs text-muted-foreground">Confidentiel — non communicable</span>
+          <Badge variant="outline" className="font-normal text-muted-foreground">
+            <Lock className="size-3" /> Confidentiel — non communicable
+          </Badge>
         ) : (
-          <div className="flex flex-wrap gap-1.5">
-            <Button variant="ghost" size="sm" onClick={() => openDoc(d, false)} disabled={busy !== null}>
+          <div className="flex flex-wrap items-center gap-1">
+            <Button variant="ghost" size="sm" onClick={() => openDoc(d, false)} disabled={busy !== null} aria-label={`Voir ${d.libelle}`}>
               {busy === `${k}-view` ? <Loader2 className="size-4 animate-spin" /> : <Eye className="size-4" />}
               <span className="sr-only sm:not-sr-only">Voir</span>
             </Button>
-            <Button variant="ghost" size="sm" onClick={() => openDoc(d, true)} disabled={busy !== null}>
+            <Button variant="ghost" size="sm" onClick={() => openDoc(d, true)} disabled={busy !== null} aria-label={`Télécharger ${d.libelle}`}>
               {busy === `${k}-dl` ? <Loader2 className="size-4 animate-spin" /> : <Download className="size-4" />}
               <span className="sr-only sm:not-sr-only">Télécharger</span>
             </Button>
@@ -184,6 +191,7 @@ export function RneDocuments() {
               onClick={() => addToDossier(d)}
               disabled={busy !== null || !dossierId || added[k]}
               title={dossierId ? 'Ajouter aux pièces du dossier choisi' : 'Choisissez d’abord un dossier'}
+              className={added[k] ? 'border-success/30 text-success' : undefined}
             >
               {busy === `${k}-add` ? <Loader2 className="size-4 animate-spin" /> : added[k] ? <Check className="size-4" /> : <FolderPlus className="size-4" />}
               <span className="sr-only sm:not-sr-only">{added[k] ? 'Ajouté' : 'Au dossier'}</span>
@@ -194,16 +202,26 @@ export function RneDocuments() {
     );
   };
 
+  const section = (title: string, description: string, count: number, body: React.ReactNode) => (
+    <Card className="gap-0 py-0">
+      <CardHeader className="flex flex-row items-start justify-between gap-3 border-b px-5 py-4 [.border-b]:pb-4">
+        <div className="min-w-0 space-y-1">
+          <CardTitle className="text-sm">{title}</CardTitle>
+          <CardDescription className="text-xs">{description}</CardDescription>
+        </div>
+        <span className="shrink-0 rounded-md border bg-muted/50 px-1.5 py-0.5 font-mono text-[11px] tabular-nums text-muted-foreground">{count}</span>
+      </CardHeader>
+      <CardContent className="p-0">{body}</CardContent>
+    </Card>
+  );
+
   return (
-    <div className="space-y-5">
-      <div>
-        <h1 className="flex items-center gap-2">
-          <BookOpen className="size-6" /> Documents RNE
-        </h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Statuts, procès-verbaux, décisions et comptes annuels déposés au Registre national des entreprises, et avis de situation INSEE.
-        </p>
-      </div>
+    <div className="space-y-6">
+      <PageHeader
+        eyebrow="Registre national des entreprises"
+        title="Documents RNE"
+        description="Statuts, procès-verbaux, décisions et comptes annuels déposés au Registre national des entreprises, et avis de situation INSEE."
+      />
 
       <form
         className="flex flex-wrap gap-2"
@@ -212,48 +230,78 @@ export function RneDocuments() {
           load(siren);
         }}
       >
-        <input
-          value={siren}
-          onChange={(e) => setSiren(e.target.value)}
-          inputMode="numeric"
-          placeholder="SIREN (9 chiffres)"
-          className="h-9 w-full max-w-xs rounded-md border bg-background px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
-          aria-label="SIREN"
-        />
-        <Button type="submit" size="sm" disabled={loading}>
+        <div className="relative w-full max-w-xs">
+          <Search className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden />
+          <input
+            value={siren}
+            onChange={(e) => setSiren(e.target.value)}
+            inputMode="numeric"
+            placeholder="SIREN (9 chiffres)"
+            className="h-9 w-full rounded-md border bg-background pl-8 pr-3 font-mono text-sm tabular-nums shadow-xs outline-none transition-[color,box-shadow] placeholder:font-sans placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
+            aria-label="SIREN"
+          />
+        </div>
+        <Button type="submit" size="sm" disabled={loading} className="h-9">
           {loading ? <Loader2 className="size-4 animate-spin" /> : <Search className="size-4" />}
           Rechercher
         </Button>
       </form>
 
       {error && (
-        <p className="flex items-start gap-2 rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive">
+        <p role="alert" className="flex items-start gap-2 rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
           <AlertTriangle className="mt-0.5 size-4 shrink-0" />
           {error}
         </p>
       )}
       {notice && (
-        <p className="flex items-start gap-2 rounded-lg border border-emerald-500/30 bg-emerald-500/5 px-3 py-2 text-sm text-emerald-700 dark:text-emerald-400">
+        <p role="status" className="flex items-start gap-2 rounded-lg border border-success/30 bg-success/10 px-3 py-2 text-sm text-success">
           <Check className="mt-0.5 size-4 shrink-0" />
           {notice}
         </p>
       )}
 
+      {loading && !data && (
+        <div className="space-y-3" aria-busy="true" aria-label="Chargement des documents">
+          <Skeleton className="h-6 w-1/3" />
+          <Skeleton className="h-4 w-1/2" />
+          <Skeleton className="h-40 w-full rounded-xl" />
+        </div>
+      )}
+
+      {!data && !loading && (
+        <Card className="py-0">
+          <EmptyState
+            icon={BookOpen}
+            title="Recherchez une entreprise"
+            description="Saisissez un SIREN pour lister ses actes déposés, ses comptes annuels et son avis de situation INSEE."
+          />
+        </Card>
+      )}
+
       {data && (
         <>
-          <div className="flex flex-wrap items-end justify-between gap-3">
-            <div>
-              <h2 className="text-lg font-semibold">{data.denomination ?? 'Entreprise'}</h2>
-              <p className="text-sm text-muted-foreground">
-                SIREN <span className="font-mono">{data.siren}</span> · {data.actes.length} acte(s) · {data.bilans.length} compte(s) annuel(s)
-              </p>
+          <div className="flex flex-wrap items-end justify-between gap-4 rounded-xl border bg-card px-5 py-4 shadow-xs">
+            <div className="flex min-w-0 items-center gap-3">
+              <span className="grid size-10 shrink-0 place-items-center rounded-lg border bg-background text-sm font-semibold text-muted-foreground">
+                {(data.denomination ?? 'EN').slice(0, 2).toUpperCase()}
+              </span>
+              <div className="min-w-0">
+                <h2 className="truncate text-base">{data.denomination ?? 'Entreprise'}</h2>
+                <p className="flex flex-wrap items-center gap-x-2 font-mono text-[11px] tabular-nums text-muted-foreground">
+                  <span>SIREN {data.siren}</span>
+                  <span aria-hidden>·</span>
+                  <span>{data.actes.length} acte(s)</span>
+                  <span aria-hidden>·</span>
+                  <span>{data.bilans.length} compte(s) annuel(s)</span>
+                </p>
+              </div>
             </div>
-            <label className="flex flex-col gap-1 text-xs text-muted-foreground">
-              Ajouter les documents au dossier
+            <label className="flex w-full flex-col gap-1.5 sm:w-auto">
+              <span className="label-mono">Ajouter les documents au dossier</span>
               <select
                 value={dossierId}
                 onChange={(e) => setDossierId(e.target.value)}
-                className="h-9 w-72 max-w-full rounded-md border bg-background px-2 text-sm text-foreground"
+                className="h-9 w-full rounded-md border bg-background px-2 text-sm text-foreground shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 sm:w-72"
               >
                 <option value="">— Choisir un dossier —</option>
                 {dossiers.map((d) => (
@@ -265,43 +313,49 @@ export function RneDocuments() {
             </label>
           </div>
 
-          <Card>
-            <CardHeader>
-              <CardTitle>Avis de situation INSEE</CardTitle>
-              <CardDescription>Fiche SIRENE de l’établissement siège, délivrée par l’INSEE.</CardDescription>
-            </CardHeader>
-            <CardContent>
+          <Card className="gap-0 py-0">
+            <CardContent className="flex flex-wrap items-center gap-3 px-5 py-4">
+              <span className="grid size-8 shrink-0 place-items-center rounded-md border bg-background text-muted-foreground">
+                <Landmark className="size-4" />
+              </span>
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-medium">Avis de situation INSEE</p>
+                <p className="text-xs text-muted-foreground">Fiche SIRENE de l’établissement siège, délivrée par l’INSEE.</p>
+              </div>
               {data.siretSiege ? (
                 <Button asChild variant="outline" size="sm">
                   <a href={`${INSEE_AVIS}/${data.siretSiege}`} target="_blank" rel="noopener noreferrer">
-                    <Download className="size-4" /> Avis de situation (SIRET {data.siretSiege})
+                    <Download className="size-4" /> Avis de situation
+                    <span className="font-mono text-[11px] tabular-nums text-muted-foreground">SIRET {data.siretSiege}</span>
                   </a>
                 </Button>
               ) : (
-                <p className="text-sm text-muted-foreground">SIRET du siège absent de la fiche RNE.</p>
+                <p className="text-xs text-muted-foreground">SIRET du siège absent de la fiche RNE.</p>
               )}
             </CardContent>
           </Card>
 
-          <Card>
-            <CardHeader>
-              <CardTitle>Actes déposés</CardTitle>
-              <CardDescription>Statuts, procès-verbaux, décisions, certificats — du plus récent au plus ancien.</CardDescription>
-            </CardHeader>
-            <CardContent>
-              {data.actes.length ? <ul className="divide-y">{data.actes.map(row)}</ul> : <p className="text-sm text-muted-foreground">Aucun acte déposé.</p>}
-            </CardContent>
-          </Card>
+          {section(
+            'Actes déposés',
+            'Statuts, procès-verbaux, décisions, certificats — du plus récent au plus ancien.',
+            data.actes.length,
+            data.actes.length ? (
+              <ul className="divide-y">{data.actes.map(row)}</ul>
+            ) : (
+              <EmptyState icon={FileText} title="Aucun acte déposé" compact />
+            ),
+          )}
 
-          <Card>
-            <CardHeader>
-              <CardTitle>Comptes annuels</CardTitle>
-              <CardDescription>Les comptes déclarés confidentiels ne sont pas communicables.</CardDescription>
-            </CardHeader>
-            <CardContent>
-              {data.bilans.length ? <ul className="divide-y">{data.bilans.map(row)}</ul> : <p className="text-sm text-muted-foreground">Aucun compte annuel déposé.</p>}
-            </CardContent>
-          </Card>
+          {section(
+            'Comptes annuels',
+            'Les comptes déclarés confidentiels ne sont pas communicables.',
+            data.bilans.length,
+            data.bilans.length ? (
+              <ul className="divide-y">{data.bilans.map(row)}</ul>
+            ) : (
+              <EmptyState icon={FileText} title="Aucun compte annuel déposé" compact />
+            ),
+          )}
         </>
       )}
     </div>

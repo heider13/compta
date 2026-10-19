@@ -10,7 +10,7 @@
 import { memo, useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import {
-  AlertCircle, ArrowLeft, ArrowRight, Bot, CheckCircle2, FileText, FolderPlus, Loader2,
+  AlertCircle, ArrowLeft, ArrowRight, Bot, CheckCircle2, ChevronRight, FileText, FolderPlus, Loader2,
   Paperclip, PenLine, RotateCcw, Send, Sparkles, Upload, Workflow, X,
 } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
@@ -496,10 +496,10 @@ function AgentChat({ inpiFormality, resume }: AgentProps) {
   const fileChips = files.length > 0 && (
     <div className="flex flex-wrap gap-1.5">
       {files.map((f, i) => (
-        <span key={`${f.name}-${i}`} className="flex max-w-full items-center gap-1.5 rounded-md border bg-[#f7f5fd] py-1 pl-2 pr-1 text-xs">
+        <span key={`${f.name}-${i}`} className="flex max-w-full items-center gap-1.5 rounded-md border bg-background py-1 pl-2 pr-1 text-xs shadow-xs">
           <FileText className="size-3.5 shrink-0 text-primary" />
           <span className="min-w-0 truncate">{f.name}</span>
-          <span className="shrink-0 text-muted-foreground">{formatSize(f.size)}</span>
+          <span className="shrink-0 font-mono text-[10.5px] tabular-nums text-muted-foreground">{formatSize(f.size)}</span>
           <button
             type="button"
             onClick={() => setFiles(files.filter((_, j) => j !== i))}
@@ -530,9 +530,10 @@ function AgentChat({ inpiFormality, resume }: AgentProps) {
   return (
     <Card
       className={cn(
-        'relative gap-0 overflow-hidden border-[#d9cffb] py-0 shadow-sm',
+        'ai-glow relative gap-0 overflow-visible py-0 shadow-sm',
         dragging && 'ring-[3px] ring-primary/30',
       )}
+      data-actif={busy}
       onDragOver={(e) => {
         if (busy) return;
         e.preventDefault();
@@ -560,7 +561,7 @@ function AgentChat({ inpiFormality, resume }: AgentProps) {
       />
 
       {dragging && (
-        <div className="pointer-events-none absolute inset-0 z-10 grid place-items-center bg-[#f3efff]/90">
+        <div className="pointer-events-none absolute inset-0 z-10 grid place-items-center bg-brand-soft/90">
           <div className="flex flex-col items-center gap-2 text-primary">
             <Upload className="size-8" />
             <p className="text-sm font-semibold">Déposez vos documents</p>
@@ -570,13 +571,17 @@ function AgentChat({ inpiFormality, resume }: AgentProps) {
       )}
 
       {/* En-tête */}
-      <div className="flex flex-wrap items-center gap-3 border-b border-[#ece6ff] bg-gradient-to-r from-[#f3efff] via-[#f8f6ff] to-white px-5 py-4">
-        <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-primary text-primary-foreground shadow-sm">
-          <Sparkles className="size-5" />
+      <div className="flex flex-wrap items-center gap-3 rounded-t-xl border-b px-5 py-3.5">
+        <span className="relative grid size-9 shrink-0 place-items-center rounded-lg bg-gradient-to-br from-primary to-chart-2 text-primary-foreground shadow-sm ring-4 ring-brand-soft">
+          <Sparkles className="size-4" />
         </span>
         <div className="min-w-0 flex-1">
-          <p className="text-[15px] font-semibold text-foreground">
+          <p className="flex flex-wrap items-center gap-x-2 text-[15px] font-semibold tracking-tight text-foreground">
             {inpiFormality ? 'Agent de régularisation' : 'Agent Formalités'}
+            <span className="inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 font-mono text-[10.5px] font-normal text-muted-foreground">
+              <span className={cn('live-dot size-1.5', busy ? 'text-primary' : 'text-success')} />
+              {busy ? 'en cours' : 'en ligne'}
+            </span>
           </p>
           <p className="text-xs text-muted-foreground">
             {inpiFormality
@@ -640,7 +645,7 @@ function AgentChat({ inpiFormality, resume }: AgentProps) {
                   key={ex.label}
                   type="button"
                   onClick={() => send(ex.text)}
-                  className="rounded-full border bg-card px-3 py-1.5 text-xs font-medium text-foreground/80 transition-colors hover:border-primary/50 hover:bg-[#f5f3fb] hover:text-foreground"
+                  className="rounded-full border bg-card px-3 py-1.5 text-xs font-medium text-foreground/80 shadow-xs transition-colors hover:border-primary/40 hover:bg-brand-soft hover:text-brand-soft-foreground"
                 >
                   {ex.label}
                 </button>
@@ -649,7 +654,7 @@ function AgentChat({ inpiFormality, resume }: AgentProps) {
 
             {!inpiFormality && <div className="grid gap-2 [grid-template-columns:repeat(auto-fit,minmax(150px,1fr))]">
               {CAPABILITIES.map(({ icon: Icon, label }) => (
-                <div key={label} className="flex min-w-0 items-center gap-2 rounded-lg bg-[#f7f5fd] px-3 py-2 text-xs text-foreground/80">
+                <div key={label} className="flex min-w-0 items-center gap-2 rounded-lg border border-dashed px-3 py-2 text-xs text-muted-foreground">
                   <Icon className="size-4 shrink-0 text-primary" />
                   <span className="truncate">{label}</span>
                 </div>
@@ -712,7 +717,7 @@ function AgentChat({ inpiFormality, resume }: AgentProps) {
                   e.preventDefault();
                   send(input);
                 }}
-                className="space-y-2 border-t bg-muted/30 px-4 py-3"
+                className="space-y-2 rounded-bl-xl border-t bg-muted/30 px-4 py-3"
               >
                 {fileChips}
                 <div className="flex items-end gap-2">
@@ -740,9 +745,9 @@ function AgentChat({ inpiFormality, resume }: AgentProps) {
             </div>
 
             {/* Dossier en cours */}
-            <aside className="min-w-0 space-y-4 bg-[#fbfaff] px-5 py-4">
+            <aside className="min-w-0 space-y-4 rounded-br-xl bg-muted/40 px-5 py-4">
               <div>
-                <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Dossier en cours</p>
+                <p className="label-mono">Dossier en cours</p>
                 {dossier ? (
                   <Link href={`/dossiers/${dossier.id}`} className="mt-2 block rounded-lg border bg-card px-3 py-2.5 transition-colors hover:border-primary/50">
                     <span className="block truncate text-sm font-semibold">{dossier.denomination}</span>
@@ -774,22 +779,24 @@ function AgentChat({ inpiFormality, resume }: AgentProps) {
 function SidebarList({ title, empty, events, external = false }: { title: string; empty: string; events: ToolEvent[]; external?: boolean }) {
   return (
     <div>
-      <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-        {title} {events.length > 0 && `(${events.length})`}
+      <p className="label-mono flex items-center gap-1.5">
+        {title}
+        {events.length > 0 && <span className="font-mono tabular-nums text-foreground/70">{events.length}</span>}
       </p>
       {events.length === 0 ? (
         <p className="mt-2 text-xs text-muted-foreground">{empty}</p>
       ) : (
-        <ul className="mt-2 space-y-1.5">
+        <ul className="-mx-2 mt-1.5 space-y-0.5">
           {events.map((d) => (
             <li key={d.id}>
               <a
                 href={d.href ?? d.docHref ?? '#'}
                 {...(external ? { target: '_blank', rel: 'noreferrer' } : {})}
-                className="flex items-center gap-2 rounded-md px-2 py-1.5 text-xs transition-colors hover:bg-[#f0ecfd]"
+                className="group flex items-center gap-2 rounded-md px-2 py-1.5 text-xs transition-colors hover:bg-background"
               >
-                <FileText className="size-3.5 shrink-0 text-primary" />
+                <FileText className="size-3.5 shrink-0 text-muted-foreground transition-colors group-hover:text-primary" />
                 <span className="min-w-0 flex-1 truncate">{d.kind === 'piece' ? d.detail : d.label}</span>
+                {external && <ArrowRight className="size-3 shrink-0 -rotate-45 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100" />}
               </a>
             </li>
           ))}
@@ -806,7 +813,7 @@ const ItemView = memo(function ItemView({ item }: { item: Item }) {
         {item.files && item.files.length > 0 && (
           <div className="flex max-w-[85%] flex-wrap justify-end gap-1.5">
             {item.files.map((name, i) => (
-              <span key={`${name}-${i}`} className="flex min-w-0 items-center gap-1.5 rounded-md border bg-card px-2 py-1 text-xs">
+              <span key={`${name}-${i}`} className="flex min-w-0 items-center gap-1.5 rounded-md border bg-background px-2 py-1 font-mono text-[11px] text-muted-foreground shadow-xs">
                 <Paperclip className="size-3 shrink-0 text-primary" />
                 <span className="truncate">{name}</span>
               </span>
@@ -814,7 +821,7 @@ const ItemView = memo(function ItemView({ item }: { item: Item }) {
           </div>
         )}
         {item.text && (
-          <p className="max-w-[85%] whitespace-pre-wrap rounded-2xl rounded-br-sm bg-primary px-3.5 py-2 text-sm text-primary-foreground">
+          <p className="max-w-[85%] whitespace-pre-wrap break-words rounded-2xl rounded-br-md border bg-muted/60 px-3.5 py-2 text-sm leading-relaxed text-foreground">
             {item.text}
           </p>
         )}
@@ -823,11 +830,11 @@ const ItemView = memo(function ItemView({ item }: { item: Item }) {
   }
   if (item.type === 'assistant') {
     return (
-      <div className="flex gap-2.5">
-        <span className="mt-0.5 grid size-7 shrink-0 place-items-center rounded-lg bg-[#ede7ff] text-primary">
-          <Bot className="size-4" />
+      <div className="flex gap-3">
+        <span className="mt-0.5 grid size-6 shrink-0 place-items-center rounded-md border border-brand-border bg-brand-soft text-brand-soft-foreground">
+          <Bot className="size-3.5" />
         </span>
-        <div className="min-w-0 flex-1 pt-0.5">
+        <div className="min-w-0 flex-1">
           <Markdown>{item.text}</Markdown>
         </div>
       </div>
@@ -841,24 +848,30 @@ const ItemView = memo(function ItemView({ item }: { item: Item }) {
   const body = (
     <>
       <Icon
+        aria-hidden
         className={cn(
-          'size-4 shrink-0',
-          ev.status === 'start' && 'animate-spin text-muted-foreground',
-          ev.status === 'done' && 'text-primary',
+          'size-3.5 shrink-0',
+          ev.status === 'start' && 'animate-spin text-primary',
+          ev.status === 'done' && 'text-success',
           ev.status === 'error' && 'text-destructive',
         )}
       />
-      <span className="min-w-0 flex-1">
-        <span className="block truncate font-medium">{ev.label}</span>
-        {ev.detail && <span className="block truncate text-[11px] text-muted-foreground">{ev.detail}</span>}
+      <span className="flex min-w-0 flex-1 flex-wrap items-baseline gap-x-2">
+        <span className={cn('truncate', ev.status === 'error' ? 'text-destructive' : 'text-foreground')}>{ev.label}</span>
+        {ev.detail && <span className="min-w-0 truncate text-muted-foreground">{ev.detail}</span>}
       </span>
-      {link && ev.status === 'done' && <ArrowRight className="size-3.5 shrink-0 text-muted-foreground" />}
+      {ev.debut !== undefined && ev.fin !== undefined && ev.fin > ev.debut && (
+        <span className="hidden shrink-0 tabular-nums text-muted-foreground/70 sm:inline">{duree(ev.fin - ev.debut)}</span>
+      )}
+      {link && ev.status === 'done' && (
+        <ArrowRight className="size-3 shrink-0 text-muted-foreground transition-colors group-hover/step:text-foreground" />
+      )}
     </>
   );
   const cls = cn(
-    'ml-9 flex items-center gap-2.5 rounded-lg border px-3 py-2 text-xs',
-    ev.status === 'error' ? 'border-destructive/30 bg-destructive/5' : 'bg-card',
-    link && ev.status === 'done' && 'transition-colors hover:border-primary/50',
+    'group/step ml-9 flex items-center gap-2 rounded-md px-2 py-1.5 font-mono text-[11px] leading-tight [.journal_&]:ml-0',
+    ev.status === 'error' && 'bg-destructive/5',
+    link && ev.status === 'done' && 'transition-colors hover:bg-muted',
   );
   if (link && ev.status === 'done') {
     return ev.kind === 'document' ? (
@@ -907,32 +920,33 @@ function Travail({ events, enCours }: { events: ToolEvent[]; enCours: boolean })
   const erreurs = events.filter((e) => e.status === 'error').length;
   const courant = [...events].reverse().find((e) => e.status === 'start');
   return (
-    <div className="space-y-1.5">
+    <div className="space-y-1.5 pl-9">
       <button
         type="button"
         onClick={() => events.length && setOuvert((o) => !o)}
-        className="group flex items-center gap-2 font-mono text-[11px] text-muted-foreground transition-colors hover:text-foreground"
+        aria-expanded={events.length ? ouvert : undefined}
+        className="group flex max-w-full items-center gap-2 rounded-md py-0.5 text-left font-mono text-[11px] text-muted-foreground transition-colors hover:text-foreground"
       >
         {enCours ? (
-          <span className="grid grid-cols-2 gap-[2px]" aria-hidden="true">
-            {[0, 1, 2, 3].map((i) => (
-              <span key={i} className="size-[3px] animate-pulse rounded-full bg-primary" style={{ animationDelay: `${i * 180}ms` }} />
-            ))}
-          </span>
+          <span className="live-dot size-1.5 shrink-0 text-primary" aria-hidden="true" />
+        ) : erreurs > 0 ? (
+          <AlertCircle className="size-3 shrink-0 text-destructive" aria-hidden="true" />
         ) : (
-          <span className="size-1.5 rounded-full bg-primary/60" aria-hidden="true" />
+          <CheckCircle2 className="size-3 shrink-0 text-success" aria-hidden="true" />
         )}
-        <span>
+        <span className="min-w-0 truncate">
           {enCours ? `Travaille… ${ms > 0 ? duree(ms) : ''}` : `A travaillé ${ms > 0 ? duree(ms) : ''}`}
           {enCours && courant ? ` · ${courant.label}` : ''}
           {!enCours && events.length > 0 && ` · ${events.length} étape${events.length > 1 ? 's' : ''}`}
           {docs > 0 && ` · ${docs} document${docs > 1 ? 's' : ''}`}
           {erreurs > 0 && ` · ${erreurs} erreur${erreurs > 1 ? 's' : ''}`}
         </span>
-        {events.length > 0 && <span className={cn('transition-transform', ouvert && 'rotate-90')}>›</span>}
+        {events.length > 0 && (
+          <ChevronRight className={cn('size-3 shrink-0 transition-transform', ouvert && 'rotate-90')} aria-hidden="true" />
+        )}
       </button>
       {ouvert && (
-        <div className="space-y-1.5 border-l pl-3">
+        <div className="journal space-y-px rounded-lg border bg-muted/30 p-1">
           {events.map((ev) => (
             <ItemView key={ev.id} item={{ type: 'tool', event: ev }} />
           ))}
@@ -944,8 +958,8 @@ function Travail({ events, enCours }: { events: ToolEvent[]; enCours: boolean })
 
 function ErrorLine({ message }: { message: string }) {
   return (
-    <p className="flex items-start gap-2 rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2 text-xs text-destructive">
-      <AlertCircle className="mt-0.5 size-3.5 shrink-0" />
+    <p className="flex items-start gap-2 rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs text-destructive">
+      <AlertCircle className="mt-px size-3.5 shrink-0" aria-hidden />
       {message}
     </p>
   );

@@ -1,13 +1,15 @@
 import Link from 'next/link';
 import { revalidatePath } from 'next/cache';
-import { AlertTriangle, Check, CheckCircle2, ClipboardList, ListTodo } from 'lucide-react';
+import { AlertTriangle, CalendarClock, Check, CheckCircle2, ClipboardList, ListTodo } from 'lucide-react';
 import { createClient } from '@/lib/supabase/server';
 import { formatDate } from '@/lib/utils/format';
 import { getInitials } from '@/lib/types';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { StatCard } from '@/components/cabinet/dashboard/StatCard';
+import { StatCard, StatStrip } from '@/components/cabinet/dashboard/StatCard';
+import { PageHeader, PageShell } from '@/components/cabinet/PageHeader';
+import { EmptyState } from '@/components/cabinet/EmptyState';
 import { cn } from '@/lib/utils';
 
 export const dynamic = 'force-dynamic';
@@ -78,10 +80,10 @@ function groupTasks(tasks: TaskRow[]): TaskGroup[] {
   }
 
   return [
-    { key: 'overdue', title: 'En retard', badgeClass: 'border-amber-300 bg-amber-50 text-amber-800', items: overdue },
-    { key: 'today', title: "Aujourd'hui", badgeClass: 'border-primary/30 bg-[#ede7ff] text-primary', items: todayList },
-    { key: 'upcoming', title: 'À venir', badgeClass: 'border-[#957af5]/40 bg-[#f3f1fa] text-[#5b36d6]', items: upcoming },
-    { key: 'done', title: 'Terminées', badgeClass: 'border-border bg-muted text-muted-foreground', items: done },
+    { key: 'overdue', title: 'En retard', badgeClass: 'bg-warning', items: overdue },
+    { key: 'today', title: "Aujourd'hui", badgeClass: 'bg-primary', items: todayList },
+    { key: 'upcoming', title: 'À venir', badgeClass: 'bg-chart-2', items: upcoming },
+    { key: 'done', title: 'Terminées', badgeClass: 'bg-muted-foreground/40', items: done },
   ];
 }
 
@@ -152,6 +154,7 @@ export default async function TasksPage() {
   const activeCount = tasks.filter((t) => !t.done).length;
   const overdueCount = groups.find((g) => g.key === 'overdue')?.items.length ?? 0;
   const doneCount = groups.find((g) => g.key === 'done')?.items.length ?? 0;
+  const todayCount = groups.find((g) => g.key === 'today')?.items.length ?? 0;
 
   const stats = [
     {
@@ -159,51 +162,52 @@ export default async function TasksPage() {
       value: activeCount,
       hint: 'Tâches actives',
       icon: ListTodo,
-      tileClass: 'text-primary bg-[#ede7ff]',
     },
     {
       label: 'En retard',
       value: overdueCount,
       hint: 'À traiter en priorité',
       icon: AlertTriangle,
-      tileClass: 'text-[#ff887b] bg-[#fff3f1]',
+      highlight: true,
+    },
+    {
+      label: "Aujourd'hui",
+      value: todayCount,
+      hint: 'Échéance du jour',
+      icon: CalendarClock,
     },
     {
       label: 'Terminées',
       value: doneCount,
       hint: 'Tâches clôturées',
       icon: CheckCircle2,
-      tileClass: 'text-[#7551e8] bg-[#f3f1fa]',
     },
   ];
 
   return (
-    <div className="mx-auto w-full max-w-7xl space-y-6 p-4 sm:p-6">
-      {/* Header */}
-      <div className="flex flex-wrap items-end justify-between gap-4">
-        <div className="min-w-0">
-          <h1>Tâches</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            {activeCount} {activeCount > 1 ? 'tâches à traiter' : 'tâche à traiter'}
-            {tasks.length > 0 ? ` · ${tasks.length} au total` : ''}
-          </p>
-        </div>
-      </div>
+    <PageShell>
+      <PageHeader
+        eyebrow="Pilotage"
+        title="Tâches"
+        description={
+          <>
+            <span className="font-mono tabular-nums">{activeCount}</span>{' '}
+            {activeCount > 1 ? 'tâches à traiter' : 'tâche à traiter'}
+            {tasks.length > 0 ? (
+              <>
+                {' · '}
+                <span className="font-mono tabular-nums">{tasks.length}</span> au total
+              </>
+            ) : null}
+          </>
+        }
+      />
 
-      {/* Stat row */}
-      <div className="grid gap-4 [grid-template-columns:repeat(auto-fit,minmax(210px,1fr))]">
+      <StatStrip>
         {stats.map((stat) => (
-          <div key={stat.label} className="min-w-0">
-            <StatCard
-              label={stat.label}
-              value={stat.value}
-              hint={stat.hint}
-              icon={stat.icon}
-              tileClass={stat.tileClass}
-            />
-          </div>
+          <StatCard key={stat.label} {...stat} />
         ))}
-      </div>
+      </StatStrip>
 
       {error && (
         <div
@@ -214,22 +218,21 @@ export default async function TasksPage() {
         </div>
       )}
 
-      <div className="space-y-5">
+      <div className="space-y-6">
         {groups.map((group) => {
           if (group.items.length === 0) return null;
           return (
-            <Card key={group.key}>
-              <CardHeader className="pb-3">
-                <CardTitle className="flex items-center gap-2.5 text-base">
-                  <Badge variant="outline" className={group.badgeClass}>
-                    {group.title}
-                  </Badge>
-                  <span className="text-xs font-normal text-muted-foreground">
+            <Card key={group.key} className="gap-0 py-0">
+              <CardHeader className="border-b px-5 py-3 [.border-b]:pb-3">
+                <CardTitle className="flex items-center gap-2 text-sm">
+                  <span className={cn('size-2 rounded-full', group.badgeClass)} aria-hidden="true" />
+                  {group.title}
+                  <span className="rounded-md border bg-muted px-1.5 font-mono text-[11px] font-normal tabular-nums text-muted-foreground">
                     {group.items.length}
                   </span>
                 </CardTitle>
               </CardHeader>
-              <CardContent className="divide-y divide-border p-0">
+              <CardContent className="divide-y p-0">
                 {group.items.map((t) => {
                   const profile = t.assigned_to ? profilesMap.get(t.assigned_to) : undefined;
                   const who = profileDisplay(profile);
@@ -238,7 +241,7 @@ export default async function TasksPage() {
                   return (
                     <div
                       key={t.id}
-                      className="flex items-center gap-3 px-5 py-3.5 transition-colors hover:bg-[#f5f3fb]"
+                      className="flex items-center gap-3 px-5 py-3 transition-colors hover:bg-muted/50"
                     >
                       {/* Toggle done — Server Action, bouton-case custom */}
                       <form action={toggleTaskAction} className="shrink-0">
@@ -248,21 +251,21 @@ export default async function TasksPage() {
                           type="submit"
                           aria-label={t.done ? 'Rouvrir la tâche' : 'Marquer comme faite'}
                           className={cn(
-                            'grid size-5 cursor-pointer place-items-center rounded-md border-[1.5px] transition-colors',
+                            'grid size-5 cursor-pointer place-items-center rounded-full border-[1.5px] transition-colors focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50',
                             t.done
-                              ? 'border-primary bg-primary text-primary-foreground'
-                              : 'border-input bg-background hover:border-primary',
+                              ? 'border-success bg-success text-background'
+                              : 'border-muted-foreground/30 bg-background hover:border-primary',
                           )}
                         >
-                          {t.done && <Check className="size-3.5" strokeWidth={3} />}
+                          {t.done && <Check className="size-3" strokeWidth={3} />}
                         </button>
                       </form>
 
                       <div className="min-w-0 flex-1">
                         <p
                           className={cn(
-                            'truncate text-sm font-medium',
-                            t.done && 'text-muted-foreground line-through',
+                            'truncate text-sm',
+                            t.done ? 'text-muted-foreground line-through' : 'font-medium',
                           )}
                         >
                           {t.title}
@@ -270,37 +273,37 @@ export default async function TasksPage() {
                         {dossier && (
                           <Link
                             href={`/dossiers/${dossier.id}`}
-                            className="mt-0.5 inline-flex gap-1.5 text-xs text-muted-foreground hover:text-foreground"
+                            className="mt-0.5 inline-flex max-w-full gap-1.5 text-xs text-muted-foreground hover:text-foreground"
                           >
-                            <span className="font-mono">{dossier.reference ?? '—'}</span>
-                            <span>· {dossier.client_name}</span>
+                            <span className="shrink-0 font-mono">{dossier.reference ?? '—'}</span>
+                            <span className="truncate">· {dossier.client_name}</span>
                           </Link>
                         )}
                       </div>
 
                       <Avatar className="size-7 shrink-0" title={who.label}>
-                        <AvatarFallback className="bg-accent text-[11px] font-semibold text-accent-foreground">
+                        <AvatarFallback className="border bg-background text-[10px] font-semibold text-muted-foreground">
                           {who.initials}
                         </AvatarFallback>
                       </Avatar>
 
-                      <div className="w-24 shrink-0 text-right">
+                      <div className="w-20 shrink-0 text-right sm:w-24">
                         {t.due_date ? (
                           <Badge
                             variant="outline"
                             className={cn(
-                              'text-[11px]',
+                              'font-mono text-[11px] tabular-nums',
                               isOverdue
-                                ? 'border-amber-300 bg-amber-50 text-amber-800'
+                                ? 'border-warning/40 bg-warning/10 text-warning'
                                 : group.key === 'today'
-                                  ? 'border-primary/30 bg-[#ede7ff] text-primary'
-                                  : 'border-border bg-muted text-muted-foreground',
+                                  ? 'border-brand-border bg-brand-soft text-brand-soft-foreground'
+                                  : 'text-muted-foreground',
                             )}
                           >
                             {formatDate(t.due_date)}
                           </Badge>
                         ) : (
-                          <span className="text-xs text-muted-foreground/60">—</span>
+                          <span className="font-mono text-xs text-muted-foreground/60">—</span>
                         )}
                       </div>
                     </div>
@@ -312,17 +315,15 @@ export default async function TasksPage() {
         })}
 
         {tasks.length === 0 && !error && (
-          <Card>
-            <CardContent className="flex flex-col items-center gap-2 py-16 text-center">
-              <ClipboardList className="size-8 text-muted-foreground/50" />
-              <p className="text-sm font-medium">Aucune tâche pour l&apos;instant.</p>
-              <p className="text-sm text-muted-foreground">
-                Les tâches sont créées depuis un dossier.
-              </p>
-            </CardContent>
+          <Card className="py-0">
+            <EmptyState
+              icon={ClipboardList}
+              title="Aucune tâche pour l'instant."
+              description="Les tâches sont créées depuis un dossier."
+            />
           </Card>
         )}
       </div>
-    </div>
+    </PageShell>
   );
 }

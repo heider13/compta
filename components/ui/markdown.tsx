@@ -29,13 +29,26 @@ export const Markdown = memo(function Markdown({ children, className }: { childr
       <ReactMarkdown
         remarkPlugins={[remarkGfm]}
         components={{
-          p: ({ children }) => <p className="mb-3 last:mb-0">{children}</p>,
-          h1: ({ children }) => <h1 className="mb-2 mt-4 text-base font-semibold first:mt-0">{children}</h1>,
-          h2: ({ children }) => <h2 className="mb-2 mt-4 text-[15px] font-semibold first:mt-0">{children}</h2>,
-          h3: ({ children }) => <h3 className="mb-1.5 mt-3 text-sm font-semibold first:mt-0">{children}</h3>,
-          ul: ({ children }) => <ul className="mb-3 ml-4 list-disc space-y-1 last:mb-0">{children}</ul>,
-          ol: ({ children }) => <ol className="mb-3 ml-4 list-decimal space-y-1 last:mb-0">{children}</ol>,
-          li: ({ children }) => <li className="pl-0.5">{children}</li>,
+          p: ({ children }) => <p className="mb-3 text-pretty last:mb-0">{children}</p>,
+          h1: ({ children }) => <h1 className="mb-2 mt-5 text-base font-semibold tracking-tight first:mt-0">{children}</h1>,
+          h2: ({ children }) => (
+            <h2 className="mb-2 mt-5 border-b pb-1.5 text-[15px] font-semibold tracking-tight first:mt-0">{children}</h2>
+          ),
+          h3: ({ children }) => <h3 className="mb-1.5 mt-4 text-sm font-semibold first:mt-0">{children}</h3>,
+          h4: ({ children }) => (
+            <h4 className="mb-1.5 mt-3 font-mono text-[11px] font-medium uppercase tracking-wider text-muted-foreground first:mt-0">
+              {children}
+            </h4>
+          ),
+          ul: ({ children }) => (
+            <ul className="mb-3 ml-5 list-disc space-y-1 marker:text-muted-foreground/70 last:mb-0">{children}</ul>
+          ),
+          ol: ({ children }) => (
+            <ol className="mb-3 ml-5 list-decimal space-y-1 marker:font-mono marker:text-xs marker:text-muted-foreground last:mb-0">
+              {children}
+            </ol>
+          ),
+          li: ({ children }) => <li className="pl-1 [&>ol]:mb-0 [&>ol]:mt-1 [&>ul]:mb-0 [&>ul]:mt-1">{children}</li>,
           strong: ({ children }) => <strong className="font-semibold text-foreground">{children}</strong>,
           em: ({ children }) => <em className="italic">{children}</em>,
           a: ({ href, children }) => (
@@ -43,40 +56,40 @@ export const Markdown = memo(function Markdown({ children, className }: { childr
               href={href}
               target="_blank"
               rel="noreferrer noopener"
-              className="font-medium text-primary underline underline-offset-2 hover:opacity-80"
+              className="font-medium text-primary underline decoration-primary/30 underline-offset-2 transition-colors hover:decoration-primary"
             >
               {children}
             </a>
           ),
           blockquote: ({ children }) => (
-            <blockquote className="my-3 border-l-2 border-primary/40 pl-3 text-muted-foreground">
+            <blockquote className="my-3 border-l-2 border-brand-border pl-3 text-muted-foreground">
               {children}
             </blockquote>
           ),
           code: ({ className: c, children }) => {
             const isBlock = /language-/.test(c || '');
             if (isBlock) {
-              return (
-                <code className="block overflow-x-auto rounded-lg bg-muted p-3 font-mono text-[13px]">
-                  {children}
-                </code>
-              );
+              return <code className="block font-mono text-xs leading-relaxed">{children}</code>;
             }
             return (
-              <code className="rounded bg-muted px-1.5 py-0.5 font-mono text-[13px]">{children}</code>
+              <code className="rounded border bg-muted/60 px-1 py-px font-mono text-[0.85em]">{children}</code>
             );
           },
-          pre: ({ children }) => <pre className="mb-3 last:mb-0">{children}</pre>,
+          pre: ({ children }) => (
+            <pre className="mb-3 overflow-x-auto rounded-lg border bg-muted/50 p-3 last:mb-0">{children}</pre>
+          ),
           hr: () => <hr className="my-4 border-border" />,
           table: ({ children }) => (
-            <div className="mb-3 overflow-x-auto">
-              <table className="w-full border-collapse text-[13px]">{children}</table>
+            <div className="mb-3 overflow-x-auto rounded-lg border last:mb-0">
+              <table className="w-full border-collapse text-xs">{children}</table>
             </div>
           ),
+          thead: ({ children }) => <thead className="border-b bg-muted/50">{children}</thead>,
+          tr: ({ children }) => <tr className="border-b last:border-b-0">{children}</tr>,
           th: ({ children }) => (
-            <th className="border border-border bg-muted px-2.5 py-1.5 text-left font-semibold">{sautsDeLigne(children)}</th>
+            <th className="whitespace-nowrap px-3 py-2 text-left font-medium text-muted-foreground">{sautsDeLigne(children)}</th>
           ),
-          td: ({ children }) => <td className="border border-border px-2.5 py-1.5 align-top">{sautsDeLigne(children)}</td>,
+          td: ({ children }) => <td className="px-3 py-2 align-top">{sautsDeLigne(children)}</td>,
         }}
       >
         {source}

@@ -40,14 +40,14 @@ export function PaiementBadge({ p, className }: { p?: Paiement | null; className
   if (!p || p.statut === 'aucun') return <span className={cn('text-xs text-muted-foreground', className)}>—</span>;
   const retard = (p.jours_attente ?? 0) >= 3;
   const conf = {
-    a_payer: { label: `À payer · ${euros(p.a_payer_cents)}`, cls: retard ? 'bg-[#fff1ef] text-[#c2410c]' : 'bg-amber-50 text-amber-800', icon: CreditCard },
-    delegation_en_attente: { label: `Délégation en attente · ${euros(p.a_payer_cents)}`, cls: retard ? 'bg-[#fff1ef] text-[#c2410c]' : 'bg-[#ede7ff] text-primary', icon: Send },
-    paye: { label: `Payée · ${euros(p.paye_cents)}`, cls: 'bg-emerald-50 text-emerald-700', icon: Check },
-    a_venir: { label: `Prévu · ${euros(p.a_payer_cents)}`, cls: 'bg-muted text-muted-foreground', icon: Clock },
+    a_payer: { label: `À payer · ${euros(p.a_payer_cents)}`, cls: retard ? 'border-destructive/30 bg-destructive/10 text-destructive' : 'border-warning/40 bg-warning/10 text-warning', icon: CreditCard },
+    delegation_en_attente: { label: `Délégation en attente · ${euros(p.a_payer_cents)}`, cls: retard ? 'border-destructive/30 bg-destructive/10 text-destructive' : 'border-brand-border bg-brand-soft text-brand-soft-foreground', icon: Send },
+    paye: { label: `Payée · ${euros(p.paye_cents)}`, cls: 'border-success/30 bg-success/10 text-success', icon: Check },
+    a_venir: { label: `Prévu · ${euros(p.a_payer_cents)}`, cls: 'border-border bg-muted text-muted-foreground', icon: Clock },
   }[p.statut];
   return (
     <span
-      className={cn('inline-flex items-center gap-1 whitespace-nowrap rounded-full px-2 py-0.5 text-[11px] font-medium', conf.cls, className)}
+      className={cn('inline-flex items-center gap-1 whitespace-nowrap rounded-full border px-2 py-0.5 font-mono text-[11px] font-medium tabular-nums', conf.cls, className)}
       title={p.jours_attente != null ? `En attente depuis ${p.jours_attente} jour(s)` : undefined}
     >
       <conf.icon className="size-3" /> {conf.label}
@@ -85,19 +85,19 @@ export function PaiementCard({ p, liasse, formalityId, comptes = false }: { p: P
 
   const enAttente = p.statut === 'a_payer' || p.statut === 'delegation_en_attente';
   return (
-    <Card>
-      <CardHeader className="flex flex-row flex-wrap items-start justify-between gap-3 space-y-0">
-        <div>
-          <CardTitle className="flex items-center gap-2 text-base">
-            <CreditCard className="size-4 text-primary" /> Paiement
+    <Card className="gap-0 py-0">
+      <CardHeader className="flex flex-row flex-wrap items-start justify-between gap-3 space-y-0 border-b px-5 py-4 [.border-b]:pb-4">
+        <div className="min-w-0 space-y-1">
+          <CardTitle className="flex items-center gap-2 text-sm">
+            <CreditCard className="size-4 text-muted-foreground" /> Paiement
           </CardTitle>
-          <CardDescription>
+          <CardDescription className="text-xs">
             Le paiement et la délégation se font sur le Guichet unique ; l’application en suit l’état.
           </CardDescription>
         </div>
         <PaiementBadge p={p} />
       </CardHeader>
-      <CardContent className="space-y-4">
+      <CardContent className="space-y-4 p-5">
         {enAttente && (
           <div className="rounded-lg border bg-muted/40 p-3 text-sm">
             {p.statut === 'delegation_en_attente' ? (
@@ -108,7 +108,7 @@ export function PaiementCard({ p, liasse, formalityId, comptes = false }: { p: P
               </p>
             ) : (
               <p>
-                <strong>{euros(p.a_payer_cents)}</strong> à payer
+                <strong className="font-mono tabular-nums">{euros(p.a_payer_cents)}</strong> à payer
                 {p.jours_attente != null && <> depuis {p.jours_attente} jour(s)</>}. Payez par vos propres moyens ou envoyez une
                 délégation de paiement au client depuis le Guichet unique.
               </p>
@@ -137,7 +137,7 @@ export function PaiementCard({ p, liasse, formalityId, comptes = false }: { p: P
                   } catch {}
                 }}
               >
-                {copie ? <Check className="size-4" /> : <Copy className="size-4" />} Liasse {liasse}
+                {copie ? <Check className="size-4" /> : <Copy className="size-4" />} Liasse <span className="font-mono">{liasse}</span>
               </Button>
             </div>
             {p.statut === 'a_payer' && p.payeur_prevu?.qui === 'client' && p.payeur_prevu.email && (
@@ -169,35 +169,37 @@ export function PaiementCard({ p, liasse, formalityId, comptes = false }: { p: P
 
         {p.statut === 'a_venir' && (
           <p className="rounded-lg border bg-muted/40 p-3 text-sm">
-            Montant prévu : <strong>{euros(p.a_payer_cents)}</strong>, payable une fois la formalité validée et signée sur le Guichet unique
+            Montant prévu : <strong className="font-mono tabular-nums">{euros(p.a_payer_cents)}</strong>, payable une fois la formalité validée et signée sur le Guichet unique
             (par vos propres moyens ou par délégation de paiement au client).
           </p>
         )}
 
         {(p.paniers ?? []).map((k) => (
-          <div key={k.id} className="rounded-lg border">
-            <div className="flex flex-wrap items-center justify-between gap-2 border-b px-3 py-2 text-xs">
-              <span className="font-medium">{p.statut === 'a_venir' && k.statut === 'TO_PAY' ? 'Prévu' : STATUT_PANIER[k.statut] ?? k.statut}</span>
+          <div key={k.id} className="overflow-hidden rounded-lg border">
+            <div className="flex flex-wrap items-center justify-between gap-2 border-b bg-muted/40 px-3 py-2 text-xs">
+              <span className="label-mono text-foreground">{p.statut === 'a_venir' && k.statut === 'TO_PAY' ? 'Prévu' : STATUT_PANIER[k.statut] ?? k.statut}</span>
               <span className="text-muted-foreground">
                 {k.payeur && <>{k.delegation ? 'Délégation à ' : 'Payeur : '}{k.payeur} · </>}
-                {k.date && new Date(k.date).toLocaleDateString('fr-FR')}
+                {k.date && <span className="font-mono tabular-nums">{new Date(k.date).toLocaleDateString('fr-FR')}</span>}
               </span>
             </div>
+            <div className="overflow-x-auto">
             <table className="w-full text-xs">
               <tbody>
                 {k.lignes.map((l, i) => (
                   <tr key={i} className="border-b last:border-0">
                     <td className="px-3 py-1.5">{l.libelle}</td>
                     <td className="px-3 py-1.5 text-muted-foreground">{l.beneficiaire}</td>
-                    <td className="px-3 py-1.5 text-right tabular-nums">{euros(l.montant_cents)}</td>
+                    <td className="px-3 py-1.5 text-right font-mono tabular-nums">{euros(l.montant_cents)}</td>
                   </tr>
                 ))}
                 <tr className="bg-muted/40 font-semibold">
                   <td className="px-3 py-1.5" colSpan={2}>Total</td>
-                  <td className="px-3 py-1.5 text-right tabular-nums">{euros(k.total_cents)}</td>
+                  <td className="px-3 py-1.5 text-right font-mono tabular-nums">{euros(k.total_cents)}</td>
                 </tr>
               </tbody>
             </table>
+            </div>
           </div>
         ))}
 
