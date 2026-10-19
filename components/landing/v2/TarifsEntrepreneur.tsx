@@ -19,7 +19,7 @@ async function chargerTarifs(): Promise<Offre[]> {
   }
 }
 
-const euros = (n: number) => n.toLocaleString('fr-FR', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+const euros = (n: number) => n.toLocaleString('fr-FR', { minimumFractionDigits: Number.isInteger(n) ? 0 : 2, maximumFractionDigits: 2 });
 
 export async function TarifsEntrepreneur() {
   const tarifs = await chargerTarifs();
