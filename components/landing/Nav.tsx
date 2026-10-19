@@ -155,9 +155,6 @@ export function Nav({ surface = 'dark', announcement }: { surface?: 'dark' | 'li
             )}
           </div>
 
-          <a href="/#tarifs" className={triggerCls} onMouseEnter={() => setOpen(null)}>
-            Tarifs
-          </a>
           <a href="/#agents" className={triggerCls} onMouseEnter={() => setOpen(null)}>
             Agents IA
           </a>

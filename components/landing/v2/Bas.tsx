@@ -39,7 +39,7 @@ export function CtaBand({ titre = ['Prêt à automatiser', 'vos formalités'] }:
 }
 
 const COLONNES = [
-  { titre: 'Produit', liens: [['Formalités couvertes', '/#fonctionnalites'], ['Agents IA', '/#agents'], ['Sécurité', '/#securite'], ['Tarifs', '/#tarifs']] },
+  { titre: 'Produit', liens: [['Formalités couvertes', '/#fonctionnalites'], ['Agents IA', '/#agents'], ['Sécurité', '/#securite']] },
   { titre: 'Formalités', liens: [['Création de société', '/#fonctionnalites'], ['Modifications', '/#fonctionnalites'], ['Dissolution et liquidation', '/#fonctionnalites'], ['Annonces légales', '/#fonctionnalites']] },
   { titre: 'Solutions', liens: [['Experts-comptables', '/experts-comptables'], ['Avocats', '/avocats'], ['Directions juridiques', '/directions-juridiques']] },
   { titre: 'Commencer', liens: [['Créer un compte', '/auth/signup'], ['Se connecter', '/auth/login'], ['Demander une démo', '/auth/signup'], ['Nous contacter', 'mailto:support@legaly.ai']] },

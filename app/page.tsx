@@ -4,12 +4,11 @@ import { FeatureRail } from '@/components/landing/v2/FeatureRail';
 import { AgentsCarousel } from '@/components/landing/v2/AgentsCarousel';
 import { AudienceTabs } from '@/components/landing/v2/AudienceTabs';
 import { Conformite, Registres } from '@/components/landing/v2/Confiance';
-import { Pricing } from '@/components/landing/Pricing';
 import { CtaBand, FooterV2 } from '@/components/landing/v2/Bas';
 
 // Accueil : hero « agent » (chat de démonstration + livre animé), puis une
 // organisation inspirée de Brevo aux couleurs Legaly : rangée de formalités,
-// agents IA en carrousel, onglets par métier, confiance, registres, tarifs,
+// agents IA en carrousel, onglets par métier, confiance, registres,
 // appel à l'action et pied de page en colonnes.
 export default function LandingPage() {
   return (
@@ -24,7 +23,6 @@ export default function LandingPage() {
       <AudienceTabs />
       <Conformite />
       <Registres />
-      <Pricing />
       <CtaBand />
       <FooterV2 />
     </div>
