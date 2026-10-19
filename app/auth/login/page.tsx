@@ -47,7 +47,7 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
   return (
     <main className="grid min-h-screen lg:grid-cols-2">
       {/* Panneau gauche — marque */}
-      <aside className="relative hidden flex-col justify-between overflow-hidden bg-zinc-950 p-10 text-zinc-300 lg:flex">
+      <aside className="relative hidden flex-col justify-between overflow-hidden bg-sidebar p-10 text-zinc-300 lg:flex">
         <div
           aria-hidden="true"
           className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_500px_400px_at_80%_10%,rgba(117,81,232,0.25),transparent_60%),radial-gradient(ellipse_400px_300px_at_10%_90%,rgba(149,122,245,0.15),transparent_60%)]"
