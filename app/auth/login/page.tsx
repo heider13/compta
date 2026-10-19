@@ -47,7 +47,7 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
   return (
     <main className="grid min-h-screen lg:grid-cols-2">
       {/* Panneau gauche — marque */}
-      <aside className="relative hidden flex-col justify-between overflow-hidden bg-sidebar p-10 text-sidebar-foreground lg:flex">
+      <aside className="relative hidden flex-col justify-between overflow-hidden bg-zinc-950 p-10 text-zinc-300 lg:flex">
         <div
           aria-hidden="true"
           className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_500px_400px_at_80%_10%,rgba(117,81,232,0.25),transparent_60%),radial-gradient(ellipse_400px_300px_at_10%_90%,rgba(149,122,245,0.15),transparent_60%)]"
@@ -64,15 +64,15 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
           </h2>
           <ul className="mt-8 space-y-4">
             {REASSURANCE.map(({ icon: Icon, text }) => (
-              <li key={text} className="flex items-start gap-3 text-sm leading-relaxed text-sidebar-foreground">
-                <Icon className="mt-0.5 size-4 shrink-0 text-sidebar-primary" aria-hidden="true" />
+              <li key={text} className="flex items-start gap-3 text-sm leading-relaxed text-zinc-300">
+                <Icon className="mt-0.5 size-4 shrink-0 text-violet-400" aria-hidden="true" />
                 {text}
               </li>
             ))}
           </ul>
         </div>
 
-        <p className="relative text-xs text-sidebar-foreground/60">
+        <p className="relative text-xs text-zinc-500">
           © {new Date().getFullYear()} Legaly AI — plateforme de formalités pour cabinets.
         </p>
       </aside>

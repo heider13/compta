@@ -76,7 +76,7 @@ export default async function AdminDashboardPage() {
       value: cabinetsCount ?? 0,
       icon: Building2,
       href: '/admin/cabinets',
-      iconClass: 'text-primary bg-accent',
+      iconClass: 'text-primary bg-brand-soft',
     },
     {
       label: 'Dossiers à valider',

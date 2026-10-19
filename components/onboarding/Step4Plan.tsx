@@ -100,7 +100,7 @@ export function Step4Plan({ data, onUpdate, onNext, onPrev }: Props) {
               className={cn(
                 'relative flex cursor-pointer flex-col gap-2.5 rounded-xl border bg-card p-5 transition-all',
                 isSelected
-                  ? 'border-primary bg-accent/40 shadow-[0_6px_20px_rgba(91,54,214,0.12)] ring-1 ring-primary'
+                  ? 'border-primary bg-brand-soft shadow-[0_6px_20px_rgba(91,54,214,0.12)] ring-1 ring-primary'
                   : 'hover:border-ring/60',
               )}
             >
