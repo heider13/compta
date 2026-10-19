@@ -12,6 +12,7 @@ import { HeroEntrepreneur } from './HeroEntrepreneur';
 import { Modules, Engagements, Reassurance, Connexions, FinAppareils } from './v2/Pennylane';
 import type { Variante } from './v2/Maquettes';
 import { FooterV2 } from './v2/Bas';
+import { TarifsEntrepreneur } from './v2/TarifsEntrepreneur';
 
 export function PersonaLanding({ persona }: { persona: PersonaContent }) {
   const m = METIERS[persona.slug];
@@ -28,6 +29,8 @@ export function PersonaLanding({ persona }: { persona: PersonaContent }) {
       <Modules titre={m.modulesTitre} modules={m.modules} v={v} />
       <Engagements titre={m.engagements.titre} points={m.engagements.points} />
       <Reassurance adapte={m.adapte} nouveautes={NOUVEAUTES} />
+      {/* Tarifs par formalité : seulement pour les entrepreneurs (pas pour les professionnels) */}
+      {persona.slug === 'independants-tpe' && <TarifsEntrepreneur />}
       <Connexions />
       <FinAppareils titre={m.fin} v={v} />
       <FooterV2 />
