@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { BookOpen, ChevronsUpDown, CreditCard, LogOut, Plus, Search, User } from 'lucide-react';
+import { BookOpen, ChevronsUpDown, CreditCard, LogOut, Search, User } from 'lucide-react';
 
 import { LogoMark } from '@/components/brand/Logo';
 import { NAV_SECTIONS, isNavActive, type NavSection } from '@/components/cabinet/nav';
@@ -95,13 +95,6 @@ export function CabinetSidebar({ orgName, userLabel, userEmail, userInitials, pl
         </SidebarMenu>
 
         <div className="grid gap-1.5 group-data-[collapsible=icon]:hidden">
-          <Link
-            href="/dossiers/new"
-            className="inline-flex h-9 items-center justify-center gap-1.5 rounded-full bg-coral px-3 text-sm font-semibold text-coral-foreground shadow-[0_8px_20px_-10px_rgba(255,136,123,0.9)] transition-colors hover:bg-[#ffaca3]"
-          >
-            <Plus className="size-4" />
-            Nouvelle formalité
-          </Link>
           <button
             type="button"
             onClick={ouvrirPalette}
