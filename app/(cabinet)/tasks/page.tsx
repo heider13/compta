@@ -7,7 +7,7 @@ import { getInitials } from '@/lib/types';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { StatCard, StatStrip } from '@/components/cabinet/dashboard/StatCard';
+import { StatCard, StatStrip } from '@/components/cabinet/StatStrip';
 import { PageHeader, PageShell } from '@/components/cabinet/PageHeader';
 import { EmptyState } from '@/components/cabinet/EmptyState';
 import { cn } from '@/lib/utils';

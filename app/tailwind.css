@@ -3,60 +3,62 @@
 
 @custom-variant dark (&:is(.dark *));
 
-/* ─── Design tokens Legaly — base neutre zinc (shadcn/ui), accent violet de marque ───
+/* ─── Design tokens Legaly — couleurs de la landing : encre marine, indigo, corail ───
    html:root : prime sur le :root de globals.css (variables de la landing). */
 html:root {
-  --radius: 0.625rem;
+  --radius: 0.875rem;
 
-  --app-canvas: oklch(1 0 0);
-  --font-display-app: 'Geist', ui-sans-serif, system-ui, sans-serif;
+  --app-canvas: #fbfaff;
+  --font-display-app: 'Sora', 'Poppins', ui-sans-serif, system-ui, sans-serif;
 
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.141 0.005 285.823);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.141 0.005 285.823);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.141 0.005 285.823);
+  --background: #ffffff;
+  --foreground: #080331;
+  --card: #ffffff;
+  --card-foreground: #080331;
+  --popover: #ffffff;
+  --popover-foreground: #080331;
 
-  /* Violet Legaly */
-  --primary: oklch(0.488 0.217 285.5);
-  --primary-foreground: oklch(0.985 0 0);
+  /* Indigo de la landing : liens, icônes, sélection */
+  --primary: #361fab;
+  --primary-foreground: #ffffff;
+  /* Corail de la landing : appels à l'action */
+  --coral: #ff887b;
+  --coral-foreground: #080331;
+  --coral-soft: #fff3f1;
 
-  --secondary: oklch(0.967 0.001 286.375);
-  --secondary-foreground: oklch(0.21 0.006 285.885);
-  --muted: oklch(0.967 0.001 286.375);
-  --muted-foreground: oklch(0.552 0.016 285.938);
-  /* Surfaces de survol neutres, comme shadcn */
-  --accent: oklch(0.967 0.001 286.375);
-  --accent-foreground: oklch(0.21 0.006 285.885);
-  /* Teinte de marque douce (mise en avant, sélection, IA) */
-  --brand-soft: oklch(0.962 0.025 290);
-  --brand-soft-foreground: oklch(0.43 0.2 285.5);
-  --brand-border: oklch(0.89 0.06 290);
+  --secondary: #f4f3fa;
+  --secondary-foreground: #201367;
+  --muted: #f5f4fa;
+  --muted-foreground: #5f5a7d;
+  --accent: #f1effa;
+  --accent-foreground: #080331;
+  --brand-soft: #eae8f6;
+  --brand-soft-foreground: #361fab;
+  --brand-border: #d7d2ee;
 
-  --destructive: oklch(0.577 0.245 27.325);
-  --destructive-foreground: oklch(0.985 0 0);
-  --success: oklch(0.6 0.15 155);
-  --warning: oklch(0.72 0.16 70);
+  --destructive: #dc2626;
+  --destructive-foreground: #ffffff;
+  --success: #16a34a;
+  --warning: #d97706;
 
-  --border: oklch(0.92 0.004 286.32);
-  --input: oklch(0.92 0.004 286.32);
-  --ring: oklch(0.65 0.17 288);
+  --border: #e9e7f3;
+  --input: #e2dff0;
+  --ring: #9a8fd5;
 
-  --chart-1: oklch(0.488 0.217 285.5);
-  --chart-2: oklch(0.62 0.19 290);
-  --chart-3: oklch(0.75 0.13 292);
-  --chart-4: oklch(0.72 0.15 30);
-  --chart-5: oklch(0.87 0.06 292);
+  --chart-1: #361fab;
+  --chart-2: #ff887b;
+  --chart-3: #ea42fd;
+  --chart-4: #9a8fd5;
+  --chart-5: #c2bbe5;
 
-  --sidebar: oklch(0.985 0.001 286);
-  --sidebar-foreground: oklch(0.37 0.013 285.805);
-  --sidebar-primary: oklch(0.488 0.217 285.5);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.955 0.003 286);
-  --sidebar-accent-foreground: oklch(0.141 0.005 285.823);
-  --sidebar-border: oklch(0.92 0.004 286.32);
-  --sidebar-ring: oklch(0.65 0.17 288);
+  --sidebar: #080331;
+  --sidebar-foreground: #c9c5e3;
+  --sidebar-primary: #ff887b;
+  --sidebar-primary-foreground: #080331;
+  --sidebar-accent: #171150;
+  --sidebar-accent-foreground: #ffffff;
+  --sidebar-border: #1c1660;
+  --sidebar-ring: #9a8fd5;
 }
 
 html.dark {
@@ -113,6 +115,9 @@ html.dark {
   --color-brand-soft: var(--brand-soft);
   --color-brand-soft-foreground: var(--brand-soft-foreground);
   --color-brand-border: var(--brand-border);
+  --color-coral: var(--coral);
+  --color-coral-foreground: var(--coral-foreground);
+  --color-coral-soft: var(--coral-soft);
   --color-success: var(--success);
   --color-warning: var(--warning);
   --color-canvas: var(--app-canvas);
@@ -137,7 +142,7 @@ html.dark {
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) + 4px);
   --font-serif: var(--font-display-app);
-  --font-sans: 'Geist', ui-sans-serif, system-ui, sans-serif;
+  --font-sans: 'Poppins', ui-sans-serif, system-ui, sans-serif;
   --font-mono: 'Geist Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
 }
 
@@ -149,34 +154,45 @@ html.dark {
     @apply bg-background text-foreground;
   }
 
-  /* ─── Coquille de l'app cabinet : sobre, technique, lisible ─── */
+  /* ─── Coquille de l'app cabinet : même identité que la landing ─── */
   .cabinet-canvas {
     background-color: var(--app-canvas);
-    font-family: 'Geist', ui-sans-serif, system-ui, sans-serif;
-    font-feature-settings: 'ss01', 'cv11';
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
   }
   .cabinet-canvas h1 {
-    font-size: 1.5rem;
-    line-height: 2rem;
-    font-weight: 600;
-    letter-spacing: -0.025em;
+    font-family: var(--font-display-app);
+    font-size: 1.625rem;
+    line-height: 2.125rem;
+    font-weight: 700;
+    letter-spacing: -0.03em;
+    color: var(--foreground);
   }
   .cabinet-canvas h2 {
+    font-family: var(--font-display-app);
     font-weight: 600;
-    letter-spacing: -0.015em;
+    letter-spacing: -0.02em;
   }
   .cabinet-canvas [data-slot='card-title'] {
-    letter-spacing: -0.01em;
+    font-family: var(--font-display-app);
+    letter-spacing: -0.015em;
   }
 }
 
 @layer utilities {
   /* Trame de points discrète : signature « tech » des en-têtes */
   .bg-dot-grid {
-    background-image: radial-gradient(color-mix(in oklab, var(--foreground) 9%, transparent) 1px, transparent 1px);
-    background-size: 16px 16px;
+    background:
+      radial-gradient(ellipse 620px 320px at 88% 0%, rgba(255, 136, 123, 0.2), transparent 62%),
+      radial-gradient(ellipse 520px 280px at 10% 10%, rgba(54, 31, 171, 0.09), transparent 62%),
+      radial-gradient(ellipse 420px 220px at 55% 40%, rgba(234, 66, 253, 0.05), transparent 65%);
+  }
+  /* Texte en dégradé corail → rose (comme le titre de la landing) */
+  .text-gradient-brand {
+    background: linear-gradient(110deg, #ff887b 10%, #ea42fd 90%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
   }
   .mask-fade-b {
     mask-image: linear-gradient(to bottom, black 30%, transparent);
@@ -218,7 +234,7 @@ html.dark {
     z-index: -1;
     border-radius: inherit;
     padding: 1px;
-    background: conic-gradient(from var(--ai-angle, 0deg), transparent 0 60%, var(--chart-2) 75%, var(--chart-4) 85%, transparent 100%);
+    background: conic-gradient(from var(--ai-angle, 0deg), transparent 0 60%, var(--coral) 75%, var(--chart-3) 85%, transparent 100%);
     -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
     -webkit-mask-composite: xor;
     mask-composite: exclude;
@@ -230,6 +246,10 @@ html.dark {
     opacity: 1;
     animation-duration: 2.4s;
   }
+}
+
+html body {
+  font-family: 'Poppins', ui-sans-serif, system-ui, sans-serif;
 }
 
 @property --ai-angle {

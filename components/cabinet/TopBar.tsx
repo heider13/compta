@@ -55,7 +55,7 @@ export function TopBar() {
       <button
         type="button"
         onClick={ouvrirPalette}
-        className="hidden h-8 w-64 items-center gap-2 rounded-md border bg-muted/40 px-2.5 text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground md:flex"
+        className="hidden h-9 w-72 items-center gap-2 rounded-full border bg-background px-3.5 text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground md:flex"
       >
         <Search className="size-3.5" />
         <span className="flex-1 text-left">Rechercher un dossier…</span>

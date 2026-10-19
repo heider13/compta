@@ -19,7 +19,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { StatCard, StatStrip } from '@/components/cabinet/dashboard/StatCard';
+import { StatCard, StatStrip } from '@/components/cabinet/StatStrip';
 import { PageHeader, PageShell } from '@/components/cabinet/PageHeader';
 import { EmptyState } from '@/components/cabinet/EmptyState';
 

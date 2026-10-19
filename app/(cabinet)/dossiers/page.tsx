@@ -10,7 +10,7 @@ import {
   Plus,
 } from 'lucide-react';
 import { createClient } from '@/lib/supabase/server';
-import { StatCard, StatStrip } from '@/components/cabinet/dashboard/StatCard';
+import { StatCard, StatStrip } from '@/components/cabinet/StatStrip';
 import { PageShell } from '@/components/cabinet/PageHeader';
 import { EmptyState } from '@/components/cabinet/EmptyState';
 import { FilterBar } from '@/components/cabinet/FilterBar';

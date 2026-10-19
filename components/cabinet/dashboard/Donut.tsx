@@ -57,11 +57,11 @@ export function Donut({
         />
       </svg>
       <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
-        <span className="font-mono text-3xl font-semibold tracking-tight text-foreground tabular-nums">
+        <span className="text-3xl font-semibold tracking-tight text-foreground tabular-nums">
           {centerText ?? `${Math.round(pct * 100)}%`}
         </span>
         {centerSub ? (
-          <span className="label-mono mt-0.5">{centerSub}</span>
+          <span className="mt-0.5 text-xs text-muted-foreground">{centerSub}</span>
         ) : null}
       </div>
     </div>

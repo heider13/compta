@@ -14,6 +14,7 @@ import { getInpiCredentialsStatus } from '@/lib/server-actions/inpi-credentials'
 import { formatDate, formatRelative, typeFormaliteLabel } from '@/lib/utils/format';
 import { StatusBadge } from '@/components/cabinet/StatusBadge';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import {
   Card,
   CardContent,
@@ -21,10 +22,10 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
-import { StatCard, StatStrip } from '@/components/cabinet/dashboard/StatCard';
-import { PageHeader, PageShell } from '@/components/cabinet/PageHeader';
-import { EmptyState } from '@/components/cabinet/EmptyState';
+import { StatCard } from '@/components/cabinet/dashboard/StatCard';
 import { BarChart } from '@/components/cabinet/dashboard/BarChart';
+import { Donut } from '@/components/cabinet/dashboard/Donut';
+import { InsightsCard } from '@/components/cabinet/dashboard/InsightsCard';
 import { FormalityAgent } from '@/components/cabinet/dashboard/FormalityAgent';
 
 export const dynamic = 'force-dynamic';
@@ -162,17 +163,45 @@ export default async function CabinetDashboardPage() {
   const validatedTotal = validatedTotalRes.count ?? 0;
 
   const kpis = [
-    { label: 'À valider', value: awaitingValidation, hint: 'Attendent votre validation', icon: ClipboardCheck, href: '/dossiers', highlight: true },
-    { label: 'En cours', value: inProgress, hint: 'Tous statuts actifs', icon: FolderOpen, href: '/dossiers' },
-    { label: 'Clients', value: clientsCount, hint: 'Entreprises suivies', icon: Users, href: '/clients' },
-    { label: 'Validés ce mois', value: validatedMonth, hint: "Acceptés par l'INPI", icon: CheckCircle2, href: null },
+    {
+      label: 'Dossiers à valider',
+      value: awaitingValidation,
+      hint: 'En attente de votre validation',
+      icon: ClipboardCheck,
+      href: '/dossiers',
+      tileClass: 'text-coral bg-coral-soft',
+    },
+    {
+      label: 'En cours',
+      value: inProgress,
+      hint: 'Tous statuts actifs',
+      icon: FolderOpen,
+      href: '/dossiers',
+      tileClass: 'text-primary bg-brand-soft',
+    },
+    {
+      label: 'Clients',
+      value: clientsCount,
+      hint: 'Entreprises gérées',
+      icon: Users,
+      href: '/clients',
+      tileClass: 'text-blue-600 bg-blue-50',
+    },
+    {
+      label: 'Validés ce mois',
+      value: validatedMonth,
+      hint: 'Formalités acceptées INPI',
+      icon: CheckCircle2,
+      href: null,
+      tileClass: 'text-primary bg-muted',
+    },
   ];
 
   // Répartition des formalités par type (données réelles)
   const formaliteBars = [
     { label: 'Création', value: creationRes.count ?? 0, colorClass: 'bg-chart-1' },
-    { label: 'Modification', value: modificationRes.count ?? 0, colorClass: 'bg-chart-2' },
-    { label: 'Radiation', value: radiationRes.count ?? 0, colorClass: 'bg-chart-4' },
+    { label: 'Modification', value: modificationRes.count ?? 0, colorClass: 'bg-chart-4' },
+    { label: 'Radiation', value: radiationRes.count ?? 0, colorClass: 'bg-chart-2' },
   ];
 
   // Avancement : validés vs en cours (données réelles)
@@ -187,95 +216,156 @@ export default async function CabinetDashboardPage() {
   const inpiNotConfigured = !inpiStatus || !inpiStatus.configured;
 
   return (
-    <PageShell>
-      <PageHeader
-        eyebrow={todayLabel()}
-        title={`Bonjour${greetingName ? ` ${greetingName}` : ''}`}
-        description="Décrivez une opération à l'agent, ou reprenez un dossier là où vous l'avez laissé."
-        actions={
-          <>
-            <Button asChild variant="outline" size="sm">
-              <Link href="/dossiers">
-                <FolderOpen className="size-4" />
-                Formalités
-              </Link>
-            </Button>
-            <Button asChild size="sm">
-              <Link href="/dossiers/new">
-                <Plus className="size-4" />
-                Nouvelle formalité
-              </Link>
-            </Button>
-          </>
-        }
-      />
-
-      {inpiNotConfigured && (
-        <div className="flex flex-wrap items-center gap-3 rounded-xl border border-warning/40 bg-warning/10 px-4 py-3">
-          <AlertTriangle className="size-4 shrink-0 text-warning" />
-          <p className="min-w-56 flex-1 text-sm">
-            <span className="font-medium">Connectez votre compte INPI</span>
-            <span className="text-muted-foreground"> : vos identifiants du Guichet unique sont nécessaires pour déposer les formalités.</span>
+    <div className="mx-auto w-full max-w-7xl space-y-6 p-4 sm:p-6">
+      {/* Header */}
+      <div className="flex flex-wrap items-end justify-between gap-4">
+        <div className="min-w-0">
+          <h1>Bonjour {greetingName ? `${greetingName} ` : ''}👋</h1>
+          <p className="mt-1 text-sm text-muted-foreground first-letter:uppercase">
+            {todayLabel()} · Voici l&apos;activité de votre cabinet.
           </p>
-          <Button asChild size="sm" variant="outline" className="shrink-0 bg-background">
-            <Link href="/settings/inpi?next=/dashboard">
-              Configurer
-              <ArrowRight className="size-4" />
-            </Link>
-          </Button>
         </div>
-      )}
+        <Button asChild size="lg">
+          <Link href="/dossiers/new">
+            <Plus className="size-4" />
+            Nouveau dossier
+          </Link>
+        </Button>
+      </div>
 
-      <StatStrip>
-        {kpis.map((kpi) => (
-          <StatCard key={kpi.label} {...kpi} />
-        ))}
-      </StatStrip>
-
+      {/* Agent Formalités */}
       <FormalityAgent />
 
-      <div className="grid gap-6 lg:grid-cols-3">
-        {/* Dossiers récents */}
-        <Card className="min-w-0 gap-0 py-0 lg:col-span-2">
-          <CardHeader className="flex flex-row items-center justify-between gap-2 border-b px-5 py-4 [.border-b]:pb-4">
-            <div className="min-w-0 space-y-1">
-              <CardTitle className="text-sm">Dossiers récents</CardTitle>
-              <CardDescription className="text-xs">Dernières formalités mises à jour</CardDescription>
+      {/* Bandeau INPI */}
+      {inpiNotConfigured && (
+        <Card className="gap-0 border-amber-300 bg-amber-50 py-0">
+          <CardContent className="flex flex-wrap items-center gap-4 p-4">
+            <span className="grid size-10 shrink-0 place-items-center rounded-lg bg-amber-400/80 text-amber-950">
+              <AlertTriangle className="size-5" />
+            </span>
+            <div className="min-w-56 flex-1">
+              <p className="text-sm font-semibold text-amber-900">
+                Connectez votre compte INPI pour démarrer
+              </p>
+              <p className="text-sm text-amber-800/80">
+                Vos identifiants du Guichet Unique sont nécessaires pour déposer les
+                formalités au registre.
+              </p>
             </div>
-            <Button asChild variant="ghost" size="sm" className="text-muted-foreground">
+            <Button asChild size="sm" className="shrink-0">
+              <Link href="/settings/inpi?next=/dashboard">
+                Configurer maintenant
+                <ArrowRight className="size-4" />
+              </Link>
+            </Button>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* KPI row */}
+      <div className="grid gap-4 [grid-template-columns:repeat(auto-fit,minmax(210px,1fr))]">
+        {kpis.map((kpi) => (
+          <div key={kpi.label} className="min-w-0">
+            <StatCard
+              label={kpi.label}
+              value={kpi.value}
+              hint={kpi.hint}
+              icon={kpi.icon}
+              href={kpi.href}
+              tileClass={kpi.tileClass}
+            />
+          </div>
+        ))}
+      </div>
+
+      {/* Bento grid */}
+      <div className="grid gap-5 lg:grid-cols-3">
+        {/* Répartition des formalités */}
+        <Card className="min-w-0">
+          <CardHeader>
+            <CardTitle className="text-base">Répartition des formalités</CardTitle>
+            <CardDescription>Par type, tous dossiers confondus</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <BarChart items={formaliteBars} />
+          </CardContent>
+        </Card>
+
+        {/* Donut — Avancement */}
+        <Card className="min-w-0">
+          <CardHeader>
+            <CardTitle className="text-base">Avancement</CardTitle>
+            <CardDescription>Validés vs en cours</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-5">
+            <Donut
+              value={validatedTotal}
+              total={avancementTotal}
+              centerText={`${avancementPct}%`}
+              centerSub="validés"
+            />
+            <div className="flex items-center justify-center gap-5 text-sm">
+              <span className="flex items-center gap-2">
+                <span className="size-2.5 rounded-full bg-chart-1" />
+                <span className="text-muted-foreground">Validés</span>
+                <span className="font-semibold tabular-nums">{validatedTotal}</span>
+              </span>
+              <span className="flex items-center gap-2">
+                <span className="size-2.5 rounded-full bg-brand-soft" />
+                <span className="text-muted-foreground">En cours</span>
+                <span className="font-semibold tabular-nums">{inProgress}</span>
+              </span>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Insights IA */}
+        <div className="min-w-0">
+          <InsightsCard awaitingValidation={awaitingValidation} inProgress={inProgress} />
+        </div>
+
+        {/* Dossiers récents */}
+        <Card className="min-w-0 lg:col-span-2">
+          <CardHeader className="flex-row items-center justify-between space-y-0">
+            <div className="min-w-0">
+              <CardTitle className="text-base">Dossiers récents</CardTitle>
+              <CardDescription>Les 5 dernières formalités mises à jour</CardDescription>
+            </div>
+            <Button asChild variant="ghost" size="sm">
               <Link href="/dossiers">
-                Tout voir
+                Voir tout
                 <ArrowRight className="size-4" />
               </Link>
             </Button>
           </CardHeader>
-          <CardContent className="p-0">
+          <CardContent>
             {recentDossiers.length === 0 ? (
-              <EmptyState
-                icon={FolderOpen}
-                title="Aucun dossier pour l'instant"
-                description="Décrivez votre première opération à l'agent ci-dessus."
-              />
+              <p className="py-10 text-center text-sm text-muted-foreground">
+                Aucun dossier pour l&apos;instant.
+              </p>
             ) : (
-              <ul className="divide-y">
+              <ul className="divide-y divide-border">
                 {recentDossiers.map((d) => (
                   <li key={d.id}>
                     <Link
                       href={`/dossiers/${d.id}`}
-                      className="group flex items-center gap-3 px-5 py-3 transition-colors hover:bg-muted/50"
+                      className="flex items-center gap-3 rounded-lg px-2 py-3 transition-colors hover:bg-muted"
                     >
-                      <span className="grid size-8 shrink-0 place-items-center rounded-md border bg-background text-[11px] font-semibold text-muted-foreground">
-                        {d.client_name.slice(0, 2).toUpperCase()}
+                      <span className="hidden shrink-0 font-mono text-xs text-muted-foreground sm:block sm:w-24">
+                        {d.reference ?? '—'}
                       </span>
                       <span className="min-w-0 flex-1">
-                        <span className="block truncate text-sm font-medium">{d.client_name}</span>
+                        <span className="block truncate font-medium text-foreground">
+                          {d.client_name}
+                        </span>
                         <span className="block truncate text-xs text-muted-foreground">
                           {typeFormaliteLabel(d.type_formalite)}
-                          {d.reference && <span className="font-mono"> · {d.reference}</span>}
                         </span>
                       </span>
-                      <StatusBadge statut={d.statut} />
-                      <span className="hidden w-20 shrink-0 text-right font-mono text-[11px] text-muted-foreground sm:block">
+                      <span className="shrink-0">
+                        <StatusBadge statut={d.statut} />
+                      </span>
+                      <span className="hidden shrink-0 text-right text-xs text-muted-foreground sm:block sm:w-20">
                         {formatRelative(d.updated_at ?? d.created_at)}
                       </span>
                     </Link>
@@ -286,77 +376,61 @@ export default async function CabinetDashboardPage() {
           </CardContent>
         </Card>
 
-        <div className="grid min-w-0 content-start gap-6">
-          {/* Tâches */}
-          <Card className="min-w-0 gap-0 py-0">
-            <CardHeader className="flex flex-row items-center justify-between gap-2 border-b px-5 py-4 [.border-b]:pb-4">
-              <div className="min-w-0 space-y-1">
-                <CardTitle className="text-sm">Tâches</CardTitle>
-                <CardDescription className="text-xs">Les vôtres et les non assignées</CardDescription>
-              </div>
-              <Button asChild variant="ghost" size="sm" className="text-muted-foreground">
-                <Link href="/tasks">
-                  Tout voir
-                  <ArrowRight className="size-4" />
-                </Link>
-              </Button>
-            </CardHeader>
-            <CardContent className="p-2">
-              {tasks.length === 0 ? (
-                <EmptyState icon={CheckCircle2} title="Rien à traiter" description="Aucune tâche en attente." compact />
-              ) : (
-                tasks.map((t) => {
-                  const dossier = t.dossiers;
-                  return (
-                    <Link
-                      key={t.id}
-                      href={dossier ? `/dossiers/${dossier.id}` : '/tasks'}
-                      className="flex items-start gap-3 rounded-md px-3 py-2.5 transition-colors hover:bg-muted/50"
-                    >
-                      <span className="mt-0.5 size-4 shrink-0 rounded-full border-2 border-muted-foreground/30" />
-                      <span className="min-w-0 flex-1">
-                        <span className="block truncate text-sm">{t.title}</span>
-                        <span className="mt-0.5 flex flex-wrap items-center gap-2 font-mono text-[11px] text-muted-foreground">
-                          {dossier && <span className="truncate">{dossier.reference ?? dossier.client_name}</span>}
-                          {t.due_date && (
-                            <span className="inline-flex items-center gap-1 text-warning">
-                              <CalendarClock className="size-3" />
-                              {formatDate(t.due_date)}
-                            </span>
-                          )}
-                        </span>
+        {/* Tâches à traiter */}
+        <Card className="min-w-0">
+          <CardHeader className="flex-row items-center justify-between space-y-0">
+            <div className="min-w-0">
+              <CardTitle className="text-base">Tâches à traiter</CardTitle>
+              <CardDescription>Les vôtres et les non assignées</CardDescription>
+            </div>
+            <Button asChild variant="ghost" size="sm">
+              <Link href="/tasks">
+                Voir tout
+                <ArrowRight className="size-4" />
+              </Link>
+            </Button>
+          </CardHeader>
+          <CardContent className="space-y-1">
+            {tasks.length === 0 ? (
+              <p className="py-10 text-center text-sm text-muted-foreground">
+                Aucune tâche. Bon travail !
+              </p>
+            ) : (
+              tasks.map((t) => {
+                const dossier = t.dossiers;
+                return (
+                  <Link
+                    key={t.id}
+                    href={dossier ? `/dossiers/${dossier.id}` : '/tasks'}
+                    className="flex items-start gap-3 rounded-lg px-2 py-2.5 transition-colors hover:bg-muted"
+                  >
+                    <span className="mt-0.5 grid size-5 shrink-0 place-items-center rounded-full border border-border" />
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate text-sm font-medium">{t.title}</span>
+                      <span className="mt-0.5 flex flex-wrap items-center gap-2">
+                        {dossier && (
+                          <span className="font-mono text-[11px] text-muted-foreground">
+                            {dossier.reference ?? dossier.client_name}
+                          </span>
+                        )}
+                        {t.due_date && (
+                          <Badge
+                            variant="outline"
+                            className="gap-1 border-amber-200 bg-amber-50 px-1.5 py-0 text-[10px] text-amber-700"
+                          >
+                            <CalendarClock className="size-3" />
+                            {formatDate(t.due_date)}
+                          </Badge>
+                        )}
                       </span>
-                    </Link>
-                  );
-                })
-              )}
-            </CardContent>
-          </Card>
-
-          {/* Activité */}
-          <Card className="min-w-0 gap-0 py-0">
-            <CardHeader className="border-b px-5 py-4 [.border-b]:pb-4">
-              <CardTitle className="text-sm">Activité du cabinet</CardTitle>
-              <CardDescription className="text-xs">Tous dossiers confondus</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-5 p-5">
-              <div className="space-y-2">
-                <div className="flex items-baseline justify-between text-sm">
-                  <span className="text-muted-foreground">Taux de validation</span>
-                  <span className="font-mono font-semibold tabular-nums">{avancementPct}%</span>
-                </div>
-                <div className="h-1.5 overflow-hidden rounded-full bg-muted" role="progressbar" aria-valuenow={avancementPct} aria-valuemin={0} aria-valuemax={100} aria-label="Taux de validation">
-                  <div className="h-full rounded-full bg-gradient-to-r from-primary to-chart-2" style={{ width: `${avancementPct}%` }} />
-                </div>
-                <p className="font-mono text-[11px] text-muted-foreground">
-                  {validatedTotal} validés · {inProgress} en cours
-                </p>
-              </div>
-              <BarChart items={formaliteBars} />
-            </CardContent>
-          </Card>
-        </div>
+                    </span>
+                  </Link>
+                );
+              })
+            )}
+          </CardContent>
+        </Card>
       </div>
-    </PageShell>
+    </div>
   );
 }

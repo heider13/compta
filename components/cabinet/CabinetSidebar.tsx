@@ -44,7 +44,7 @@ function NavGroup({ section, pathname }: { section: NavSection; pathname: string
   const { isMobile, setOpenMobile } = useSidebar();
   return (
     <SidebarGroup>
-      <SidebarGroupLabel className="font-mono text-[10.5px] uppercase tracking-wider">{section.label}</SidebarGroupLabel>
+      <SidebarGroupLabel className="font-mono text-[10.5px] uppercase tracking-[0.14em] text-sidebar-foreground/50">{section.label}</SidebarGroupLabel>
       <SidebarMenu>
         {section.items.map((item) => {
           const active = isNavActive(item, pathname);
@@ -54,10 +54,10 @@ function NavGroup({ section, pathname }: { section: NavSection; pathname: string
                 asChild
                 isActive={active}
                 tooltip={item.label}
-                className="relative data-[active=true]:bg-background data-[active=true]:font-medium data-[active=true]:shadow-xs data-[active=true]:ring-1 data-[active=true]:ring-border"
+                className="relative rounded-full text-sidebar-foreground hover:bg-sidebar-accent hover:text-white data-[active=true]:bg-white/10 data-[active=true]:font-medium data-[active=true]:text-white"
               >
                 <Link href={item.href} onClick={() => isMobile && setOpenMobile(false)}>
-                  <item.icon className={cn('size-4', active && 'text-primary')} />
+                  <item.icon className={cn('size-4', active && 'text-coral')} />
                   <span>{item.label}</span>
                 </Link>
               </SidebarMenuButton>
@@ -80,12 +80,14 @@ export function CabinetSidebar({ orgName, userLabel, userEmail, userInitials, pl
           <SidebarMenuItem>
             <SidebarMenuButton size="lg" asChild className="hover:bg-sidebar-accent">
               <Link href="/dashboard">
-                <span className="grid size-8 shrink-0 place-items-center rounded-lg border bg-background shadow-xs">
-                  <LogoMark size={22} />
+                <span className="grid size-8 shrink-0 place-items-center">
+                  <LogoMark size={28} onDark />
                 </span>
                 <span className="grid min-w-0 flex-1 text-left leading-tight">
-                  <span className="truncate text-sm font-semibold tracking-tight text-foreground">Legaly AI</span>
-                  <span className="truncate text-xs text-muted-foreground">{orgName}</span>
+                  <span className="truncate font-[Sora] text-[15px] font-bold tracking-tight text-white">
+                    Legaly <span className="text-coral">AI</span>
+                  </span>
+                  <span className="truncate text-xs text-sidebar-foreground/70">{orgName}</span>
                 </span>
               </Link>
             </SidebarMenuButton>
@@ -95,7 +97,7 @@ export function CabinetSidebar({ orgName, userLabel, userEmail, userInitials, pl
         <div className="grid gap-1.5 group-data-[collapsible=icon]:hidden">
           <Link
             href="/dossiers/new"
-            className="inline-flex h-8 items-center justify-center gap-1.5 rounded-md bg-primary px-3 text-sm font-medium text-primary-foreground shadow-xs transition-colors hover:bg-primary/90"
+            className="inline-flex h-9 items-center justify-center gap-1.5 rounded-full bg-coral px-3 text-sm font-semibold text-coral-foreground shadow-[0_8px_20px_-10px_rgba(255,136,123,0.9)] transition-colors hover:bg-[#ffaca3]"
           >
             <Plus className="size-4" />
             Nouvelle formalité
@@ -103,11 +105,11 @@ export function CabinetSidebar({ orgName, userLabel, userEmail, userInitials, pl
           <button
             type="button"
             onClick={ouvrirPalette}
-            className="flex h-8 items-center gap-2 rounded-md border bg-background px-2.5 text-sm text-muted-foreground shadow-xs transition-colors hover:text-foreground"
+            className="flex h-9 items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 text-sm text-sidebar-foreground/80 transition-colors hover:bg-white/10 hover:text-white"
           >
             <Search className="size-3.5" />
             <span className="flex-1 text-left">Rechercher…</span>
-            <Kbd>⌘K</Kbd>
+            <Kbd className="border-white/15 bg-white/10 text-sidebar-foreground">⌘K</Kbd>
           </button>
         </div>
       </SidebarHeader>
@@ -121,14 +123,14 @@ export function CabinetSidebar({ orgName, userLabel, userEmail, userInitials, pl
       <SidebarFooter>
         <Link
           href="/settings/inpi"
-          className="flex items-center gap-2 rounded-md border bg-background px-2.5 py-2 text-xs shadow-xs transition-colors hover:bg-sidebar-accent group-data-[collapsible=icon]:hidden"
+          className="flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs transition-colors hover:bg-white/10 group-data-[collapsible=icon]:hidden"
         >
           <span className={cn('live-dot shrink-0', inpi.configured ? 'text-success' : 'text-warning')} />
           <span className="min-w-0 flex-1">
-            <span className="block truncate font-medium text-foreground">
+            <span className="block truncate font-medium text-white">
               {inpi.configured ? 'Guichet unique connecté' : 'Guichet unique à connecter'}
             </span>
-            <span className="block truncate font-mono text-[10.5px] text-muted-foreground">
+            <span className="block truncate font-mono text-[10.5px] text-sidebar-foreground/60">
               INPI · {inpi.configured ? (inpi.env === 'demo' ? 'démo' : 'production') : 'non configuré'}
             </span>
           </span>
@@ -138,17 +140,17 @@ export function CabinetSidebar({ orgName, userLabel, userEmail, userInitials, pl
           <SidebarMenuItem>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <SidebarMenuButton size="lg" className="data-[state=open]:bg-sidebar-accent">
+                <SidebarMenuButton size="lg" className="text-sidebar-foreground hover:bg-sidebar-accent data-[state=open]:bg-sidebar-accent">
                   <Avatar className="size-8 rounded-lg">
-                    <AvatarFallback className="rounded-lg bg-brand-soft text-xs font-semibold text-brand-soft-foreground">
+                    <AvatarFallback className="rounded-lg bg-coral text-xs font-semibold text-coral-foreground">
                       {userInitials}
                     </AvatarFallback>
                   </Avatar>
                   <span className="grid min-w-0 flex-1 text-left leading-tight">
-                    <span className="truncate text-sm font-medium text-foreground">{userLabel}</span>
-                    <span className="truncate text-xs text-muted-foreground">Abonnement {planLabel}</span>
+                    <span className="truncate text-sm font-medium text-white">{userLabel}</span>
+                    <span className="truncate text-xs text-sidebar-foreground/60">Abonnement {planLabel}</span>
                   </span>
-                  <ChevronsUpDown className="ml-auto size-4 text-muted-foreground" />
+                  <ChevronsUpDown className="ml-auto size-4 text-sidebar-foreground/60" />
                 </SidebarMenuButton>
               </DropdownMenuTrigger>
               <DropdownMenuContent side="top" align="start" className="w-(--radix-dropdown-menu-trigger-width) min-w-56">
