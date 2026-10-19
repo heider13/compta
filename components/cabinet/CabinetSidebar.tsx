@@ -114,7 +114,7 @@ export function CabinetSidebar({ orgName, userLabel, userEmail, userInitials, pl
         </div>
       </SidebarHeader>
 
-      <SidebarContent>
+      <SidebarContent className="gap-0 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         {NAV_SECTIONS.map((section) => (
           <NavGroup key={section.label} section={section} pathname={pathname} />
         ))}
