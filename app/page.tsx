@@ -1,5 +1,6 @@
 import { Nav } from '@/components/landing/Nav';
 import { HeroAgent } from '@/components/landing/HeroAgent';
+import { CircuitIso } from '@/components/landing/v2/CircuitIso';
 import { FeatureRail } from '@/components/landing/v2/FeatureRail';
 import { AgentsCarousel } from '@/components/landing/v2/AgentsCarousel';
 import { AudienceTabs } from '@/components/landing/v2/AudienceTabs';
@@ -18,6 +19,7 @@ export default function LandingPage() {
         announcement={<><span className="text-[#ff887b]">●</span> Nouveau : l’agent rédige aussi vos annonces légales et lit les documents du RNE.</>}
       />
       <HeroAgent />
+      <CircuitIso />
       <FeatureRail />
       <AgentsCarousel />
       <AudienceTabs />

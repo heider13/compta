@@ -12,6 +12,7 @@ import { HeroEntrepreneur } from './HeroEntrepreneur';
 import { Modules, Engagements, Reassurance, Connexions, FinAppareils } from './v2/Pennylane';
 import type { Variante } from './v2/Maquettes';
 import { FooterV2 } from './v2/Bas';
+import { CircuitIso } from './v2/CircuitIso';
 import { TarifsEntrepreneur } from './v2/TarifsEntrepreneur';
 
 export function PersonaLanding({ persona }: { persona: PersonaContent }) {
@@ -26,6 +27,7 @@ export function PersonaLanding({ persona }: { persona: PersonaContent }) {
       ) : (
         <HeroMetier metier={persona.slug} kicker={m.kicker} ligne1={m.ligne1} ligne2={m.ligne2} sousTitre={m.sousTitre} points={m.points} />
       )}
+      <CircuitIso variante={persona.slug} />
       <Modules titre={m.modulesTitre} modules={m.modules} v={v} />
       <Engagements titre={m.engagements.titre} points={m.engagements.points} />
       <Reassurance adapte={m.adapte} nouveautes={NOUVEAUTES} />
