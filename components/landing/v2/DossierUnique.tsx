@@ -18,17 +18,20 @@ const u = (v: number) => `${((v / LARG) * 100).toFixed(3)}cqw`;
 type Bloc = { label: string; x: number; y: number; w: number; h: number };
 type Case = { x: number; y: number; ton: number }; // ton : 0 → 1, nuance du carré
 
-// Sans Legaly AI : chaque étape vit dans son propre outil
+// Sans Legaly AI (comme le « Frankenstack » de light.inc) : chaque étape vit dans
+// son propre outil. Même grille que l'interface rangée, mais des blocs troués de
+// façon irrégulière, en nuances de gris.
 const EPARS: Bloc[] = [
-  { label: 'Statuts sous Word', x: 0, y: 0.7, w: 7, h: 4 },
-  { label: 'Bail commercial', x: 8, y: 0.7, w: 5, h: 4 },
-  { label: 'Annonce au journal', x: 14, y: 0.7, w: 6, h: 3 },
-  { label: 'Formulaire INPI à la main', x: 22, y: 0.7, w: 5, h: 4 },
-  { label: 'Pièces par e-mail', x: 0, y: 6.6, w: 6, h: 4 },
-  { label: 'Signatures scannées', x: 8, y: 6.6, w: 5, h: 4 },
-  { label: 'Tableur de suivi', x: 14, y: 6.6, w: 6, h: 4 },
-  { label: 'Relances client', x: 22, y: 6.6, w: 4, h: 3 },
-]; // 166 carrés, autant que l'interface rangée
+  { label: 'Échanges par e-mail', x: 1, y: 0.7, w: 25, h: 2 },
+  { label: 'Statuts sous Word', x: 0, y: 3.6, w: 6, h: 4 },
+  { label: 'Bail commercial', x: 7, y: 3.6, w: 6, h: 4 },
+  { label: 'Annonce au journal', x: 14, y: 3.6, w: 6, h: 4 },
+  { label: 'Formulaire INPI à la main', x: 21, y: 3.6, w: 6, h: 4 },
+  { label: 'Pièces scannées', x: 0, y: 8.4, w: 6, h: 4 },
+  { label: 'Signatures papier', x: 7, y: 8.4, w: 6, h: 4 },
+  { label: 'Tableur de suivi', x: 14, y: 8.4, w: 6, h: 4 },
+  { label: 'Relances client', x: 21, y: 8.4, w: 6, h: 4 },
+];
 
 // Avec Legaly AI : une ligne d'agents, les modules alignés, les registres branchés
 const AGENTS: Bloc = { label: 'Agents IA Legaly', x: 0, y: 0.7, w: 20, h: 2 };
@@ -67,8 +70,25 @@ function construire() {
     ...MODULES.flatMap(cases).map((c) => ({ ...c, ton: r() < 0.18 ? 0.8 : 1 })),
     ...REGISTRES.flatMap(cases).map((c) => ({ ...c, ton: 3 })), // 3 = registres branchés
   ];
-  // Outils séparés : même grille, nuances de gris (outils qui ne se parlent pas)
-  const epars = EPARS.flatMap(cases).map((c) => ({ ...c, ton: 0.25 + r() * 0.6 }));
+  // Outils séparés : sur chaque ligne de chaque bloc, 0 à 2 trous de 1 à 3 carrés,
+  // puis on ajuste pour avoir exactement autant de carrés que l'interface rangée
+  const gardes: Case[] = [];
+  const retires: Case[] = [];
+  for (const b of EPARS) {
+    for (let j = 0; j < b.h; j++) {
+      const trous = new Set<number>();
+      const n = Math.floor(r() * 3);
+      for (let k = 0; k < n; k++) {
+        const debut = Math.floor(r() * b.w);
+        const long = 1 + Math.floor(r() * 3);
+        for (let i = debut; i < Math.min(b.w, debut + long); i++) trous.add(i);
+      }
+      for (let i = 0; i < b.w; i++) (trous.has(i) ? retires : gardes).push({ x: b.x + i, y: b.y + j + 0.5, ton: 0 });
+    }
+  }
+  while (gardes.length > ordre.length) gardes.splice(Math.floor(r() * gardes.length), 1);
+  while (gardes.length < ordre.length && retires.length) gardes.push(retires.splice(Math.floor(r() * retires.length), 1)[0]);
+  const epars = gardes.map((c) => ({ ...c, ton: 0.22 + r() * 0.68 }));
   // Chaque carré rejoint la place correspondante, colonne par colonne :
   // le mouvement reste ordonné, en vague de gauche à droite
   const parColonne = (p: Case, q: Case) => p.x - q.x || p.y - q.y;
