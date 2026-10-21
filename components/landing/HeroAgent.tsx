@@ -12,7 +12,7 @@ import {
   RotateCcw, ScanLine, PenLine,
 } from 'lucide-react';
 import { Arrow } from '@/components/icons';
-import { DotInfinity } from './DotInfinity';
+import { PixelLegaly } from './PixelLegaly';
 import { cn } from '@/lib/utils';
 
 const SERIF = { fontFamily: "'Instrument Serif', 'Fraunces', Georgia, serif" };
@@ -234,9 +234,9 @@ export function HeroAgent({
       />
       {/* Fondu bas : enchaîne en douceur avec la section suivante */}
       <div aria-hidden="true" className="pointer-events-none absolute inset-x-0 bottom-0 h-40 bg-gradient-to-b from-transparent to-[#fbfaff]" />
-      {/* Signe infini en points qui circulent, en fond derrière le titre et le chat */}
+      {/* « LEGALY » qui s'écrit en pixels, en fond derrière le titre */}
       {livre && (
-        <DotInfinity className="pointer-events-none absolute left-1/2 top-[90px] h-[560px] w-[min(1400px,100vw)] -translate-x-1/2 opacity-[0.55] sm:top-[110px] sm:h-[680px]" />
+        <PixelLegaly className="pointer-events-none absolute left-1/2 top-[150px] aspect-[36/8] w-[min(1240px,96vw)] -translate-x-1/2 opacity-[0.16] sm:top-[165px]" />
       )}
       {/* Trame de points discrète */}
       <div

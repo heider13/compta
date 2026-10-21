@@ -8,7 +8,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { ArrowUp, ChevronLeft, Info, Loader2, RotateCcw, Sparkles } from 'lucide-react';
-import { DotInfinity } from './DotInfinity';
+import { PixelLegaly } from './PixelLegaly';
 import { Avatar, CarteOffre } from '@/components/espace/Fil';
 import { VPS, type Offre } from '@/lib/espace/chat';
 import { NOEUDS, aiguiller, type Fin } from '@/lib/espace/parcours';
@@ -104,7 +104,7 @@ export function HeroEntrepreneur({
   return (
     <section className="relative overflow-hidden bg-[#fcfbff]">
       <div aria-hidden="true" className="pointer-events-none absolute inset-0" style={{ background: 'radial-gradient(ellipse 900px 600px at 50% 10%, rgba(117,81,232,0.14), transparent 65%), radial-gradient(ellipse 600px 420px at 0% 100%, rgba(255,136,123,0.10), transparent 60%)' }} />
-      <DotInfinity className="pointer-events-none absolute left-1/2 top-[70px] h-[520px] w-[min(1400px,100vw)] -translate-x-1/2 opacity-[0.35] sm:h-[620px]" />
+      <PixelLegaly className="pointer-events-none absolute left-1/2 top-[130px] aspect-[36/8] w-[min(1240px,96vw)] -translate-x-1/2 opacity-[0.16]" />
       <div className="relative mx-auto w-full max-w-3xl px-4 pb-20 pt-32 sm:px-6 sm:pt-36">
         <div className="text-center">
           <span className="inline-flex items-center gap-2 rounded-full border border-[var(--violet-200)] bg-[var(--violet-50)] px-3 py-1 text-xs font-semibold text-[var(--violet-700)]"><Sparkles className="size-3.5" /> {kicker}</span>
