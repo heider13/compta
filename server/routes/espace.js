@@ -6,6 +6,14 @@
 //   POST /api/espace/commandes/:id/rattacher   → associe une conversation gratuite à son compte
 //   POST /api/espace/commandes/:id/paiement    → session de paiement Stripe (URL)
 //   POST /api/espace/agent  {commande_id, input?, attachments?, form_response?} → SSE (après paiement)
+//   POST /api/espace/commandes/:id/simuler-signature → (commande de test) actes rédigés marqués signés
+//   POST /api/espace/commandes/:id/simuler-depot     → (commande de test) envoi au Guichet unique simulé
+//
+// Mode test : tant que le paiement en ligne n'est pas branché (pas de STRIPE_SECRET_KEY,
+// ou tarif provisoire), le paiement est SIMULÉ et la commande marquée « test »
+// (usage.test). Pour une commande de test, l'agent ne crée aucun brouillon au
+// Guichet unique ; signature et dépôt se simulent depuis l'espace. PAIEMENT_SIMULE=0
+// désactive ce mode (les visiteurs sont alors rappelés par l'équipe, comme avant).
 //
 // La formalité est déposée par Legaly comme mandataire : l'agent travaille avec
 // l'organisation Legaly (LEGALY_ORG_ID), mais en mode « client » : un seul dossier,
@@ -37,6 +45,7 @@ const sse = (res, event, data) => res.write(`event: ${event}\ndata: ${JSON.strin
 
 const vue = (c) => ({
   id: c.id, statut: c.statut, offre: c.offre, email: c.email, paye_le: c.paye_le, dossier_id: c.dossier_id,
+  test: Boolean(c.usage?.test), depot_simule_le: c.usage?.depot_simule_le || null,
   created_at: c.created_at, affichage_gratuit: c.affichage, affichage: c.affichage_client,
   pending_form: c.pending_form_client ? { id: c.pending_form_client.tool_use_id, ...(c.pending_form_client.form || {}) } : null,
 });
@@ -92,6 +101,15 @@ router.post('/commandes/:id/paiement', async (req, res) => {
   if (!c) return;
   if (c.statut === 'payee') return res.json({ deja_payee: true });
   if (!c.offre?.prix_ttc_cents) return res.status(400).json({ error: 'sans_offre', detail: 'Aucune formalité proposée pour cette conversation.' });
+  // Paiement en ligne pas encore disponible : paiement simulé (commande de test)
+  const simulable = process.env.PAIEMENT_SIMULE !== '0';
+  if (simulable && (!process.env.STRIPE_SECRET_KEY || (c.offre.provisoire && process.env.TARIFS_PROVISOIRES_OK !== '1'))) {
+    await getSupabaseAdmin().from('commandes').update({
+      statut: 'payee', paye_le: new Date().toISOString(), updated_at: new Date().toISOString(),
+      usage: { ...(c.usage || {}), test: true },
+    }).eq('id', c.id);
+    return res.json({ simule: true });
+  }
   const aRappeler = () => notifierLegaly(c, 'commande_a_rappeler', `Entrepreneur à rappeler — ${c.offre.libelle}`, `${c.email || req.user.email} souhaite commander « ${c.offre.libelle} » (${(c.offre.prix_ttc_cents / 100).toLocaleString('fr-FR')} € TTC) : paiement en ligne indisponible.`).catch(() => {});
   if (c.offre.provisoire && process.env.TARIFS_PROVISOIRES_OK !== '1') {
     await aRappeler();
@@ -126,6 +144,35 @@ router.post('/commandes/:id/paiement', async (req, res) => {
   }
   await getSupabaseAdmin().from('commandes').update({ statut: 'paiement', stripe_session_id: s.id, updated_at: new Date().toISOString() }).eq('id', c.id);
   res.json({ url: s.url });
+});
+
+// ── Simulations (commandes de test uniquement) ──
+async function commandeTest(req, res) {
+  const c = await maCommande(req, res);
+  if (!c) return null;
+  if (!c.usage?.test) { res.status(403).json({ error: 'pas_test', detail: 'Réservé aux commandes de test.' }); return null; }
+  if (!c.dossier_id) { res.status(409).json({ error: 'sans_dossier', detail: 'Le dossier n’est pas encore créé : continuez avec l’assistant.' }); return null; }
+  return c;
+}
+
+router.post('/commandes/:id/simuler-signature', async (req, res) => {
+  const c = await commandeTest(req, res);
+  if (!c) return;
+  const supa = getSupabaseAdmin();
+  const { data: docs } = await supa.from('dossier_documents').select('id, name, doc_type, status').eq('dossier_id', c.dossier_id);
+  const aSigner = (docs || []).filter((d) => d.status === 'GENERE' && d.doc_type && !['PIECE_JOINTE', 'ANNONCE_LEGALE'].includes(d.doc_type) && !/^SYNTHESE/.test(d.doc_type));
+  for (const d of aSigner) {
+    const nom = `${String(d.name).replace(/\.(docx|pdf)$/i, '')} (signé)${/\.pdf$/i.test(d.name) ? '.pdf' : '.docx'}`;
+    await supa.from('dossier_documents').update({ status: 'SIGNE', name: nom }).eq('id', d.id);
+  }
+  res.json({ ok: true, signes: aSigner.length });
+});
+
+router.post('/commandes/:id/simuler-depot', async (req, res) => {
+  const c = await commandeTest(req, res);
+  if (!c) return;
+  await getSupabaseAdmin().from('commandes').update({ usage: { ...(c.usage || {}), depot_simule_le: new Date().toISOString() }, updated_at: new Date().toISOString() }).eq('id', c.id);
+  res.json({ ok: true });
 });
 
 router.post('/agent', async (req, res) => {
@@ -175,7 +222,7 @@ router.post('/agent', async (req, res) => {
   res.flushHeaders?.();
   const ping = setInterval(() => res.write(': ping\n\n'), 15000);
 
-  const ctx = { mode: 'client', userId: req.user.id, orgId: LEGALY_ORG_ID, isAdmin: false, dossierId: c.dossier_id || null, commandeId: c.id };
+  const ctx = { mode: 'client', userId: req.user.id, orgId: LEGALY_ORG_ID, isAdmin: false, dossierId: c.dossier_id || null, commandeId: c.id, test: Boolean(c.usage?.test) };
   let texte = '';
   const finTexte = () => { if (texte.trim()) affichage.push({ type: 'assistant', text: texte.trim() }); texte = ''; };
   try {

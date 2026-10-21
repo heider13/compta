@@ -114,7 +114,7 @@ export function Demarrer({ demande }: { demande: string }) {
       const rp = await fetch(`${VPS}/api/espace/commandes/${id}/paiement`, { method: 'POST', headers: { Authorization: `Bearer ${t}` } });
       const j = await rp.json().catch(() => ({}));
       if (j.url) { window.location.href = j.url; return; }
-      if (j.deja_payee) { router.push(`/espace/${id}`); return; }
+      if (j.deja_payee || j.simule) { router.push(`/espace/${id}`); return; }
       throw new Error(j.detail || 'Le paiement n’a pas pu être lancé.');
     } catch (e) {
       setErreur((e as Error).message);

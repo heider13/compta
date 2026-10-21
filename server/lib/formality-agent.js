@@ -837,6 +837,15 @@ Tu parles directement à un ENTREPRENEUR qui a commandé et payé une formalité
 - Les pièces (pièce d'identité, justificatif de domicile du siège, attestation de dépôt des fonds…) se joignent dans ce chat.
 </espace_entrepreneur>`;
 
+// Commande de test (paiement simulé) : parcours complet sans effet réel.
+const CLIENT_TEST_PROMPT = `
+<commande_de_test>
+Cette commande est un TEST (paiement simulé). Mène le parcours normalement (questions, documents, annonce), avec ces différences :
+- La signature des actes se simule avec le bouton « Simuler la signature » de l'espace (pas de Yousign).
+- L'annonce légale : rédige-la ; pour la suite, considère-la comme parue (journal « TEST », date du jour) sans demander d'attestation.
+- Ne crée AUCUN brouillon au Guichet unique : une fois les documents rédigés et signés, dis que le dossier est prêt et invite à cliquer sur « Simuler l'envoi au Guichet unique ».
+</commande_de_test>`;
+
 // Résumé de la conversation gratuite, point de départ de l'espace entrepreneur.
 function resumeCommande(commande) {
   const lignes = (commande.affichage || []).map((it) => {
@@ -1790,6 +1799,9 @@ async function runTool(name, input, ctx) {
   const supa = getSupabaseAdmin();
   if (!isPlainObject(input)) throw new Error('Paramètres invalides.');
   if (ctx.mode === 'client' && !CLIENT_TOOLS.has(name)) throw new Error('Outil indisponible dans l’espace entrepreneur.');
+  if (OUTILS_DEPOT.has(name) && ctx.test) {
+    throw new Error("Commande de test : aucun brouillon n'est créé au Guichet unique. Indique à l'entrepreneur que son dossier est prêt et qu'il peut simuler l'envoi avec le bouton « Simuler l'envoi au Guichet unique ».");
+  }
   if (OUTILS_DEPOT.has(name)) {
     const d = await loadDossier(supa, ctx).catch(() => null);
     const prestation = d?.metadata?.agent_data?.prestation;
@@ -1911,7 +1923,7 @@ async function runAgentTurn({ history, input, attachments = [], ctx, emit, formR
   const messages = [...history, { role: 'user', content: userContent }];
   const mode = ctx.mode || 'cabinet';
   const reglages = mode === 'client'
-      ? { model: MODELS.agent, system: [...systemBlocks(), { type: 'text', text: CLIENT_PROMPT }], tools: TOOLS.filter((t) => CLIENT_TOOLS.has(t.name)), effort: 'high', iterations: MAX_ITERATIONS, maxTokens: 16000, prix: PRICES }
+      ? { model: MODELS.agent, system: [...systemBlocks(), { type: 'text', text: CLIENT_PROMPT + (ctx.test ? CLIENT_TEST_PROMPT : '') }], tools: TOOLS.filter((t) => CLIENT_TOOLS.has(t.name)), effort: 'high', iterations: MAX_ITERATIONS, maxTokens: 16000, prix: PRICES }
       : { model: MODELS.agent, system: systemBlocks(), tools: TOOLS, effort: process.env.AGENT_EFFORT || 'medium', iterations: MAX_ITERATIONS, maxTokens: 16000, prix: PRICES };
   let pendingForm = null;
   const usage = { calls: 0, input: 0, output: 0, cacheWrite: 0, cacheRead: 0 };

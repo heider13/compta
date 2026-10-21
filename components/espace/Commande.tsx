@@ -17,7 +17,7 @@ import { euros, flux, VPS, type ItemFil, type Offre } from '@/lib/espace/chat';
 import type { FormSpec, Reponses } from '@/components/cabinet/dashboard/AgentForm';
 import { cn } from '@/lib/utils';
 
-type Commande = { id: string; statut: string; offre: Offre | null; email: string | null; paye_le: string | null; dossier_id: string | null; affichage: ItemFil[]; affichage_gratuit: ItemFil[] };
+type Commande = { id: string; statut: string; offre: Offre | null; email: string | null; paye_le: string | null; dossier_id: string | null; affichage: ItemFil[]; affichage_gratuit: ItemFil[]; test?: boolean; depot_simule_le?: string | null };
 type Doc = { id: string; nom: string; type: string; cree_le: string; url: string | null };
 type Fichier = { name: string; mime: string; data: string };
 
@@ -131,9 +131,21 @@ export function EspaceCommande({ id }: { id: string }) {
     const r = await fetch(`${VPS}/api/espace/commandes/${id}/paiement`, { method: 'POST', headers: { Authorization: `Bearer ${t}` } });
     const j = await r.json().catch(() => ({}));
     if (j.url) { window.location.href = j.url; return; }
-    if (j.deja_payee) { await charger(); setPaiement('idle'); return; }
+    if (j.deja_payee || j.simule) { await charger(); setPaiement('idle'); return; }
     setErreur(j.detail || 'Le paiement n’a pas pu être lancé.');
     setPaiement('idle');
+  }
+
+  // Commande de test : signature et envoi au Guichet unique simulés
+  const [simulation, setSimulation] = useState<string | null>(null);
+  async function simuler(action: 'simuler-signature' | 'simuler-depot') {
+    setSimulation(action); setErreur(null);
+    const t = await jeton();
+    const r = await fetch(`${VPS}/api/espace/commandes/${id}/${action}`, { method: 'POST', headers: { Authorization: `Bearer ${t}` } });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok) setErreur(j.detail || 'Simulation impossible.');
+    await charger();
+    setSimulation(null);
   }
 
   async function ajouter(list: FileList | null) {
@@ -154,7 +166,7 @@ export function EspaceCommande({ id }: { id: string }) {
   const fDocuments = docs.some((d) => d.type && !['PIECE_JOINTE', 'ANNONCE_LEGALE'].includes(d.type) && !/^SYNTHESE/.test(d.type));
   const fAnnonce = docs.some((d) => d.type === 'ANNONCE_LEGALE') || (fDocuments && SANS_ANNONCE.includes(c?.offre?.code || ''));
   const fSignature = docs.some((d) => /\(sign[ée]\)/i.test(d.nom));
-  const fDepot = items.some((it) => it.type === 'etape' && it.statut === 'done' && /brouillon.*cr[ée]{2}/i.test(it.label));
+  const fDepot = Boolean(c?.depot_simule_le) || items.some((it) => it.type === 'etape' && it.statut === 'done' && /brouillon.*cr[ée]{2}/i.test(it.label));
   const faites = [true, payee, fDocuments, fAnnonce, fSignature, fDepot];
   const courante = faites.findIndex((f) => !f);
 
@@ -243,6 +255,21 @@ export function EspaceCommande({ id }: { id: string }) {
         </form>
       </div>
       <aside className="space-y-4">
+        {c.test && (
+          <div className="rounded-2xl border border-dashed border-[#ff887b] bg-[#fff6f4] p-4">
+            <div className="text-sm font-semibold text-[#241143]">Mode test</div>
+            <p className="!m-0 mt-1 text-xs leading-relaxed text-[#6b6385]">Paiement simulé. Signature et envoi au Guichet unique se simulent ici : rien n’est signé ni déposé pour de vrai.</p>
+            <div className="mt-3 grid gap-2">
+              <button type="button" onClick={() => void simuler('simuler-signature')} disabled={!!simulation || !fDocuments || fSignature} className="flex items-center justify-center gap-1.5 rounded-lg border border-[#e4dcff] bg-white px-3 py-2 text-xs font-semibold text-[#361fab] disabled:opacity-40">
+                {simulation === 'simuler-signature' && <Loader2 className="size-3.5 animate-spin" />} {fSignature ? 'Documents signés' : 'Simuler la signature'}
+              </button>
+              <button type="button" onClick={() => void simuler('simuler-depot')} disabled={!!simulation || !c.dossier_id || fDepot} className="flex items-center justify-center gap-1.5 rounded-lg bg-[#ff887b] px-3 py-2 text-xs font-semibold text-[#080331] disabled:opacity-40">
+                {simulation === 'simuler-depot' && <Loader2 className="size-3.5 animate-spin" />} {fDepot ? 'Envoi simulé' : 'Simuler l’envoi au Guichet unique'}
+              </button>
+              {fDepot && <button type="button" onClick={() => setPropulsee(true)} className="text-xs font-medium text-[#7551e8] hover:underline">Revoir l’animation de fin</button>}
+            </div>
+          </div>
+        )}
         <div className="rounded-2xl border border-[#ebe6f7] bg-white p-4">
           <div className="text-sm font-semibold text-[#241143]">Vos documents</div>
           {!docs.length && <p className="!m-0 mt-2 text-xs text-[#8a83a3]">Les documents rédigés et les pièces que vous joignez apparaîtront ici.</p>}
