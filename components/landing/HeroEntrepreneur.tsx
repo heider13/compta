@@ -109,7 +109,7 @@ export function HeroEntrepreneur({
         <div className="text-center">
           <span className="inline-flex items-center gap-2 rounded-full border border-[var(--violet-200)] bg-[var(--violet-50)] px-3 py-1 text-xs font-semibold text-[var(--violet-700)]"><Sparkles className="size-3.5" /> {kicker}</span>
           <h1 className="!mt-5 font-[Sora] !text-[clamp(2.1rem,4.6vw,3.4rem)] !font-bold !leading-[1.05] !tracking-[-0.03em] !text-[var(--violet-900)]">
-            {ligne1} <span className="bg-gradient-to-r from-[#4a2bc4] via-[#7551e8] to-[#c13ad6] bg-clip-text text-transparent">{ligne2}</span>
+            {ligne1}<br /><span className="bg-gradient-to-r from-[#4a2bc4] via-[#7551e8] to-[#c13ad6] bg-clip-text text-transparent">{ligne2}</span>
           </h1>
           <p className="!mx-auto !mt-4 max-w-xl text-base !leading-relaxed !text-[var(--ink-600)]">{sousTitre}</p>
         </div>
