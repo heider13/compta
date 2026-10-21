@@ -22,8 +22,11 @@ begin
   values (new.id, _first, _last)
   on conflict (id) do nothing;
 
-  -- Compte entrepreneur : aucun cabinet (il n'accède qu'à son espace /espace)
-  if (new.raw_user_meta_data->>'compte') = 'entrepreneur' then
+  -- Compte entrepreneur : aucun cabinet (il n'accède qu'à son espace /espace).
+  -- Les cabinets ne s'inscrivent que par e-mail : un compte Google (ou autre
+  -- fournisseur) vient toujours de l'espace entrepreneur.
+  if (new.raw_user_meta_data->>'compte') = 'entrepreneur'
+     or coalesce(new.raw_app_meta_data->>'provider', 'email') <> 'email' then
     return new;
   end if;
 

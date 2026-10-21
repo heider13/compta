@@ -10,6 +10,9 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { ArrowUp, CheckCircle2, Download, FileText, Loader2, Lock, Paperclip, X } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { Fil, CarteOffre } from '@/components/espace/Fil';
+import { CadreEspace } from '@/components/espace/Demarrer';
+import { Etapes } from '@/components/espace/Etapes';
+import { FormalitePropulsee } from '@/components/espace/FormalitePropulsee';
 import { euros, flux, VPS, type ItemFil, type Offre } from '@/lib/espace/chat';
 import type { FormSpec, Reponses } from '@/components/cabinet/dashboard/AgentForm';
 import { cn } from '@/lib/utils';
@@ -45,6 +48,7 @@ export function EspaceCommande({ id }: { id: string }) {
   const [fichiers, setFichiers] = useState<Fichier[]>([]);
   const filRef = useRef<HTMLDivElement>(null);
   const demarre = useRef(false);
+  const [propulsee, setPropulsee] = useState(false);
 
   const charger = useCallback(async () => {
     const t = await jeton();
@@ -144,12 +148,31 @@ export function EspaceCommande({ id }: { id: string }) {
     setFichiers(next);
   }
 
+  // Avancement à gauche : déduit des documents du dossier et des étapes de l'assistant
+  const payee = c?.statut === 'payee';
+  const SANS_ANNONCE = ['creation_micro', 'fermeture_micro', 'mise_en_sommeil', 'depot_comptes'];
+  const fDocuments = docs.some((d) => d.type && !['PIECE_JOINTE', 'ANNONCE_LEGALE'].includes(d.type) && !/^SYNTHESE/.test(d.type));
+  const fAnnonce = docs.some((d) => d.type === 'ANNONCE_LEGALE') || (fDocuments && SANS_ANNONCE.includes(c?.offre?.code || ''));
+  const fSignature = docs.some((d) => /\(sign[ée]\)/i.test(d.nom));
+  const fDepot = items.some((it) => it.type === 'etape' && it.statut === 'done' && /brouillon.*cr[ée]{2}/i.test(it.label));
+  const faites = [true, payee, fDocuments, fAnnonce, fSignature, fDepot];
+  const courante = faites.findIndex((f) => !f);
+
+  // Formalité propulsée : animation de fin, une seule fois par commande
+  useEffect(() => {
+    if (!fDepot) return;
+    const cle = `legaly-propulsee-${id}`;
+    try { if (localStorage.getItem(cle)) return; localStorage.setItem(cle, '1'); } catch {}
+    setPropulsee(true);
+  }, [fDepot, id]);
+
   if (erreur && !c) return <p className="rounded-lg bg-[#fff1ef] p-4 text-sm text-[#c2410c]">{erreur}</p>;
   if (!c) return <div className="flex items-center gap-2 text-sm text-muted-foreground"><Loader2 className="size-4 animate-spin" /> Chargement…</div>;
 
   // ── Avant paiement ──
   if (c.statut !== 'payee') {
     return (
+      <CadreEspace etapes={<Etapes faites={faites} courante={courante} />}>
       <div className="mx-auto max-w-2xl space-y-5">
         <div>
           <h1 className="!m-0 text-2xl font-semibold text-[#241143]">Votre formalité</h1>
@@ -170,14 +193,17 @@ export function EspaceCommande({ id }: { id: string }) {
         {erreur && <p className="rounded-lg bg-[#fff1ef] p-3 text-sm text-[#c2410c]">{erreur}</p>}
         <p className="flex items-center gap-1.5 text-xs text-[#8a83a3]"><Lock className="size-3.5" /> Paiement sécurisé par Stripe. Les frais officiels (greffe, annonce légale) se règlent ensuite sur le Guichet unique.</p>
       </div>
+      </CadreEspace>
     );
   }
 
   // ── Après paiement : l'assistant ──
   const formEnAttente = items.some((it) => it.type === 'form' && !it.repondu);
   return (
-    <div className="grid gap-5 lg:grid-cols-[1fr_300px]">
-      <div className="flex min-h-[70vh] flex-col rounded-2xl border border-[#ebe6f7] bg-white">
+    <CadreEspace etapes={<Etapes faites={faites} courante={courante} />}>
+    {propulsee && <FormalitePropulsee libelle={c.offre?.libelle || 'Votre formalité'} onFermer={() => setPropulsee(false)} />}
+    <div className="grid gap-5 xl:grid-cols-[1fr_260px]">
+      <div className="flex min-h-[78vh] flex-col rounded-2xl border border-[#ebe6f7] bg-white">
         <div className="flex items-center justify-between border-b px-4 py-3">
           <div>
             <div className="text-sm font-semibold text-[#241143]">{c.offre?.libelle}</div>
@@ -236,5 +262,6 @@ export function EspaceCommande({ id }: { id: string }) {
         </div>
       </aside>
     </div>
+    </CadreEspace>
   );
 }

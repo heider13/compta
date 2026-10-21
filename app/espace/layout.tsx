@@ -19,7 +19,7 @@ export default async function EspaceLayout({ children }: { children: React.React
   return (
     <div className="theme-clair min-h-screen bg-[#f8f6fd]">
       <header className="sticky top-0 z-30 border-b border-[#ebe6f7] bg-white/90 backdrop-blur">
-        <div className="mx-auto flex h-14 w-full max-w-5xl items-center justify-between px-4 sm:px-6">
+        <div className="mx-auto flex h-14 w-full max-w-6xl items-center justify-between px-4 sm:px-6">
           <Link href="/independants-tpe" className="no-underline" aria-label="Legaly AI"><Logo size={26} textClassName="text-base" /></Link>
           {data.user && (
             <nav className="flex items-center gap-4 text-sm">
@@ -29,7 +29,7 @@ export default async function EspaceLayout({ children }: { children: React.React
           )}
         </div>
       </header>
-      <main className="mx-auto w-full max-w-5xl px-4 py-6 sm:px-6 sm:py-8">{children}</main>
+      <main className="mx-auto w-full max-w-6xl px-4 py-6 sm:px-6 sm:py-8">{children}</main>
     </div>
   );
 }
