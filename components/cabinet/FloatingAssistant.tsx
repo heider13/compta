@@ -113,7 +113,7 @@ export function FloatingAssistant() {
         <div
           role="dialog"
           aria-label="Assistant Legaly AI"
-          className="fixed bottom-4 right-4 z-50 flex h-[560px] max-h-[80vh] w-[380px] max-w-[calc(100vw-2rem)] flex-col overflow-hidden rounded-xl border bg-card shadow-2xl animate-in fade-in-0 slide-in-from-bottom-2 duration-200 sm:bottom-6 sm:right-6"
+          className="fixed bottom-4 right-4 z-50 flex h-[560px] max-h-[80vh] w-[380px] max-w-[calc(100vw-2rem)] flex-col overflow-hidden rounded-xl border bg-card text-card-foreground shadow-2xl animate-in fade-in-0 slide-in-from-bottom-2 duration-200 sm:bottom-6 sm:right-6"
         >
           <div className="flex items-center gap-2.5 border-b px-3.5 py-2.5">
             <span className="grid size-7 shrink-0 place-items-center rounded-md border border-brand-border bg-brand-soft text-brand-soft-foreground">

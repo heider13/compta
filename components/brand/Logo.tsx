@@ -76,7 +76,7 @@ export function Logo({
       <span
         className={cn(
           'font-[Sora] font-bold leading-none tracking-tight',
-          onDark ? 'text-white' : 'text-[#241143]',
+          onDark ? 'text-white' : 'text-[#241143] dark:text-white',
           textClassName,
         )}
       >

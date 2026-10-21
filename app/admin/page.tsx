@@ -83,21 +83,21 @@ export default async function AdminDashboardPage() {
       value: awaitingCount ?? 0,
       icon: ClipboardCheck,
       href: '/admin/queue',
-      iconClass: 'text-blue-600 bg-blue-50',
+      iconClass: 'text-blue-600 bg-blue-50 dark:bg-blue-500/15 dark:text-blue-300',
     },
     {
       label: 'En correction',
       value: amendmentCount ?? 0,
       icon: Wrench,
       href: '/admin/queue',
-      iconClass: 'text-amber-600 bg-amber-50',
+      iconClass: 'text-amber-600 bg-amber-50 dark:bg-amber-500/15 dark:text-amber-300',
     },
     {
       label: 'Formalités déposées',
       value: inpiCount ?? 0,
       icon: FileCheck2,
       href: '/admin/dossiers',
-      iconClass: 'text-green-600 bg-green-50',
+      iconClass: 'text-green-600 bg-green-50 dark:bg-green-500/15 dark:text-green-300',
     },
   ];
 

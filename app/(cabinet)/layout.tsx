@@ -54,7 +54,7 @@ export default async function CabinetLayout({
   if (!currentOrg) {
     // L'utilisateur est connecté mais n'appartient à aucun cabinet.
     return (
-      <div className="flex min-h-screen items-center justify-center bg-muted/40 p-6">
+      <div className="flex min-h-screen items-center justify-center bg-canvas p-6 text-foreground">
         <Card className="w-full max-w-lg">
           <CardHeader>
             <CardTitle>Aucun cabinet</CardTitle>
@@ -97,7 +97,7 @@ export default async function CabinetLayout({
       />
       <SidebarInset className="min-w-0 md:peer-data-[variant=inset]:border">
         <TopBar />
-        <div className="cabinet-canvas relative isolate flex-1 pb-24 md:rounded-b-xl">
+        <div className="cabinet-canvas relative isolate flex-1 pb-24 text-foreground md:rounded-b-xl">
           <div aria-hidden className="bg-dot-grid mask-fade-b pointer-events-none absolute inset-x-0 top-0 -z-10 h-56" />
           {children}
         </div>

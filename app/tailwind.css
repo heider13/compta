@@ -1,7 +1,8 @@
 @import 'tailwindcss';
 @import 'tw-animate-css';
 
-@custom-variant dark (&:is(.dark *));
+/* Les variantes dark: ne s'appliquent pas dans les zones restées en clair (.theme-clair) */
+@custom-variant dark (&:is(.dark *):not(.theme-clair, .theme-clair *));
 
 /* ─── Design tokens Legaly — couleurs de la landing : encre marine, indigo, corail ───
    html:root : prime sur le :root de globals.css (variables de la landing). */
@@ -269,6 +270,75 @@ html.dark {
 
 html body {
   font-family: 'Poppins', ui-sans-serif, system-ui, sans-serif;
+  background-color: var(--background);
+  color: var(--foreground);
+}
+/* Zones restées en clair même en mode sombre (espace entrepreneur, onboarding) :
+   on y rétablit les tokens clairs. */
+html.dark .theme-clair {
+  color-scheme: light;
+  --radius: 0.875rem;
+
+  --app-canvas: #fbfaff;
+  --font-display-app: 'Sora', 'Poppins', ui-sans-serif, system-ui, sans-serif;
+
+  --background: #ffffff;
+  --foreground: #080331;
+  --card: #ffffff;
+  --card-foreground: #080331;
+  --popover: #ffffff;
+  --popover-foreground: #080331;
+
+  /* Indigo de la landing : liens, icônes, sélection */
+  --primary: #361fab;
+  --primary-foreground: #ffffff;
+  /* Corail de la landing : appels à l'action */
+  --coral: #ff887b;
+  --coral-foreground: #080331;
+  --coral-soft: #fff3f1;
+
+  --secondary: #f4f3fa;
+  --secondary-foreground: #201367;
+  --muted: #f5f4fa;
+  --muted-foreground: #5f5a7d;
+  --accent: #f1effa;
+  --accent-foreground: #080331;
+  --brand-soft: #eae8f6;
+  --brand-soft-foreground: #361fab;
+  --brand-border: #d7d2ee;
+
+  --destructive: #dc2626;
+  --destructive-foreground: #ffffff;
+  --success: #16a34a;
+  --warning: #d97706;
+
+  --border: #e9e7f3;
+  --input: #e2dff0;
+  --ring: #9a8fd5;
+
+  --chart-1: #361fab;
+  --chart-2: #ff887b;
+  --chart-3: #ea42fd;
+  --chart-4: #9a8fd5;
+  --chart-5: #c2bbe5;
+
+  --sidebar: #080331;
+  --sidebar-foreground: #c9c5e3;
+  --sidebar-primary: #ff887b;
+  --sidebar-primary-foreground: #080331;
+  --sidebar-accent: #171150;
+  --sidebar-accent-foreground: #ffffff;
+  --sidebar-border: #1c1660;
+  --sidebar-ring: #9a8fd5;
+  color: var(--foreground);
+}
+/* Sélection de texte et halo du canevas en mode sombre */
+html.dark ::selection { background: var(--brand-soft); color: var(--brand-soft-foreground); }
+html.dark .bg-dot-grid {
+  background:
+    radial-gradient(ellipse 620px 320px at 88% 0%, rgba(255, 136, 123, 0.14), transparent 62%),
+    radial-gradient(ellipse 520px 280px at 10% 10%, rgba(165, 150, 255, 0.12), transparent 62%),
+    radial-gradient(ellipse 420px 220px at 55% 40%, rgba(234, 66, 253, 0.06), transparent 65%);
 }
 
 @property --ai-angle {

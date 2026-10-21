@@ -77,7 +77,7 @@ export default async function AdminUsersPage() {
       {error && <ErrorNote message={error.message} />}
 
       {emailById.size === 0 && (
-        <div className="rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-xs text-amber-900">
+        <div className="rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-xs text-amber-900 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-200">
           Note : les emails ne sont pas affichés car le serveur tourne sans clé{' '}
           <code className="rounded bg-amber-100 px-1 font-mono">service_role</code>.
           Configurez-la pour activer la recherche par email.

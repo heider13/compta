@@ -34,7 +34,7 @@ export function InsightsCard({ awaitingValidation, inProgress }: InsightsCardPro
       </div>
       <Link
         href="/assistant"
-        className="inline-flex w-fit items-center gap-1.5 rounded-full bg-white px-4 py-2 text-sm font-semibold text-primary transition-colors hover:bg-white/90"
+        className="inline-flex w-fit items-center gap-1.5 rounded-full bg-white px-4 py-2 text-sm font-semibold text-[#361fab] transition-colors hover:bg-white/90"
       >
         {cta}
         <ArrowRight className="size-4" />

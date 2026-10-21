@@ -78,7 +78,7 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
       </aside>
 
       {/* Panneau droit — formulaire */}
-      <section className="flex items-center justify-center bg-muted/40 p-6">
+      <section className="flex items-center justify-center bg-canvas p-6">
         <Card className="w-full max-w-md border-border/60 shadow-lg">
           <CardHeader className="space-y-1 text-center">
             <Link href="/" className="mx-auto mb-2 flex items-center no-underline lg:hidden" aria-label="Legaly AI">

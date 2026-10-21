@@ -185,7 +185,7 @@ export default async function CabinetDashboardPage() {
       hint: 'Entreprises gérées',
       icon: Users,
       href: '/clients',
-      tileClass: 'text-blue-600 bg-blue-50',
+      tileClass: 'text-blue-600 bg-blue-50 dark:bg-blue-500/15 dark:text-blue-300',
     },
     {
       label: 'Validés ce mois',
@@ -238,16 +238,16 @@ export default async function CabinetDashboardPage() {
 
       {/* Bandeau INPI */}
       {inpiNotConfigured && (
-        <Card className="gap-0 border-amber-300 bg-amber-50 py-0">
+        <Card className="gap-0 border-amber-300 bg-amber-50 py-0 dark:border-amber-500/30 dark:bg-amber-500/10">
           <CardContent className="flex flex-wrap items-center gap-4 p-4">
             <span className="grid size-10 shrink-0 place-items-center rounded-lg bg-amber-400/80 text-amber-950">
               <AlertTriangle className="size-5" />
             </span>
             <div className="min-w-56 flex-1">
-              <p className="text-sm font-semibold text-amber-900">
+              <p className="text-sm font-semibold text-amber-900 dark:text-amber-200">
                 Connectez votre compte INPI pour démarrer
               </p>
-              <p className="text-sm text-amber-800/80">
+              <p className="text-sm text-amber-800/80 dark:text-amber-300/80">
                 Vos identifiants du Guichet Unique sont nécessaires pour déposer les
                 formalités au registre.
               </p>
@@ -416,7 +416,7 @@ export default async function CabinetDashboardPage() {
                         {t.due_date && (
                           <Badge
                             variant="outline"
-                            className="gap-1 border-amber-200 bg-amber-50 px-1.5 py-0 text-[10px] text-amber-700"
+                            className="gap-1 border-amber-200 bg-amber-50 px-1.5 py-0 text-[10px] text-amber-700 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-300"
                           >
                             <CalendarClock className="size-3" />
                             {formatDate(t.due_date)}

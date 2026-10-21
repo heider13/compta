@@ -7,6 +7,7 @@ import { Logo } from '@/components/brand/Logo';
 export default function OnboardingLayout({ children }: { children: ReactNode }) {
   return (
     <div
+      className="theme-clair"
       style={{
         minHeight: '100vh',
         display: 'flex',

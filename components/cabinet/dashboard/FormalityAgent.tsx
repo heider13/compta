@@ -579,7 +579,7 @@ function AgentChat({ inpiFormality, resume }: AgentProps) {
       )}
 
       {/* En-tête */}
-      <div className="flex flex-wrap items-center gap-3 border-b border-brand-border bg-gradient-to-r from-brand-soft via-coral-soft/60 to-white px-5 py-4">
+      <div className="flex flex-wrap items-center gap-3 border-b border-brand-border bg-gradient-to-r from-brand-soft via-coral-soft/60 to-card px-5 py-4">
         <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-primary text-primary-foreground shadow-sm">
           <Sparkles className="size-5" />
         </span>

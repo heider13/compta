@@ -296,7 +296,7 @@ export default async function AdminDossierDetailPage({
                   className={cn(
                     'rounded-lg border-l-[3px] p-3',
                     o.author_role === 'admin'
-                      ? 'border-l-amber-500 bg-amber-50'
+                      ? 'border-l-amber-500 bg-amber-50 dark:bg-amber-500/10'
                       : 'border-l-primary bg-muted/50',
                   )}
                 >
@@ -369,7 +369,7 @@ export default async function AdminDossierDetailPage({
                       type="submit"
                       variant="outline"
                       size="sm"
-                      className="w-full border-amber-400 text-amber-800 hover:bg-amber-50"
+                      className="w-full border-amber-400 text-amber-800 hover:bg-amber-50 dark:text-amber-300 dark:hover:bg-amber-500/10"
                     >
                       <Wrench className="size-4" />
                       Demander correction

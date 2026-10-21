@@ -17,7 +17,7 @@ export default async function EspaceLayout({ children }: { children: React.React
   const supabase = await createClient();
   const { data } = await supabase.auth.getUser();
   return (
-    <div className="min-h-screen bg-[#f8f6fd]">
+    <div className="theme-clair min-h-screen bg-[#f8f6fd]">
       <header className="sticky top-0 z-30 border-b border-[#ebe6f7] bg-white/90 backdrop-blur">
         <div className="mx-auto flex h-14 w-full max-w-5xl items-center justify-between px-4 sm:px-6">
           <Link href="/independants-tpe" className="no-underline" aria-label="Legaly AI"><Logo size={26} textClassName="text-base" /></Link>

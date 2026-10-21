@@ -212,7 +212,7 @@ export function AgentForm({
                       >
                         {c.type === 'cases' ? (
                           <span className={cn('mt-[3px] grid size-3.5 shrink-0 place-items-center rounded-sm border', on ? 'border-primary bg-primary' : 'border-muted-foreground/50')}>
-                            {on && <span className="text-[9px] leading-none text-white">✓</span>}
+                            {on && <span className="text-[9px] leading-none text-primary-foreground">✓</span>}
                           </span>
                         ) : (
                           <Radio on={on} />
