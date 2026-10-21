@@ -1,10 +1,10 @@
 'use client';
 
 // Rangée de cartes défilante : toutes les formalités et fonctions de Legaly,
-// chacune avec un titre et une mini-illustration. Flèches + défilement tactile.
+// chacune avec un titre et une mini-illustration. Défilement continu et lent,
+// en boucle (cartes doublées), en pause au survol ; défilement manuel si
+// l'animation est réduite.
 
-import { useRef } from 'react';
-import { ArrowLeft, ArrowRight } from 'lucide-react';
 import { Container } from '../ui';
 import { ILLUS } from './Illus';
 import { Degrade, Halos, teinte } from './Couleurs';
@@ -29,9 +29,6 @@ export function FeatureRail({
   sousTitre = 'De la création à la radiation : l’agent prépare, vous validez et déposez.',
   cartes = CARTES,
 }: { titre?: [string, string]; sousTitre?: string; cartes?: Carte[] } = {}) {
-  const rail = useRef<HTMLDivElement>(null);
-  const defiler = (sens: 1 | -1) => rail.current?.scrollBy({ left: sens * 320, behavior: 'smooth' });
-
   return (
     <section id="fonctionnalites" className="relative scroll-mt-24 overflow-hidden bg-gradient-to-b from-[#fbfaff] via-[#fff5fb] to-[#fff8f3] py-20 sm:py-24">
       <Halos />
@@ -44,18 +41,23 @@ export function FeatureRail({
         </p>
       </Container>
 
-      <div className="relative mx-auto mt-10 max-w-[1240px]">
+      <div
+        className="relative mx-auto mt-10 max-w-[1440px] [mask-image:linear-gradient(90deg,transparent,#000_6%,#000_94%,transparent)] motion-reduce:overflow-x-auto motion-reduce:[scrollbar-width:none]"
+      >
+        <style>{`@keyframes rail-defile { to { transform: translateX(-50%); } }`}</style>
         <div
-          ref={rail}
-          className="flex snap-x snap-mandatory gap-4 overflow-x-auto px-5 pb-4 [scrollbar-width:none] sm:px-8 [&::-webkit-scrollbar]:hidden"
+          className="flex w-max pb-4 pt-2 hover:[animation-play-state:paused] motion-reduce:!animate-none"
+          style={{ animation: `rail-defile ${cartes.length * 7}s linear infinite` }}
         >
-          {cartes.map((c, i) => {
+          {[...cartes, ...cartes].map((c, k) => {
+            const i = k % cartes.length;
             const t = teinte(i);
             return (
             <article
-              key={c.key}
+              key={k}
+              aria-hidden={k >= cartes.length || undefined}
               style={{ ['--t-fort' as string]: t.fort, ['--t-fond' as string]: t.fond, ['--t-ombre' as string]: t.ombre }}
-              className="group relative flex h-[300px] w-[230px] shrink-0 snap-start flex-col overflow-hidden rounded-2xl border border-white bg-white p-5 shadow-[0_6px_20px_rgba(54,31,171,0.08)] transition-all duration-200 hover:-translate-y-1.5 hover:border-[var(--t-fort)] hover:shadow-[0_20px_44px_var(--t-ombre)]"
+              className="group relative mr-4 flex h-[300px] w-[230px] shrink-0 flex-col overflow-hidden rounded-2xl border border-white bg-white p-5 shadow-[0_6px_20px_rgba(54,31,171,0.08)] transition-all duration-200 hover:-translate-y-1.5 hover:border-[var(--t-fort)] hover:shadow-[0_20px_44px_var(--t-ombre)]"
             >
               <span aria-hidden="true" className="absolute inset-x-0 top-0 h-1.5" style={{ background: t.fort }} />
               <h3 className="font-[Sora] !text-[17px] !font-semibold !leading-snug !text-[var(--violet-900)]">{c.titre}</h3>
@@ -66,19 +68,6 @@ export function FeatureRail({
             </article>
             );
           })}
-        </div>
-        <div className="mt-4 flex justify-center gap-2">
-          {[-1, 1].map((s) => (
-            <button
-              key={s}
-              type="button"
-              onClick={() => defiler(s as 1 | -1)}
-              aria-label={s < 0 ? 'Cartes précédentes' : 'Cartes suivantes'}
-              className="grid size-10 place-items-center rounded-full bg-gradient-to-r from-[#ff887b] to-[#ea42fd] !text-white shadow-[0_8px_20px_rgba(234,66,253,0.35)] transition-transform hover:scale-105"
-            >
-              {s < 0 ? <ArrowLeft className="size-4" /> : <ArrowRight className="size-4" />}
-            </button>
-          ))}
         </div>
       </div>
     </section>
