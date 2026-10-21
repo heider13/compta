@@ -1213,8 +1213,8 @@ section[id] { scroll-margin-top: 80px; }
 /* Même identité que le mode clair : nuit marine #070322, surfaces indigo,
    corail et magenta pour les accents. Activé par html[data-landing='dark'] ;
    ne touche que .landing-theme (l'espace pro n'est pas concerné). */
-html.theme-transition .landing-theme,
-html.theme-transition .landing-theme * {
+html.theme-transition,
+html.theme-transition * {
   transition: background-color 0.3s ease, border-color 0.3s ease, color 0.3s ease !important;
 }
 html[data-landing='dark'] body:has(.landing-theme) { background: #070322; }

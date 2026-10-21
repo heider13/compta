@@ -6,6 +6,7 @@ import { usePathname } from 'next/navigation';
 import { BookOpen, Search } from 'lucide-react';
 
 import { NotificationBell } from '@/components/cabinet/NotificationBell';
+import { ThemeToggle } from '@/components/landing/ThemeToggle';
 import { breadcrumbsFor } from '@/components/cabinet/nav';
 import { ouvrirPalette } from '@/components/cabinet/CommandPalette';
 import { Button } from '@/components/ui/button';
@@ -71,6 +72,7 @@ export function TopBar() {
         </a>
       </Button>
 
+      <ThemeToggle className="size-9 border-transparent text-muted-foreground hover:bg-accent hover:text-foreground" />
       <NotificationBell />
     </header>
   );

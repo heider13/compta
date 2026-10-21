@@ -61,38 +61,57 @@ html:root {
   --sidebar-ring: #9a8fd5;
 }
 
+/* Mode sombre de l'espace pro : même nuit marine, indigo et corail que la landing en sombre */
 html.dark {
-  --app-canvas: oklch(0.141 0.005 285.823);
-  --background: oklch(0.141 0.005 285.823);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.21 0.006 285.885);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.21 0.006 285.885);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.7 0.16 290);
-  --primary-foreground: oklch(0.141 0.005 285.823);
-  --secondary: oklch(0.274 0.006 286.033);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.274 0.006 286.033);
-  --muted-foreground: oklch(0.705 0.015 286.067);
-  --accent: oklch(0.274 0.006 286.033);
-  --accent-foreground: oklch(0.985 0 0);
-  --brand-soft: oklch(0.3 0.08 288);
-  --brand-soft-foreground: oklch(0.88 0.07 290);
-  --brand-border: oklch(0.4 0.1 288);
-  --destructive: oklch(0.704 0.191 22.216);
-  --destructive-foreground: oklch(0.985 0 0);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.6 0.15 290);
-  --sidebar: oklch(0.21 0.006 285.885);
-  --sidebar-foreground: oklch(0.85 0.005 286);
-  --sidebar-primary: oklch(0.7 0.16 290);
-  --sidebar-primary-foreground: oklch(0.141 0.005 285.823);
-  --sidebar-accent: oklch(0.274 0.006 286.033);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.6 0.15 290);
+  color-scheme: dark;
+  --app-canvas: #070322;
+
+  --background: #0d0738;
+  --foreground: #f3f0ff;
+  --card: #110a3f;
+  --card-foreground: #f3f0ff;
+  --popover: #150d4a;
+  --popover-foreground: #f3f0ff;
+
+  --primary: #a596ff;
+  --primary-foreground: #080331;
+  --coral: #ff887b;
+  --coral-foreground: #080331;
+  --coral-soft: #3a1838;
+
+  --secondary: #1a1155;
+  --secondary-foreground: #ddd6ff;
+  --muted: #170f4a;
+  --muted-foreground: #a39dcc;
+  --accent: #1d1458;
+  --accent-foreground: #f3f0ff;
+  --brand-soft: #241a6b;
+  --brand-soft-foreground: #c9bfff;
+  --brand-border: #34298a;
+
+  --destructive: #f87171;
+  --destructive-foreground: #080331;
+  --success: #4ade80;
+  --warning: #fbbf24;
+
+  --border: #241b62;
+  --input: #2d2372;
+  --ring: #8f82e6;
+
+  --chart-1: #a596ff;
+  --chart-2: #ff887b;
+  --chart-3: #ea42fd;
+  --chart-4: #6f61d6;
+  --chart-5: #3a2f8f;
+
+  --sidebar: #05021a;
+  --sidebar-foreground: #c9c5e3;
+  --sidebar-primary: #ff887b;
+  --sidebar-primary-foreground: #080331;
+  --sidebar-accent: #140d45;
+  --sidebar-accent-foreground: #ffffff;
+  --sidebar-border: #140d45;
+  --sidebar-ring: #8f82e6;
 }
 
 @theme inline {

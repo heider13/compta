@@ -18,10 +18,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="fr" suppressHydrationWarning>
       <head>
-        {/* Thème de la landing (clair / sombre) appliqué avant l'affichage : pas de flash */}
+        {/* Thème clair / sombre (landing et espace pro) appliqué avant l'affichage : pas de flash */}
         <script
           dangerouslySetInnerHTML={{
-            __html: "try{if(localStorage.getItem('legaly-theme')==='dark')document.documentElement.dataset.landing='dark'}catch(e){}",
+            __html: "try{if(localStorage.getItem('legaly-theme')==='dark'){var h=document.documentElement;h.dataset.landing='dark';h.classList.add('dark')}}catch(e){}",
           }}
         />
         <link rel="preconnect" href="https://fonts.googleapis.com" />

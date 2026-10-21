@@ -1,8 +1,9 @@
 'use client';
 
-// Bascule clair / sombre de la landing (comme le petit soleil de light.inc).
-// Le choix est gardé dans le navigateur et appliqué avant l'affichage par le
-// script du layout racine (attribut data-landing sur <html>).
+// Bascule clair / sombre (petit soleil comme light.inc), partagée par la landing
+// et l'espace pro. Le choix est gardé dans le navigateur et appliqué avant
+// l'affichage par le script du layout racine : attribut data-landing (landing)
+// et classe .dark (espace pro, tokens de app/tailwind.css) sur <html>.
 
 import { useEffect, useState } from 'react';
 import { Moon, Sun } from 'lucide-react';
@@ -29,6 +30,7 @@ export function ThemeToggle({ className }: { className?: string }) {
     html.classList.add('theme-transition');
     if (suivant) html.dataset.landing = 'dark';
     else delete html.dataset.landing;
+    html.classList.toggle('dark', suivant);
     try {
       localStorage.setItem('legaly-theme', suivant ? 'dark' : 'light');
     } catch {}
