@@ -36,6 +36,21 @@ export type Metier = {
   fin: [string, string];
 };
 
+// Circuit de l'agent, identique pour tous les publics (section « Une plateforme
+// unique… » des pages métier), dans l'ordre réel d'une formalité.
+function circuit(pro: boolean): Module[] {
+  return [
+    { key: 'agent', nom: 'Agent Formalités', titre: 'Vous décrivez, l’agent prend le relais.', texte: pro ? 'Décrivez l’opération du client en quelques mots : l’agent pose ses questions sous forme de formulaire et ouvre le dossier.' : 'Décrivez votre projet en quelques mots : l’agent pose ses questions une à une et ouvre votre dossier.' },
+    { key: 'redaction', nom: 'Rédaction des documents', titre: 'Statuts, PV et pouvoirs rédigés.', texte: 'Les documents de la formalité sont rédigés à partir des réponses et du registre, en .docx modifiable, prêts à relire.' },
+    { key: 'annonces', nom: 'Annonce légale', titre: 'L’annonce rédigée et contrôlée.', texte: 'L’avis est rédigé et chaque mention obligatoire du Code de commerce est vérifiée avant publication.' },
+    { key: 'signature', nom: 'Signature électronique', titre: 'Les documents signés en ligne.', texte: pro ? 'Statuts, PV et pouvoirs partent en signature électronique : vos clients signent à distance, depuis leur téléphone ou leur ordinateur.' : 'Statuts, déclaration et pouvoir sont signés en ligne, à distance, depuis votre téléphone ou votre ordinateur.' },
+    { key: 'qualifiee', nom: 'Signature qualifiée', titre: 'La formalité signée au niveau exigé.', texte: 'Quand la formalité l’exige, la déclaration est signée par signature électronique qualifiée (eIDAS), avec vérification d’identité en ligne.' },
+    { key: 'paiement', nom: 'Paiement', titre: 'Les frais officiels réglés en ligne.', texte: pro ? 'Montant des frais affiché à l’avance, réglé par le cabinet ou délégué au client, et refacturé en débours.' : 'Montant des frais officiels affiché avant de payer, réglé en ligne en quelques clics.' },
+    { key: 'formalites', nom: 'Suivi du dossier', titre: 'Chaque étape suivie jusqu’au bout.', texte: 'Statut, pièces, signatures et paiement réunis sur un seul écran, jusqu’à l’inscription au registre.' },
+    { key: 'regularisation', nom: 'Régularisation', titre: 'Si le greffe demande une correction.', texte: 'La demande est lue avec les pièces déjà déposées ; la correction et la réponse au greffe sont préparées.' },
+  ];
+}
+
 export const METIERS: Record<string, Metier> = {
   'independants-tpe': {
     kicker: 'Pour les indépendants et les TPE',
@@ -84,15 +99,7 @@ export const METIERS: Record<string, Metier> = {
     },
     cta: ['Prêt à vous lancer', 'sans paperasse ?'],
     modulesTitre: ['Tout ce qu’il faut pour', 'créer et faire vivre votre entreprise'],
-    modules: [
-      { key: 'agent', nom: 'Agent Formalités', titre: 'Des questions simples, une à la fois.', texte: 'Vous décrivez votre projet en quelques mots ; l’agent pose ses questions sous forme de formulaire et vous propose des choix expliqués.' },
-      { key: 'signature', nom: 'Documents et signature', titre: 'Vos statuts rédigés, signés en ligne.', texte: 'Statuts, déclaration de non-condamnation, pouvoir, attestation de domiciliation : rédigés à partir de vos réponses, puis signés en ligne par signature électronique, qualifiée (eIDAS) quand la formalité l’exige.' },
-      { key: 'annonces', nom: 'Annonce légale', titre: 'L’annonce légale, sans erreur.', texte: 'Rédigée à partir de vos informations, mentions obligatoires vérifiées, avec le département de parution.' },
-      { key: 'formalites', nom: 'Guichet unique', titre: 'Le dossier officiel préparé.', texte: 'Le dossier du Guichet unique est prérempli avec vos pièces ; vous le vérifiez, le signez et le payez vous-même.' },
-      { key: 'paiement', nom: 'Frais', titre: 'Les frais connus à l’avance.', texte: 'Montant des frais officiels affiché avant le paiement, et suivi jusqu’à la validation.' },
-      { key: 'rne', nom: 'Vos documents', titre: 'Vos statuts et comptes, toujours sous la main.', texte: 'Statuts, procès-verbaux et comptes déposés au registre national, téléchargeables en un clic.' },
-      { key: 'regularisation', nom: 'Demandes du greffe', titre: 'Le greffe demande une correction ?', texte: 'La demande est expliquée simplement et la réponse est préparée avec les pièces à fournir.' },
-    ],
+    modules: circuit(false),
     engagements: {
       titre: 'Nos engagements envers les indépendants',
       points: [
@@ -159,16 +166,7 @@ export const METIERS: Record<string, Metier> = {
     },
     cta: ['Prêt à libérer vos équipes', 'du juridique ?'],
     modulesTitre: ['Une plateforme unique pour', 'le cabinet et ses clients'],
-    modules: [
-      { key: 'agent', nom: 'Agent Formalités', titre: 'Préparez vite, déposez bien.', texte: 'Décrivez l’opération du client : l’agent pose ses questions en formulaire, lit la fiche RNE, rédige statuts, PV et annonce, puis prépare le brouillon au Guichet unique. Vos collaborateurs relisent au lieu de saisir.' },
-      { key: 'lots', nom: 'Formalités en lot', titre: 'Tout le portefeuille, en une demande.', texte: 'Collez une liste ou joignez un tableur : créations, mises en sommeil, changements de gérant. Chaque formalité est préparée dans son propre dossier, en parallèle, et suivie dans le même chat.' },
-      { key: 'rne', nom: 'Documents RNE', titre: 'Les comptes et statuts de vos clients, à portée de clic.', texte: 'Statuts à jour, procès-verbaux, comptes annuels déposés et avis de situation INSEE : consultables et ajoutés au dossier client en un clic.' },
-      { key: 'annonces', nom: 'Annonces légales', titre: 'Des annonces conformes, sans relecture fastidieuse.', texte: 'L’avis est rédigé à partir du registre, chaque mention obligatoire du Code de commerce est vérifiée et ce qui manque est signalé.' },
-      { key: 'signature', nom: 'Signature électronique', titre: 'Vos clients signent en ligne, qualifiée si besoin.', texte: 'Statuts, PV d’approbation et pouvoirs envoyés en signature électronique à vos clients ; signature électronique qualifiée (eIDAS) quand la formalité l’exige. Le dossier avance dès que tout est signé.' },
-      { key: 'paiement', nom: 'Paiements', titre: 'Des frais officiels suivis et refacturés.', texte: 'Montant de chaque formalité, délégation de paiement au client, alerte quand ça traîne et facture client en brouillon pour refacturer les débours.' },
-      { key: 'formalites', nom: 'Suivi des dossiers', titre: 'Tous les dossiers clients, sur un seul écran.', texte: 'Dossiers du cabinet et formalités déposées à l’INPI réunis : statut, pièces, signature et paiement de chaque client.' },
-      { key: 'regularisation', nom: 'Régularisations', titre: 'Le greffe demande, l’agent prépare.', texte: 'Les demandes de régularisation sont lues avec les pièces déjà déposées ; la pièce corrigée et le courrier de réponse sont préparés.' },
-    ],
+    modules: circuit(true),
     engagements: {
       titre: 'Nos engagements envers la profession comptable',
       points: [
@@ -236,15 +234,7 @@ export const METIERS: Record<string, Metier> = {
     },
     cta: ['Prêt à rendre leurs heures', 'à vos avocats ?'],
     modulesTitre: ['Une plateforme unique pour', 'vos actes et vos formalités'],
-    modules: [
-      { key: 'rne', nom: 'Documents RNE', titre: 'Le texte en vigueur, avant chaque acte.', texte: 'Statuts mis à jour et derniers procès-verbaux déposés : l’agent les lit avant de rédiger, et vous les joignez au dossier en un clic.' },
-      { key: 'agent', nom: 'Rédaction d’actes', titre: 'Vos actes, à votre style, en quelques minutes.', texte: 'L’agent part de vos modèles déjà acceptés par le greffe et des statuts en vigueur pour produire des projets de PV, statuts et déclarations, avec des champs « à compléter » plutôt que des données inventées.' },
-      { key: 'annonces', nom: 'Annonces légales', titre: 'Chaque mention vérifiée, rien d’inventé.', texte: 'Constitution, transfert, dissolution, clôture : l’avis est rédigé à partir du registre et contrôlé mention par mention.' },
-      { key: 'signature', nom: 'Signature électronique', titre: 'Signature des actes, qualifiée si besoin.', texte: 'Statuts, PV et pouvoirs envoyés en signature électronique à vos clients ; signature électronique qualifiée (eIDAS) quand la formalité l’exige. Une fois signés, le brouillon est prêt à déposer.' },
-      { key: 'paiement', nom: 'Débours', titre: 'Les frais du greffe, refacturés en débours.', texte: 'Montant officiel de chaque formalité, délégation de paiement au client et facture de débours en brouillon.' },
-      { key: 'formalites', nom: 'Suivi des opérations', titre: 'Chaque opération suivie jusqu’à l’inscription.', texte: 'Dossiers du cabinet et formalités déposées au Guichet unique : statut, pièces, demandes du greffe et paiement, au même endroit.' },
-      { key: 'regularisation', nom: 'Régularisations', titre: 'Le greffe demande, l’agent prépare.', texte: 'Il lit le motif de la demande et les pièces déjà déposées, identifie ce qui bloque et prépare la correction ou le courrier de réponse.' },
-    ],
+    modules: circuit(true),
     engagements: {
       titre: 'Nos engagements envers les avocats',
       points: [
@@ -312,15 +302,7 @@ export const METIERS: Record<string, Metier> = {
     },
     cta: ['Prêt à centraliser', 'le juridique du groupe ?'],
     modulesTitre: ['Une plateforme unique pour', 'toutes les sociétés du groupe'],
-    modules: [
-      { key: 'agent', nom: 'Agent Formalités', titre: 'Le secrétariat juridique, préparé pour vous.', texte: 'Le juriste décrit le changement ; l’agent pose ses questions, lit les statuts en vigueur et rédige PV, déclarations et annonces.' },
-      { key: 'entites', nom: 'Entités du groupe', titre: 'L’arbre du groupe, un seul écran.', texte: 'Holding, filiales et sous-filiales retrouvées au registre, détentions directes et indirectes, points d’attention, formalités en cours et échéances de comptes de chaque société.' },
-      { key: 'lots', nom: 'Changements en série', titre: 'Un changement, toutes les filiales.', texte: 'Nouveau président, transfert de siège ou mise à jour des bénéficiaires effectifs : une seule demande, une formalité préparée par entité.' },
-      { key: 'rne', nom: 'Documents RNE', titre: 'Les statuts à jour de chaque société.', texte: 'Statuts, procès-verbaux et comptes déposés de chaque entité, consultables et joints aux dossiers en un clic.' },
-      { key: 'annonces', nom: 'Annonces légales', titre: 'Les annonces de chaque entité, conformes.', texte: 'Rédigées à partir du registre, mentions obligatoires vérifiées, une par département de parution.' },
-      { key: 'signature', nom: 'Signature électronique', titre: 'Les mandataires signent à distance, qualifiée si besoin.', texte: 'Les actes partent en signature électronique auprès des dirigeants concernés, où qu’ils soient ; signature électronique qualifiée (eIDAS) quand la formalité l’exige.' },
-      { key: 'paiement', nom: 'Frais par entité', titre: 'Les frais suivis entité par entité.', texte: 'Montant de chaque formalité, paiement ou délégation, et alerte quand un paiement attend.' },
-    ],
+    modules: circuit(true),
     engagements: {
       titre: 'Nos engagements envers les directions juridiques',
       points: [

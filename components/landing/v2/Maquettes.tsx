@@ -200,7 +200,7 @@ export function MaquetteSignature({ v }: { v: Variante }) {
   return (
     <Ecran actif={1} titre="Signature électronique des actes">
       <div className="space-y-2">
-        {[['Statuts', 'Signé', 'Avancée'], [v === 'avocats' ? 'PV de dissolution' : 'Déclaration de non-condamnation', 'Signé', 'Avancée'], ['Pouvoir pour les formalités', 'En attente du client', 'Qualifiée eIDAS']].map(([t, s, niveau]) => (
+        {[['Statuts', 'Signé', 'Avancée'], [v === 'avocats' ? 'PV de dissolution' : 'Déclaration de non-condamnation', 'Signé', 'Avancée'], ['Pouvoir pour les formalités', 'En attente du client', 'Avancée']].map(([t, s, niveau]) => (
           <div key={t} className="flex items-center gap-2 rounded-xl border bg-white px-3 py-2.5 text-[11px]">
             <FileSignature className="size-3.5 text-[var(--violet-600)]" />
             <span className="flex-1 font-semibold text-[var(--violet-900)]">{t}</span>
@@ -208,7 +208,7 @@ export function MaquetteSignature({ v }: { v: Variante }) {
             {s === 'Signé' ? <Pastille c="bg-emerald-50 text-emerald-700"><Check className="size-2.5" /> Signé</Pastille> : <Pastille c="bg-[#fff1e4] text-[#c2410c]">{s}</Pastille>}
           </div>
         ))}
-        <div className="rounded-xl border bg-white p-3 text-[10.5px] text-[var(--ink-600)]">Signature électronique simple, avancée ou qualifiée (eIDAS) selon l’acte. Une fois tout signé, le brouillon est prêt sur le Guichet unique : vous validez et déposez.</div>
+        <div className="rounded-xl border bg-white p-3 text-[10.5px] text-[var(--ink-600)]">Chaque signataire signe en ligne, à distance. Une fois tout signé, la formalité passe à la signature qualifiée.</div>
       </div>
     </Ecran>
   );
@@ -249,6 +249,61 @@ export function MaquetteFormalites({ v }: { v: Variante }) {
   );
 }
 
+export function MaquetteRedaction({ v }: { v: Variante }) {
+  const soc = SOCIETES[v][0];
+  const docs: [string, string][] = [
+    ['Statuts', 'Rédigé'],
+    ['Déclaration de non-condamnation', 'Rédigé'],
+    ['Pouvoir pour les formalités', 'Rédigé'],
+    ['Attestation de domiciliation', 'À relire'],
+  ];
+  return (
+    <Ecran actif={1} titre={`Documents — ${soc}`}>
+      <div className="space-y-2">
+        {docs.map(([t, e]) => (
+          <div key={t} className="flex items-center gap-2 rounded-xl border bg-white px-3 py-2.5 text-[11px]">
+            <FileText className="size-3.5 text-[var(--violet-600)]" />
+            <span className="min-w-0 flex-1"><span className="block font-semibold text-[var(--violet-900)]">{t}</span><span className="text-[10px] text-[var(--ink-500)]">.docx modifiable</span></span>
+            {e === 'Rédigé' ? <Pastille c="bg-emerald-50 text-emerald-700"><Check className="size-2.5" /> Rédigé</Pastille> : <Pastille c="bg-[#fff1e4] text-[#c2410c]">À relire</Pastille>}
+          </div>
+        ))}
+        <div className="rounded-xl border bg-white p-3 text-[10.5px] text-[var(--ink-600)]"><Sparkles className="mr-1 inline size-3 text-[var(--violet-600)]" />Rédigés à partir des réponses et de la fiche RNE : vous relisez, modifiez si besoin, puis envoyez en signature.</div>
+      </div>
+    </Ecran>
+  );
+}
+
+export function MaquetteQualifiee({ v }: { v: Variante }) {
+  const soc = SOCIETES[v][0];
+  const etapes: [string, boolean][] = [
+    ['Identité du signataire vérifiée', true],
+    ['Certificat qualifié eIDAS délivré', true],
+    ['Déclaration signée', true],
+    ['Formalité prête pour le paiement', false],
+  ];
+  return (
+    <Ecran actif={1} titre={`Signature de la formalité — ${soc}`}>
+      <div className="rounded-xl border bg-white p-3">
+        <div className="flex items-center justify-between">
+          <p className="flex items-center gap-1.5 text-[12px] font-semibold text-[var(--violet-900)]"><Landmark className="size-3.5 text-[var(--violet-600)]" /> Déclaration au Guichet unique</p>
+          <Pastille c="bg-[#361fab] text-white">Qualifiée eIDAS</Pastille>
+        </div>
+        <ul className="mt-3 space-y-1.5">
+          {etapes.map(([t, ok]) => (
+            <li key={t} className="flex items-center gap-2 text-[11px]">
+              <span className={cn('grid size-4 place-items-center rounded-full', ok ? 'bg-emerald-50 text-emerald-700' : 'bg-[var(--violet-50)] text-[var(--violet-600)]')}>
+                {ok ? <Check className="size-2.5" /> : <Loader2 className="size-2.5 animate-spin" />}
+              </span>
+              <span className={ok ? 'text-[var(--violet-900)]' : 'text-[var(--ink-500)]'}>{t}</span>
+            </li>
+          ))}
+        </ul>
+        <p className="mt-3 rounded-lg bg-[var(--ink-50)] px-2.5 py-2 text-[10.5px] text-[var(--ink-600)]">Le niveau de signature exigé par la formalité, réalisé en ligne : aucun déplacement, aucun papier.</p>
+      </div>
+    </Ecran>
+  );
+}
+
 export const MAQUETTES: Record<string, (p: { v: Variante }) => React.ReactNode> = {
   agent: MaquetteAgent,
   lots: MaquetteLots,
@@ -257,6 +312,8 @@ export const MAQUETTES: Record<string, (p: { v: Variante }) => React.ReactNode> 
   regularisation: MaquetteRegul,
   paiement: MaquettePaiement,
   signature: MaquetteSignature,
+  redaction: MaquetteRedaction,
+  qualifiee: MaquetteQualifiee,
   entites: () => <MaquetteEntites />,
   formalites: MaquetteFormalites,
 };
