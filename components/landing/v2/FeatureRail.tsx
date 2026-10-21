@@ -20,7 +20,7 @@ const CARTES = [
   { key: 'regularisation', titre: 'Régularisations', texte: 'Demandes du greffe lues, réponses préparées' },
   { key: 'lots', titre: 'Formalités en lot', texte: 'Plusieurs sociétés en une seule demande' },
   { key: 'paiement', titre: 'Suivi des paiements', texte: 'Montant, délégation au client, alertes' },
-  { key: 'signature', titre: 'Signature électronique', texte: 'Actes signés par vos clients, à distance' },
+  { key: 'signature', titre: 'Signature électronique', texte: 'Documents signés en ligne, signature qualifiée eIDAS si besoin' },
 ];
 
 type Carte = { key: string; titre: string; texte: string };

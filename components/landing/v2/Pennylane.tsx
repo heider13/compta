@@ -52,7 +52,7 @@ export function Modules({ titre, modules, v }: { titre: [string, string]; module
               {Maquette ? <Maquette v={v} /> : null}
             </div>
             <div className="mt-5 flex items-center justify-between gap-4">
-              <a href="/auth/signup" className="inline-flex items-center gap-2 rounded-full bg-[#ff887b] px-5 py-2.5 text-sm font-semibold !text-[#080331] no-underline shadow-[0_8px_20px_-8px_rgba(255,136,123,0.9)] transition-colors hover:bg-[#ffaca3]">
+              <a href="/auth/signup" className="inline-flex shrink-0 items-center gap-2 whitespace-nowrap rounded-full bg-[#ff887b] px-5 py-2.5 text-sm font-semibold !text-[#080331] no-underline shadow-[0_8px_20px_-8px_rgba(255,136,123,0.9)] transition-colors hover:bg-[#ffaca3]">
                 Essayer {m.nom} <ArrowRight className="size-4" />
               </a>
               <p className="text-right font-mono !text-[11px] !text-white/40">Exemple d’écran · vos dossiers réels apparaissent ici</p>

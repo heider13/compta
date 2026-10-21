@@ -198,16 +198,17 @@ export function MaquettePaiement({ v }: { v: Variante }) {
 
 export function MaquetteSignature({ v }: { v: Variante }) {
   return (
-    <Ecran actif={1} titre="Signature des actes">
+    <Ecran actif={1} titre="Signature électronique des actes">
       <div className="space-y-2">
-        {[['Statuts', 'Signé'], [v === 'avocats' ? 'PV de dissolution' : 'Déclaration de non-condamnation', 'Signé'], ['Pouvoir pour les formalités', 'En attente du client']].map(([t, s]) => (
+        {[['Statuts', 'Signé', 'Avancée'], [v === 'avocats' ? 'PV de dissolution' : 'Déclaration de non-condamnation', 'Signé', 'Avancée'], ['Pouvoir pour les formalités', 'En attente du client', 'Qualifiée eIDAS']].map(([t, s, niveau]) => (
           <div key={t} className="flex items-center gap-2 rounded-xl border bg-white px-3 py-2.5 text-[11px]">
             <FileSignature className="size-3.5 text-[var(--violet-600)]" />
             <span className="flex-1 font-semibold text-[var(--violet-900)]">{t}</span>
+            <Pastille c={niveau === 'Qualifiée eIDAS' ? 'bg-[#361fab] text-white' : 'bg-[var(--violet-50)] text-[var(--violet-700)]'}>{niveau}</Pastille>
             {s === 'Signé' ? <Pastille c="bg-emerald-50 text-emerald-700"><Check className="size-2.5" /> Signé</Pastille> : <Pastille c="bg-[#fff1e4] text-[#c2410c]">{s}</Pastille>}
           </div>
         ))}
-        <div className="rounded-xl border bg-white p-3 text-[10.5px] text-[var(--ink-600)]">Une fois tout signé, le brouillon est prêt sur le Guichet unique : vous validez et déposez.</div>
+        <div className="rounded-xl border bg-white p-3 text-[10.5px] text-[var(--ink-600)]">Signature électronique simple, avancée ou qualifiée (eIDAS) selon l’acte. Une fois tout signé, le brouillon est prêt sur le Guichet unique : vous validez et déposez.</div>
       </div>
     </Ecran>
   );

@@ -36,7 +36,7 @@ export function Conformite() {
             <div className="space-y-3">
               {[
                 { icon: Landmark, t: 'Brouillon créé au Guichet unique', s: 'En attente de votre validation' },
-                { icon: FileSignature, t: 'Statuts et PV à signer', s: 'Signature électronique du client' },
+                { icon: FileSignature, t: 'Statuts et PV à signer', s: 'Signature électronique, qualifiée si besoin' },
                 { icon: UserCheck, t: 'Validation du formaliste', s: 'Vous seul déposez et payez' },
               ].map(({ icon: Icon, t, s }) => (
                 <div key={t} className="flex items-center gap-3 rounded-xl border border-[var(--ink-150)] bg-white px-4 py-3">
@@ -73,7 +73,7 @@ export function Registres() {
     { nom: 'Guichet unique INPI', detail: 'Créations, modifications, cessations' },
     { nom: 'Registre national des entreprises', detail: 'Fiches et documents déposés' },
     { nom: 'INSEE — SIRENE', detail: 'Avis de situation' },
-    { nom: 'Signature électronique', detail: 'Actes signés à distance' },
+    { nom: 'Signature électronique', detail: 'Simple, avancée ou qualifiée eIDAS' },
     { nom: 'Paiement en ligne', detail: 'Abonnement et facturation' },
   ];
   return (
