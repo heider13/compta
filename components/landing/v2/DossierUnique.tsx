@@ -1,0 +1,251 @@
+'use client';
+
+// « Sans / avec Legaly AI » (esprit Frankenstack de light.inc) : des carrés éparpillés
+// en outils séparés (statuts dans Word, bail, formulaire INPI saisi à la main…)
+// qui se rassemblent d'un coup en une seule interface ordonnée, pilotée par les
+// agents. Se déclenche à l'arrivée à l'écran ; curseur et bouton « rejouer ».
+
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { RotateCcw } from 'lucide-react';
+import { cn } from '@/lib/utils';
+
+// ─── Grille (en unités ; 1 unité = un carré + son espace) ───
+const LARG = 27.5;
+const HAUT = 12.6;
+const TAILLE = 0.74;
+const u = (v: number) => `${((v / LARG) * 100).toFixed(3)}cqw`;
+
+type Bloc = { label: string; x: number; y: number; w: number; h: number };
+type Case = { x: number; y: number; ton: number }; // ton : 0 → 1, nuance du carré
+
+// Sans Legaly AI : chaque étape vit dans son propre outil
+const EPARS: Bloc[] = [
+  { label: 'Statuts sous Word', x: 0, y: 0.7, w: 7, h: 4 },
+  { label: 'Bail commercial', x: 8.6, y: 1.4, w: 5, h: 4 },
+  { label: 'Annonce au journal', x: 15.2, y: 0.5, w: 6, h: 3 },
+  { label: 'Formulaire INPI à la main', x: 22.4, y: 1.1, w: 5, h: 5 },
+  { label: 'Pièces par e-mail', x: 0.8, y: 6.7, w: 6, h: 5 },
+  { label: 'Signatures scannées', x: 8.3, y: 7.5, w: 5, h: 4 },
+  { label: 'Tableur de suivi', x: 14.6, y: 6.3, w: 7, h: 5 },
+  { label: 'Relances client', x: 23, y: 8.1, w: 4, h: 4 },
+];
+
+// Avec Legaly AI : une ligne d'agents, les modules alignés, les registres branchés
+const AGENTS: Bloc = { label: 'Agents IA Legaly', x: 0, y: 0.7, w: 20, h: 2 };
+const MODULES: Bloc[] = [
+  { label: 'Statuts et actes', x: 0, y: 3.9, w: 6, h: 3 },
+  { label: 'Pièces et bail', x: 7, y: 3.9, w: 6, h: 3 },
+  { label: 'Annonce légale', x: 14, y: 3.9, w: 6, h: 3 },
+  { label: 'Formulaire Guichet unique', x: 0, y: 8.3, w: 6, h: 3 },
+  { label: 'Signature', x: 7, y: 8.3, w: 6, h: 3 },
+  { label: 'Suivi du dossier', x: 14, y: 8.3, w: 6, h: 3 },
+];
+const REGISTRES: Bloc[] = [
+  { label: 'Guichet unique INPI', x: 23.5, y: 3.9, w: 3, h: 3 },
+  { label: 'RNE', x: 23.5, y: 8.3, w: 3, h: 3 },
+];
+
+// Pseudo-aléatoire déterministe (même rendu serveur / client)
+function alea(graine: number) {
+  let s = graine;
+  return () => {
+    s = (s * 16807) % 2147483647;
+    return (s - 1) / 2147483646;
+  };
+}
+
+function cases(b: Bloc): Case[] {
+  const out: Case[] = [];
+  for (let j = 0; j < b.h; j++) for (let i = 0; i < b.w; i++) out.push({ x: b.x + i, y: b.y + j + 0.5, ton: 0 });
+  return out;
+}
+
+function construire() {
+  const r = alea(42);
+  const ordre = [
+    ...cases(AGENTS).map((c) => ({ ...c, ton: 2 })), // 2 = corail (agents)
+    ...MODULES.flatMap(cases).map((c) => ({ ...c, ton: r() < 0.18 ? 0.8 : 1 })),
+    ...REGISTRES.flatMap(cases).map((c) => ({ ...c, ton: 3 })), // 3 = registres branchés
+  ];
+  // Outils éparpillés : carrés un peu décalés, et des trous pris au hasard
+  // jusqu'à avoir autant de carrés que dans l'interface rangée
+  const epars = EPARS.flatMap(cases).map((c) => ({ x: c.x + (r() - 0.5) * 0.22, y: c.y + (r() - 0.5) * 0.22, ton: 0.25 + r() * 0.6 }));
+  while (epars.length > ordre.length) epars.splice(Math.floor(r() * epars.length), 1);
+  while (epars.length < ordre.length) epars.push({ x: r() * (LARG - 1), y: r() * (HAUT - 1), ton: 0.2 + r() * 0.3 });
+  // Mélange : chaque carré part d'un outil et rejoint n'importe quel module
+  const idx = epars.map((_, i) => i);
+  for (let i = idx.length - 1; i > 0; i--) {
+    const j = Math.floor(r() * (i + 1));
+    [idx[i], idx[j]] = [idx[j], idx[i]];
+  }
+  return ordre.map((o, i) => ({ de: epars[idx[i]], vers: o, delai: Math.round(r() * 420) }));
+}
+
+function couleur(c: Case) {
+  if (c.ton === 2) return '#ff887b';
+  if (c.ton === 3) return '#9a8fd5';
+  if (c.ton >= 0.8 && c.ton <= 1) return c.ton === 1 ? '#ffffff' : '#d9d4ee';
+  return `rgba(255,255,255,${c.ton.toFixed(2)})`;
+}
+
+const REMPLACE = [
+  'Les modèles de statuts et de PV sous Word',
+  'Le formulaire du Guichet unique saisi à la main',
+  'Les pièces qui circulent par e-mail',
+  'Le tableur de suivi des dossiers',
+];
+const AGENTS_FONT = [
+  'La rédaction des statuts, PV et actes',
+  'L’annonce légale et ses mentions obligatoires',
+  'Le contrôle des pièces justificatives',
+  'Le brouillon prêt sur le Guichet unique',
+];
+const CONNECTE = ['Guichet unique de l’INPI', 'Registre national des entreprises (RNE)', 'Votre espace client et vos signataires'];
+
+export function DossierUnique() {
+  const carres = useMemo(construire, []);
+  const ref = useRef<HTMLDivElement>(null);
+  const [range, setRange] = useState(false);
+  const [vu, setVu] = useState(false);
+  const [reduit, setReduit] = useState(false);
+
+  useEffect(() => {
+    const red = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false;
+    setReduit(red);
+    if (red) { setRange(true); return; }
+    const el = ref.current;
+    if (!el) return;
+    const io = new IntersectionObserver(([e]) => { if (e.isIntersecting) { setVu(true); io.disconnect(); } }, { threshold: 0.45 });
+    io.observe(el);
+    return () => io.disconnect();
+  }, []);
+
+  useEffect(() => {
+    if (!vu) return;
+    const t = setTimeout(() => setRange(true), 900);
+    return () => clearTimeout(t);
+  }, [vu]);
+
+  function rejouer() {
+    setRange(false);
+    setTimeout(() => setRange(true), 1100);
+  }
+
+  const libelles = (blocs: Bloc[], visible: boolean, accent = false) =>
+    blocs.map((b) => (
+      <span
+        key={b.label}
+        className={cn(
+          'absolute whitespace-nowrap font-mono uppercase tracking-[0.12em] transition-opacity duration-500',
+          accent ? 'text-[#ff887b]' : 'text-white/55',
+          visible ? 'opacity-100 delay-700' : 'opacity-0',
+        )}
+        style={{ left: u(b.x), top: u(b.y - 0.15), fontSize: 'clamp(7px, 0.85cqw, 11px)' }}
+      >
+        {b.label}
+      </span>
+    ));
+
+  return (
+    <section className="bg-[#fbfaff] px-3 py-16 sm:px-5 sm:py-20">
+      <div className="relative mx-auto max-w-[1240px] overflow-hidden rounded-[28px] bg-[#080331] px-5 pb-10 pt-12 text-white sm:px-12 sm:pt-16">
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-0"
+          style={{ background: 'radial-gradient(ellipse 700px 420px at 100% 0%, rgba(255,136,123,0.13), transparent 62%), radial-gradient(ellipse 760px 520px at 0% 100%, rgba(54,31,171,0.4), transparent 65%)' }}
+        />
+
+        <div className="relative">
+          <p className="font-mono !text-[12px] uppercase tracking-[0.18em] !text-white/50">Ce que Legaly AI remplace</p>
+          <h2 className="!mt-3 max-w-3xl font-[Sora] !text-[clamp(1.9rem,4.4vw,3.4rem)] !font-semibold !leading-[1.06] !tracking-[-0.03em] !text-white">
+            Fini le dossier en morceaux.
+            <br />
+            <span className="bg-gradient-to-r from-[#ffbe8c] via-[#ff887b] to-[#ea42fd] bg-clip-text text-transparent">Tout sur une seule interface.</span>
+          </h2>
+          <p className="!mt-5 max-w-2xl text-[15px] leading-relaxed !text-white/65">
+            Les statuts dans Word, le bail dans un e-mail, le formulaire INPI saisi à la main, l’annonce chez un journal… Legaly AI rassemble tout dans un seul dossier, préparé par des agents IA.
+          </p>
+        </div>
+
+        {/* Grille de carrés */}
+        <div className="relative mt-10 border-t border-white/10 pt-10">
+          <div className="pointer-events-none absolute right-0 top-8 flex items-baseline gap-2 text-right">
+            <span className="font-[Sora] text-[clamp(2.2rem,5vw,3.6rem)] font-light leading-none text-white">{range ? 1 : EPARS.length}</span>
+            <span className="font-mono text-[11px] uppercase tracking-[0.16em] text-white/50">{range ? 'interface' : 'outils'}</span>
+          </div>
+
+          <div
+            ref={ref}
+            className="relative mx-auto w-full max-w-[860px] [container-type:inline-size]"
+            style={{ aspectRatio: `${LARG} / ${HAUT + 0.6}` }}
+            role="img"
+            aria-label={`Sans Legaly AI : ${EPARS.map((b) => b.label).join(', ')}. Avec Legaly AI : une seule interface, ${MODULES.map((b) => b.label).join(', ')}, pilotée par les agents IA.`}
+          >
+            {libelles(EPARS, !range)}
+            {libelles([AGENTS], range, true)}
+            {libelles([...MODULES, ...REGISTRES], range)}
+
+            {/* Branchement des registres */}
+            {REGISTRES.map((b) => (
+              <span
+                key={b.label}
+                className={cn('absolute h-px bg-white/30 transition-opacity duration-500', range ? 'opacity-100 delay-1000' : 'opacity-0')}
+                style={{ left: u(20.4), width: u(2.8), top: u(b.y + 0.5 + b.h / 2 - 0.15) }}
+              />
+            ))}
+
+            {carres.map((c, i) => {
+              const p = range ? c.vers : c.de;
+              return (
+                <span
+                  key={i}
+                  className="absolute left-0 top-0 rounded-[18%]"
+                  style={{
+                    width: u(TAILLE),
+                    height: u(TAILLE),
+                    background: couleur(p),
+                    transform: `translate(${u(p.x)}, ${u(p.y)})`,
+                    transition: reduit ? 'none' : `transform 1.15s cubic-bezier(0.7,0,0.2,1) ${c.delai}ms, background-color 0.6s ease ${c.delai + 500}ms`,
+                  }}
+                />
+              );
+            })}
+          </div>
+
+          {/* Curseur sans / avec */}
+          <div className="mt-8 flex items-center gap-4 border-t border-white/10 pt-6 font-mono text-[11px] uppercase tracking-[0.16em]">
+            <button type="button" onClick={() => setRange(false)} className={cn('transition-colors', range ? 'text-white/45 hover:text-white' : 'text-white')}>
+              Sans Legaly AI
+            </button>
+            <button type="button" onClick={() => setRange((v) => !v)} className="relative h-px flex-1 bg-white/25" aria-label={range ? 'Voir sans Legaly AI' : 'Voir avec Legaly AI'}>
+              <span
+                className="absolute top-1/2 size-4 -translate-x-1/2 -translate-y-1/2 rounded-full bg-white shadow-[0_0_0_4px_rgba(255,255,255,0.12)] transition-[left] duration-700 ease-[cubic-bezier(0.7,0,0.2,1)]"
+                style={{ left: range ? '100%' : '0%' }}
+              />
+            </button>
+            <button type="button" onClick={() => setRange(true)} className={cn('transition-colors', range ? 'text-[#ff887b]' : 'text-white/45 hover:text-white')}>
+              Avec Legaly AI
+            </button>
+            <button type="button" onClick={rejouer} className="grid size-8 place-items-center rounded-full border border-white/20 text-white/70 transition-colors hover:bg-white/10 hover:text-white" aria-label="Rejouer l’animation">
+              <RotateCcw className="size-3.5" />
+            </button>
+          </div>
+        </div>
+
+        {/* Ce qui change */}
+        <div className="relative mt-12 grid gap-10 md:grid-cols-3">
+          {([['Remplace', REMPLACE], ['Fait par les agents', AGENTS_FONT], ['Se connecte', CONNECTE]] as const).map(([titre, liste]) => (
+            <div key={titre}>
+              <h3 className="font-[Sora] !text-[1.4rem] !font-medium !text-white">{titre}</h3>
+              <ul className="mt-4">
+                {liste.map((l) => (
+                  <li key={l} className="border-t border-white/10 py-3 text-[14.5px] !text-white/75">{l}</li>
+                ))}
+              </ul>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}

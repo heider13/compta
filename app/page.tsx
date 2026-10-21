@@ -1,6 +1,7 @@
 import { Nav } from '@/components/landing/Nav';
 import { HeroAgent } from '@/components/landing/HeroAgent';
 import { CircuitIso } from '@/components/landing/v2/CircuitIso';
+import { DossierUnique } from '@/components/landing/v2/DossierUnique';
 import { FeatureRail } from '@/components/landing/v2/FeatureRail';
 import { AgentsCarousel } from '@/components/landing/v2/AgentsCarousel';
 import { AudienceTabs } from '@/components/landing/v2/AudienceTabs';
@@ -21,6 +22,7 @@ export default function LandingPage() {
       <HeroAgent />
       <CircuitIso />
       <FeatureRail />
+      <DossierUnique />
       <AgentsCarousel />
       <AudienceTabs />
       <Conformite />
