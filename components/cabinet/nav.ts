@@ -5,11 +5,14 @@ import {
   CheckSquare,
   CreditCard,
   FileSignature,
+  FileSpreadsheet,
   FileText,
   KeyRound,
   LayoutDashboard,
+  Megaphone,
   Network,
   Palette,
+  PenLine,
   Scale,
   User,
   Users,
@@ -22,6 +25,8 @@ export interface NavItem {
   label: string;
   matchPrefix: string;
   alsoMatch?: string[];
+  /** Sous-chemins qui appartiennent à une autre entrée */
+  exclude?: string[];
   exact?: boolean;
   icon: LucideIcon;
   /** Mots-clés supplémentaires pour la recherche ⌘K */
@@ -38,7 +43,10 @@ export const NAV_SECTIONS: NavSection[] = [
     label: 'Pilotage',
     items: [
       { href: '/dashboard', label: 'Tableau de bord', matchPrefix: '/dashboard', exact: true, icon: LayoutDashboard, keywords: ['accueil', 'agent'] },
-      { href: '/dossiers', label: 'Formalités', matchPrefix: '/dossiers', alsoMatch: ['/inpi'], icon: FileText, keywords: ['dossiers', 'inpi', 'guichet'] },
+      { href: '/dossiers', label: 'Formalités', matchPrefix: '/dossiers', alsoMatch: ['/inpi'], exclude: ['/inpi/comptes'], icon: FileText, keywords: ['dossiers', 'inpi', 'guichet'] },
+      { href: '/inpi/comptes', label: 'Dépôt des comptes annuels', matchPrefix: '/inpi/comptes', icon: FileSpreadsheet, keywords: ['comptes', 'bilan', 'greffe', 'approbation'] },
+      { href: '/annonces', label: 'Annonces légales', matchPrefix: '/annonces', icon: Megaphone, keywords: ['annonce', 'jal', 'publication', 'avis'] },
+      { href: '/signatures', label: 'Signature électronique', matchPrefix: '/signatures', icon: PenLine, keywords: ['signature', 'yousign', 'qualifiée', 'eidas'] },
       { href: '/clients', label: 'Clients', matchPrefix: '/clients', icon: Users, keywords: ['entreprises', 'sociétés'] },
       { href: '/groupes', label: 'Groupes', matchPrefix: '/groupes', icon: Network, keywords: ['holding', 'filiales'] },
       { href: '/tasks', label: 'Tâches', matchPrefix: '/tasks', icon: CheckSquare, keywords: ['todo', 'échéances'] },
@@ -66,6 +74,7 @@ export const NAV_SECTIONS: NavSection[] = [
 
 export function isNavActive(item: NavItem, pathname: string): boolean {
   if (item.exact) return pathname === item.matchPrefix;
+  if (item.exclude?.some((p) => pathname === p || pathname.startsWith(`${p}/`))) return false;
   return [item.matchPrefix, ...(item.alsoMatch ?? [])].some((p) => pathname === p || pathname.startsWith(`${p}/`));
 }
 
@@ -75,6 +84,8 @@ const SEGMENTS: Record<string, string> = {
   dossiers: 'Formalités',
   inpi: 'Guichet unique',
   comptes: 'Comptes annuels',
+  annonces: 'Annonces légales',
+  signatures: 'Signature électronique',
   clients: 'Clients',
   groupes: 'Groupes',
   tasks: 'Tâches',
