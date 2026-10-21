@@ -43,6 +43,14 @@ export function ModaleCompte({ demande, suite, onFermer }: { demande: string; su
 
   async function avecGoogle() {
     setGoogle(true); setMessage(null);
+    // Google pas encore activé dans Supabase : on le dit ici plutôt que d'envoyer sur une page d'erreur
+    const actif = await fetch(`${process.env.NEXT_PUBLIC_SUPABASE_URL}/auth/v1/settings`, { headers: { apikey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? '' } })
+      .then((r) => r.json()).then((d) => Boolean(d?.external?.google)).catch(() => false);
+    if (!actif) {
+      setGoogle(false);
+      setMessage({ type: 'info', texte: 'La connexion avec Google arrive très bientôt : créez votre compte avec votre e-mail en attendant.' });
+      return;
+    }
     const { error } = await createClient().auth.signInWithOAuth({
       provider: 'google',
       options: { redirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(suite)}` },
