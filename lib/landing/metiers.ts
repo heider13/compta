@@ -40,7 +40,7 @@ export const METIERS: Record<string, Metier> = {
   'independants-tpe': {
     kicker: 'Pour les indépendants et les TPE',
     ligne1: 'Demandez-lui',
-    ligne2: 'de créer votre entreprise.',
+    ligne2: 'Créez une entreprise.',
     sousTitre: 'Créer votre micro-entreprise ou votre société, changer d’adresse, déposer vos comptes, fermer : décrivez ce que vous voulez faire, l’agent prépare tout, vous gardez la main.',
     points: ['Des questions simples, une à la fois', 'Statuts, annonce légale et dossier préparés pour vous', 'Les frais officiels affichés avant de payer'],
     exemples: [
