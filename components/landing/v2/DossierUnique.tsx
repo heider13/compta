@@ -21,14 +21,14 @@ type Case = { x: number; y: number; ton: number }; // ton : 0 → 1, nuance du c
 // Sans Legaly AI : chaque étape vit dans son propre outil
 const EPARS: Bloc[] = [
   { label: 'Statuts sous Word', x: 0, y: 0.7, w: 7, h: 4 },
-  { label: 'Bail commercial', x: 8.6, y: 1.4, w: 5, h: 4 },
-  { label: 'Annonce au journal', x: 15.2, y: 0.5, w: 6, h: 3 },
-  { label: 'Formulaire INPI à la main', x: 22.4, y: 1.1, w: 5, h: 5 },
-  { label: 'Pièces par e-mail', x: 0.8, y: 6.7, w: 6, h: 5 },
-  { label: 'Signatures scannées', x: 8.3, y: 7.5, w: 5, h: 4 },
-  { label: 'Tableur de suivi', x: 14.6, y: 6.3, w: 7, h: 5 },
-  { label: 'Relances client', x: 23, y: 8.1, w: 4, h: 4 },
-];
+  { label: 'Bail commercial', x: 8, y: 0.7, w: 5, h: 4 },
+  { label: 'Annonce au journal', x: 14, y: 0.7, w: 6, h: 3 },
+  { label: 'Formulaire INPI à la main', x: 22, y: 0.7, w: 5, h: 4 },
+  { label: 'Pièces par e-mail', x: 0, y: 6.6, w: 6, h: 4 },
+  { label: 'Signatures scannées', x: 8, y: 6.6, w: 5, h: 4 },
+  { label: 'Tableur de suivi', x: 14, y: 6.6, w: 6, h: 4 },
+  { label: 'Relances client', x: 22, y: 6.6, w: 4, h: 3 },
+]; // 166 carrés, autant que l'interface rangée
 
 // Avec Legaly AI : une ligne d'agents, les modules alignés, les registres branchés
 const AGENTS: Bloc = { label: 'Agents IA Legaly', x: 0, y: 0.7, w: 20, h: 2 };
@@ -67,18 +67,14 @@ function construire() {
     ...MODULES.flatMap(cases).map((c) => ({ ...c, ton: r() < 0.18 ? 0.8 : 1 })),
     ...REGISTRES.flatMap(cases).map((c) => ({ ...c, ton: 3 })), // 3 = registres branchés
   ];
-  // Outils éparpillés : carrés un peu décalés, et des trous pris au hasard
-  // jusqu'à avoir autant de carrés que dans l'interface rangée
-  const epars = EPARS.flatMap(cases).map((c) => ({ x: c.x + (r() - 0.5) * 0.22, y: c.y + (r() - 0.5) * 0.22, ton: 0.25 + r() * 0.6 }));
-  while (epars.length > ordre.length) epars.splice(Math.floor(r() * epars.length), 1);
-  while (epars.length < ordre.length) epars.push({ x: r() * (LARG - 1), y: r() * (HAUT - 1), ton: 0.2 + r() * 0.3 });
-  // Mélange : chaque carré part d'un outil et rejoint n'importe quel module
-  const idx = epars.map((_, i) => i);
-  for (let i = idx.length - 1; i > 0; i--) {
-    const j = Math.floor(r() * (i + 1));
-    [idx[i], idx[j]] = [idx[j], idx[i]];
-  }
-  return ordre.map((o, i) => ({ de: epars[idx[i]], vers: o, delai: Math.round(r() * 420) }));
+  // Outils séparés : même grille, nuances de gris (outils qui ne se parlent pas)
+  const epars = EPARS.flatMap(cases).map((c) => ({ ...c, ton: 0.25 + r() * 0.6 }));
+  // Chaque carré rejoint la place correspondante, colonne par colonne :
+  // le mouvement reste ordonné, en vague de gauche à droite
+  const parColonne = (p: Case, q: Case) => p.x - q.x || p.y - q.y;
+  epars.sort(parColonne);
+  const cibles = [...ordre].sort(parColonne);
+  return cibles.map((o, i) => ({ de: epars[i], vers: o, delai: Math.round((o.x / LARG) * 1100 + r() * 120) }));
 }
 
 function couleur(c: Case) {
@@ -122,13 +118,20 @@ export function DossierUnique() {
 
   useEffect(() => {
     if (!vu) return;
-    const t = setTimeout(() => setRange(true), 900);
+    const t = setTimeout(() => setRange(true), 1400);
     return () => clearTimeout(t);
   }, [vu]);
 
+  // Le compteur bascule au milieu du mouvement, pas avant
+  const [compte, setCompte] = useState(false);
+  useEffect(() => {
+    const t = setTimeout(() => setCompte(range), range && !reduit ? 1500 : 0);
+    return () => clearTimeout(t);
+  }, [range, reduit]);
+
   function rejouer() {
     setRange(false);
-    setTimeout(() => setRange(true), 1100);
+    setTimeout(() => setRange(true), 2600);
   }
 
   const libelles = (blocs: Bloc[], visible: boolean, accent = false) =>
@@ -136,9 +139,9 @@ export function DossierUnique() {
       <span
         key={b.label}
         className={cn(
-          'absolute whitespace-nowrap font-mono uppercase tracking-[0.12em] transition-opacity duration-500',
+          'absolute whitespace-nowrap font-mono uppercase tracking-[0.12em] transition-opacity duration-700',
           accent ? 'text-[#ff887b]' : 'text-white/55',
-          visible ? 'opacity-100 delay-700' : 'opacity-0',
+          visible ? 'opacity-100 delay-[1800ms]' : 'opacity-0',
         )}
         style={{ left: u(b.x), top: u(b.y - 0.15), fontSize: 'clamp(7px, 0.85cqw, 11px)' }}
       >
@@ -170,8 +173,8 @@ export function DossierUnique() {
         {/* Grille de carrés */}
         <div className="relative mt-10 border-t border-white/10 pt-10">
           <div className="pointer-events-none absolute right-0 top-8 flex items-baseline gap-2 text-right">
-            <span className="font-[Sora] text-[clamp(2.2rem,5vw,3.6rem)] font-light leading-none text-white">{range ? 1 : EPARS.length}</span>
-            <span className="font-mono text-[11px] uppercase tracking-[0.16em] text-white/50">{range ? 'interface' : 'outils'}</span>
+            <span className="font-[Sora] text-[clamp(2.2rem,5vw,3.6rem)] font-light leading-none text-white">{compte ? 1 : EPARS.length}</span>
+            <span className="font-mono text-[11px] uppercase tracking-[0.16em] text-white/50">{compte ? 'interface' : 'outils'}</span>
           </div>
 
           <div
@@ -189,7 +192,7 @@ export function DossierUnique() {
             {REGISTRES.map((b) => (
               <span
                 key={b.label}
-                className={cn('absolute h-px bg-white/30 transition-opacity duration-500', range ? 'opacity-100 delay-1000' : 'opacity-0')}
+                className={cn('absolute h-px bg-white/30 transition-opacity duration-500', range ? 'opacity-100 delay-[2400ms]' : 'opacity-0')}
                 style={{ left: u(20.4), width: u(2.8), top: u(b.y + 0.5 + b.h / 2 - 0.15) }}
               />
             ))}
@@ -205,7 +208,7 @@ export function DossierUnique() {
                     height: u(TAILLE),
                     background: couleur(p),
                     transform: `translate(${u(p.x)}, ${u(p.y)})`,
-                    transition: reduit ? 'none' : `transform 1.15s cubic-bezier(0.7,0,0.2,1) ${c.delai}ms, background-color 0.6s ease ${c.delai + 500}ms`,
+                    transition: reduit ? 'none' : `transform 1.9s cubic-bezier(0.65,0,0.25,1) ${c.delai}ms, background-color 0.9s ease ${c.delai + 1000}ms`,
                   }}
                 />
               );
