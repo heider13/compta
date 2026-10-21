@@ -2,10 +2,11 @@
 
 // Rangée de cartes défilante : toutes les formalités et fonctions de Legaly,
 // chacune avec un titre et une mini-illustration. Défilement continu et lent,
-// en boucle (cartes doublées), en pause au survol ; défilement manuel si
-// l'animation est réduite.
+// en boucle (cartes doublées), qui ralentit en douceur au survol ; défilement
+// manuel si l'animation est réduite.
 
 import { Container } from '../ui';
+import { useDefilement } from '../useDefilement';
 import { ILLUS } from './Illus';
 import { Degrade, Halos, teinte } from './Couleurs';
 
@@ -29,6 +30,7 @@ export function FeatureRail({
   sousTitre = 'De la création à la radiation : l’agent prépare, vous validez et déposez.',
   cartes = CARTES,
 }: { titre?: [string, string]; sousTitre?: string; cartes?: Carte[] } = {}) {
+  const { piste, survol } = useDefilement<HTMLDivElement>(cartes.length * 7);
   return (
     <section id="fonctionnalites" className="relative scroll-mt-24 overflow-hidden bg-gradient-to-b from-[#fbfaff] via-[#fff5fb] to-[#fff8f3] py-20 sm:py-24">
       <Halos />
@@ -44,11 +46,7 @@ export function FeatureRail({
       <div
         className="relative mx-auto mt-10 max-w-[1440px] [mask-image:linear-gradient(90deg,transparent,#000_6%,#000_94%,transparent)] motion-reduce:overflow-x-auto motion-reduce:[scrollbar-width:none]"
       >
-        <style>{`@keyframes rail-defile { to { transform: translateX(-50%); } }`}</style>
-        <div
-          className="flex w-max pb-4 pt-2 hover:[animation-play-state:paused] motion-reduce:!animate-none"
-          style={{ animation: `rail-defile ${cartes.length * 7}s linear infinite` }}
-        >
+        <div ref={piste} {...survol} className="flex w-max pb-4 pt-2 will-change-transform">
           {[...cartes, ...cartes].map((c, k) => {
             const i = k % cartes.length;
             const t = teinte(i);

@@ -1,12 +1,11 @@
 'use client';
 
-// « La différence Legaly AI » : texte à gauche avec flèches, carrousel des
-// agents à droite (illustration, titre, description, bouton). Au survol du bloc,
-// les cartes défilent seules, lentement ; retour au début une fois au bout.
+// « La différence Legaly AI » : texte à gauche, agents à droite qui défilent en
+// continu (cartes doublées, animation fluide) et ralentissent en douceur au survol.
 
-import { useEffect, useRef, useState } from 'react';
-import { ArrowLeft, ArrowRight, Sparkles } from 'lucide-react';
+import { ArrowRight, Sparkles } from 'lucide-react';
 import { Container } from '../ui';
+import { useDefilement } from '../useDefilement';
 import { ILLUS_AGENTS } from './Illus';
 import { Degrade, teinte } from './Couleurs';
 
@@ -19,47 +18,11 @@ const AGENTS = [
 ];
 
 export function AgentsCarousel() {
-  const rail = useRef<HTMLDivElement>(null);
-  const [index, setIndex] = useState(0);
-  const [survol, setSurvol] = useState(false);
-
-  useEffect(() => {
-    const el = rail.current;
-    if (!survol || !el || window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return;
-    let pos = el.scrollLeft;
-    let id = 0;
-    let avant = 0;
-    let attente: ReturnType<typeof setTimeout> | undefined;
-    const boucle = (now: number) => {
-      const dt = avant ? Math.min(0.5, (now - avant) / 1000) : 0; // vitesse indépendante de la fréquence d'images
-      avant = now;
-      const fin = el.scrollWidth - el.clientWidth - 1;
-      if (pos >= fin) {
-        // Au bout : courte pause puis retour au premier agent
-        attente = setTimeout(() => {
-          el.scrollTo({ left: 0, behavior: 'smooth' });
-          attente = setTimeout(() => { pos = 0; avant = 0; id = requestAnimationFrame(boucle); }, 900);
-        }, 1200);
-        return;
-      }
-      pos += 32 * dt; // ≈ 32 px par seconde
-      el.scrollLeft = pos;
-      id = requestAnimationFrame(boucle);
-    };
-    id = requestAnimationFrame(boucle);
-    return () => { cancelAnimationFrame(id); clearTimeout(attente); };
-  }, [survol]);
-
-  const aller = (i: number) => {
-    const n = Math.max(0, Math.min(AGENTS.length - 1, i));
-    setIndex(n);
-    const carte = rail.current?.children[n] as HTMLElement | undefined;
-    if (carte && rail.current) rail.current.scrollTo({ left: carte.offsetLeft - rail.current.offsetLeft, behavior: 'smooth' });
-  };
+  const { piste, survol } = useDefilement<HTMLDivElement>(AGENTS.length * 9, 0.25);
 
   return (
     <section id="agents" className="scroll-mt-24 bg-gradient-to-b from-[#fff8f3] to-[#fff5fb] px-3 py-6 sm:px-6">
-      <div onMouseEnter={() => setSurvol(true)} onMouseLeave={() => setSurvol(false)} className="theme-fixe relative mx-auto max-w-[1400px] overflow-hidden rounded-[32px] bg-[#140d2e] py-20 shadow-[0_30px_80px_rgba(54,31,171,0.25)] sm:rounded-[44px] sm:py-24">
+      <div className="theme-fixe relative mx-auto max-w-[1400px] overflow-hidden rounded-[32px] bg-[#140d2e] py-20 shadow-[0_30px_80px_rgba(54,31,171,0.25)] sm:rounded-[44px] sm:py-24">
         <div
           aria-hidden="true"
           className="pointer-events-none absolute inset-0"
@@ -82,55 +45,34 @@ export function AgentsCarousel() {
             Ils travaillent comme une équipe de formalistes : ils lisent vos pièces, rédigent, contrôlent et préparent le dépôt.
             Vous gardez la main sur ce qui compte : la validation, la signature et le paiement.
           </p>
-          <div className="mt-8 flex gap-2">
-            <button
-              type="button"
-              onClick={() => aller(index - 1)}
-              disabled={index === 0}
-              aria-label="Agent précédent"
-              className="grid size-11 place-items-center rounded-xl bg-white/15 !text-white transition-opacity hover:bg-white/25 disabled:opacity-30"
-            >
-              <ArrowLeft className="size-5" />
-            </button>
-            <button
-              type="button"
-              onClick={() => aller(index + 1)}
-              disabled={index === AGENTS.length - 1}
-              aria-label="Agent suivant"
-              className="grid size-11 place-items-center rounded-xl bg-gradient-to-r from-[#ff887b] to-[#ea42fd] !text-white shadow-[0_8px_22px_rgba(234,66,253,0.45)] transition-opacity disabled:opacity-30"
-            >
-              <ArrowRight className="size-5" />
-            </button>
-          </div>
         </div>
 
-        <div
-          ref={rail}
-          className={`-mr-[50vw] flex gap-5 overflow-x-auto pb-2 pr-[50vw] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden ${survol ? 'snap-none' : 'snap-x snap-mandatory'}`}
-          onScroll={(e) => {
-            const el = e.currentTarget;
-            const w = (el.children[0] as HTMLElement | undefined)?.offsetWidth ?? 1;
-            setIndex(Math.round(el.scrollLeft / (w + 20)));
-          }}
-        >
-          {AGENTS.map((a, i) => (
-            <article
-              key={a.key}
-              className={`flex w-[300px] shrink-0 snap-start flex-col rounded-3xl bg-white p-4 shadow-[0_24px_60px_rgba(0,0,0,0.35)] transition-opacity sm:w-[330px] ${i === index ? 'opacity-100' : 'opacity-70'}`}
-            >
-              <div className="grid h-52 place-items-center rounded-2xl" style={{ background: `linear-gradient(135deg, ${teinte(i).fond}, var(--surface, #ffffff) 55%, ${teinte(i + 1).fond})` }}>
-                {ILLUS_AGENTS[a.key]}
-              </div>
-              <h3 className="!mt-5 font-[Sora] !text-xl !font-semibold !text-[var(--violet-900)]">{a.titre}</h3>
-              <p className="!mt-2 text-sm !leading-relaxed !text-[var(--ink-600)]">{a.texte}</p>
-              <a
-                href="/auth/signup"
-                className="mt-5 inline-flex w-fit items-center gap-1.5 rounded-full bg-gradient-to-r from-[#7551e8] to-[#ea42fd] px-4 py-2 text-sm font-semibold !text-white no-underline shadow-[0_8px_20px_rgba(117,81,232,0.35)] transition-transform hover:-translate-y-0.5"
-              >
-                Essayer l’agent <ArrowRight className="size-4" />
-              </a>
-            </article>
-          ))}
+        <div className="-mr-[50vw] overflow-hidden pb-2 [mask-image:linear-gradient(90deg,transparent,#000_5%)]" {...survol}>
+          <div ref={piste} className="flex w-max will-change-transform">
+            {[...AGENTS, ...AGENTS].map((a, k) => {
+              const i = k % AGENTS.length;
+              return (
+                <article
+                  key={k}
+                  aria-hidden={k >= AGENTS.length || undefined}
+                  className="mr-5 flex w-[300px] shrink-0 flex-col rounded-3xl bg-white p-4 shadow-[0_24px_60px_rgba(0,0,0,0.35)] transition-transform duration-300 hover:-translate-y-1.5 sm:w-[330px]"
+                >
+                  <div className="grid h-52 place-items-center rounded-2xl" style={{ background: `linear-gradient(135deg, ${teinte(i).fond}, var(--surface, #ffffff) 55%, ${teinte(i + 1).fond})` }}>
+                    {ILLUS_AGENTS[a.key]}
+                  </div>
+                  <h3 className="!mt-5 font-[Sora] !text-xl !font-semibold !text-[var(--violet-900)]">{a.titre}</h3>
+                  <p className="!mt-2 text-sm !leading-relaxed !text-[var(--ink-600)]">{a.texte}</p>
+                  <a
+                    href="/auth/signup"
+                    tabIndex={k >= AGENTS.length ? -1 : undefined}
+                    className="mt-5 inline-flex w-fit items-center gap-1.5 rounded-full bg-gradient-to-r from-[#7551e8] to-[#ea42fd] px-4 py-2 text-sm font-semibold !text-white no-underline shadow-[0_8px_20px_rgba(117,81,232,0.35)] transition-transform hover:-translate-y-0.5"
+                  >
+                    Essayer l’agent <ArrowRight className="size-4" />
+                  </a>
+                </article>
+              );
+            })}
+          </div>
         </div>
       </Container>
       </div>
