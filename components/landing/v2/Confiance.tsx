@@ -79,7 +79,7 @@ export function Registres() {
   return (
     <section className="bg-gradient-to-b from-[#fff0ec] to-white py-16 sm:py-20">
       <Container>
-        <div className="rounded-3xl px-6 py-12 sm:px-10" style={{ background: 'linear-gradient(120deg, #ffe3d3 0%, #ffd9ea 45%, #e7ddff 100%)' }}>
+        <div className="rounded-3xl px-6 py-12 sm:px-10" style={{ background: 'linear-gradient(120deg, var(--confiance-1, #ffe3d3) 0%, var(--confiance-2, #ffd9ea) 45%, var(--confiance-3, #e7ddff) 100%)' }}>
           <h2 className="text-center font-[Sora] !text-[clamp(1.5rem,2.6vw,2rem)] !font-semibold !text-[var(--violet-900)]">
             Connecté aux <Degrade>sources officielles</Degrade>
           </h2>

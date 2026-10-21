@@ -62,7 +62,7 @@ export function FeatureRail({
               <span aria-hidden="true" className="absolute inset-x-0 top-0 h-1.5" style={{ background: t.fort }} />
               <h3 className="font-[Sora] !text-[17px] !font-semibold !leading-snug !text-[var(--violet-900)]">{c.titre}</h3>
               <p className="!mt-1 text-[13px] !leading-snug !text-[var(--ink-500)]">{c.texte}</p>
-              <div className="mt-auto grid h-36 place-items-center rounded-xl transition-transform duration-300 group-hover:scale-[1.03]" style={{ background: `linear-gradient(135deg, ${t.fond}, #ffffff)` }}>
+              <div className="mt-auto grid h-36 place-items-center rounded-xl transition-transform duration-300 group-hover:scale-[1.03]" style={{ background: `linear-gradient(135deg, ${t.fond}, var(--surface, #ffffff))` }}>
                 {ILLUS[c.key]}
               </div>
             </article>

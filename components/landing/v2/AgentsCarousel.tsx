@@ -30,7 +30,7 @@ export function AgentsCarousel() {
 
   return (
     <section id="agents" className="scroll-mt-24 bg-gradient-to-b from-[#fff8f3] to-[#fff5fb] px-3 py-6 sm:px-6">
-      <div className="relative mx-auto max-w-[1400px] overflow-hidden rounded-[32px] bg-[#140d2e] py-20 shadow-[0_30px_80px_rgba(54,31,171,0.25)] sm:rounded-[44px] sm:py-24">
+      <div className="theme-fixe relative mx-auto max-w-[1400px] overflow-hidden rounded-[32px] bg-[#140d2e] py-20 shadow-[0_30px_80px_rgba(54,31,171,0.25)] sm:rounded-[44px] sm:py-24">
         <div
           aria-hidden="true"
           className="pointer-events-none absolute inset-0"
@@ -89,7 +89,7 @@ export function AgentsCarousel() {
               key={a.key}
               className={`flex w-[300px] shrink-0 snap-start flex-col rounded-3xl bg-white p-4 shadow-[0_24px_60px_rgba(0,0,0,0.35)] transition-opacity sm:w-[330px] ${i === index ? 'opacity-100' : 'opacity-70'}`}
             >
-              <div className="grid h-52 place-items-center rounded-2xl" style={{ background: `linear-gradient(135deg, ${teinte(i).fond}, #ffffff 55%, ${teinte(i + 1).fond})` }}>
+              <div className="grid h-52 place-items-center rounded-2xl" style={{ background: `linear-gradient(135deg, ${teinte(i).fond}, var(--surface, #ffffff) 55%, ${teinte(i + 1).fond})` }}>
                 {ILLUS_AGENTS[a.key]}
               </div>
               <h3 className="!mt-5 font-[Sora] !text-xl !font-semibold !text-[var(--violet-900)]">{a.titre}</h3>

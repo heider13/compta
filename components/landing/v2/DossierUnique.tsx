@@ -151,7 +151,7 @@ export function DossierUnique() {
 
   return (
     <section className="bg-[#fbfaff] px-3 py-16 sm:px-5 sm:py-20">
-      <div className="relative mx-auto max-w-[1240px] overflow-hidden rounded-[28px] bg-[#080331] px-5 pb-10 pt-12 text-white sm:px-12 sm:pt-16">
+      <div className="theme-fixe relative mx-auto max-w-[1240px] overflow-hidden rounded-[28px] bg-[#080331] px-5 pb-10 pt-12 text-white sm:px-12 sm:pt-16">
         <div
           aria-hidden="true"
           className="pointer-events-none absolute inset-0"

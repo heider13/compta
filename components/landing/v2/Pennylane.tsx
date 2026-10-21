@@ -33,7 +33,7 @@ export function Modules({ titre, modules, v }: { titre: [string, string]; module
           {titre[0]} <span className="bg-gradient-to-r from-[#4a2bc4] via-[#7551e8] to-[#c13ad6] bg-clip-text text-transparent">{titre[1]}</span>
         </h2>
 
-        <div className="mt-10 rounded-2xl border border-[var(--violet-100)] p-3 sm:p-4" style={{ background: 'linear-gradient(120deg, #f4f0ff, #fbf3fd 60%, #fff5f2)' }}>
+        <div className="mt-10 rounded-2xl border border-[var(--violet-100)] p-3 sm:p-4" style={{ background: 'linear-gradient(120deg, var(--bande-1, #f4f0ff), var(--bande-2, #fbf3fd) 60%, var(--bande-3, #fff5f2))' }}>
           <div className="flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
             {modules.map((x, i) => {
               const Icone = ICONES[x.key] ?? Sparkles;
@@ -142,7 +142,7 @@ export function Reassurance({ adapte, nouveautes }: { adapte: { titre: string; t
             </div>
           </div>
         </article>
-        <article className="relative overflow-hidden rounded-2xl border border-[var(--ink-100)] p-7 lg:col-span-2" style={{ background: 'linear-gradient(120deg, #ffffff 45%, #f6f0ff 80%, #fff3f0)' }}>
+        <article className="relative overflow-hidden rounded-2xl border border-[var(--ink-100)] p-7 lg:col-span-2" style={{ background: 'linear-gradient(120deg, var(--surface, #ffffff) 45%, var(--bande-2, #f6f0ff) 80%, var(--bande-3, #fff3f0))' }}>
           <h3 className="font-[Sora] !text-2xl !font-semibold !text-[var(--violet-900)]">{adapte.titre}</h3>
           <p className="!mt-2 max-w-md text-sm !text-[var(--ink-600)]">{adapte.texte}</p>
           <div className="mt-6 flex flex-wrap items-center gap-3">
@@ -170,7 +170,7 @@ export function Connexions() {
   ];
   return (
     <section className="bg-gradient-to-b from-[#f6f2ff] to-[#fcfbff] px-3 py-6 sm:px-6">
-      <div className="relative mx-auto grid max-w-[1400px] items-center gap-10 overflow-hidden rounded-[32px] bg-[#140d2e] px-6 py-16 sm:rounded-[44px] sm:px-14 lg:grid-cols-2">
+      <div className="theme-fixe relative mx-auto grid max-w-[1400px] items-center gap-10 overflow-hidden rounded-[32px] bg-[#140d2e] px-6 py-16 sm:rounded-[44px] sm:px-14 lg:grid-cols-2">
         <div aria-hidden="true" className="pointer-events-none absolute inset-0" style={{ background: 'radial-gradient(ellipse 700px 500px at 85% 50%, rgba(117,81,232,0.42), transparent 62%), radial-gradient(ellipse 520px 380px at 0% 0%, rgba(193,58,214,0.18), transparent 60%)' }} />
         <div className="relative">
           <h2 className="font-[Sora] !text-[clamp(1.6rem,3vw,2.4rem)] !font-semibold !leading-tight !text-white">

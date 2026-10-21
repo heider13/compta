@@ -408,7 +408,7 @@ function DemoPlayer({ demande, scenario }: { demande: string; scenario: Scenario
 
       {/* « Vidéo » */}
       {phase === 'video' && (
-        <div className="mt-6 overflow-hidden rounded-2xl border border-[var(--violet-800)] bg-[#0e0b1a] shadow-[0_30px_70px_rgba(14,11,26,0.35)]">
+        <div className="theme-fixe mt-6 overflow-hidden rounded-2xl border border-[var(--violet-800)] bg-[#0e0b1a] shadow-[0_30px_70px_rgba(14,11,26,0.35)]">
           <div className="flex items-center justify-between px-4 py-2.5 font-mono text-[11px] uppercase tracking-[0.18em] text-white/60">
             <span>Legaly AI · {scenario.titre}</span>
             <span>{String(scene + 1).padStart(2, '0')} / {String(scenes.length).padStart(2, '0')}</span>

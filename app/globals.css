@@ -1208,3 +1208,173 @@ section[id] { scroll-margin-top: 80px; }
 
 /* Hero agent (landing) : apparition des scènes de la démo */
 @keyframes heroSceneIn { from { opacity: 0; transform: translateY(8px) scale(0.985); } to { opacity: 1; transform: none; } }
+
+/* ---------- Mode sombre de la landing (bouton soleil de la nav) ---------- */
+/* Même identité que le mode clair : nuit marine #070322, surfaces indigo,
+   corail et magenta pour les accents. Activé par html[data-landing='dark'] ;
+   ne touche que .landing-theme (l'espace pro n'est pas concerné). */
+html.theme-transition .landing-theme,
+html.theme-transition .landing-theme * {
+  transition: background-color 0.3s ease, border-color 0.3s ease, color 0.3s ease !important;
+}
+html[data-landing='dark'] body:has(.landing-theme) { background: #070322; }
+html[data-landing='dark'] .landing-theme {
+  color-scheme: dark;
+  --page: #070322;
+  --surface: #110a3f;
+  --surface-2: #170f4f;
+
+  --violet-50:  #1a1155;
+  --violet-100: #241a6b;
+  --violet-200: #34298a;
+  --violet-300: #5a4cc0;
+  --violet-400: #8f82e6;
+  --violet-500: #a596ff;
+  --violet-600: #b3a6ff;
+  --violet-700: #c9bfff;
+  --violet-800: #ddd6ff;
+  --violet-900: #f3f0ff;
+
+  --ink-900: #ffffff;
+  --ink-800: #efedfb;
+  --ink-700: #dcd8f3;
+  --ink-600: #bdb7e0;
+  --ink-500: #9f98cf;
+  --ink-400: #7f77b6;
+  --ink-300: #574e94;
+  --ink-200: #352b78;
+  --ink-150: #2a2168;
+  --ink-100: #221a5a;
+  --ink-50:  #170f4a;
+
+  --accent: #ff887b;
+  --accent-soft: #3a1838;
+  --accent-ink: #ffb3aa;
+
+  --teinte-violet: #1f1566;
+  --teinte-magenta: #2f0f4f;
+  --teinte-corail: #36163d;
+  --teinte-peche: #33193a;
+  --confiance-1: #2f1440;
+  --bande-1: #1a1155;
+  --bande-2: #221255;
+  --bande-3: #2c1343;
+  --confiance-2: #2a1150;
+  --confiance-3: #1d1566;
+
+  background: #070322;
+  color: var(--ink-600);
+}
+
+/* Surfaces claires codées en dur → surfaces de nuit
+   (sauf dans les blocs déjà sombres, marqués .theme-fixe) */
+html[data-landing='dark'] .landing-theme .bg-white:not(.theme-fixe *) { background-color: var(--surface); }
+html[data-landing='dark'] .landing-theme .bg-white\/95:not(.theme-fixe *),
+html[data-landing='dark'] .landing-theme .bg-white\/90:not(.theme-fixe *),
+html[data-landing='dark'] .landing-theme .bg-white\/80:not(.theme-fixe *) { background-color: rgba(17, 10, 63, 0.88); }
+html[data-landing='dark'] .landing-theme .bg-\[\#fbfaff\],
+html[data-landing='dark'] .landing-theme .bg-\[\#fcfbff\] { background-color: var(--page); }
+html[data-landing='dark'] .landing-theme .bg-\[\#fff1e4\] { background-color: #33193a; }
+html[data-landing='dark'] .landing-theme .bg-\[var\(--violet-900\)\]:not(.theme-fixe *) { background-color: #1a1160; }
+html[data-landing='dark'] .landing-theme .bg-\[\#080331\]:not(.theme-fixe *) {
+  background-color: #0d0738;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.07);
+}
+
+/* Dégradés de fond clairs */
+html[data-landing='dark'] .landing-theme .from-\[\#fbfaff\],
+html[data-landing='dark'] .landing-theme .from-\[\#fcfbff\],
+html[data-landing='dark'] .landing-theme .from-\[\#fff8f3\],
+html[data-landing='dark'] .landing-theme .from-\[\#fff5fb\] { --tw-gradient-from: var(--page); }
+html[data-landing='dark'] .landing-theme .via-\[\#fff5fb\],
+html[data-landing='dark'] .landing-theme .via-\[\#fff8f3\] { --tw-gradient-via: #0b0530; }
+html[data-landing='dark'] .landing-theme .to-\[\#fbfaff\],
+html[data-landing='dark'] .landing-theme .to-\[\#fcfbff\],
+html[data-landing='dark'] .landing-theme .to-\[\#fff8f3\],
+html[data-landing='dark'] .landing-theme .to-\[\#f7f3ff\] { --tw-gradient-to: var(--page); }
+html[data-landing='dark'] .landing-theme .from-\[\#e9e1ff\] { --tw-gradient-from: #1f1566; }
+html[data-landing='dark'] .landing-theme .via-\[\#fdeefb\] { --tw-gradient-via: #2a1150; }
+html[data-landing='dark'] .landing-theme .to-\[\#ffe6dc\] { --tw-gradient-to: #33163d; }
+
+/* Textes foncés codés en dur */
+html[data-landing='dark'] .landing-theme .text-\[\#241143\]:not(.theme-fixe *),
+html[data-landing='dark'] .landing-theme .text-\[\#0e0b1a\]:not(.theme-fixe *) { color: var(--violet-900); }
+html[data-landing='dark'] .landing-theme .text-\[\#6b6385\] { color: var(--ink-500); }
+html[data-landing='dark'] .landing-theme .text-\[\#4a2bc4\],
+html[data-landing='dark'] .landing-theme .text-\[\#7551e8\] { color: #b3a6ff; }
+html[data-landing='dark'] .landing-theme .text-\[\#c2410c\] { color: #ffbe8c; }
+html[data-landing='dark'] .landing-theme .text-\[\#137333\] { color: #6ee7a0; }
+
+/* Ombres « tampon » marines → contour corail discret */
+html[data-landing='dark'] .landing-theme [class*='shadow-[2px_2px_0_rgba(8,3,49'],
+html[data-landing='dark'] .landing-theme [class*='shadow-[3px_3px_0_rgba(8,3,49'],
+html[data-landing='dark'] .landing-theme [class*='shadow-[4px_4px_0_rgba(8,3,49'],
+html[data-landing='dark'] .landing-theme [class*='shadow-[5px_5px_0_rgba(8,3,49'],
+html[data-landing='dark'] .landing-theme [class*='shadow-[1.5px_1.5px_0_rgba(8,3,49'] {
+  box-shadow: 3px 3px 0 rgba(255, 136, 123, 0.45);
+}
+/* Ombres portées douces : plus profondes sur fond de nuit */
+html[data-landing='dark'] .landing-theme [class*='shadow-[0_'] { --tw-shadow-color: rgba(0, 0, 0, 0.5); }
+
+/* Boutons et titres de la feuille de style historique */
+html[data-landing='dark'] .landing-theme .btn-primary { background: #ff887b; color: #080331; }
+html[data-landing='dark'] .landing-theme .btn-primary:hover { background: #ffaca3; }
+html[data-landing='dark'] .landing-theme .feature-visual { background: linear-gradient(145deg, #2a1240, #1a1155 70%, #110a3f); border-color: #3a2a7a; }
+html[data-landing='dark'] .landing-theme .icon-tile-lg { background: #3a1838; color: #ffb3aa; }
+/* Blocs déjà sombres (.theme-fixe) : rendu identique au mode clair */
+html[data-landing='dark'] .landing-theme .theme-fixe {
+  --violet-50:  #eae8f6; --violet-100: #d7d2ee; --violet-200: #c2bbe5; --violet-300: #9a8fd5; --violet-400: #9a8fd5;
+  --violet-500: #361fab; --violet-600: #361fab; --violet-700: #201367; --violet-800: #201367; --violet-900: #080331;
+  --ink-900: #0E0B1A; --ink-800: #1C1830; --ink-700: #2D2842; --ink-600: #4B4663; --ink-500: #6B6680;
+  --ink-400: #8E8A9F; --ink-300: #B8B5C5; --ink-200: #DCDAE3; --ink-150: #E8E6EE; --ink-100: #F2F0F6; --ink-50: #F8F7FB;
+  --accent-soft: #fff3f1; --accent-ink: #361fab; --surface: #ffffff;
+  --teinte-violet: #efe9ff; --teinte-magenta: #fde8fb; --teinte-corail: #ffeae6; --teinte-peche: #fff1e4;
+}
+/* Pastilles et boutons pleins : indigo conservé, texte marine sur corail */
+html[data-landing='dark'] .landing-theme .bg-\[var\(--violet-600\)\]:not(.theme-fixe *),
+html[data-landing='dark'] .landing-theme .bg-\[var\(--violet-500\)\]:not(.theme-fixe *) { background-color: #4a33d0; }
+html[data-landing='dark'] .landing-theme .bg-\[var\(--accent\)\]:not(.theme-fixe *) { color: #080331 !important; }
+
+/* Toutes les teintes claires des fonds en dégradé (pas les dégradés de titres) */
+html[data-landing='dark'] .landing-theme .from-\[\#fbfaff\]:not(.theme-fixe *),
+html[data-landing='dark'] .landing-theme .from-\[\#fcfbff\]:not(.theme-fixe *),
+html[data-landing='dark'] .landing-theme .from-\[\#fff8f3\]:not(.theme-fixe *),
+html[data-landing='dark'] .landing-theme .from-\[\#fff5fb\]:not(.theme-fixe *),
+html[data-landing='dark'] .landing-theme .from-\[\#f7f3ff\]:not(.theme-fixe *),
+html[data-landing='dark'] .landing-theme .from-\[\#f6f2ff\]:not(.theme-fixe *),
+html[data-landing='dark'] .landing-theme .from-\[\#fff0ec\]:not(.theme-fixe *),
+html[data-landing='dark'] .landing-theme .from-\[\#fff9f5\]:not(.theme-fixe *),
+html[data-landing='dark'] .landing-theme .from-\[\#fff3fa\]:not(.theme-fixe *),
+html[data-landing='dark'] .landing-theme .from-white:not(.theme-fixe *) { --tw-gradient-from: var(--page); }
+html[data-landing='dark'] .landing-theme .via-\[\#fbfaff\]:not(.theme-fixe *),
+html[data-landing='dark'] .landing-theme .via-\[\#fcfbff\]:not(.theme-fixe *),
+html[data-landing='dark'] .landing-theme .via-\[\#fff8f3\]:not(.theme-fixe *),
+html[data-landing='dark'] .landing-theme .via-\[\#fff5fb\]:not(.theme-fixe *),
+html[data-landing='dark'] .landing-theme .via-\[\#f7f3ff\]:not(.theme-fixe *),
+html[data-landing='dark'] .landing-theme .via-\[\#f6f2ff\]:not(.theme-fixe *),
+html[data-landing='dark'] .landing-theme .via-\[\#fff0ec\]:not(.theme-fixe *),
+html[data-landing='dark'] .landing-theme .via-\[\#fff9f5\]:not(.theme-fixe *),
+html[data-landing='dark'] .landing-theme .via-\[\#fff3fa\]:not(.theme-fixe *),
+html[data-landing='dark'] .landing-theme .via-white:not(.theme-fixe *) { --tw-gradient-via: #0b0530; }
+html[data-landing='dark'] .landing-theme .to-\[\#fbfaff\]:not(.theme-fixe *),
+html[data-landing='dark'] .landing-theme .to-\[\#fcfbff\]:not(.theme-fixe *),
+html[data-landing='dark'] .landing-theme .to-\[\#fff8f3\]:not(.theme-fixe *),
+html[data-landing='dark'] .landing-theme .to-\[\#fff5fb\]:not(.theme-fixe *),
+html[data-landing='dark'] .landing-theme .to-\[\#f7f3ff\]:not(.theme-fixe *),
+html[data-landing='dark'] .landing-theme .to-\[\#f6f2ff\]:not(.theme-fixe *),
+html[data-landing='dark'] .landing-theme .to-\[\#fff0ec\]:not(.theme-fixe *),
+html[data-landing='dark'] .landing-theme .to-\[\#fff9f5\]:not(.theme-fixe *),
+html[data-landing='dark'] .landing-theme .to-\[\#fff3fa\]:not(.theme-fixe *),
+html[data-landing='dark'] .landing-theme .to-white:not(.theme-fixe *) { --tw-gradient-to: var(--page); }
+html[data-landing='dark'] .landing-theme .from-\[\#fff3f1\],
+html[data-landing='dark'] .landing-theme .from-\[\#f1ecff\] { --tw-gradient-from: #2a1240; }
+html[data-landing='dark'] .landing-theme .via-\[\#eae8f6\] { --tw-gradient-via: #1a1155; }
+html[data-landing='dark'] .landing-theme .to-\[\#fbf0fb\] { --tw-gradient-to: #1a1155; }
+html[data-landing='dark'] .landing-theme .border-\[\#ffcfca\] { border-color: #3a2a7a; }
+html[data-landing='dark'] .landing-theme .bg-\[\#f6f2ff\]:not(.theme-fixe *) { background-color: var(--page); }
+html[data-landing='dark'] .landing-theme .bg-\[\#ede7ff\]:not(.theme-fixe *) { background-color: var(--violet-100); }
+/* Dégradés de texte qui partent d'un indigo foncé : départ éclairci sur fond de nuit */
+html[data-landing='dark'] .landing-theme .bg-clip-text.from-\[\#4a2bc4\]:not(.theme-fixe *),
+html[data-landing='dark'] .landing-theme .bg-clip-text.from-\[\#361fab\]:not(.theme-fixe *) { --tw-gradient-from: #9b87ff; }
+html[data-landing='dark'] .landing-theme .bg-emerald-50 { background-color: rgba(16, 185, 129, 0.15); }
+html[data-landing='dark'] .landing-theme .text-emerald-700 { color: #6ee7b7; }

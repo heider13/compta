@@ -4,10 +4,10 @@
 import { cn } from '@/lib/utils';
 
 export const TEINTES = [
-  { nom: 'violet', fond: '#efe9ff', fort: '#7551e8', texte: '#4a2bc4', ombre: 'rgba(117,81,232,0.35)' },
-  { nom: 'magenta', fond: '#fde8fb', fort: '#ea42fd', texte: '#a21caf', ombre: 'rgba(234,66,253,0.32)' },
-  { nom: 'corail', fond: '#ffeae6', fort: '#ff887b', texte: '#d0412f', ombre: 'rgba(255,136,123,0.38)' },
-  { nom: 'peche', fond: '#fff1e4', fort: '#ffbe8c', texte: '#c2410c', ombre: 'rgba(255,190,140,0.45)' },
+  { nom: 'violet', fond: 'var(--teinte-violet, #efe9ff)', fort: '#7551e8', texte: '#4a2bc4', ombre: 'rgba(117,81,232,0.35)' },
+  { nom: 'magenta', fond: 'var(--teinte-magenta, #fde8fb)', fort: '#ea42fd', texte: '#a21caf', ombre: 'rgba(234,66,253,0.32)' },
+  { nom: 'corail', fond: 'var(--teinte-corail, #ffeae6)', fort: '#ff887b', texte: '#d0412f', ombre: 'rgba(255,136,123,0.38)' },
+  { nom: 'peche', fond: 'var(--teinte-peche, #fff1e4)', fort: '#ffbe8c', texte: '#c2410c', ombre: 'rgba(255,190,140,0.45)' },
 ] as const;
 
 export const teinte = (i: number) => TEINTES[i % TEINTES.length];

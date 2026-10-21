@@ -423,7 +423,7 @@ export function CircuitIso({ variante }: { variante?: string }) {
   const c = (variante && PAR_METIER[variante]) || ACCUEIL;
   return (
     <section className="bg-[#fbfaff] px-3 py-16 sm:px-5 sm:py-20">
-      <div className="relative mx-auto max-w-[1240px] overflow-hidden rounded-[28px] bg-[#080331] px-5 pb-6 pt-12 text-white sm:px-10 sm:pt-14">
+      <div className="theme-fixe relative mx-auto max-w-[1240px] overflow-hidden rounded-[28px] bg-[#080331] px-5 pb-6 pt-12 text-white sm:px-10 sm:pt-14">
         {FOND_NUIT}
 
         <div className="relative max-w-3xl">
@@ -447,7 +447,7 @@ export function CircuitIso({ variante }: { variante?: string }) {
 export function CircuitHero({ variante }: { variante: string }) {
   const c = PAR_METIER[variante] ?? ACCUEIL;
   return (
-    <div className="relative overflow-hidden rounded-[24px] bg-[#080331] p-3 text-white shadow-[0_30px_70px_rgba(8,3,49,0.28)] sm:p-5">
+    <div className="theme-fixe relative overflow-hidden rounded-[24px] bg-[#080331] p-3 text-white shadow-[0_30px_70px_rgba(8,3,49,0.28)] sm:p-5">
       {FOND_NUIT}
       <div className="relative">
         <Scene c={c} mode="hero" />

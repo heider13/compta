@@ -9,6 +9,7 @@ import { Logo } from '@/components/brand/Logo';
 import { MODULE_LIST } from '@/lib/landing/modules';
 import { PERSONA_LIST } from '@/lib/landing/personas';
 import { Container } from './ui';
+import { ThemeToggle, useThemeSombre } from './ThemeToggle';
 import { cn } from '@/lib/utils';
 
 // Nav superposée avec méga-menu : transparente (texte clair) sur le hero violet
@@ -23,6 +24,7 @@ export function Nav({ surface = 'dark', announcement }: { surface?: 'dark' | 'li
   const [scrolled, setScrolled] = useState(false);
   const [open, setOpen] = useState<MenuKey>(null);
   const solid = scrolled || open !== null;
+  const sombre = useThemeSombre();
   const onDark = surface === 'dark' && !solid;
 
   useEffect(() => {
@@ -82,9 +84,9 @@ export function Nav({ surface = 'dark', announcement }: { surface?: 'dark' | 'li
         <Link href="/" className="flex items-center no-underline" aria-label="Legaly AI">
           <Logo
             size={40}
-            onDark={onDark}
+            onDark={onDark || sombre}
             className="gap-2.5"
-            textClassName={cn('text-[26px] transition-colors', onDark && '!text-white')}
+            textClassName={cn('text-[26px] transition-colors', (onDark || sombre) && '!text-white')}
           />
         </Link>
 
@@ -161,6 +163,9 @@ export function Nav({ surface = 'dark', announcement }: { surface?: 'dark' | 'li
         </div>
 
         <div className="flex items-center gap-2.5">
+          <ThemeToggle
+            className={!onDark ? 'border-[var(--ink-200)] text-[var(--ink-700)] hover:bg-[var(--ink-50)]' : 'border-white/25 !text-white hover:bg-white/10'}
+          />
           <a
             href="/auth/login"
             className={cn(
