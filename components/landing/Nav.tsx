@@ -48,6 +48,12 @@ export function Nav({ surface = 'dark', announcement }: { surface?: 'dark' | 'li
       )}
       onMouseLeave={() => setOpen(null)}
     >
+      {/* Bannière : une ligne colorée tout en haut des pages */}
+      {!scrolled && (
+        <div className="bg-gradient-to-r from-[#361fab] via-[#ea42fd] to-[#ff887b] py-1.5 text-center text-[12.5px] font-medium tracking-wide !text-white">
+          Des agents IA au service des formalités juridiques
+        </div>
+      )}
       {/* Barre des publics (comme Pennylane) : un onglet par métier, l'actif souligné */}
       {!scrolled && (
         <div className="border-b border-[var(--ink-100)] bg-white/90 backdrop-blur-md">

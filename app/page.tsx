@@ -17,7 +17,6 @@ export default function LandingPage() {
     <div className="landing-theme">
       <Nav
         surface="light"
-        announcement={<><span className="text-[#ff887b]">●</span> Nouveau : l’agent rédige aussi vos annonces légales et lit les documents du RNE.</>}
       />
       <HeroAgent />
       <CircuitIso />
