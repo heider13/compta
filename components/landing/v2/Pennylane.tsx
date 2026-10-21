@@ -41,7 +41,7 @@ export function Modules({ titre, modules, v }: { titre: [string, string]; module
             <span className="bg-gradient-to-r from-[#ffbe8c] via-[#ff887b] to-[#ea42fd] bg-clip-text text-transparent">{titre[1]}</span>
           </h2>
           <p className="max-w-md text-[15px] !leading-relaxed !text-white/65 lg:justify-self-end">
-            Chaque étape prend une part du travail : l’agent prépare, vous relisez et vous validez. Besoin d’une seule étape ? La rédaction des documents ou l’annonce légale se commandent aussi seules.
+            Chaque étape prend une part du travail : l’agent prépare, vous relisez et vous validez. Besoin d’une seule étape ? La rédaction des documents ou l’annonce légale se commandent aussi seules, comprises dans l’abonnement.
           </p>
         </div>
 
