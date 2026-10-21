@@ -108,7 +108,22 @@ const OX = 532;
 const OY = 160;
 
 type P = [number, number];
-const iso = (x: number, y: number, z = 0): P => [OX + (x - y) * S * CX, OY + (x + y) * S * 0.5 - z * S];
+
+// Rotation lente de la maquette autour de son centre (comme light.inc) :
+// l'angle courant est fixé par la scène avant chaque rendu.
+let ROT_C = 1;
+let ROT_S = 0;
+const CENTRE_X = (2 * 4.3 + 3) / 2;
+const CENTRE_Y = (4.3 + 3) / 2;
+function tourne(x: number, y: number): P {
+  const dx = x - CENTRE_X;
+  const dy = y - CENTRE_Y;
+  return [CENTRE_X + dx * ROT_C - dy * ROT_S, CENTRE_Y + dx * ROT_S + dy * ROT_C];
+}
+const iso = (x: number, y: number, z = 0): P => {
+  const [a, b] = tourne(x, y);
+  return [OX + (a - b) * S * CX, OY + (a + b) * S * 0.5 - z * S];
+};
 const pts = (l: P[]) => l.map(([a, b]) => `${a.toFixed(1)},${b.toFixed(1)}`).join(' ');
 
 // Faces visibles d'un pavé (dessus, face avant-gauche, face avant-droite)
@@ -117,7 +132,7 @@ function pave(x: number, y: number, z: number, w: number, d: number, h: number) 
     dessus: pts([iso(x, y, z + h), iso(x + w, y, z + h), iso(x + w, y + d, z + h), iso(x, y + d, z + h)]),
     gauche: pts([iso(x, y + d, z), iso(x + w, y + d, z), iso(x + w, y + d, z + h), iso(x, y + d, z + h)]),
     droite: pts([iso(x + w, y, z), iso(x + w, y + d, z), iso(x + w, y + d, z + h), iso(x + w, y, z + h)]),
-    prof: x + y + z,
+    prof: (([a, b]) => a + b + z)(tourne(x + w / 2, y + d / 2)),
   };
 }
 
@@ -255,6 +270,36 @@ function Scene({ c, mode }: { c: Circuit; mode: 'section' | 'hero' }) {
 
   const actif = visible && !reduit;
 
+  // Horloge de la scène : rotation en va-et-vient (±14°, 22 s) et avancée des pixels
+  const [t, setT] = useState(0);
+  useEffect(() => {
+    if (!actif) return;
+    let id = 0;
+    let dernier = 0;
+    const depart = performance.now() - t * 1000;
+    const boucle = (now: number) => {
+      if (now - dernier > 33) {
+        dernier = now;
+        setT((now - depart) / 1000);
+      }
+      id = requestAnimationFrame(boucle);
+    };
+    id = requestAnimationFrame(boucle);
+    return () => cancelAnimationFrame(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [actif]);
+  const angle = reduit ? 0 : 0.245 * Math.sin((2 * Math.PI * t) / 22);
+  ROT_C = Math.cos(angle);
+  ROT_S = Math.sin(angle);
+  const pixel = (k: number): P => {
+    const p = reduit ? 0.15 + k * 0.22 : (t / 12 + k * 0.25) % 1;
+    const seg = Math.min(4, Math.floor(p * 5));
+    const f = p * 5 - seg;
+    const [ax, ay] = centre(seg, EP + 0.05);
+    const [bx, by] = centre(seg + 1, EP + 0.05);
+    return [ax + (bx - ax) * f, ay + (by - ay) * f];
+  };
+
   // Plaques, triées de l'arrière vers l'avant
   const plaques = GRILLE.map((_, i) => {
     const [x, y] = origine(i);
@@ -338,16 +383,11 @@ function Scene({ c, mode }: { c: Circuit; mode: 'section' | 'hero' }) {
 
         {/* Pixels corail : les dossiers qui avancent */}
         {[0, 1, 2, 3].map((k) => (
-          <g key={k}>
+          <g key={k} transform={`translate(${pixel(k).map((v) => v.toFixed(1)).join(',')})`}>
             <rect x="-9" y="-9" width="18" height="18" fill="#ff887b" opacity="0.55" filter={`url(#circuit-lueur-${mode})`} />
             <polygon points={pts([[-7, -3.5], [0, -7], [7, -3.5], [0, 0]])} fill="#ffb3aa" />
             <polygon points={pts([[-7, -3.5], [0, 0], [0, 7], [-7, 3.5]])} fill="#ff887b" />
             <polygon points={pts([[0, 0], [7, -3.5], [7, 3.5], [0, 7]])} fill="#e9665a" />
-            {reduit ? (
-              <animateMotion dur="1s" path={trajet} keyPoints={`${0.15 + k * 0.22};${0.15 + k * 0.22}`} keyTimes="0;1" fill="freeze" calcMode="linear" />
-            ) : (
-              <animateMotion dur="12s" begin={`${-k * 3}s`} repeatCount="indefinite" path={trajet} />
-            )}
           </g>
         ))}
 
