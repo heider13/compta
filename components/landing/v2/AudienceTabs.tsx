@@ -65,10 +65,13 @@ export function AudienceTabs() {
               <button
                 key={x.key}
                 type="button"
+                // Le survol suffit à changer de profil (le clic reste possible au tactile)
+                onMouseEnter={() => setActif(i)}
+                onFocus={() => setActif(i)}
                 onClick={() => setActif(i)}
                 className={cn(
-                  'rounded-full px-4 py-2 text-sm font-medium transition-colors sm:px-5',
-                  i === actif ? 'bg-gradient-to-r from-[#ff887b] to-[#ea42fd] !text-white shadow-[0_8px_20px_rgba(234,66,253,0.3)]' : '!text-[var(--ink-600)] hover:!text-[var(--violet-900)]',
+                  'rounded-full px-4 py-2 text-sm font-medium transition-[transform,box-shadow] duration-150 sm:px-5',
+                  i === actif ? '-translate-y-0.5 bg-gradient-to-r from-[#ff887b] to-[#ea42fd] !text-white shadow-[0_10px_24px_rgba(234,66,253,0.4)]' : '!text-[var(--ink-600)] hover:!text-[var(--violet-900)]',
                 )}
               >
                 {x.onglet}

@@ -1,9 +1,10 @@
 'use client';
 
 // « La différence Legaly AI » : texte à gauche avec flèches, carrousel des
-// agents à droite (illustration, titre, description, bouton).
+// agents à droite (illustration, titre, description, bouton). Au survol du bloc,
+// les cartes défilent seules, lentement ; retour au début une fois au bout.
 
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { ArrowLeft, ArrowRight, Sparkles } from 'lucide-react';
 import { Container } from '../ui';
 import { ILLUS_AGENTS } from './Illus';
@@ -20,6 +21,34 @@ const AGENTS = [
 export function AgentsCarousel() {
   const rail = useRef<HTMLDivElement>(null);
   const [index, setIndex] = useState(0);
+  const [survol, setSurvol] = useState(false);
+
+  useEffect(() => {
+    const el = rail.current;
+    if (!survol || !el || window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return;
+    let pos = el.scrollLeft;
+    let id = 0;
+    let avant = 0;
+    let attente: ReturnType<typeof setTimeout> | undefined;
+    const boucle = (now: number) => {
+      const dt = avant ? Math.min(0.5, (now - avant) / 1000) : 0; // vitesse indépendante de la fréquence d'images
+      avant = now;
+      const fin = el.scrollWidth - el.clientWidth - 1;
+      if (pos >= fin) {
+        // Au bout : courte pause puis retour au premier agent
+        attente = setTimeout(() => {
+          el.scrollTo({ left: 0, behavior: 'smooth' });
+          attente = setTimeout(() => { pos = 0; avant = 0; id = requestAnimationFrame(boucle); }, 900);
+        }, 1200);
+        return;
+      }
+      pos += 32 * dt; // ≈ 32 px par seconde
+      el.scrollLeft = pos;
+      id = requestAnimationFrame(boucle);
+    };
+    id = requestAnimationFrame(boucle);
+    return () => { cancelAnimationFrame(id); clearTimeout(attente); };
+  }, [survol]);
 
   const aller = (i: number) => {
     const n = Math.max(0, Math.min(AGENTS.length - 1, i));
@@ -30,7 +59,7 @@ export function AgentsCarousel() {
 
   return (
     <section id="agents" className="scroll-mt-24 bg-gradient-to-b from-[#fff8f3] to-[#fff5fb] px-3 py-6 sm:px-6">
-      <div className="theme-fixe relative mx-auto max-w-[1400px] overflow-hidden rounded-[32px] bg-[#140d2e] py-20 shadow-[0_30px_80px_rgba(54,31,171,0.25)] sm:rounded-[44px] sm:py-24">
+      <div onMouseEnter={() => setSurvol(true)} onMouseLeave={() => setSurvol(false)} className="theme-fixe relative mx-auto max-w-[1400px] overflow-hidden rounded-[32px] bg-[#140d2e] py-20 shadow-[0_30px_80px_rgba(54,31,171,0.25)] sm:rounded-[44px] sm:py-24">
         <div
           aria-hidden="true"
           className="pointer-events-none absolute inset-0"
@@ -77,7 +106,7 @@ export function AgentsCarousel() {
 
         <div
           ref={rail}
-          className="-mr-[50vw] flex snap-x snap-mandatory gap-5 overflow-x-auto pb-2 pr-[50vw] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+          className={`-mr-[50vw] flex gap-5 overflow-x-auto pb-2 pr-[50vw] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden ${survol ? 'snap-none' : 'snap-x snap-mandatory'}`}
           onScroll={(e) => {
             const el = e.currentTarget;
             const w = (el.children[0] as HTMLElement | undefined)?.offsetWidth ?? 1;
