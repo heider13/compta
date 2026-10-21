@@ -41,6 +41,8 @@ const groupes = require('./groupes');
 
 const MAX_ITERATIONS = 12;
 // Outils qui créent ou modifient le dossier, le Guichet unique ou un lot : jamais en parallèle.
+// Outils qui créent quelque chose au Guichet unique : interdits pour une prestation seule
+const OUTILS_DEPOT = new Set(['creer_brouillon_inpi', 'creer_modification_inpi', 'deposer_comptes_annuels']);
 const OUTILS_SEQUENTIELS = new Set(['enregistrer_dossier', 'creer_brouillon_inpi', 'creer_modification_inpi', 'deposer_comptes_annuels', 'preparer_lot', 'lancer_lot', 'modifier_groupe']);
 
 // Pièces jointes acceptées dans le chat (lues par Claude).
@@ -276,6 +278,11 @@ const TOOLS = [
       type: 'object',
       properties: {
         typeFormalite: { type: 'string', enum: ['CREATION', 'MODIFICATION', 'RADIATION'] },
+        prestation: {
+          type: 'string',
+          enum: ['formalite', 'documents', 'annonce'],
+          description: "Ce que le professionnel commande : 'formalite' = formalité complète jusqu'au Guichet unique (défaut) ; 'documents' = rédaction des documents seule (statuts, PV, pouvoirs…, sans dépôt) ; 'annonce' = annonce légale seule (sans dépôt).",
+        },
         formeJuridique: { type: 'string', enum: ['SASU', 'SAS', 'EURL', 'SARL', 'SCI', 'HOLDING', 'AE', 'AUTRE'] },
         denomination: { type: 'string' },
         sigle: { type: 'string' },
@@ -719,7 +726,17 @@ const SYSTEM_PROMPT = `Tu es l'Agent Formalités de Legaly AI, plateforme franç
 - Dépôt des comptes annuels des sociétés : contrôle des comptes et du PV, confidentialité, brouillon du dépôt au Guichet unique (voir <comptes_annuels>).
 - Tu ne signes rien, tu ne paies rien et tu n'envoies rien à des tiers. Le professionnel suit les étapes affichées à droite du chat : réalisation de la formalité, annonce légale (que tu rédiges), signature des actes par le client (Yousign), signature électronique de la formalité (Yousign = signature au Guichet unique), puis paiement (compte client INPI du cabinet ou délégation au client). En fin de tour, indique en une phrase la prochaine étape à droite, sans le renvoyer vers une autre page ni vers le Guichet unique. Le dépôt des comptes annuels suit les mêmes étapes (sans annonce légale) : PV d'approbation et déclaration de confidentialité rédigés par Legaly signés par le client, puis signature électronique du dépôt et paiement à droite du chat.
 - Plusieurs formalités à la fois (plusieurs créations, plusieurs fermetures…, en texte ou dans un tableur joint) : preparer_lot, présente le plan en tableau court (type, société, informations manquantes), demande confirmation, puis lancer_lot (confirme=true). Chaque formalité est alors préparée dans son propre dossier ; le suivi s'affiche dans ce chat et le professionnel ouvre chaque formalité depuis ce suivi pour la compléter et créer son brouillon INPI.
+- Prestations seules : le cabinet peut aussi commander une seule étape, sans formalité au Guichet unique (voir <prestations_seules>).
 </perimetre>
+
+<prestations_seules>
+Le professionnel peut ne vouloir qu'une partie du travail :
+- « Rédaction des documents » seule (statuts, PV, pouvoir, déclaration de non-condamnation, acte de cession…) : enregistre prestation='documents' dès le premier enregistrer_dossier, recueille uniquement les informations nécessaires aux documents demandés, rédige-les, puis propose la signature électronique des documents (étape à droite) si le client doit les signer. Ne rédige pas d'annonce sauf demande, ne demande pas qui paiera les frais du Guichet unique et ne crée aucun brouillon au Guichet unique.
+- « Annonce légale » seule : enregistre prestation='annonce', recueille les informations de l'annonce (lis la fiche RNE si le SIREN est connu), rédige-la avec rediger_annonce_legale et présente le texte et les mentions vérifiées. Pas d'actes, pas de brouillon au Guichet unique.
+- Indices : « seulement », « uniquement », « juste les statuts », « juste l'annonce », « sans dépôt », « je m'occupe du dépôt ». En cas de doute, demande en une question (poser_questions) s'il veut la formalité complète ou seulement cette étape.
+- S'il change d'avis et veut la formalité complète, enregistre prestation='formalite' et reprends la méthode habituelle.
+- En fin de tour, indique ce qui est livré (documents ou annonce prêts à relire, à télécharger depuis le dossier) et, pour les documents, la signature électronique possible à droite du chat.
+</prestations_seules>
 
 <documents_joints>
 Le professionnel peut joindre des documents : pièces d'identité, statuts, procès-verbaux d'assemblée, Kbis, annonces légales, justificatifs de domicile, contrats de domiciliation, attestations de dépôt des fonds…
@@ -1773,6 +1790,13 @@ async function runTool(name, input, ctx) {
   const supa = getSupabaseAdmin();
   if (!isPlainObject(input)) throw new Error('Paramètres invalides.');
   if (ctx.mode === 'client' && !CLIENT_TOOLS.has(name)) throw new Error('Outil indisponible dans l’espace entrepreneur.');
+  if (OUTILS_DEPOT.has(name)) {
+    const d = await loadDossier(supa, ctx).catch(() => null);
+    const prestation = d?.metadata?.agent_data?.prestation;
+    if (prestation === 'documents' || prestation === 'annonce') {
+      throw new Error(`Prestation « ${prestation === 'documents' ? 'rédaction des documents' : 'annonce légale'} » seule : aucun dépôt au Guichet unique n'est prévu. Si le professionnel veut finalement la formalité complète, enregistre d'abord prestation='formalite' (enregistrer_dossier) avec son accord.`);
+    }
+  }
   switch (name) {
     case 'enregistrer_dossier': return toolEnregistrer(supa, ctx, input);
     case 'generer_statuts': return toolStatuts(supa, ctx, input);

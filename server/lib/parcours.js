@@ -461,7 +461,8 @@ async function etat(supa, orgId, dossierId) {
   // brouillon est créé à l'étape 4. Modification : le brouillon est créé dès cette étape.
   const bloquee = statutGU && BLOQUANTS.has(statutGU);
   const actesRediges = docs.some((d) => d.doc_type && !NON_SIGNABLES.has(d.doc_type) && ['GENERE', 'SIGNE', 'TRANSMIS'].includes(d.status));
-  const prepare = Boolean(fid) || (creation && actesRediges);
+  // Rédaction des documents seule : les actes rédigés suffisent pour passer à la signature
+  const prepare = Boolean(fid) || (creation && actesRediges) || (data.prestation === 'documents' && actesRediges);
   etapes.push({
     cle: 'formalite', titre: comptes ? 'Réalisation du dépôt des comptes' : 'Réalisation de la formalité',
     statut: !prepare ? 'a_faire' : bloquee ? 'bloque' : 'fait',
@@ -654,9 +655,36 @@ async function etat(supa, orgId, dossierId) {
       : [],
   });
 
+  // Prestation seule (rédaction des documents ou annonce légale, sans dépôt) : seules les
+  // étapes commandées restent ; les autres passent « sans objet ».
+  const prestation = data.prestation === 'documents' || data.prestation === 'annonce' ? data.prestation : null;
+  if (prestation && !fid) {
+    const horsPrestation = `Non compris : ${prestation === 'documents' ? 'rédaction des documents' : 'annonce légale'} seule, sans dépôt au Guichet unique.`;
+    for (const e of etapes) {
+      if (prestation === 'documents' && e.cle === 'formalite') {
+        Object.assign(e, {
+          titre: 'Rédaction des documents',
+          statut: actesRediges ? 'fait' : 'a_faire',
+          detail: actesRediges ? 'Documents rédigés, à relire et télécharger depuis le dossier.' : 'Décrivez les documents à rédiger dans le chat.',
+          actions: actesRediges ? [] : [{ type: 'demander', label: 'Rédiger les documents', message: 'Rédige les documents demandés.' }],
+        });
+      } else if (prestation === 'annonce' && e.cle === 'annonce') {
+        const redigee = annonces.length > 0;
+        Object.assign(e, {
+          statut: redigee ? 'fait' : 'a_faire',
+          detail: redigee ? 'Annonce rédigée, mentions vérifiées : prête à publier.' : 'Donnez les informations de l’annonce dans le chat.',
+          actions: redigee ? [] : [{ type: 'demander', label: "Rédiger l'annonce", message: "Rédige l'annonce légale demandée." }],
+          alertes: undefined,
+        });
+      } else if (!(prestation === 'documents' && e.cle === 'signature_client')) {
+        Object.assign(e, { statut: 'sans_objet', detail: horsPrestation, actions: [], alertes: undefined });
+      }
+    }
+  }
+
   const courante = etapes.find((e) => ['a_faire', 'attente', 'bloque'].includes(e.statut))?.cle || null;
   const toutFait = etapes.every((e) => ['fait', 'sans_objet'].includes(e.statut));
-  const termine = toutFait && Boolean(statutGU && TRANSMISE.has(statutGU));
+  const termine = toutFait && (Boolean(prestation && !fid) || Boolean(statutGU && TRANSMISE.has(statutGU)));
   return {
     dossier: { id: dossier.id, reference: dossier.reference, denomination: dossier.client_name },
     formalite: fid ? { id: fid, type: comptes ? 'comptes_annuels' : 'formalite', liasse, statut: statutGU, statut_label: STATUT_GU[statutGU] || statutGU } : null,

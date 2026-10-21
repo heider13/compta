@@ -97,6 +97,15 @@ const EXAMPLES = [
     label: 'Transfert de siège',
     text: 'Transfert du siège social d’une SARL cliente vers une nouvelle adresse, à compter du mois prochain.',
   },
+  // Prestations seules : une étape sans formalité au Guichet unique
+  {
+    label: 'Documents seulement',
+    text: 'Rédige uniquement les documents (statuts, PV, pouvoir…) pour un client, sans formalité au Guichet unique : je m’occupe du dépôt.',
+  },
+  {
+    label: 'Annonce légale seulement',
+    text: 'Rédige uniquement l’annonce légale pour une société cliente, sans formalité au Guichet unique.',
+  },
 ];
 
 const CAPABILITIES = [
