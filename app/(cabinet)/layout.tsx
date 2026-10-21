@@ -1,3 +1,4 @@
+import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/server';
@@ -86,7 +87,8 @@ export default async function CabinetLayout({
   };
 
   return (
-    <SidebarProvider>
+    // Barre latérale repliée ou dépliée : choix mémorisé (cookie posé par SidebarProvider)
+    <SidebarProvider defaultOpen={(await cookies()).get('sidebar_state')?.value !== 'false'}>
       <CabinetSidebar
         orgName={currentOrg.name}
         userLabel={userLabel}

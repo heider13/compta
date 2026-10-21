@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { BookOpen, ChevronsUpDown, CreditCard, LogOut, Search, User } from 'lucide-react';
+import { BookOpen, ChevronsUpDown, CreditCard, LogOut, PanelLeftClose, PanelLeftOpen, Search, User } from 'lucide-react';
 
 import { LogoMark } from '@/components/brand/Logo';
 import { NAV_SECTIONS, isNavActive, type NavSection } from '@/components/cabinet/nav';
@@ -17,6 +17,7 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
+  SidebarRail,
   useSidebar,
 } from '@/components/ui/sidebar';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
@@ -69,6 +70,27 @@ function NavGroup({ section, pathname }: { section: NavSection; pathname: string
   );
 }
 
+// Replier / déplier la barre : seules les icônes restent visibles une fois repliée
+function BoutonReplier() {
+  const { state, toggleSidebar, isMobile } = useSidebar();
+  if (isMobile) return null;
+  const replie = state === 'collapsed';
+  return (
+    <SidebarMenu>
+      <SidebarMenuItem>
+        <SidebarMenuButton
+          onClick={toggleSidebar}
+          tooltip={replie ? 'Déplier la barre' : undefined}
+          className="text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-white"
+        >
+          {replie ? <PanelLeftOpen className="size-4" /> : <PanelLeftClose className="size-4" />}
+          <span>Replier la barre</span>
+        </SidebarMenuButton>
+      </SidebarMenuItem>
+    </SidebarMenu>
+  );
+}
+
 export function CabinetSidebar({ orgName, userLabel, userEmail, userInitials, plan, inpi }: CabinetSidebarProps) {
   const pathname = usePathname() ?? '';
   const planLabel = (plan && plan.charAt(0).toUpperCase() + plan.slice(1)) || 'Cabinet';
@@ -94,6 +116,14 @@ export function CabinetSidebar({ orgName, userLabel, userEmail, userInitials, pl
           </SidebarMenuItem>
         </SidebarMenu>
 
+        <SidebarMenu className="hidden group-data-[collapsible=icon]:flex">
+          <SidebarMenuItem>
+            <SidebarMenuButton tooltip="Rechercher (⌘K)" onClick={ouvrirPalette} className="text-sidebar-foreground hover:bg-sidebar-accent hover:text-white">
+              <Search className="size-4" />
+              <span>Rechercher</span>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+        </SidebarMenu>
         <div className="grid gap-1.5 group-data-[collapsible=icon]:hidden">
           <button
             type="button"
@@ -114,6 +144,17 @@ export function CabinetSidebar({ orgName, userLabel, userEmail, userInitials, pl
       </SidebarContent>
 
       <SidebarFooter>
+        <SidebarMenu className="hidden group-data-[collapsible=icon]:flex">
+          <SidebarMenuItem>
+            <SidebarMenuButton asChild tooltip={inpi.configured ? 'Guichet unique connecté' : 'Guichet unique à connecter'} className="hover:bg-sidebar-accent">
+              <Link href="/settings/inpi">
+                <span className={cn('live-dot mx-auto', inpi.configured ? 'text-success' : 'text-warning')} />
+                <span>INPI</span>
+              </Link>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+        </SidebarMenu>
+        <BoutonReplier />
         <Link
           href="/settings/inpi"
           className="flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs transition-colors hover:bg-white/10 group-data-[collapsible=icon]:hidden"
@@ -184,6 +225,7 @@ export function CabinetSidebar({ orgName, userLabel, userEmail, userInitials, pl
           </SidebarMenuItem>
         </SidebarMenu>
       </SidebarFooter>
+      <SidebarRail />
     </Sidebar>
   );
 }
