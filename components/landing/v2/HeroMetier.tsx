@@ -10,6 +10,7 @@
 import { useEffect, useState } from 'react';
 import { ArrowRight, Check, CreditCard, FileText, Layers, Loader2, PenLine, ShieldCheck, Sparkles } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { CircuitHero } from './CircuitIso';
 
 function useCycle(n: number, ms: number) {
   const [i, setI] = useState(0);
@@ -243,6 +244,8 @@ export function HeroMetier({
   sousTitre: string;
   points: string[];
 }) {
+  // Professions : maquette isométrique « circuit » (esprit light.inc) ; sinon scène d'origine
+  const iso = metier === 'experts-comptables' || metier === 'avocats' || metier === 'directions-juridiques';
   const Scene = SCENES[metier] ?? ScenePortefeuille;
   return (
     <section className="relative overflow-hidden bg-[#fcfbff]">
@@ -257,7 +260,7 @@ export function HeroMetier({
         }}
       />
       <div aria-hidden="true" className="pointer-events-none absolute inset-x-0 bottom-0 h-40 bg-gradient-to-b from-transparent to-[#fcfbff]" />
-      <div className="relative mx-auto grid w-full max-w-6xl items-center gap-14 px-5 pb-24 pt-36 sm:px-8 lg:grid-cols-[1.05fr_0.95fr] lg:pt-40">
+      <div className={cn('relative mx-auto grid w-full items-center px-5 pb-24 pt-36 sm:px-8 lg:pt-40', iso ? 'max-w-[1320px] gap-10 lg:grid-cols-[0.85fr_1.15fr]' : 'max-w-6xl gap-14 lg:grid-cols-[1.05fr_0.95fr]')}>
         <div>
           <span className="inline-flex items-center gap-2 rounded-full border border-[var(--violet-200)] bg-[var(--violet-50)] px-3 py-1 text-xs font-semibold text-[var(--violet-700)]">
             <Sparkles className="size-3.5" /> {kicker}
@@ -284,7 +287,7 @@ export function HeroMetier({
             </a>
           </div>
         </div>
-        <Scene />
+        {iso ? <CircuitHero variante={metier} /> : <Scene />}
       </div>
     </section>
   );

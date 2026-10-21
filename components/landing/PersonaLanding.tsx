@@ -27,7 +27,8 @@ export function PersonaLanding({ persona }: { persona: PersonaContent }) {
       ) : (
         <HeroMetier metier={persona.slug} kicker={m.kicker} ligne1={m.ligne1} ligne2={m.ligne2} sousTitre={m.sousTitre} points={m.points} />
       )}
-      <CircuitIso variante={persona.slug} />
+      {/* Le circuit est dans l'en-tête des professions ; en section pour les entrepreneurs */}
+      {persona.slug === 'independants-tpe' && <CircuitIso variante={persona.slug} />}
       <Modules titre={m.modulesTitre} modules={m.modules} v={v} />
       <Engagements titre={m.engagements.titre} points={m.engagements.points} />
       <Reassurance adapte={m.adapte} nouveautes={NOUVEAUTES} />
