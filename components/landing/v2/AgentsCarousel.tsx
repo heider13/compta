@@ -72,27 +72,16 @@ export function AgentsCarousel() {
   };
 
   return (
-    <section id="agents" className="scroll-mt-24 bg-gradient-to-b from-[#fff8f3] to-[#fff5fb] px-3 py-6 sm:px-6">
-      <div className="theme-fixe relative mx-auto max-w-[1400px] overflow-hidden rounded-[32px] bg-[#140d2e] py-20 shadow-[0_30px_80px_rgba(54,31,171,0.25)] sm:rounded-[44px] sm:py-24">
-        <div
-          aria-hidden="true"
-          className="pointer-events-none absolute inset-0"
-          style={{
-            background:
-              'radial-gradient(ellipse 620px 460px at 0% 0%, rgba(255,190,140,0.35), transparent 62%),' +
-              'radial-gradient(ellipse 760px 560px at 85% 20%, rgba(234,66,253,0.32), transparent 62%),' +
-              'radial-gradient(ellipse 820px 520px at 45% 115%, rgba(117,81,232,0.55), transparent 65%)',
-          }}
-        />
+    <section id="agents" className="scroll-mt-24 overflow-hidden bg-gradient-to-b from-[#fff8f3] to-[#fff5fb] py-20 sm:py-24">
       <Container className="relative grid items-center gap-10 lg:grid-cols-[0.9fr_1.1fr]">
         <div>
-          <span className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-3 py-1 text-xs font-semibold text-white backdrop-blur">
+          <span className="inline-flex items-center gap-2 rounded-full border border-[var(--violet-200)] bg-[var(--violet-50)] px-3 py-1 text-xs font-semibold text-[var(--violet-700)]">
             <Sparkles className="size-3.5 text-[var(--accent)]" /> La différence Legaly AI
           </span>
-          <h2 className="!mt-5 font-[Sora] !text-[clamp(1.9rem,3.2vw,2.6rem)] !font-semibold !leading-[1.1] !text-white">
-            Des agents IA qui préparent vos formalités, <Degrade className="from-[#ffbe8c] via-[#ff887b] to-[#ea42fd]">avec vous.</Degrade>
+          <h2 className="!mt-5 font-[Sora] !text-[clamp(1.9rem,3.2vw,2.6rem)] !font-semibold !leading-[1.1] !text-[var(--violet-900)]">
+            Des agents IA qui préparent vos formalités, <Degrade>avec vous.</Degrade>
           </h2>
-          <p className="!mt-5 max-w-lg text-[15px] !leading-relaxed !text-white/75">
+          <p className="!mt-5 max-w-lg text-[15px] !leading-relaxed !text-[var(--ink-600)]">
             Ils travaillent comme une équipe de formalistes : ils lisent vos pièces, rédigent, contrôlent et préparent le dépôt.
             Vous gardez la main sur ce qui compte : la validation, la signature et le paiement.
           </p>
@@ -102,7 +91,7 @@ export function AgentsCarousel() {
               onClick={() => aller(index - 1)}
               disabled={index === 0}
               aria-label="Agent précédent"
-              className="grid size-11 place-items-center rounded-xl bg-white/15 !text-white transition-opacity hover:bg-white/25 disabled:opacity-30"
+              className="grid size-11 place-items-center rounded-xl border border-[var(--ink-150)] bg-white !text-[var(--violet-900)] transition-opacity hover:bg-[var(--ink-50)] disabled:opacity-30"
             >
               <ArrowLeft className="size-5" />
             </button>
@@ -133,7 +122,7 @@ export function AgentsCarousel() {
           {AGENTS.map((a, i) => (
             <article
               key={a.key}
-              className={`relative flex h-[440px] w-[248px] shrink-0 snap-start flex-col overflow-hidden rounded-[22px] bg-[#0a0524] p-5 shadow-[0_24px_60px_rgba(0,0,0,0.35)] ring-1 ring-white/[0.08] transition-opacity duration-500 sm:w-[264px] ${i === index ? 'opacity-100' : 'opacity-75'}`}
+              className={`relative flex h-[440px] w-[248px] shrink-0 snap-start flex-col overflow-hidden rounded-[22px] bg-[#0a0524] p-5 theme-fixe shadow-[0_24px_50px_rgba(8,3,49,0.22)] ring-1 ring-white/[0.08] transition-opacity duration-500 sm:w-[264px] ${i === index ? 'opacity-100' : 'opacity-75'}`}
             >
               {/* Bande de couleur floue et courbe (esprit Lovable), une par agent */}
               <div aria-hidden="true" className="agent-bande pointer-events-none absolute" style={{ ...BANDES[i % BANDES.length], animationDelay: `${-i * 3}s` }} />
@@ -150,7 +139,6 @@ export function AgentsCarousel() {
           ))}
         </div>
       </Container>
-      </div>
       <style>{`
         .agent-bande { filter: blur(18px); border-radius: 50%; animation: agent-bande 15s ease-in-out infinite alternate; }
         @keyframes agent-bande { from { transform: rotate(var(--r)) translateX(-5%); } to { transform: rotate(var(--r)) translateX(5%); } }
