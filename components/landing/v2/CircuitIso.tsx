@@ -161,15 +161,15 @@ const VOLUMES: [number, number, number, number, number, number][][] = [
 ];
 
 // Deux cadrages de la même maquette (coordonnées du viewBox) :
-//   section → bandeau large, 6 cartes (3 de chaque côté)
+//   section → bandeau paysage, 6 cartes (3 de chaque côté, écartées)
 //   hero    → panneau d'en-tête plus haut, 4 cartes au-dessus de la maquette
 type Mise = { x0: number; y0: number; w: number; h: number; carteL: number; cartes: P[]; agents: number[]; police: string };
 const MISES: Record<'section' | 'hero', Mise> = {
   section: {
-    x0: 0, y0: 0, w: W, h: H, carteL: 232,
-    cartes: [[20, 26], [20, 150], [20, 274], [W - 252, 26], [W - 252, 150], [W - 252, 274]],
+    x0: -140, y0: 20, w: 1480, h: 565, carteL: 262,
+    cartes: [[-120, 40], [-120, 165], [-120, 290], [1058, 40], [1058, 165], [1058, 290]],
     agents: [0, 1, 2, 3, 4, 5],
-    police: 'clamp(8.5px, 0.95cqw, 11.5px)',
+    police: 'clamp(8.5px, 0.85cqw, 11.5px)',
   },
   hero: {
     x0: 200, y0: -60, w: 820, h: 730, carteL: 262,
@@ -463,19 +463,22 @@ export function CircuitIso({ variante }: { variante?: string }) {
   const c = (variante && PAR_METIER[variante]) || ACCUEIL;
   return (
     <section className="bg-[#fbfaff] px-3 py-16 sm:px-5 sm:py-20">
-      <div className="theme-fixe relative mx-auto max-w-[1240px] overflow-hidden rounded-[28px] bg-[#080331] px-5 pb-6 pt-12 text-white sm:px-10 sm:pt-14">
+      <div className="theme-fixe relative mx-auto max-w-[1400px] overflow-hidden rounded-[28px] bg-[#080331] px-5 pb-5 pt-10 text-white sm:px-10 sm:pt-11">
         {FOND_NUIT}
 
-        <div className="relative max-w-3xl">
-          <p className="font-mono !text-[12px] uppercase tracking-[0.18em] !text-white/50">{c.kicker}</p>
-          <h2 className="!mt-3 font-[Sora] !text-[clamp(1.75rem,3.6vw,2.75rem)] !font-semibold !leading-[1.1] !tracking-[-0.02em] !text-white">
-            {c.titre}{' '}
-            <span className="bg-gradient-to-r from-[#ffbe8c] via-[#ff887b] to-[#ea42fd] bg-clip-text text-transparent">{c.titreAccent}</span>
-          </h2>
-          <p className="!mt-4 max-w-2xl text-[15px] leading-relaxed !text-white/65">{c.sousTitre}</p>
+        {/* Titre et texte côte à côte : le panneau reste en format paysage */}
+        <div className="relative grid gap-4 lg:grid-cols-[1.15fr_0.85fr] lg:items-end lg:gap-12">
+          <div>
+            <p className="font-mono !text-[12px] uppercase tracking-[0.18em] !text-white/50">{c.kicker}</p>
+            <h2 className="!mt-3 font-[Sora] !text-[clamp(1.75rem,3.2vw,2.6rem)] !font-semibold !leading-[1.1] !tracking-[-0.02em] !text-white">
+              {c.titre}{' '}
+              <span className="bg-gradient-to-r from-[#ffbe8c] via-[#ff887b] to-[#ea42fd] bg-clip-text text-transparent">{c.titreAccent}</span>
+            </h2>
+          </div>
+          <p className="text-[15px] leading-relaxed !text-white/65">{c.sousTitre}</p>
         </div>
 
-        <div className="relative mt-6">
+        <div className="relative mt-2">
           <Scene c={c} mode="section" />
         </div>
       </div>
