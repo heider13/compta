@@ -171,102 +171,107 @@ export function DossierUnique() {
 
   return (
     <section className="bg-[#fbfaff] px-3 py-16 sm:px-5 sm:py-20">
-      <div className="theme-fixe relative mx-auto max-w-[1240px] overflow-hidden rounded-[28px] bg-[#080331] px-5 pb-10 pt-12 text-white sm:px-12 sm:pt-16">
+      <div className="theme-fixe relative mx-auto max-w-[1400px] overflow-hidden rounded-[28px] bg-[#080331] px-5 pb-8 pt-10 text-white sm:px-10 sm:pt-11">
         <div
           aria-hidden="true"
           className="pointer-events-none absolute inset-0"
           style={{ background: 'radial-gradient(ellipse 700px 420px at 100% 0%, rgba(255,136,123,0.13), transparent 62%), radial-gradient(ellipse 760px 520px at 0% 100%, rgba(54,31,171,0.4), transparent 65%)' }}
         />
 
-        <div className="relative">
-          <p className="font-mono !text-[12px] uppercase tracking-[0.18em] !text-white/50">Ce que Legaly AI remplace</p>
-          <h2 className="!mt-3 max-w-3xl font-[Sora] !text-[clamp(1.9rem,4.4vw,3.4rem)] !font-semibold !leading-[1.06] !tracking-[-0.03em] !text-white">
-            Fini le dossier en morceaux.
-            <br />
-            <span className="bg-gradient-to-r from-[#ffbe8c] via-[#ff887b] to-[#ea42fd] bg-clip-text text-transparent">Tout sur une seule interface.</span>
-          </h2>
-          <p className="!mt-5 max-w-2xl text-[15px] leading-relaxed !text-white/65">
+        {/* Titre et texte côte à côte : le panneau reste en format paysage */}
+        <div className="relative grid gap-4 lg:grid-cols-[1.15fr_0.85fr] lg:items-end lg:gap-12">
+          <div>
+            <p className="font-mono !text-[12px] uppercase tracking-[0.18em] !text-white/50">Ce que Legaly AI remplace</p>
+            <h2 className="!mt-3 font-[Sora] !text-[clamp(1.75rem,3.2vw,2.6rem)] !font-semibold !leading-[1.1] !tracking-[-0.02em] !text-white">
+              Fini le dossier en morceaux.
+              <br />
+              <span className="bg-gradient-to-r from-[#ffbe8c] via-[#ff887b] to-[#ea42fd] bg-clip-text text-transparent">Tout sur une seule interface.</span>
+            </h2>
+          </div>
+          <p className="text-[15px] leading-relaxed !text-white/65">
             Les statuts dans Word, le bail dans un e-mail, le formulaire INPI saisi à la main, l’annonce chez un journal… Legaly AI rassemble tout dans un seul dossier, préparé par des agents IA.
           </p>
         </div>
 
-        {/* Grille de carrés */}
-        <div className="relative mt-10 border-t border-white/10 pt-10">
-          <div className="pointer-events-none absolute right-0 top-8 flex items-baseline gap-2 text-right">
-            <span className="font-[Sora] text-[clamp(2.2rem,5vw,3.6rem)] font-light leading-none text-white">{compte ? 1 : EPARS.length}</span>
-            <span className="font-mono text-[11px] uppercase tracking-[0.16em] text-white/50">{compte ? 'interface' : 'outils'}</span>
-          </div>
+        <div className="relative mt-8 grid gap-10 border-t border-white/10 pt-8 lg:grid-cols-[1.55fr_1fr] lg:gap-12">
+          {/* Grille de carrés + curseur sans / avec */}
+          <div>
+            <div
+              ref={ref}
+              className="relative w-full [container-type:inline-size]"
+              style={{ aspectRatio: `${LARG} / ${HAUT + 0.6}` }}
+              role="img"
+              aria-label={`Sans Legaly AI : ${EPARS.map((b) => b.label).join(', ')}. Avec Legaly AI : une seule interface, ${MODULES.map((b) => b.label).join(', ')}, pilotée par les agents IA.`}
+            >
+              {libelles(EPARS, !range)}
+              {libelles([AGENTS], range, true)}
+              {libelles([...MODULES, ...REGISTRES], range)}
 
-          <div
-            ref={ref}
-            className="relative mx-auto w-full max-w-[860px] [container-type:inline-size]"
-            style={{ aspectRatio: `${LARG} / ${HAUT + 0.6}` }}
-            role="img"
-            aria-label={`Sans Legaly AI : ${EPARS.map((b) => b.label).join(', ')}. Avec Legaly AI : une seule interface, ${MODULES.map((b) => b.label).join(', ')}, pilotée par les agents IA.`}
-          >
-            {libelles(EPARS, !range)}
-            {libelles([AGENTS], range, true)}
-            {libelles([...MODULES, ...REGISTRES], range)}
-
-            {/* Branchement des registres */}
-            {REGISTRES.map((b) => (
-              <span
-                key={b.label}
-                className={cn('absolute h-px bg-white/30 transition-opacity duration-500', range ? 'opacity-100 delay-[2400ms]' : 'opacity-0')}
-                style={{ left: u(20.4), width: u(2.8), top: u(b.y + 0.5 + b.h / 2 - 0.15) }}
-              />
-            ))}
-
-            {carres.map((c, i) => {
-              const p = range ? c.vers : c.de;
-              return (
+              {/* Branchement des registres */}
+              {REGISTRES.map((b) => (
                 <span
-                  key={i}
-                  className="absolute left-0 top-0 rounded-[18%]"
-                  style={{
-                    width: u(TAILLE),
-                    height: u(TAILLE),
-                    background: couleur(p),
-                    transform: `translate(${u(p.x)}, ${u(p.y)})`,
-                    transition: reduit ? 'none' : `transform 1.9s cubic-bezier(0.65,0,0.25,1) ${c.delai}ms, background-color 0.9s ease ${c.delai + 1000}ms`,
-                  }}
+                  key={b.label}
+                  className={cn('absolute h-px bg-white/30 transition-opacity duration-500', range ? 'opacity-100 delay-[2400ms]' : 'opacity-0')}
+                  style={{ left: u(20.4), width: u(2.8), top: u(b.y + 0.5 + b.h / 2 - 0.15) }}
                 />
-              );
-            })}
-          </div>
+              ))}
 
-          {/* Curseur sans / avec */}
-          <div className="mt-8 flex items-center gap-4 border-t border-white/10 pt-6 font-mono text-[11px] uppercase tracking-[0.16em]">
-            <button type="button" onClick={() => setRange(false)} className={cn('transition-colors', range ? 'text-white/45 hover:text-white' : 'text-white')}>
-              Sans Legaly AI
-            </button>
-            <button type="button" onClick={() => setRange((v) => !v)} className="relative h-px flex-1 bg-white/25" aria-label={range ? 'Voir sans Legaly AI' : 'Voir avec Legaly AI'}>
-              <span
-                className="absolute top-1/2 size-4 -translate-x-1/2 -translate-y-1/2 rounded-full bg-white shadow-[0_0_0_4px_rgba(255,255,255,0.12)] transition-[left] duration-700 ease-[cubic-bezier(0.7,0,0.2,1)]"
-                style={{ left: range ? '100%' : '0%' }}
-              />
-            </button>
-            <button type="button" onClick={() => setRange(true)} className={cn('transition-colors', range ? 'text-[#ff887b]' : 'text-white/45 hover:text-white')}>
-              Avec Legaly AI
-            </button>
-            <button type="button" onClick={rejouer} className="grid size-8 place-items-center rounded-full border border-white/20 text-white/70 transition-colors hover:bg-white/10 hover:text-white" aria-label="Rejouer l’animation">
-              <RotateCcw className="size-3.5" />
-            </button>
-          </div>
-        </div>
-
-        {/* Ce qui change */}
-        <div className="relative mt-12 grid gap-10 md:grid-cols-3">
-          {([['Remplace', REMPLACE], ['Fait par les agents', AGENTS_FONT], ['Se connecte', CONNECTE]] as const).map(([titre, liste]) => (
-            <div key={titre}>
-              <h3 className="font-[Sora] !text-[1.4rem] !font-medium !text-white">{titre}</h3>
-              <ul className="mt-4">
-                {liste.map((l) => (
-                  <li key={l} className="border-t border-white/10 py-3 text-[14.5px] !text-white/75">{l}</li>
-                ))}
-              </ul>
+              {carres.map((c, i) => {
+                const p = range ? c.vers : c.de;
+                return (
+                  <span
+                    key={i}
+                    className="absolute left-0 top-0 rounded-[18%]"
+                    style={{
+                      width: u(TAILLE),
+                      height: u(TAILLE),
+                      background: couleur(p),
+                      transform: `translate(${u(p.x)}, ${u(p.y)})`,
+                      transition: reduit ? 'none' : `transform 1.9s cubic-bezier(0.65,0,0.25,1) ${c.delai}ms, background-color 0.9s ease ${c.delai + 1000}ms`,
+                    }}
+                  />
+                );
+              })}
             </div>
-          ))}
+
+            <div className="mt-6 flex items-center gap-4 font-mono text-[11px] uppercase tracking-[0.16em]">
+              <button type="button" onClick={() => setRange(false)} className={cn('transition-colors', range ? 'text-white/45 hover:text-white' : 'text-white')}>
+                Sans Legaly AI
+              </button>
+              <button type="button" onClick={() => setRange((v) => !v)} className="relative h-px flex-1 bg-white/25" aria-label={range ? 'Voir sans Legaly AI' : 'Voir avec Legaly AI'}>
+                <span
+                  className="absolute top-1/2 size-4 -translate-x-1/2 -translate-y-1/2 rounded-full bg-white shadow-[0_0_0_4px_rgba(255,255,255,0.12)] transition-[left] duration-700 ease-[cubic-bezier(0.7,0,0.2,1)]"
+                  style={{ left: range ? '100%' : '0%' }}
+                />
+              </button>
+              <button type="button" onClick={() => setRange(true)} className={cn('transition-colors', range ? 'text-[#ff887b]' : 'text-white/45 hover:text-white')}>
+                Avec Legaly AI
+              </button>
+              <button type="button" onClick={rejouer} className="grid size-8 place-items-center rounded-full border border-white/20 text-white/70 transition-colors hover:bg-white/10 hover:text-white" aria-label="Rejouer l’animation">
+                <RotateCcw className="size-3.5" />
+              </button>
+            </div>
+          </div>
+
+          {/* Compteur + ce qui change, à droite des carrés */}
+          <div className="lg:border-l lg:border-white/10 lg:pl-12">
+            <div className="flex items-baseline gap-2">
+              <span className="font-[Sora] text-[clamp(2.2rem,4vw,3.2rem)] font-light leading-none text-white">{compte ? 1 : EPARS.length}</span>
+              <span className="font-mono text-[11px] uppercase tracking-[0.16em] text-white/50">{compte ? 'interface' : 'outils'}</span>
+            </div>
+            <div className="mt-5 grid gap-5 sm:grid-cols-3 lg:grid-cols-1">
+              {([['Remplace', REMPLACE], ['Fait par les agents', AGENTS_FONT], ['Se connecte', CONNECTE]] as const).map(([titre, liste]) => (
+                <div key={titre}>
+                  <h3 className="font-mono !text-[11px] uppercase tracking-[0.16em] !text-white/50">{titre}</h3>
+                  <ul className="mt-1.5">
+                    {liste.map((l) => (
+                      <li key={l} className="border-t border-white/10 py-1.5 text-[13.5px] !text-white/75">{l}</li>
+                    ))}
+                  </ul>
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
       </div>
     </section>
