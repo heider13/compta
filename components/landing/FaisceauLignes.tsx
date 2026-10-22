@@ -1,5 +1,5 @@
 // Fond du hero (esprit Lovable) : des tuiles flottantes autour du titre — logos
-// officiels INPI, RNE, Légifrance, Insee, Yousign, et les formalités en lot — chacune reliée
+// officiels INPI, RNE, Légifrance, Insee, Youtrust, et les formalités en lot — chacune reliée
 // par une fine courbe au point de départ, sous le chat. Des traits aux couleurs
 // Legaly filent le long des lignes. Tuiles masquées sur petit écran.
 // Les lignes sont calculées à la taille réelle de la zone (traits nets, sans déformation).
@@ -32,7 +32,7 @@ const TUILES: Tuile[] = [
   { cle: 'lots', x: 10, y: 76, rot: -4, couleur: '#ff887b', contenu: <Layers className="size-8 text-[#361fab]" strokeWidth={2.2} /> },
   { cle: 'legifrance', x: 88, y: 28, rot: 5, couleur: '#9d6cf2', large: true, contenu: <Logo src="/logos/legifrance.jpg" alt="Légifrance" h={34} /> },
   { cle: 'insee', x: 82, y: 51, rot: -5, couleur: '#ffbe8c', large: true, contenu: <Logo src="/logos/insee.png" alt="Insee" h={34} /> },
-  { cle: 'yousign', x: 89, y: 74, rot: 4, couleur: '#ff5f9e', large: true, contenu: <Logo src="/logos/yousign.png" alt="Yousign" h={22} /> },
+  { cle: 'youtrust', x: 89, y: 74, rot: 4, couleur: '#ff5f9e', large: true, contenu: <Logo src="/logos/youtrust.png" alt="Youtrust" h={34} /> },
 ];
 
 // Courbe en pixels : part du bas au centre, monte d'abord à la verticale puis rejoint la tuile
