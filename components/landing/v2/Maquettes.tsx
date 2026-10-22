@@ -304,6 +304,56 @@ export function MaquetteQualifiee({ v }: { v: Variante }) {
   );
 }
 
+export function MaquetteComptes({ v }: { v: Variante }) {
+  const soc = SOCIETES[v][0];
+  const controles: [string, boolean][] = [
+    ['Première page des comptes signée', true],
+    ['Total actif = total passif', true],
+    ['Résultat identique au bilan et au compte de résultat', true],
+    ['PV d’approbation : affectation du résultat concordante', true],
+  ];
+  return (
+    <Ecran actif={1} titre={`Comptes annuels 2025 — ${soc}`}>
+      <div className="space-y-2.5">
+        <div className="rounded-xl border bg-white p-3">
+          <p className="text-[11px] font-semibold text-[var(--violet-900)]">Contrôle avant dépôt</p>
+          <ul className="mt-2 space-y-1.5">
+            {controles.map(([t, ok]) => (
+              <li key={t} className="flex items-center gap-2 text-[10.5px] text-[var(--violet-900)]">
+                <span className={cn('grid size-4 place-items-center rounded-full', ok ? 'bg-emerald-50 text-emerald-700' : 'bg-[#fff1e4] text-[#c2410c]')}><Check className="size-2.5" /></span>{t}
+              </li>
+            ))}
+          </ul>
+        </div>
+        <div className="flex items-center justify-between rounded-xl border bg-white px-3 py-2.5 text-[11px]">
+          <span className="font-semibold text-[var(--violet-900)]">Confidentialité proposée</span>
+          <Pastille c="bg-[var(--violet-100)] text-[var(--violet-700)]">Comptes non publiés (micro)</Pastille>
+        </div>
+        <div className="flex gap-1.5">
+          <Pastille c="bg-[var(--violet-50)] text-[var(--violet-700)]"><FileText className="size-2.5" /> PV d’approbation</Pastille>
+          <Pastille c="bg-[var(--violet-50)] text-[var(--violet-700)]"><FileText className="size-2.5" /> Déclaration de confidentialité</Pastille>
+        </div>
+        <div className="rounded-xl border border-dashed bg-white px-3 py-2 text-[10.5px] text-[var(--ink-500)]"><Landmark className="mr-1 inline size-3" /> Brouillon du dépôt prêt sur le Guichet unique.</div>
+      </div>
+    </Ecran>
+  );
+}
+
+export function MaquetteAssistant() {
+  return (
+    <Ecran actif={0} titre="Assistant juridique et fiscal">
+      <div className="space-y-2.5">
+        <div className="ml-auto w-fit max-w-[85%] rounded-xl bg-[var(--violet-600)] px-3 py-2 text-[11px] text-white">Une SASU peut-elle avoir un capital de 1 € ?</div>
+        <div className="max-w-[92%] rounded-xl border bg-white p-3 text-[10.5px] leading-relaxed text-[var(--ink-600)]">
+          <p className="flex items-center gap-1.5 font-semibold text-[var(--violet-900)]"><Sparkles className="size-3.5 text-[var(--violet-600)]" /> Réponse</p>
+          <p className="mt-1">Oui : le capital social d’une SAS ou d’une SASU est librement fixé par les statuts. Un capital très faible peut toutefois limiter le crédit de la société auprès des banques et des fournisseurs.</p>
+          <p className="mt-2 text-[10px] text-[var(--ink-500)]">Source : Code de commerce, art. L. 227-1</p>
+        </div>
+      </div>
+    </Ecran>
+  );
+}
+
 export const MAQUETTES: Record<string, (p: { v: Variante }) => React.ReactNode> = {
   agent: MaquetteAgent,
   lots: MaquetteLots,
@@ -314,6 +364,8 @@ export const MAQUETTES: Record<string, (p: { v: Variante }) => React.ReactNode> 
   signature: MaquetteSignature,
   redaction: MaquetteRedaction,
   qualifiee: MaquetteQualifiee,
+  comptes: MaquetteComptes,
+  assistant: () => <MaquetteAssistant />,
   entites: () => <MaquetteEntites />,
   formalites: MaquetteFormalites,
 };
