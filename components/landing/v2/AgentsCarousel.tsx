@@ -1,15 +1,15 @@
 'use client';
 
 // « La différence Legaly AI » : texte à gauche avec flèches, carrousel des
-// agents à droite (illustration, titre, description, bouton). Les cartes défilent
+// agents à droite (cartes étroites et hautes façon Lovable : bande de couleur floue,
+// titre en haut, description et bouton en bas). Les cartes défilent
 // seules, lentement et en continu ; un peu plus lentement au survol ; une pause
 // après un clic sur les flèches ; retour au début une fois au bout.
 
 import { useEffect, useRef, useState } from 'react';
 import { ArrowLeft, ArrowRight, Sparkles } from 'lucide-react';
 import { Container } from '../ui';
-import { ILLUS_AGENTS } from './Illus';
-import { Degrade, teinte } from './Couleurs';
+import { Degrade } from './Couleurs';
 
 const AGENTS = [
   { key: 'formalites', titre: 'Agent Formalités', texte: 'Décrivez l’opération : il pose les bonnes questions, crée le dossier, rédige les statuts et les actes, puis prépare le brouillon au Guichet unique.' },
@@ -17,6 +17,17 @@ const AGENTS = [
   { key: 'annonces', titre: 'Agent Annonces légales', texte: 'Il rédige l’avis à publier à partir de la fiche RNE et vérifie chaque mention obligatoire du Code de commerce.' },
   { key: 'lots', titre: 'Agent Lots', texte: 'Collez une liste ou un tableur : il découpe en formalités et prépare chacune dans son propre dossier, en parallèle.' },
   { key: 'rne', titre: 'Agent Documents RNE', texte: 'Il retrouve les statuts en vigueur, les derniers PV et les comptes déposés pour rédiger à partir du texte officiel.' },
+];
+
+// Bandes de couleur des cartes (palette Legaly), placées et inclinées différemment
+const bande = (left: string, top: string, w: string, h: string, r: string, fond: string): React.CSSProperties =>
+  ({ left, top, width: w, height: h, ['--r' as string]: r, background: fond });
+const BANDES = [
+  bande('-80%', '40%', '260%', '42%', '-16deg', 'linear-gradient(100deg, #361fab 0%, #7551e8 35%, #ea42fd 70%, #ff887b 100%)'),
+  bande('-30%', '-22%', '210%', '48%', '22deg', 'linear-gradient(100deg, #7551e8 0%, #4a6cf7 40%, #ea42fd 75%, #ff5f9e 100%)'),
+  bande('-70%', '46%', '250%', '40%', '12deg', 'linear-gradient(100deg, #ff887b 0%, #ffbe8c 30%, #ea42fd 70%, #7551e8 100%)'),
+  bande('-60%', '30%', '240%', '46%', '-24deg', 'linear-gradient(100deg, #ea42fd 0%, #ff5f9e 40%, #ff887b 70%, #ffbe8c 100%)'),
+  bande('-40%', '-18%', '220%', '44%', '-14deg', 'linear-gradient(100deg, #ffbe8c 0%, #ff887b 30%, #c13ad6 65%, #361fab 100%)'),
 ];
 
 export function AgentsCarousel() {
@@ -122,16 +133,15 @@ export function AgentsCarousel() {
           {AGENTS.map((a, i) => (
             <article
               key={a.key}
-              className={`flex w-[300px] shrink-0 snap-start flex-col rounded-3xl bg-white p-4 shadow-[0_24px_60px_rgba(0,0,0,0.35)] transition-opacity sm:w-[330px] ${i === index ? 'opacity-100' : 'opacity-70'}`}
+              className={`relative flex h-[440px] w-[248px] shrink-0 snap-start flex-col overflow-hidden rounded-[22px] bg-[#0a0524] p-5 shadow-[0_24px_60px_rgba(0,0,0,0.35)] ring-1 ring-white/[0.08] transition-opacity duration-500 sm:w-[264px] ${i === index ? 'opacity-100' : 'opacity-75'}`}
             >
-              <div className="grid h-52 place-items-center rounded-2xl" style={{ background: `linear-gradient(135deg, ${teinte(i).fond}, var(--surface, #ffffff) 55%, ${teinte(i + 1).fond})` }}>
-                {ILLUS_AGENTS[a.key]}
-              </div>
-              <h3 className="!mt-5 font-[Sora] !text-xl !font-semibold !text-[var(--violet-900)]">{a.titre}</h3>
-              <p className="!mt-2 text-sm !leading-relaxed !text-[var(--ink-600)]">{a.texte}</p>
+              {/* Bande de couleur floue et courbe (esprit Lovable), une par agent */}
+              <div aria-hidden="true" className="agent-bande pointer-events-none absolute" style={{ ...BANDES[i % BANDES.length], animationDelay: `${-i * 3}s` }} />
+              <h3 className="relative font-[Sora] !text-[19px] !font-semibold !leading-snug !text-white">{a.titre}</h3>
+              <p className="relative mt-auto text-[14px] font-semibold !leading-snug !text-white [text-shadow:0_1px_14px_rgba(8,3,49,0.5)]">{a.texte}</p>
               <a
                 href="/auth/signup"
-                className="mt-5 inline-flex w-fit items-center gap-1.5 rounded-full bg-gradient-to-r from-[#7551e8] to-[#ea42fd] px-4 py-2 text-sm font-semibold !text-white no-underline shadow-[0_8px_20px_rgba(117,81,232,0.35)] transition-transform hover:-translate-y-0.5"
+                className="relative mt-4 inline-flex w-fit items-center gap-1.5 rounded-lg bg-[#080331] px-4 py-2.5 text-[13.5px] font-semibold !text-white no-underline ring-1 ring-white/10 transition-colors hover:bg-[#140b4a]"
               >
                 Essayer l’agent <ArrowRight className="size-4" />
               </a>
@@ -140,6 +150,11 @@ export function AgentsCarousel() {
         </div>
       </Container>
       </div>
+      <style>{`
+        .agent-bande { filter: blur(18px); border-radius: 50%; animation: agent-bande 15s ease-in-out infinite alternate; }
+        @keyframes agent-bande { from { transform: rotate(var(--r)) translateX(-5%); } to { transform: rotate(var(--r)) translateX(5%); } }
+        @media (prefers-reduced-motion: reduce) { .agent-bande { animation: none; transform: rotate(var(--r)); } }
+      `}</style>
     </section>
   );
 }

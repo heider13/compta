@@ -118,22 +118,6 @@ const AGENTS_FONT = [
 ];
 const CONNECTE = ['Guichet unique de l’INPI', 'Registre national des entreprises (RNE)', 'Votre espace client et vos signataires'];
 
-// Cartes : une bande de couleur Legaly, floue et courbe, différente pour chacune
-const CARTES: { titre: string; liste: string[]; bande: React.CSSProperties }[] = [
-  {
-    titre: 'Remplace', liste: REMPLACE,
-    bande: { left: '-70%', top: '42%', width: '240%', height: '62%', ['--r' as string]: '-14deg', background: 'linear-gradient(100deg, #361fab 0%, #7551e8 35%, #ea42fd 68%, #ff887b 100%)' },
-  },
-  {
-    titre: 'Fait par les agents', liste: AGENTS_FONT,
-    bande: { left: '-60%', top: '50%', width: '230%', height: '58%', ['--r' as string]: '10deg', background: 'linear-gradient(100deg, #ff887b 0%, #ffbe8c 30%, #ea42fd 70%, #7551e8 100%)' },
-  },
-  {
-    titre: 'Se connecte', liste: CONNECTE,
-    bande: { left: '-20%', top: '-38%', width: '200%', height: '70%', ['--r' as string]: '24deg', background: 'linear-gradient(100deg, #7551e8 0%, #4a6cf7 40%, #ea42fd 75%, #ff5f9e 100%)' },
-  },
-];
-
 export function DossierUnique() {
   const carres = useMemo(construire, []);
   const ref = useRef<HTMLDivElement>(null);
@@ -209,7 +193,7 @@ export function DossierUnique() {
           </p>
         </div>
 
-        <div className="relative mt-8 grid gap-10 border-t border-white/10 pt-8 lg:grid-cols-[1.2fr_1fr] lg:gap-10">
+        <div className="relative mt-8 grid gap-10 border-t border-white/10 pt-8 lg:grid-cols-[1.55fr_1fr] lg:gap-12">
           {/* Grille de carrés + curseur sans / avec */}
           <div>
             <div
@@ -251,10 +235,6 @@ export function DossierUnique() {
             </div>
 
             <div className="mt-6 flex items-center gap-4 font-mono text-[11px] uppercase tracking-[0.16em]">
-              <span className="flex shrink-0 items-baseline gap-1.5 normal-case tracking-normal">
-                <span className="font-[Sora] text-[28px] font-light leading-none text-white">{compte ? 1 : EPARS.length}</span>
-                <span className="font-mono text-[11px] uppercase tracking-[0.16em] text-white/50">{compte ? 'interface' : 'outils'}</span>
-              </span>
               <button type="button" onClick={() => setRange(false)} className={cn('transition-colors', range ? 'text-white/45 hover:text-white' : 'text-white')}>
                 Sans Legaly AI
               </button>
@@ -273,27 +253,27 @@ export function DossierUnique() {
             </div>
           </div>
 
-          {/* Ce qui change : cartes étroites et hautes (esprit Lovable), bande de couleur floue */}
-          <div className="grid gap-3 sm:grid-cols-3 lg:grid-rows-[1fr]">
-            {CARTES.map((c, k) => (
-              <article key={c.titre} className="relative flex min-h-[300px] flex-col overflow-hidden rounded-[20px] bg-[#0d0838] p-5 ring-1 ring-white/[0.06] lg:min-h-0">
-                <div aria-hidden="true" className="carte-bande pointer-events-none absolute" style={{ ...c.bande, animationDelay: `${-k * 4}s` }} />
-                <h3 className="relative font-[Sora] !text-[18px] !font-semibold !text-white">{c.titre}</h3>
-                <ul className="relative mt-auto space-y-2 pt-24">
-                  {c.liste.map((l) => (
-                    <li key={l} className="text-[13.5px] font-semibold leading-snug !text-white [text-shadow:0_1px_12px_rgba(8,3,49,0.45)]">{l}</li>
-                  ))}
-                </ul>
-              </article>
-            ))}
+          {/* Compteur + ce qui change, à droite des carrés */}
+          <div className="lg:border-l lg:border-white/10 lg:pl-12">
+            <div className="flex items-baseline gap-2">
+              <span className="font-[Sora] text-[clamp(2.2rem,4vw,3.2rem)] font-light leading-none text-white">{compte ? 1 : EPARS.length}</span>
+              <span className="font-mono text-[11px] uppercase tracking-[0.16em] text-white/50">{compte ? 'interface' : 'outils'}</span>
+            </div>
+            <div className="mt-5 grid gap-5 sm:grid-cols-3 lg:grid-cols-1">
+              {([['Remplace', REMPLACE], ['Fait par les agents', AGENTS_FONT], ['Se connecte', CONNECTE]] as const).map(([titre, liste]) => (
+                <div key={titre}>
+                  <h3 className="font-mono !text-[11px] uppercase tracking-[0.16em] !text-white/50">{titre}</h3>
+                  <ul className="mt-1.5">
+                    {liste.map((l) => (
+                      <li key={l} className="border-t border-white/10 py-1.5 text-[13.5px] !text-white/75">{l}</li>
+                    ))}
+                  </ul>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       </div>
-      <style>{`
-        .carte-bande { filter: blur(16px); border-radius: 50%; animation: carte-bande 16s ease-in-out infinite alternate; }
-        @keyframes carte-bande { from { transform: rotate(var(--r)) translateX(-4%); } to { transform: rotate(var(--r)) translateX(4%); } }
-        @media (prefers-reduced-motion: reduce) { .carte-bande { animation: none; transform: rotate(var(--r)); } }
-      `}</style>
     </section>
   );
 }
