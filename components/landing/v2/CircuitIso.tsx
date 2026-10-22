@@ -280,7 +280,7 @@ function Scene({ c, mode }: { c: Circuit; mode: 'section' | 'hero' }) {
     const boucle = (now: number) => {
       if (now - dernier > 33) {
         dernier = now;
-        setT((now - depart) / 1000);
+        setT(Math.max(0, (now - depart) / 1000));
       }
       id = requestAnimationFrame(boucle);
     };
@@ -292,8 +292,8 @@ function Scene({ c, mode }: { c: Circuit; mode: 'section' | 'hero' }) {
   ROT_C = Math.cos(angle);
   ROT_S = Math.sin(angle);
   const pixel = (k: number): P => {
-    const p = reduit ? 0.15 + k * 0.22 : (t / 12 + k * 0.25) % 1;
-    const seg = Math.min(4, Math.floor(p * 5));
+    const p = reduit ? 0.15 + k * 0.22 : (((t / 12 + k * 0.25) % 1) + 1) % 1;
+    const seg = Math.max(0, Math.min(4, Math.floor(p * 5)));
     const f = p * 5 - seg;
     const [ax, ay] = centre(seg, EP + 0.05);
     const [bx, by] = centre(seg + 1, EP + 0.05);

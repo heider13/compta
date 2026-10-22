@@ -11,6 +11,7 @@ import {
 import type { Module } from '@/lib/landing/metiers';
 import { Logo, LogoMark } from '@/components/brand/Logo';
 import { Container } from '../ui';
+import { TitreEcrit } from '../TitreEcrit';
 import { MAQUETTES, MaquetteFormalites, type Variante } from './Maquettes';
 import { cn } from '@/lib/utils';
 
@@ -39,9 +40,7 @@ export function Modules({ titre, modules, v }: { titre: [string, string]; module
   return (
     <section className="bg-[#fcfbff] py-20 sm:py-24">
       <Container>
-        <h2 className="max-w-3xl font-[Sora] !text-[clamp(1.9rem,3.8vw,3rem)] !font-bold !leading-[1.08] !tracking-[-0.03em] !text-[var(--violet-900)]">
-          {titre[0]} {titre[1]}.
-        </h2>
+        <TitreEcrit debut={titre[0]} fin={`${titre[1]}.`} className="max-w-3xl font-[Sora] !text-[clamp(1.9rem,3.8vw,3rem)] !font-bold !leading-[1.08] !tracking-[-0.03em] !text-[var(--violet-900)]" />
         <p className="!mt-4 max-w-xl text-[15px] !leading-relaxed !text-[var(--ink-600)]">
           Chaque étape prend une part du travail : l’agent prépare, vous relisez et vous validez. Besoin d’une seule étape ? La rédaction des documents ou l’annonce légale se commandent aussi seules, comprises dans l’abonnement.
         </p>

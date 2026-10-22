@@ -8,6 +8,7 @@
 import { Container } from '../ui';
 import { useDefilement } from '../useDefilement';
 import { ILLUS } from './Illus';
+import { TitreEcrit } from '../TitreEcrit';
 
 const CARTES = [
   { key: 'creation', titre: 'Création de société', texte: 'SASU, SAS, SARL, EURL, SCI, micro-entreprise : statuts rédigés, dossier prêt à déposer.' },
@@ -48,9 +49,7 @@ export function FeatureRail({
         html[data-landing='dark'] .rail-epure [class*='border-[var(--violet-900)]'] { border-color: rgba(255,255,255,0.08) !important; }
       `}</style>
       <Container className="relative">
-        <h2 className="max-w-3xl font-[Sora] !text-[clamp(1.75rem,3.4vw,2.6rem)] !font-bold !leading-[1.1] !tracking-[-0.03em] !text-[var(--violet-900)]">
-          {titre[0]} {titre[1]}
-        </h2>
+        <TitreEcrit debut={titre[0]} fin={titre[1]} className="max-w-3xl font-[Sora] !text-[clamp(1.75rem,3.4vw,2.6rem)] !font-bold !leading-[1.1] !tracking-[-0.03em] !text-[var(--violet-900)]" />
         <p className="!mt-4 max-w-md text-[15px] !leading-relaxed !text-[var(--ink-600)]">
           {sousTitre}
         </p>
