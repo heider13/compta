@@ -8,7 +8,7 @@ import { useState } from 'react';
 import { ArrowRight, Check } from 'lucide-react';
 import { Container } from '../ui';
 import { cn } from '@/lib/utils';
-import { Degrade, Halos, teinte } from './Couleurs';
+import { Degrade, Halos } from './Couleurs';
 
 const PUBLICS = [
   {
@@ -47,6 +47,14 @@ const PUBLICS = [
     points: ['Fiche RNE et documents déposés de chaque filiale', 'Changements en série sur plusieurs entités', 'Historique et pièces de chaque formalité', 'Aucun dépôt sans validation de la direction'],
     carte: { titre: 'Entités du groupe', lignes: ['Filiale A — changement de président', 'Filiale B — transfert de siège', 'Filiale C — bénéficiaires effectifs à jour'] },
   },
+];
+
+// Halos des cartes (mêmes teintes que la rangée « Toutes vos formalités »)
+const HALOS = [
+  ['rgba(117,81,232,0.38)', 'rgba(234,66,253,0.22)'],
+  ['rgba(255,136,123,0.38)', 'rgba(255,190,140,0.30)'],
+  ['rgba(234,66,253,0.30)', 'rgba(117,81,232,0.26)'],
+  ['rgba(255,190,140,0.40)', 'rgba(255,136,123,0.24)'],
 ];
 
 export function AudienceTabs() {
@@ -100,22 +108,33 @@ export function AudienceTabs() {
             </a>
           </div>
 
-          <div className="relative rounded-3xl p-6 sm:p-8" style={{ background: `linear-gradient(135deg, ${teinte(actif).fond}, ${teinte(actif + 1).fond})` }}>
-            <div className="rounded-2xl border border-[var(--violet-900)]/80 bg-white p-5 shadow-[4px_4px_0_rgba(8,3,49,0.85)]">
-              <p className="font-mono text-[11px] font-semibold uppercase tracking-wider text-[var(--violet-600)]">{p.carte.titre}</p>
-              <ul className="mt-4 space-y-2.5">
-                {p.carte.lignes.map((l, i) => (
-                  <li key={l} className="flex items-center gap-3 rounded-xl border border-[var(--ink-150)] px-3 py-2.5 text-sm text-[var(--violet-900)]">
-                    <span className={cn('size-2 shrink-0 rounded-full', ['bg-[var(--violet-500)]', 'bg-[var(--accent)]', 'bg-[#ffbe8c]'][i % 3])} />
-                    {l}
-                  </li>
-                ))}
-              </ul>
-              <p className="mt-4 text-xs text-[var(--ink-500)]">Exemple d’écran — vos dossiers réels apparaissent ici.</p>
+          {/* Même sobriété que les cartes « Toutes vos formalités » : halo flou, fenêtre douce, titre et texte dessous */}
+          <div className="overflow-hidden rounded-[18px] border border-[var(--ink-150)] bg-white shadow-[0_1px_3px_rgba(8,3,49,0.04)]">
+            <div className="relative px-6 py-10 sm:px-12 sm:py-12">
+              <div
+                aria-hidden="true"
+                className="pointer-events-none absolute inset-0 blur-2xl transition-[background] duration-700"
+                style={{ background: `radial-gradient(ellipse 60% 55% at 18% 45%, ${HALOS[actif % HALOS.length][0]}, transparent 70%), radial-gradient(ellipse 55% 50% at 88% 20%, ${HALOS[actif % HALOS.length][1]}, transparent 70%)` }}
+              />
+              <div key={actif} className="relative overflow-hidden rounded-[14px] bg-white shadow-[0_10px_28px_rgba(54,31,171,0.10),0_1px_2px_rgba(8,3,49,0.06)] ring-1 ring-[#080331]/[0.06] animate-[heroSceneIn_.45s_ease-out]">
+                <div className="flex items-center gap-1.5 border-b border-[#080331]/[0.06] px-4 py-2.5">
+                  {[0, 1, 2].map((d) => <span key={d} className="size-2 rounded-full bg-[#080331]/12" />)}
+                  <span className="ml-2 font-mono text-[10.5px] font-semibold uppercase tracking-wider text-[var(--ink-500)]">{p.carte.titre}</span>
+                </div>
+                <ul className="space-y-1.5 p-4">
+                  {p.carte.lignes.map((l, i) => (
+                    <li key={l} className="flex items-center gap-3 rounded-lg bg-[#080331]/[0.03] px-3 py-2.5 text-[14px] text-[var(--violet-900)]">
+                      <span className={cn('size-2 shrink-0 rounded-full', ['bg-[var(--violet-500)]', 'bg-[var(--accent)]', 'bg-[#ffbe8c]'][i % 3])} />
+                      {l}
+                    </li>
+                  ))}
+                </ul>
+              </div>
             </div>
-            <span className="absolute -right-3 -top-3 rounded-full border border-[var(--violet-900)]/80 bg-[var(--accent)] px-3 py-1 text-xs font-semibold !text-white shadow-[2px_2px_0_rgba(8,3,49,0.85)]">
-              {p.onglet}
-            </span>
+            <div className="px-6 pb-5 pt-1">
+              <h3 className="font-[Sora] !text-[15px] !font-semibold !text-[var(--violet-900)]">{p.onglet}</h3>
+              <p className="!mt-1.5 text-[13.5px] !leading-relaxed !text-[var(--ink-500)]">Exemple d’écran — vos dossiers réels apparaissent ici.</p>
+            </div>
           </div>
         </div>
       </Container>
