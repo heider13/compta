@@ -6,8 +6,9 @@
 // puis l'assistant réalise la formalité étape par étape.
 
 import { useState } from 'react';
-import { ArrowUp, Sparkles } from 'lucide-react';
+import { Sparkles } from 'lucide-react';
 import { FaisceauLignes } from './FaisceauLignes';
+import { BoiteChat } from './BoiteChat';
 import { ModaleCompte } from '@/components/espace/ModaleCompte';
 import { createClient } from '@/lib/supabase/client';
 
@@ -39,27 +40,21 @@ export function HeroEntrepreneur({
           <p className="!mx-auto !mt-4 max-w-xl text-base !leading-relaxed !text-[var(--ink-600)]">{sousTitre}</p>
         </div>
 
-        <div className="mt-8 rounded-3xl border border-[var(--ink-150)] bg-white/95 p-3 shadow-[0_30px_80px_rgba(20,13,46,0.12)] backdrop-blur sm:p-4">
-          <form onSubmit={(e) => { e.preventDefault(); void demarrer(saisie); }} className="relative">
-            <textarea
-              value={saisie}
-              onChange={(e) => setSaisie(e.target.value)}
-              onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); void demarrer(saisie); } }}
-              rows={3}
-              maxLength={500}
-              placeholder="Décrivez votre projet : « Je veux créer ma micro-entreprise de graphisme », « transférer le siège de mon EURL »…"
-              className="w-full resize-none rounded-2xl border-0 bg-transparent px-3 py-2 pr-14 text-[15px] text-[#241143] outline-none placeholder:text-[#9a93b3]"
-            />
-            <button type="submit" disabled={!saisie.trim()} aria-label="Commencer" className="absolute bottom-2 right-2 grid size-10 place-items-center rounded-xl bg-gradient-to-r from-[#361fab] to-[#7551e8] text-white transition-opacity disabled:opacity-40">
-              <ArrowUp className="size-5" />
-            </button>
-            <div className="border-t px-3 pt-3">
-              <button type="button" onClick={() => void demarrer('')} className="text-sm font-medium text-[#7551e8] hover:underline">
-                Ou laissez-vous guider pas à pas →
-              </button>
-            </div>
-          </form>
-        </div>
+        <BoiteChat
+          className="mt-9"
+          value={saisie}
+          onChange={setSaisie}
+          onSubmit={() => void demarrer(saisie)}
+          maxLength={500}
+          mode="Assistant création"
+          placeholder="Décrivez votre projet : « Je veux créer ma micro-entreprise de graphisme »…"
+          ariaLabel="Décrivez votre projet"
+        />
+        <p className="!mt-4 text-center">
+          <button type="button" onClick={() => void demarrer('')} className="text-sm font-medium text-[#7551e8] hover:underline">
+            Ou laissez-vous guider pas à pas →
+          </button>
+        </p>
 
         <div className="mt-4 flex flex-wrap justify-center gap-2">
           {exemples.map((x) => (

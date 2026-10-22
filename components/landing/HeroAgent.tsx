@@ -8,11 +8,12 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
-  ArrowUp, Check, FileText, Landmark, Megaphone, MessageSquare, Pause, Play, Plus,
+  Check, FileText, Landmark, Megaphone, MessageSquare, Pause, Play,
   RotateCcw, ScanLine, PenLine,
 } from 'lucide-react';
 import { Arrow } from '@/components/icons';
 import { FaisceauLignes } from './FaisceauLignes';
+import { BoiteChat } from './BoiteChat';
 import { cn } from '@/lib/utils';
 
 const SERIF = { fontFamily: "'Instrument Serif', 'Fraunces', Georgia, serif" };
@@ -281,55 +282,18 @@ export function HeroAgent({
         </p>
 
         {/* Zone de saisie */}
-        <form
-          className="relative z-10 mx-auto mt-10 max-w-3xl rounded-2xl border border-[var(--ink-150)] bg-white text-left shadow-[0_18px_50px_rgba(43,23,105,0.10)] transition-shadow focus-within:border-[var(--violet-300)] focus-within:shadow-[0_22px_60px_rgba(54,31,171,0.18)]"
-          onSubmit={(e) => {
-            e.preventDefault();
-            lancer(value);
-          }}
-        >
-          <label className="flex items-start gap-2 px-5 pt-5">
-            <span className="mt-[3px] text-[10px] text-[var(--violet-600)]" aria-hidden="true">▶</span>
-            <textarea
-              value={value}
-              onChange={(e) => setValue(e.target.value)}
-              onFocus={() => setFocused(true)}
-              onBlur={() => setFocused(false)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' && !e.shiftKey) {
-                  e.preventDefault();
-                  lancer(value);
-                }
-              }}
-              rows={3}
-              placeholder={focused ? 'Décrivez votre formalité…' : placeholder}
-              aria-label="Décrivez votre formalité"
-              className="w-full resize-none bg-transparent text-[15px] leading-relaxed text-[var(--violet-900)] outline-none placeholder:text-[var(--ink-400)]"
-            />
-          </label>
-          <div className="flex items-center justify-between gap-3 px-4 pb-4 pt-1">
-            <span
-              className="group relative grid size-9 place-items-center rounded-md text-[var(--ink-500)] transition-colors hover:bg-[var(--ink-50)]"
-              title="Pièces d’identité, PV d’AG, statuts, annonces…"
-            >
-              <Plus className="size-5" />
-            </span>
-            <div className="flex items-center gap-3">
-              <span className="hidden font-mono text-[11px] uppercase tracking-[0.18em] text-[var(--ink-500)] sm:inline">
-                Agent formalités
-              </span>
-              <button
-                type="submit"
-                className="grid size-9 place-items-center rounded-full bg-[var(--accent)] text-white shadow-[0_8px_20px_rgba(255,136,123,0.45)] transition-transform hover:-translate-y-0.5"
-                aria-label="Lancer la démonstration"
-              >
-                <ArrowUp className="size-4 !text-white" strokeWidth={2.25} />
-              </button>
-            </div>
-          </div>
-        </form>
+        <BoiteChat
+          className="z-10 mx-auto mt-10 max-w-3xl"
+          value={value}
+          onChange={setValue}
+          onSubmit={() => lancer(value)}
+          onFocus={() => setFocused(true)}
+          onBlur={() => setFocused(false)}
+          placeholder={focused ? 'Décrivez votre formalité…' : placeholder}
+          ariaLabel="Décrivez votre formalité"
+        />
 
-        <div className="mx-auto mt-4 flex max-w-3xl flex-wrap justify-center gap-2">
+        <div className="mx-auto mt-6 flex max-w-3xl flex-wrap justify-center gap-2">
           {chips.map(([label, texte]) => (
             <button
               key={label}
