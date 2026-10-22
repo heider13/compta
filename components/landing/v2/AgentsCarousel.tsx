@@ -138,7 +138,8 @@ export function AgentsCarousel() {
               {/* Bande de couleur floue et courbe (esprit Lovable), une par agent */}
               <div aria-hidden="true" className="agent-bande pointer-events-none absolute" style={{ ...BANDES[i % BANDES.length], animationDelay: `${-i * 3}s` }} />
               <h3 className="relative font-[Sora] !text-[19px] !font-semibold !leading-snug !text-white">{a.titre}</h3>
-              <p className="relative mt-auto text-[14px] font-semibold !leading-snug !text-white [text-shadow:0_1px_14px_rgba(8,3,49,0.5)]">{a.texte}</p>
+              <div className="flex-1" />
+              <p className="relative text-[14px] font-semibold !leading-snug !text-white [text-shadow:0_1px_14px_rgba(8,3,49,0.5)]">{a.texte}</p>
               <a
                 href="/auth/signup"
                 className="relative mt-4 inline-flex w-fit items-center gap-1.5 rounded-lg bg-[#080331] px-4 py-2.5 text-[13.5px] font-semibold !text-white no-underline ring-1 ring-white/10 transition-colors hover:bg-[#140b4a]"
