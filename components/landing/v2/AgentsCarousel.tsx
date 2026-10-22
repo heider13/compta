@@ -122,7 +122,7 @@ export function AgentsCarousel() {
           {AGENTS.map((a, i) => (
             <article
               key={a.key}
-              className={`relative flex h-[440px] w-[248px] shrink-0 snap-start flex-col overflow-hidden rounded-[22px] bg-[#0a0524] p-5 theme-fixe shadow-[0_24px_50px_rgba(8,3,49,0.22)] ring-1 ring-white/[0.08] transition-opacity duration-500 sm:w-[264px] ${i === index ? 'opacity-100' : 'opacity-75'}`}
+              className={`relative flex h-[440px] w-[248px] shrink-0 snap-start flex-col overflow-hidden rounded-[22px] bg-[#0a0524] p-5 theme-fixe shadow-[0_24px_50px_rgba(8,3,49,0.22)] ring-1 ring-white/[0.08] sm:w-[264px]`}
             >
               {/* Bande de couleur floue et courbe (esprit Lovable), une par agent */}
               <div aria-hidden="true" className="agent-bande pointer-events-none absolute" style={{ ...BANDES[i % BANDES.length], animationDelay: `${-i * 3}s` }} />
