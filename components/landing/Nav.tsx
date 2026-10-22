@@ -82,7 +82,7 @@ export function Nav({ surface = 'dark', announcement }: { surface?: 'dark' | 'li
       )}
       <Container
         className={cn(
-          'flex items-center justify-between gap-4 transition-all duration-300',
+          'relative flex items-center justify-between gap-4 transition-all duration-300',
           scrolled
             ? 'h-[64px] max-w-6xl rounded-full border border-[var(--ink-100)] bg-white/95 !px-4 shadow-[0_12px_40px_rgba(43,23,105,0.14)] backdrop-blur-md sm:!px-6'
             : 'h-[72px]',
@@ -110,28 +110,6 @@ export function Nav({ surface = 'dark', announcement }: { surface?: 'dark' | 'li
               Modules
               <ChevronDown className={cn('size-3.5 transition-transform', open === 'modules' && 'rotate-180')} />
             </button>
-            {open === 'modules' && (
-              <div className="absolute left-1/2 top-full z-50 mt-3 w-[min(92vw,660px)] -translate-x-1/2 rounded-2xl border border-[var(--ink-150)] bg-white p-4 shadow-[0_24px_60px_rgba(35,20,80,0.18)]">
-                <div className="grid gap-1 sm:grid-cols-2">
-                  {MODULE_LIST.map((m) => (
-                    <Link
-                      key={m.key}
-                      href={m.href}
-                      className="flex gap-3 rounded-xl p-3 no-underline transition-colors hover:bg-[var(--ink-50)]"
-                      onClick={() => setOpen(null)}
-                    >
-                      <span className="grid size-9 shrink-0 place-items-center rounded-lg bg-[var(--accent-soft)] text-[var(--accent-ink)]">
-                        <m.icon className="size-[18px]" />
-                      </span>
-                      <span>
-                        <span className="block text-sm font-semibold text-[var(--violet-900)]">{m.title}</span>
-                        <span className="mt-0.5 block text-xs leading-snug text-[var(--ink-500)]">{m.desc}</span>
-                      </span>
-                    </Link>
-                  ))}
-                </div>
-              </div>
-            )}
           </div>
 
           {/* Solutions (par métier) */}
@@ -145,34 +123,14 @@ export function Nav({ surface = 'dark', announcement }: { surface?: 'dark' | 'li
               Solutions
               <ChevronDown className={cn('size-3.5 transition-transform', open === 'solutions' && 'rotate-180')} />
             </button>
-            {open === 'solutions' && (
-              <div className="absolute left-1/2 top-full z-50 mt-3 w-[min(92vw,400px)] -translate-x-1/2 rounded-2xl border border-[var(--ink-150)] bg-white p-3 shadow-[0_24px_60px_rgba(35,20,80,0.18)]">
-                <div className="grid gap-1">
-                  {PERSONA_LIST.map((p) => (
-                    <Link
-                      key={p.slug}
-                      href={`/${p.slug}`}
-                      className="flex items-start gap-3 rounded-xl p-3 no-underline transition-colors hover:bg-[var(--ink-50)]"
-                      onClick={() => setOpen(null)}
-                    >
-                      <span className="grid size-11 shrink-0 place-items-center rounded-xl border border-[var(--violet-100)] bg-white shadow-[0_4px_12px_rgba(54,31,171,0.08)]">
-                        <PixelMetier metier={p.slug} className="size-8" />
-                      </span>
-                      <span className="min-w-0">
-                        <span className="block text-sm font-semibold text-[var(--violet-900)]">{p.nom}</span>
-                        <span className="mt-0.5 block text-xs leading-snug text-[var(--ink-500)]">{p.selectorPitch}</span>
-                      </span>
-                    </Link>
-                  ))}
-                </div>
-              </div>
-            )}
           </div>
 
           <a href="/#agents" className={triggerCls} onMouseEnter={() => setOpen(null)}>
             Agents IA
           </a>
         </div>
+
+        {open && <MegaMenu menu={open} fermer={() => setOpen(null)} />}
 
         <div className="flex items-center gap-2.5">
           <ThemeToggle
@@ -203,5 +161,74 @@ export function Nav({ surface = 'dark', announcement }: { surface?: 'dark' | 'li
         </div>
       </Container>
     </nav>
+  );
+}
+
+// ── Méga-menu (esprit Lovable) : grand panneau clair, titres et descriptions sans
+// icônes en colonnes, et une colonne teintée à droite pour les cas d'usage.
+type Lien = { href: string; titre: string; desc: string; pixel?: string };
+
+const CIRCUIT = ['agent-formalites', 'redaction-documents', 'annonces-legales', 'signature-electronique', 'suivi-paiements', 'regularisations'];
+
+function liensModules(cles: string[]): Lien[] {
+  return cles.flatMap((k) => {
+    const m = MODULE_LIST.find((x) => x.key === k);
+    return m ? [{ href: m.href, titre: m.title, desc: m.desc }] : [];
+  });
+}
+
+const MENUS: Record<Exclude<MenuKey, null>, { gauche: string; liens: Lien[]; droite: string; cas: Lien[] }> = {
+  modules: {
+    gauche: 'Le circuit de la formalité',
+    liens: liensModules(CIRCUIT),
+    droite: 'Aussi dans Legaly',
+    cas: liensModules(MODULE_LIST.map((m) => m.key).filter((k) => !CIRCUIT.includes(k))),
+  },
+  solutions: {
+    gauche: 'À qui s’adresse Legaly ?',
+    liens: PERSONA_LIST.map((p) => ({ href: `/${p.slug}`, titre: p.nom, desc: p.selectorPitch, pixel: p.slug })),
+    droite: 'Cas d’usage',
+    cas: [
+      { href: '/independants-tpe', titre: 'Créer une société', desc: 'Statuts, annonce et dossier préparés pour vous.' },
+      { href: '/modules/formalites-en-lot', titre: 'Formalités en lot', desc: 'Tout un portefeuille en une seule demande.' },
+      { href: '/modules/comptes-annuels', titre: 'Dépôt des comptes annuels', desc: 'Approbation, affectation et dépôt au greffe.' },
+      { href: '/modules/annonces-legales', titre: 'Annonce légale seule', desc: 'Rédigée par l’IA, même à partir de vos statuts.' },
+    ],
+  },
+};
+
+function LienMenu({ l, fermer }: { l: Lien; fermer: () => void }) {
+  return (
+    <Link href={l.href} onClick={fermer} className="group block rounded-xl px-3 py-2.5 no-underline transition-colors hover:bg-[#080331]/[0.04]">
+      <span className="flex items-center gap-2 text-[16px] font-medium leading-snug text-[var(--violet-900)]">
+        {l.pixel && <PixelMetier metier={l.pixel} className="size-5" />}
+        {l.titre}
+      </span>
+      <span className="mt-0.5 block text-[13px] leading-snug text-[var(--ink-500)]">{l.desc}</span>
+    </Link>
+  );
+}
+
+function MegaMenu({ menu, fermer }: { menu: Exclude<MenuKey, null>; fermer: () => void }) {
+  const d = MENUS[menu];
+  return (
+    // Le pt-2 (et non un mt) garde la souris « dans » la nav entre la barre et le panneau
+    <div className="absolute left-1/2 top-full z-50 hidden w-[min(94vw,960px)] -translate-x-1/2 pt-2 md:block">
+      <div className="grid overflow-hidden rounded-[22px] border border-[#080331]/[0.08] bg-[#fcfbff] shadow-[0_24px_60px_rgba(35,20,80,0.16)] animate-[menu-entree_.18s_ease-out] lg:grid-cols-[1.75fr_1fr]">
+        <div className="p-7">
+          <p className="px-3 text-[13px] text-[var(--ink-500)]">{d.gauche}</p>
+          <div className="mt-3 grid gap-x-6 gap-y-1 sm:grid-cols-2">
+            {d.liens.map((l) => <LienMenu key={l.href + l.titre} l={l} fermer={fermer} />)}
+          </div>
+        </div>
+        <div className="bg-[var(--violet-50)] p-7">
+          <p className="px-3 text-[13px] text-[var(--ink-500)]">{d.droite}</p>
+          <div className="mt-3 grid gap-y-1">
+            {d.cas.map((l) => <LienMenu key={l.href + l.titre} l={l} fermer={fermer} />)}
+          </div>
+        </div>
+      </div>
+      <style>{`@keyframes menu-entree { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }`}</style>
+    </div>
   );
 }
