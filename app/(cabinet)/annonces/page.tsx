@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { ArrowRight, Megaphone } from 'lucide-react';
+import { ArrowRight, FileUp, Megaphone } from 'lucide-react';
 import { createClient } from '@/lib/supabase/server';
 import { formatDate } from '@/lib/utils/format';
 import { Badge } from '@/components/ui/badge';
@@ -22,6 +22,7 @@ const STATUTS: Record<string, { label: string; className: string }> = {
 };
 
 const DEMANDE = encodeURIComponent('Rédige uniquement l’annonce légale pour une société cliente, sans formalité au Guichet unique.');
+const DEPUIS_DOCUMENT = encodeURIComponent('Rédige uniquement l’annonce légale à partir du document que je joins (statuts ou PV d’assemblée générale), sans formalité au Guichet unique.');
 
 export default async function AnnoncesPage() {
   const supabase = await createClient();
@@ -44,13 +45,20 @@ export default async function AnnoncesPage() {
       <PageHeader
         eyebrow="Intelligence"
         title="Annonces légales"
-        description="Les annonces rédigées par l’agent pour vos dossiers, mentions obligatoires contrôlées. Une annonce peut aussi être demandée seule, sans formalité."
+        description="Les annonces rédigées par l’IA pour vos dossiers, mentions obligatoires contrôlées. Rédigez-en une seule, sans formalité, ou à partir d’un document : statuts, PV d’AG."
         actions={
-          <Button asChild>
-            <Link href={`/dashboard?demande=${DEMANDE}`}>
-              Rédiger une annonce <ArrowRight className="size-4" />
-            </Link>
-          </Button>
+          <>
+            <Button asChild variant="outline">
+              <Link href={`/dashboard?demande=${DEPUIS_DOCUMENT}`}>
+                <FileUp className="size-4" /> À partir d’un document
+              </Link>
+            </Button>
+            <Button asChild>
+              <Link href={`/dashboard?demande=${DEMANDE}`}>
+                Rédiger une annonce <ArrowRight className="size-4" />
+              </Link>
+            </Button>
+          </>
         }
       />
 
@@ -58,7 +66,7 @@ export default async function AnnoncesPage() {
         <EmptyState
           icon={Megaphone}
           title="Aucune annonce légale pour le moment"
-          description="Demandez une annonce à l’agent : constitution, modification, transfert de siège, dissolution… Elle apparaîtra ici."
+          description="Demandez une annonce à l’agent (constitution, modification, transfert de siège, dissolution…), ou joignez des statuts ou un PV d’AG : l’IA la rédige à partir du document. Elle apparaîtra ici."
           action={
             <Button asChild>
               <Link href={`/dashboard?demande=${DEMANDE}`}>Rédiger une annonce</Link>

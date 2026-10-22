@@ -74,18 +74,18 @@ export const MODULE_LIST: LandingModule[] = [
   m('annonces-legales', {
     icon: Megaphone,
     title: 'Annonces légales',
-    desc: 'L’annonce rédigée à partir de la fiche RNE, chaque mention obligatoire du Code de commerce contrôlée.',
+    desc: 'L’annonce rédigée par l’IA à partir de la fiche RNE ou d’un document (statuts, PV d’AG), chaque mention obligatoire contrôlée.',
     page: {
       accroche: ['L’annonce légale rédigée,', 'chaque mention contrôlée.'],
-      intro: 'Constitution, modification, transfert de siège, dissolution, clôture de liquidation : l’annonce est rédigée à partir du registre et chaque mention obligatoire est vérifiée. Avec la formalité, ou seule.',
+      intro: 'Constitution, modification, transfert de siège, dissolution, clôture de liquidation : joignez les statuts ou le PV d’assemblée générale, l’IA en extrait les décisions et rédige l’annonce, complétée par le registre. Chaque mention obligatoire est vérifiée. Avec la formalité, ou seule.',
       maquette: 'annonces',
       etapes: [
-        { titre: 'La société', texte: 'Identité lue au RNE : dénomination, forme, capital, siège, SIREN.' },
+        { titre: 'Le document', texte: 'Statuts ou PV d’AG joints : l’IA en extrait l’opération, la date et les décisions.' },
         { titre: 'La rédaction', texte: 'L’avis adapté à l’opération et au département de parution.' },
         { titre: 'Le contrôle', texte: 'Chaque mention obligatoire vérifiée, ce qui manque est signalé.' },
         { titre: 'La parution', texte: 'Vous la commandez auprès d’un journal habilité ; l’attestation rejoint le dossier.' },
       ],
-      inclus: ['Avis de constitution, de modification, de transfert de siège', 'Avis de dissolution et de clôture de liquidation', 'Mentions du Code de commerce contrôlées une à une', 'Greffe compétent retrouvé à partir du siège', 'Texte en .docx, prêt à transmettre au journal'],
+      inclus: ['Rédaction par l’IA à partir d’un document : statuts, PV d’AG, décisions', 'Identité de la société complétée par le RNE', 'Avis de constitution, de modification, de transfert de siège', 'Avis de dissolution et de clôture de liquidation', 'Mentions du Code de commerce contrôlées une à une', 'Greffe compétent retrouvé à partir du siège', 'Texte en .docx, prêt à transmettre au journal'],
       seul: true,
     },
   }),
