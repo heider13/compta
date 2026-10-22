@@ -20,6 +20,7 @@ import json
 import os
 import re
 import sys
+import urllib.parse
 import urllib.request
 
 EMBED_URL = os.environ.get("EMBED_SERVICE_URL", "http://127.0.0.1:8100")
@@ -375,6 +376,57 @@ def ingest_bofip_stock(prefix_filter=None, max_docs=None):
 
 
 # ─── PDF (PCG, bulletins CNCC — upload manuel ou URL) ─────────────
+# BOFiP en vigueur (jeu « bofip-vigueur » de data.economie.gouv.fr) : vrais
+# identifiants BOI, titres et texte, sans passer par bofip.impots.gouv.fr
+# (injoignable depuis le serveur). Une série à la fois, reprise possible :
+# un document déjà indexé est sauté.
+BOFIP_API = "https://data.economie.gouv.fr/api/explore/v2.1/catalog/datasets/bofip-vigueur"
+
+
+def ingest_bofip_vigueur(series, max_docs=None, nettoyer=True):
+    if nettoyer:
+        # Anciens documents mal identifiés (« BOI-XXX-1234-PGP ») : chunks puis documents
+        anciens = supa("legal_documents?source=eq.bofip&source_id=like.*-PGP&select=id")
+        for d in anciens:
+            supa(f"legal_chunks?document_id=eq.{d['id']}", method="DELETE")
+            supa(f"legal_documents?id=eq.{d['id']}", method="DELETE")
+        if anciens:
+            print(f"{len(anciens)} anciens documents BOFiP mal identifiés supprimés")
+    deja = {d["source_id"] for d in supa("legal_documents?source=eq.bofip&select=source_id&limit=100000")}
+    total = count = 0
+    for serie in series:
+        q = urllib.parse.urlencode({
+            "select": "identifiant_juridique,titre,contenu,permalien,debut_de_validite,type",
+            "where": f'serie="{serie}"',
+        })
+        url = f"{BOFIP_API}/exports/jsonl?{q}"
+        req = urllib.request.Request(url, headers={"User-Agent": "LegalyBot/1.0"})
+        n_serie = 0
+        with urllib.request.urlopen(req, timeout=900) as r:
+            for ligne in r:
+                if max_docs and count >= max_docs:
+                    break
+                try:
+                    rec = json.loads(ligne)
+                except Exception:  # noqa: BLE001
+                    continue
+                boi = (rec.get("identifiant_juridique") or "").strip()
+                texte = rec.get("contenu") or ""
+                if not boi or boi in deja or len(texte) < 200 or (rec.get("type") or "Contenu") != "Contenu":
+                    continue
+                deja.add(boi)
+                try:
+                    total += store("bofip", boi, f"{rec.get('titre') or boi} ({boi})",
+                                   rec.get("permalien") or f"https://bofip.impots.gouv.fr/bofip/ext/{boi}",
+                                   "doctrine_fiscale", rec.get("debut_de_validite"), texte)
+                    count += 1
+                    n_serie += 1
+                except Exception as e:  # noqa: BLE001
+                    print(f"    [err] {boi}: {e}")
+        print(f"== Série {serie} : {n_serie} documents")
+    print(f"Terminé : {count} documents, {total} chunks")
+
+
 def ingest_pdf(source, source_id, title, path_or_url, doc_type="reglement", url=None):
     """Extrait le texte d'un PDF (fichier local ou URL) et l'indexe.
     Nécessite pypdf dans le venv."""
@@ -396,7 +448,7 @@ if __name__ == "__main__":
     p = argparse.ArgumentParser()
     p.add_argument("mode", choices=[
         "eurlex", "legifrance", "legifrance-article",
-        "jurisprudence-ce", "bofip", "pdf",
+        "jurisprudence-ce", "bofip", "bofip-vigueur", "pdf",
     ])
     p.add_argument("identifier", nargs="?")
     p.add_argument("--max-articles", type=int, default=300)
@@ -420,5 +472,8 @@ if __name__ == "__main__":
     elif args.mode == "bofip":
         prefixes = args.prefix.split(",") if args.prefix else None
         ingest_bofip_stock(prefix_filter=prefixes, max_docs=args.max_docs)
+    elif args.mode == "bofip-vigueur":
+        # identifiant = séries séparées par des virgules (ex ENR,IS,TVA)
+        ingest_bofip_vigueur((args.identifier or "ENR,IS").split(","), max_docs=args.max_docs)
     elif args.mode == "pdf":
         ingest_pdf(args.source, args.source_id, args.title, args.path, url=args.url)
