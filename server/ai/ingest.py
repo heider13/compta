@@ -20,6 +20,7 @@ import json
 import os
 import re
 import sys
+import time
 import urllib.parse
 import urllib.request
 
@@ -402,27 +403,40 @@ def ingest_bofip_vigueur(series, max_docs=None, nettoyer=True):
         url = f"{BOFIP_API}/exports/jsonl?{q}"
         req = urllib.request.Request(url, headers={"User-Agent": "LegalyBot/1.0"})
         n_serie = 0
-        with urllib.request.urlopen(req, timeout=900) as r:
-            for ligne in r:
-                if max_docs and count >= max_docs:
-                    break
-                try:
-                    rec = json.loads(ligne)
-                except Exception:  # noqa: BLE001
-                    continue
-                boi = (rec.get("identifiant_juridique") or "").strip()
-                texte = rec.get("contenu") or ""
-                if not boi or boi in deja or len(texte) < 200 or (rec.get("type") or "Contenu") != "Contenu":
-                    continue
-                deja.add(boi)
-                try:
-                    total += store("bofip", boi, f"{rec.get('titre') or boi} ({boi})",
-                                   rec.get("permalien") or f"https://bofip.impots.gouv.fr/bofip/ext/{boi}",
-                                   "doctrine_fiscale", rec.get("debut_de_validite"), texte)
-                    count += 1
-                    n_serie += 1
-                except Exception as e:  # noqa: BLE001
-                    print(f"    [err] {boi}: {e}")
+        # Série téléchargée en entier avant le calcul des embeddings : le serveur coupe
+        # un export resté ouvert trop longtemps (IncompleteRead)
+        lignes = None
+        for essai in range(3):
+            try:
+                with urllib.request.urlopen(req, timeout=900) as r:
+                    lignes = r.read().splitlines()
+                break
+            except Exception as e:  # noqa: BLE001
+                print(f"    [réseau] série {serie}, essai {essai + 1} : {e}")
+                time.sleep(20)
+        if lignes is None:
+            print(f"== Série {serie} : téléchargement impossible")
+            continue
+        for ligne in lignes:
+            if max_docs and count >= max_docs:
+                break
+            try:
+                rec = json.loads(ligne)
+            except Exception:  # noqa: BLE001
+                continue
+            boi = (rec.get("identifiant_juridique") or "").strip()
+            texte = rec.get("contenu") or ""
+            if not boi or boi in deja or len(texte) < 200 or (rec.get("type") or "Contenu") != "Contenu":
+                continue
+            deja.add(boi)
+            try:
+                total += store("bofip", boi, f"{rec.get('titre') or boi} ({boi})",
+                               rec.get("permalien") or f"https://bofip.impots.gouv.fr/bofip/ext/{boi}",
+                               "doctrine_fiscale", rec.get("debut_de_validite"), texte)
+                count += 1
+                n_serie += 1
+            except Exception as e:  # noqa: BLE001
+                print(f"    [err] {boi}: {e}")
         print(f"== Série {serie} : {n_serie} documents")
     print(f"Terminé : {count} documents, {total} chunks")
 
