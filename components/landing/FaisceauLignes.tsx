@@ -7,13 +7,13 @@ const W = 1600;
 const H = 900;
 const OX = W / 2;
 const OY = H - 10; // point de départ, en bas au centre
-const N = 18;
+const N = 3;
 
 const COULEURS = ['#ff887b', '#ea42fd', '#361fab', '#ffbe8c', '#9d6cf2', '#ff5f9e'];
 
 // Courbe i : monte d'abord à la verticale puis s'ouvre vers son point d'arrivée
 const COURBES = Array.from({ length: N }, (_, i) => {
-  const a = Math.PI * (0.04 + (0.92 * i) / (N - 1)); // de droite (≈0) à gauche (≈π)
+  const a = Math.PI * (0.22 + (0.56 * i) / (N - 1)); // éventail : droite, centre, gauche
   const portee = 1180 + (i % 3) * 90;
   const ex = OX + Math.cos(a) * portee * 1.15;
   const ey = OY - Math.sin(a) * portee;
@@ -22,7 +22,7 @@ const COURBES = Array.from({ length: N }, (_, i) => {
 });
 
 // Traits colorés : quelques courbes, durées et départs décalés
-const TRAITS = [2, 4, 6, 9, 11, 13, 15].map((i, k) => ({
+const TRAITS = [0, 1, 2].map((i, k) => ({
   d: COURBES[i].d,
   couleur: COULEURS[k % COULEURS.length],
   duree: 5.5 + (k % 4) * 1.4,
