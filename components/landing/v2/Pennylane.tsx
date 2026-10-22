@@ -1,12 +1,12 @@
 'use client';
 
 // Sections des pages métier, sur la structure de Pennylane, aux couleurs Legaly :
-// modules en tuiles + écran du logiciel, engagements envers la profession, grille
+// modules en accordéon + écran du logiciel, engagements envers la profession, grille
 // de réassurance, bande des connexions officielles, fin de page avec appareils.
 
 import { useState } from 'react';
 import {
-  ArrowRight, Check, Lock, MessageSquare, ShieldCheck, Users,
+  ArrowRight, Check, ChevronDown, Lock, MessageSquare, Pause, Play, ShieldCheck, Users,
 } from 'lucide-react';
 import type { Module } from '@/lib/landing/metiers';
 import { Logo, LogoMark } from '@/components/brand/Logo';
@@ -14,89 +14,111 @@ import { Container } from '../ui';
 import { MAQUETTES, MaquetteFormalites, type Variante } from './Maquettes';
 import { cn } from '@/lib/utils';
 
-// ── 1. Modules (esprit light.inc/workforce) : écran du logiciel à gauche, liste
-// numérotée à droite qui avance seule (barre de progression sous le module actif) ;
-// le survol d'un module l'affiche tout de suite et suspend l'avancée.
-const DUREE_MODULE = 6; // secondes par module
+// ── 1. Modules (sobriété de Lovable, couleurs Legaly) : accordéon à gauche, le
+// module ouvert affiche son texte et un fin trait de progression ; à droite, un grand
+// panneau en dégradé vif (une teinte par module, en fondu) avec l'écran du logiciel.
+// Avance seule, se suspend au survol de la liste ou avec le bouton pause.
+const DUREE_MODULE = 7; // secondes par module
+
+const DEGRADES = [
+  'linear-gradient(140deg, #361fab 0%, #7551e8 55%, #ea42fd 100%)',
+  'linear-gradient(140deg, #ea42fd 0%, #ff5f9e 50%, #ff887b 100%)',
+  'linear-gradient(140deg, #ff887b 0%, #ff9f7a 50%, #ffbe8c 100%)',
+  'linear-gradient(140deg, #7551e8 0%, #c13ad6 55%, #ff887b 100%)',
+];
 
 export function Modules({ titre, modules, v }: { titre: [string, string]; modules: Module[]; v: Variante }) {
   const [actif, setActif] = useState(0);
   const [survol, setSurvol] = useState(false);
+  const [pause, setPause] = useState(false);
   const m = modules[actif];
   const Maquette = MAQUETTES[m.key];
   const suivant = () => setActif((i) => (i + 1) % modules.length);
+  const arret = survol || pause;
 
   return (
-    <section className="bg-[#fcfbff] px-3 py-16 sm:px-5 sm:py-20">
-      <div className="theme-fixe relative mx-auto max-w-[1240px] overflow-hidden rounded-[28px] bg-[#080331] px-5 py-12 text-white sm:px-10 sm:py-16">
-        <div
-          aria-hidden="true"
-          className="pointer-events-none absolute inset-0"
-          style={{ background: 'radial-gradient(ellipse 640px 420px at 100% 0%, rgba(255,136,123,0.14), transparent 62%), radial-gradient(ellipse 760px 520px at 0% 100%, rgba(54,31,171,0.45), transparent 65%)' }}
-        />
+    <section className="bg-[#fcfbff] py-20 sm:py-24">
+      <Container>
+        <h2 className="max-w-3xl font-[Sora] !text-[clamp(1.9rem,3.8vw,3rem)] !font-bold !leading-[1.08] !tracking-[-0.03em] !text-[var(--violet-900)]">
+          {titre[0]} {titre[1]}.
+        </h2>
+        <p className="!mt-4 max-w-xl text-[15px] !leading-relaxed !text-[var(--ink-600)]">
+          Chaque étape prend une part du travail : l’agent prépare, vous relisez et vous validez. Besoin d’une seule étape ? La rédaction des documents ou l’annonce légale se commandent aussi seules, comprises dans l’abonnement.
+        </p>
 
-        <div className="relative grid gap-6 lg:grid-cols-[1.2fr_0.8fr] lg:items-end">
-          <h2 className="font-[Sora] !text-[clamp(1.9rem,4.2vw,3.3rem)] !font-semibold !leading-[1.06] !tracking-[-0.03em] !text-white">
-            {titre[0]}{' '}
-            <span className="bg-gradient-to-r from-[#ffbe8c] via-[#ff887b] to-[#ea42fd] bg-clip-text text-transparent">{titre[1]}</span>
-          </h2>
-          <p className="max-w-md text-[15px] !leading-relaxed !text-white/65 lg:justify-self-end">
-            Chaque étape prend une part du travail : l’agent prépare, vous relisez et vous validez. Besoin d’une seule étape ? La rédaction des documents ou l’annonce légale se commandent aussi seules, comprises dans l’abonnement.
-          </p>
-        </div>
-
-        <div className="relative mt-12 grid gap-10 lg:grid-cols-[1.15fr_0.85fr] lg:items-start">
-          {/* Écran du module actif (reste visible pendant qu'on parcourt la liste) */}
-          <div className="lg:sticky lg:top-28">
-            <div key={m.key} className="animate-[heroSceneIn_.45s_ease-out]">
-              {Maquette ? <Maquette v={v} /> : null}
-            </div>
-            <div className="mt-5 flex items-center justify-between gap-4">
-              <a href="/auth/signup" className="inline-flex shrink-0 items-center gap-2 whitespace-nowrap rounded-full bg-[#ff887b] px-5 py-2.5 text-sm font-semibold !text-[#080331] no-underline shadow-[0_8px_20px_-8px_rgba(255,136,123,0.9)] transition-colors hover:bg-[#ffaca3]">
-                Essayer {m.nom} <ArrowRight className="size-4" />
-              </a>
-              <p className="text-right font-mono !text-[11px] !text-white/40">Exemple d’écran · vos dossiers réels apparaissent ici</p>
-            </div>
-          </div>
-
-          {/* Liste numérotée */}
-          <ol className="border-t border-white/12" onMouseEnter={() => setSurvol(true)} onMouseLeave={() => setSurvol(false)}>
+        <div className="mt-12 grid gap-10 lg:grid-cols-[0.72fr_1.28fr] lg:items-start">
+          {/* Accordéon */}
+          <ol onMouseEnter={() => setSurvol(true)} onMouseLeave={() => setSurvol(false)}>
             {modules.map((x, i) => {
               const on = i === actif;
               return (
-                <li key={x.key} className="relative border-b border-white/12">
+                <li key={x.key} className="relative border-b border-[var(--ink-150)]">
                   <button
                     type="button"
-                    onMouseEnter={() => setActif(i)}
-                    onFocus={() => setActif(i)}
                     onClick={() => setActif(i)}
-                    aria-current={on || undefined}
-                    className="flex w-full items-baseline gap-4 py-4 text-left"
+                    onFocus={() => setActif(i)}
+                    aria-expanded={on}
+                    className="flex w-full items-center justify-between gap-4 py-3.5 text-left"
                   >
-                    <span className={cn('w-5 shrink-0 font-mono text-[13px] transition-colors duration-300', on ? 'text-[#ff887b]' : 'text-white/35')}>{i + 1}</span>
-                    <span className="min-w-0">
-                      <span className={cn('block font-[Sora] text-[clamp(1.15rem,1.8vw,1.5rem)] font-semibold leading-tight tracking-[-0.02em] transition-colors duration-300', on ? 'text-white' : 'text-white/35')}>
-                        {x.nom}
-                      </span>
-                      <span className={cn('mt-1 block text-[13.5px] leading-snug transition-colors duration-300', on ? 'text-white/75' : 'text-white/30')}>{x.titre}</span>
+                    <span className={cn('font-[Sora] text-[17px] font-semibold tracking-[-0.01em] transition-colors duration-300', on ? 'text-[var(--violet-900)]' : 'text-[var(--ink-500)] hover:text-[var(--violet-900)]')}>
+                      {x.nom}
                     </span>
+                    <ChevronDown className={cn('size-4 shrink-0 text-[var(--ink-400)] transition-transform duration-300', on && 'rotate-180')} />
                   </button>
+                  <div className={cn('grid transition-[grid-template-rows,opacity] duration-500 ease-out', on ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0')}>
+                    <div className="overflow-hidden">
+                      <p className="text-[15px] font-semibold !leading-snug !text-[var(--violet-900)]">{x.titre}</p>
+                      <p className="!mt-1.5 pb-5 text-[14px] !leading-relaxed !text-[var(--ink-600)]">{x.texte}</p>
+                    </div>
+                  </div>
                   {on && (
                     <span
                       key={`${x.key}-${actif}`}
                       aria-hidden="true"
                       onAnimationEnd={suivant}
-                      className="absolute -bottom-px left-0 h-[2px] bg-gradient-to-r from-[#ff887b] to-[#ea42fd] motion-reduce:hidden"
-                      style={{ animation: `module-progres ${DUREE_MODULE}s linear forwards`, animationPlayState: survol ? 'paused' : 'running' }}
+                      className="absolute -bottom-px left-0 h-[2px] bg-gradient-to-r from-[#7551e8] via-[#ea42fd] to-[#ff887b] motion-reduce:hidden"
+                      style={{ animation: `module-progres ${DUREE_MODULE}s linear forwards`, animationPlayState: arret ? 'paused' : 'running' }}
                     />
                   )}
                 </li>
               );
             })}
+            <li className="pt-6">
+              <a href="/auth/signup" className="inline-flex items-center gap-2 rounded-lg bg-[var(--violet-900)] px-4 py-2.5 text-sm font-semibold !text-white no-underline transition-opacity hover:opacity-90">
+                Essayer {m.nom} <ArrowRight className="size-4" />
+              </a>
+            </li>
           </ol>
+
+          {/* Panneau en dégradé vif + écran du module */}
+          <div className="theme-fixe relative aspect-[16/11] overflow-hidden rounded-[22px] lg:sticky lg:top-28 shadow-[0_24px_60px_-20px_rgba(54,31,171,0.35)]">
+            {DEGRADES.map((g, i) => (
+              <div key={i} aria-hidden="true" className="absolute inset-0 transition-opacity duration-1000 ease-out" style={{ background: g, opacity: actif % DEGRADES.length === i ? 1 : 0 }} />
+            ))}
+            <div className="absolute left-[6%] top-[8%] w-[108%] overflow-hidden rounded-tl-[14px] bg-white shadow-[0_20px_50px_rgba(8,3,49,0.25)]">
+              <div className="flex items-center gap-1.5 border-b border-[#080331]/[0.06] px-3 py-2">
+                {[0, 1, 2].map((d) => <span key={d} className="size-2 rounded-full bg-[#080331]/15" />)}
+                <span className="ml-3 rounded-md bg-[#080331]/[0.04] px-2 py-0.5 font-mono text-[10px] text-[#080331]/45">app.legaly.ai</span>
+              </div>
+              <div key={m.key} className="animate-[module-fondu_.6s_ease-out]">
+                {Maquette ? <Maquette v={v} /> : null}
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => setPause((p) => !p)}
+              aria-label={pause ? 'Reprendre la présentation' : 'Mettre en pause la présentation'}
+              className="absolute bottom-4 right-4 grid size-10 place-items-center rounded-full bg-[#080331]/55 text-white backdrop-blur transition-colors hover:bg-[#080331]/75"
+            >
+              {pause ? <Play className="size-4" /> : <Pause className="size-4" />}
+            </button>
+          </div>
         </div>
-        <style>{`@keyframes module-progres { from { width: 0%; } to { width: 100%; } }`}</style>
-      </div>
+      </Container>
+      <style>{`
+        @keyframes module-progres { from { width: 0%; } to { width: 100%; } }
+        @keyframes module-fondu { from { opacity: 0; } to { opacity: 1; } }
+      `}</style>
     </section>
   );
 }
