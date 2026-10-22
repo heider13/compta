@@ -71,7 +71,13 @@ export function FooterV2() {
             </div>
           ))}
         </div>
-        <div className="mt-12 border-t border-[var(--ink-100)] pt-6 text-xs text-[var(--ink-500)]">© {new Date().getFullYear()} Legaly AI</div>
+        <div className="mt-12 flex flex-wrap items-baseline justify-between gap-3 border-t border-[var(--ink-100)] pt-6 text-xs text-[var(--ink-500)]">
+          <span>© {new Date().getFullYear()} Legaly AI</span>
+          {/* Crédits des logos affichés en haut de page (licences Wikimedia Commons) */}
+          <span className="text-[11px]">
+            Logos : INPI (inpi.fr) · Légifrance (CC BY 4.0), Insee (CC0) et Yousign (CC BY-SA 4.0) via Wikimedia Commons. Marques de leurs titulaires.
+          </span>
+        </div>
       </Container>
     </footer>
   );

@@ -1,59 +1,38 @@
-// Fond du hero (esprit Lovable) : des tuiles flottantes autour du titre — INPI,
-// RNE, signature électronique, formalités en lot, assistant IA — chacune reliée
+// Fond du hero (esprit Lovable) : des tuiles flottantes autour du titre — logos
+// officiels INPI, RNE, Légifrance, Insee, Yousign, et les formalités en lot — chacune reliée
 // par une fine courbe au point de départ, sous le chat. Des traits aux couleurs
 // Legaly filent le long des lignes. Tuiles masquées sur petit écran.
-// Logos : tuiles typographiques en attendant les fichiers officiels.
 // Les lignes sont calculées à la taille réelle de la zone (traits nets, sans déformation).
 
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { Layers, Scale, Sparkles } from 'lucide-react';
+import { Layers } from 'lucide-react';
 
-type Tuile = { cle: string; x: number; y: number; rot: number; couleur: string; contenu: React.ReactNode };
+type Tuile = { cle: string; x: number; y: number; rot: number; couleur: string; large?: boolean; contenu: React.ReactNode };
+
+// Logos officiels (public/logos : INPI depuis inpi.fr, les autres depuis Wikimedia Commons — crédits dans le pied de page)
+const Logo = ({ src, alt, h = 30 }: { src: string; alt: string; h?: number }) => (
+  // eslint-disable-next-line @next/next/no-img-element
+  <img src={src} alt={alt} style={{ height: h }} className="w-auto max-w-[104px] object-contain" />
+);
 
 // Positions en % de la zone (x, y) ; le point de départ est en bas au centre (50 %, 100 %)
 const TUILES: Tuile[] = [
+  { cle: 'inpi', x: 11, y: 30, rot: -6, couleur: '#361fab', large: true, contenu: <Logo src="/logos/inpi.svg" alt="INPI" h={42} /> },
   {
-    cle: 'inpi', x: 11, y: 34, rot: -7, couleur: '#361fab',
+    cle: 'rne', x: 18, y: 53, rot: 4, couleur: '#ea42fd', large: true,
     contenu: (
-      <span className="grid place-items-center leading-none">
-        <span className="font-[Sora] text-[17px] font-bold tracking-tight text-[#1e2a78]">INPI</span>
-        <span className="mt-1 text-[7.5px] font-semibold uppercase tracking-wider text-[#5f5a7d]">Guichet unique</span>
+      <span className="grid place-items-center gap-1">
+        <Logo src="/logos/inpi.svg" alt="INPI" h={26} />
+        <span className="text-[8px] font-semibold uppercase leading-tight tracking-wide text-[#3d3558]">Registre national<br />des entreprises</span>
       </span>
     ),
   },
-  {
-    cle: 'rne', x: 18, y: 55, rot: 5, couleur: '#ea42fd',
-    contenu: (
-      <span className="grid place-items-center leading-none">
-        <span className="font-[Sora] text-[18px] font-bold tracking-tight text-[#1e2a78]">RNE</span>
-        <span className="mt-1 text-[7.5px] font-semibold uppercase tracking-wider text-[#5f5a7d]">Registre</span>
-      </span>
-    ),
-  },
-  {
-    cle: 'lots', x: 10, y: 76, rot: -4, couleur: '#ff887b',
-    contenu: <Layers className="size-8 text-[#361fab]" strokeWidth={2.2} />,
-  },
-  {
-    cle: 'signature', x: 88, y: 32, rot: 6, couleur: '#ffbe8c',
-    contenu: (
-      <span className="grid place-items-center leading-none">
-        <span className="font-[Sora] text-[15px] font-bold tracking-tight text-[#080331]">Yousign</span>
-        <span className="mt-1 text-[7.5px] font-semibold uppercase tracking-wider text-[#5f5a7d]">Signature</span>
-      </span>
-    ),
-  },
-  {
-    cle: 'assistant', x: 83, y: 57, rot: -6, couleur: '#9d6cf2',
-    contenu: (
-      <span className="relative grid place-items-center">
-        <Scale className="size-8 text-[#361fab]" strokeWidth={2.2} />
-        <Sparkles className="absolute -right-2.5 -top-2 size-4 text-[#ff887b]" />
-      </span>
-    ),
-  },
+  { cle: 'lots', x: 10, y: 76, rot: -4, couleur: '#ff887b', contenu: <Layers className="size-8 text-[#361fab]" strokeWidth={2.2} /> },
+  { cle: 'legifrance', x: 88, y: 28, rot: 5, couleur: '#9d6cf2', large: true, contenu: <Logo src="/logos/legifrance.jpg" alt="Légifrance" h={34} /> },
+  { cle: 'insee', x: 82, y: 51, rot: -5, couleur: '#ffbe8c', large: true, contenu: <Logo src="/logos/insee.png" alt="Insee" h={34} /> },
+  { cle: 'yousign', x: 89, y: 74, rot: 4, couleur: '#ff5f9e', large: true, contenu: <Logo src="/logos/yousign.png" alt="Yousign" h={22} /> },
 ];
 
 // Courbe en pixels : part du bas au centre, monte d'abord à la verticale puis rejoint la tuile
@@ -109,7 +88,7 @@ export function FaisceauLignes({ className }: { className?: string }) {
       {TUILES.map((t, k) => (
         <span
           key={t.cle}
-          className="theme-fixe tuile-flottante absolute hidden size-[74px] place-items-center rounded-[20px] bg-white shadow-[0_14px_34px_rgba(8,3,49,0.14)] ring-1 ring-[#080331]/[0.06] xl:grid"
+          className={`theme-fixe tuile-flottante absolute hidden place-items-center rounded-[20px] bg-white shadow-[0_14px_34px_rgba(8,3,49,0.14)] ring-1 ring-[#080331]/[0.06] xl:grid ${t.large ? 'h-[70px] w-[128px] px-3' : 'size-[74px]'}`}
           style={{ left: `${t.x}%`, top: `${t.y}%`, ['--rot' as string]: `${t.rot}deg`, animationDelay: `${-k * 1.1}s` }}
         >
           {t.contenu}
