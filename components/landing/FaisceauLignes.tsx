@@ -7,7 +7,7 @@ const W = 1600;
 const H = 900;
 const OX = W / 2;
 const OY = H - 10; // point de départ, en bas au centre
-const N = 34;
+const N = 18;
 
 const COULEURS = ['#ff887b', '#ea42fd', '#361fab', '#ffbe8c', '#9d6cf2', '#ff5f9e'];
 
@@ -22,7 +22,7 @@ const COURBES = Array.from({ length: N }, (_, i) => {
 });
 
 // Traits colorés : quelques courbes, durées et départs décalés
-const TRAITS = [3, 7, 10, 14, 17, 20, 23, 27, 30].map((i, k) => ({
+const TRAITS = [2, 4, 6, 9, 11, 13, 15].map((i, k) => ({
   d: COURBES[i].d,
   couleur: COULEURS[k % COULEURS.length],
   duree: 5.5 + (k % 4) * 1.4,
