@@ -10,6 +10,7 @@ import { MODULE_LIST } from '@/lib/landing/modules';
 import { PERSONA_LIST } from '@/lib/landing/personas';
 import { Container } from './ui';
 import { ThemeToggle, useThemeSombre } from './ThemeToggle';
+import { PixelMetier } from './PixelMetier';
 import { cn } from '@/lib/utils';
 
 // Nav superposée avec méga-menu : transparente (texte clair) sur le hero violet
@@ -145,17 +146,22 @@ export function Nav({ surface = 'dark', announcement }: { surface?: 'dark' | 'li
               <ChevronDown className={cn('size-3.5 transition-transform', open === 'solutions' && 'rotate-180')} />
             </button>
             {open === 'solutions' && (
-              <div className="absolute left-1/2 top-full z-50 mt-3 w-[min(92vw,360px)] -translate-x-1/2 rounded-2xl border border-[var(--ink-150)] bg-white p-3 shadow-[0_24px_60px_rgba(35,20,80,0.18)]">
+              <div className="absolute left-1/2 top-full z-50 mt-3 w-[min(92vw,400px)] -translate-x-1/2 rounded-2xl border border-[var(--ink-150)] bg-white p-3 shadow-[0_24px_60px_rgba(35,20,80,0.18)]">
                 <div className="grid gap-1">
                   {PERSONA_LIST.map((p) => (
                     <Link
                       key={p.slug}
                       href={`/${p.slug}`}
-                      className="rounded-xl p-3 no-underline transition-colors hover:bg-[var(--ink-50)]"
+                      className="flex items-start gap-3 rounded-xl p-3 no-underline transition-colors hover:bg-[var(--ink-50)]"
                       onClick={() => setOpen(null)}
                     >
-                      <span className="block text-sm font-semibold text-[var(--violet-900)]">{p.nom}</span>
-                      <span className="mt-0.5 block text-xs leading-snug text-[var(--ink-500)]">{p.selectorPitch}</span>
+                      <span className="grid size-11 shrink-0 place-items-center rounded-xl border border-[var(--violet-100)] bg-white shadow-[0_4px_12px_rgba(54,31,171,0.08)]">
+                        <PixelMetier metier={p.slug} className="size-8" />
+                      </span>
+                      <span className="min-w-0">
+                        <span className="block text-sm font-semibold text-[var(--violet-900)]">{p.nom}</span>
+                        <span className="mt-0.5 block text-xs leading-snug text-[var(--ink-500)]">{p.selectorPitch}</span>
+                      </span>
                     </Link>
                   ))}
                 </div>
