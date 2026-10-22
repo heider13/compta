@@ -10,49 +10,66 @@ import { Container } from './ui';
 import { MAQUETTES } from './v2/Maquettes';
 import { CtaBand, FooterV2 } from './v2/Bas';
 
+// Une paire de couleurs par module, dans la palette Legaly : pastel à gauche, soutenu à droite
+const TEINTES = [
+  { pastel: '#efeafe', profond: 'linear-gradient(150deg, #361fab 0%, #201367 100%)' },
+  { pastel: '#fff1ee', profond: 'linear-gradient(150deg, #ff887b 0%, #c13ad6 100%)' },
+  { pastel: '#fbeafb', profond: 'linear-gradient(150deg, #a43bc9 0%, #361fab 100%)' },
+  { pastel: '#fff4e8', profond: 'linear-gradient(150deg, #ff9f7a 0%, #e2675c 100%)' },
+  { pastel: '#eef0fe', profond: 'linear-gradient(150deg, #4a33d0 0%, #080331 100%)' },
+];
+
 export function ModulePage({ module: mod }: { module: LandingModule }) {
   const p = mod.page;
   const Maquette = MAQUETTES[p.maquette];
   const autres = MODULE_LIST.filter((x) => x.key !== mod.key);
   const Icone = mod.icon;
+  const t = TEINTES[Math.max(0, MODULE_LIST.findIndex((x) => x.key === mod.key)) % TEINTES.length];
 
   return (
     <div className="landing-theme">
       <Nav surface="light" />
 
-      {/* En-tête */}
-      <section className="relative overflow-hidden bg-[#fcfbff]">
-        <div
-          aria-hidden="true"
-          className="pointer-events-none absolute inset-0"
-          style={{ background: 'radial-gradient(ellipse 900px 620px at 78% 30%, rgba(117,81,232,0.16), transparent 65%), radial-gradient(ellipse 620px 460px at 0% 0%, rgba(255,136,123,0.12), transparent 60%)' }}
-        />
-        <div className="relative mx-auto grid w-full max-w-[1240px] items-center gap-12 px-5 pb-20 pt-40 sm:px-8 lg:grid-cols-[0.95fr_1.05fr] lg:pt-44">
-          <div>
-            <span className="inline-flex items-center gap-2 rounded-full border border-[var(--violet-200)] bg-[var(--violet-50)] px-3 py-1 text-xs font-semibold text-[var(--violet-700)]">
-              <Icone className="size-3.5" /> Module · {mod.title}
+      {/* En-tête façon Pennylane : panneau pastel (texte) | panneau soutenu (écran du logiciel) */}
+      <section className="grid min-h-[640px] pt-[140px] lg:grid-cols-[1.02fr_0.98fr]">
+        <div className="flex items-center px-6 py-14 sm:px-12 lg:py-20 lg:pl-[max(3rem,calc((100vw-1240px)/2+2rem))] lg:pr-14" style={{ background: t.pastel }}>
+          <div className="max-w-[620px]">
+            <span className="inline-flex items-center gap-2 rounded-full bg-white/70 px-3 py-1 text-xs font-semibold text-[#361fab] ring-1 ring-[#361fab]/10">
+              <Icone className="size-3.5" /> {mod.title}
             </span>
-            <h1 className="!mt-6 font-[Sora] !text-[clamp(2.1rem,4.4vw,3.4rem)] !font-bold !leading-[1.05] !tracking-[-0.03em] !text-[var(--violet-900)]">
-              {p.accroche[0]}
-              <br />
-              <span className="bg-gradient-to-r from-[#ffbe8c] via-[#ff887b] to-[#ea42fd] bg-clip-text text-transparent">{p.accroche[1]}</span>
+            <h1 className="!mt-6 font-[Sora] !text-[clamp(2.2rem,4.4vw,3.6rem)] !font-semibold !leading-[1.08] !tracking-[-0.03em] !text-[#080331]">
+              {p.accroche[0]} {p.accroche[1]}
             </h1>
-            <p className="!mt-6 max-w-xl text-base !leading-relaxed !text-[var(--ink-600)] sm:text-lg">{p.intro}</p>
+            <p className="!mt-6 text-[17px] !leading-relaxed !text-[#2d2457]">{p.intro}</p>
             {p.seul && (
-              <p className="!mt-4 inline-flex items-center gap-2 rounded-full bg-[var(--accent-soft)] px-3 py-1 text-xs font-semibold !text-[var(--accent-ink)]">
+              <p className="!mt-4 inline-flex items-center gap-2 rounded-full bg-white/70 px-3 py-1 text-xs font-semibold !text-[#c2410c] ring-1 ring-[#ff887b]/30">
                 Se commande aussi seul, sans formalité complète
               </p>
             )}
             <div className="mt-8 flex flex-wrap gap-3">
-              <a href="/auth/signup" className="inline-flex items-center gap-2 rounded-full bg-[var(--accent)] px-6 py-3 text-[15px] font-semibold !text-[#080331] no-underline shadow-[0_12px_30px_rgba(255,136,123,0.4)] transition-transform hover:-translate-y-0.5">
-                Essayer avec mon cabinet <ArrowRight className="size-4" />
+              <a href="/auth/signup" className="inline-flex items-center gap-2 rounded-xl bg-[#080331] px-6 py-3.5 text-[15px] font-semibold !text-white no-underline shadow-[0_12px_30px_rgba(8,3,49,0.25)] transition-transform hover:-translate-y-0.5">
+                Organiser une démo <ArrowRight className="size-4" />
               </a>
-              <a href="/independants-tpe" className="inline-flex items-center rounded-full border border-[var(--ink-200)] bg-white px-6 py-3 text-[15px] font-semibold !text-[var(--violet-900)] no-underline transition-colors hover:border-[var(--violet-500)]">
+              <a href="/independants-tpe" className="inline-flex items-center rounded-xl border border-[#080331]/80 bg-transparent px-6 py-3.5 text-[15px] font-semibold !text-[#080331] no-underline transition-colors hover:bg-white/60">
                 Je suis entrepreneur
               </a>
             </div>
           </div>
-          <div>{Maquette ? <Maquette v="experts-comptables" /> : null}</div>
+        </div>
+
+        <div className="relative min-h-[460px] overflow-hidden" style={{ background: t.profond }}>
+          {/* Courbes décoratives */}
+          <div aria-hidden="true" className="pointer-events-none absolute -left-24 top-10 size-[520px] rounded-full border-[28px] border-white/[0.06]" />
+          <div aria-hidden="true" className="pointer-events-none absolute -right-32 -top-40 size-[460px] rounded-full border-[22px] border-white/[0.05]" />
+          <div aria-hidden="true" className="pointer-events-none absolute inset-0" style={{ background: 'radial-gradient(ellipse 520px 360px at 80% 20%, rgba(255,255,255,0.14), transparent 65%)' }} />
+          {/* Appareil en arrière-plan */}
+          <div aria-hidden="true" className="absolute left-[9%] top-[12%] h-[88%] w-[120%] rounded-tl-[34px] bg-[#0b0630]/70 ring-1 ring-white/10" />
+          {/* Écran du module, coupé par le bord droit */}
+          <div className="absolute left-[15%] top-[19%] w-[min(880px,118%)] rounded-tl-[30px] bg-white/15 p-2.5 pr-0 pb-0 ring-1 ring-white/20 backdrop-blur-sm">
+            <div className="overflow-hidden rounded-tl-[22px]">
+              {Maquette ? <Maquette v="experts-comptables" /> : null}
+            </div>
+          </div>
         </div>
       </section>
 
