@@ -1,70 +1,120 @@
-// Fond du hero (esprit Lovable) : un faisceau de fines courbes qui partent d'un même
-// point sous le chat et s'ouvrent vers le haut et les côtés ; des traits aux couleurs
-// Legaly filent le long de certaines lignes, comme des dossiers qui partent.
-// Pur SVG + CSS (stroke-dashoffset) ; figé si l'animation est réduite.
+// Fond du hero (esprit Lovable) : des tuiles flottantes autour du titre — INPI,
+// RNE, signature électronique, formalités en lot, assistant IA — chacune reliée
+// par une fine courbe au point de départ, sous le chat. Des traits aux couleurs
+// Legaly filent le long des lignes. Tuiles masquées sur petit écran.
+// Logos : tuiles typographiques en attendant les fichiers officiels.
+// Les lignes sont calculées à la taille réelle de la zone (traits nets, sans déformation).
 
-const W = 1600;
-const H = 900;
-const OX = W / 2;
-const OY = H - 10; // point de départ, en bas au centre
-const N = 3;
+'use client';
 
-const COULEURS = ['#ff887b', '#ea42fd', '#361fab', '#ffbe8c', '#9d6cf2', '#ff5f9e'];
+import { useEffect, useRef, useState } from 'react';
+import { Layers, Scale, Sparkles } from 'lucide-react';
 
-// Courbe i : monte d'abord à la verticale puis s'ouvre vers son point d'arrivée
-const COURBES = Array.from({ length: N }, (_, i) => {
-  const a = Math.PI * (0.22 + (0.56 * i) / (N - 1)); // éventail : droite, centre, gauche
-  const portee = 1180 + (i % 3) * 90;
-  const ex = OX + Math.cos(a) * portee * 1.15;
-  const ey = OY - Math.sin(a) * portee;
-  const d = `M${OX},${OY} C${OX},${OY - 330} ${OX + (ex - OX) * 0.35},${OY - 520} ${ex.toFixed(1)},${ey.toFixed(1)}`;
-  return { d, i };
-});
+type Tuile = { cle: string; x: number; y: number; rot: number; couleur: string; contenu: React.ReactNode };
 
-// Traits colorés : quelques courbes, durées et départs décalés
-const TRAITS = [0, 1, 2].map((i, k) => ({
-  d: COURBES[i].d,
-  couleur: COULEURS[k % COULEURS.length],
-  duree: 5.5 + (k % 4) * 1.4,
-  delai: -((k * 1.7) % 7),
-}));
+// Positions en % de la zone (x, y) ; le point de départ est en bas au centre (50 %, 100 %)
+const TUILES: Tuile[] = [
+  {
+    cle: 'inpi', x: 11, y: 34, rot: -7, couleur: '#361fab',
+    contenu: (
+      <span className="grid place-items-center leading-none">
+        <span className="font-[Sora] text-[17px] font-bold tracking-tight text-[#1e2a78]">INPI</span>
+        <span className="mt-1 text-[7.5px] font-semibold uppercase tracking-wider text-[#5f5a7d]">Guichet unique</span>
+      </span>
+    ),
+  },
+  {
+    cle: 'rne', x: 18, y: 55, rot: 5, couleur: '#ea42fd',
+    contenu: (
+      <span className="grid place-items-center leading-none">
+        <span className="font-[Sora] text-[18px] font-bold tracking-tight text-[#1e2a78]">RNE</span>
+        <span className="mt-1 text-[7.5px] font-semibold uppercase tracking-wider text-[#5f5a7d]">Registre</span>
+      </span>
+    ),
+  },
+  {
+    cle: 'lots', x: 10, y: 76, rot: -4, couleur: '#ff887b',
+    contenu: <Layers className="size-8 text-[#361fab]" strokeWidth={2.2} />,
+  },
+  {
+    cle: 'signature', x: 88, y: 32, rot: 6, couleur: '#ffbe8c',
+    contenu: (
+      <span className="grid place-items-center leading-none">
+        <span className="font-[Sora] text-[15px] font-bold tracking-tight text-[#080331]">Yousign</span>
+        <span className="mt-1 text-[7.5px] font-semibold uppercase tracking-wider text-[#5f5a7d]">Signature</span>
+      </span>
+    ),
+  },
+  {
+    cle: 'assistant', x: 83, y: 57, rot: -6, couleur: '#9d6cf2',
+    contenu: (
+      <span className="relative grid place-items-center">
+        <Scale className="size-8 text-[#361fab]" strokeWidth={2.2} />
+        <Sparkles className="absolute -right-2.5 -top-2 size-4 text-[#ff887b]" />
+      </span>
+    ),
+  },
+];
+
+// Courbe en pixels : part du bas au centre, monte d'abord à la verticale puis rejoint la tuile
+function courbe(t: Tuile, w: number, h: number) {
+  const ox = w / 2, oy = h;
+  const x = (t.x / 100) * w, y = (t.y / 100) * h;
+  return `M${ox},${oy} C${ox},${oy - h * 0.38} ${ox + (x - ox) * 0.35},${y + h * 0.22} ${x},${y}`;
+}
 
 export function FaisceauLignes({ className }: { className?: string }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [taille, setTaille] = useState({ w: 1440, h: 760 });
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const ro = new ResizeObserver(([e]) => setTaille({ w: Math.round(e.contentRect.width), h: Math.round(e.contentRect.height) }));
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+  const { w, h } = taille;
   return (
-    <div aria-hidden="true" className={className}>
+    <div ref={ref} aria-hidden="true" className={className}>
       <style>{`
-        @keyframes faisceau-file { from { stroke-dashoffset: 1000; } to { stroke-dashoffset: -140; } }
-        .faisceau-trait { stroke-dasharray: 140 1000; animation: faisceau-file linear infinite; }
-        .faisceau-ligne { stroke: rgba(54, 31, 171, 0.11); }
-        html[data-landing='dark'] .faisceau-ligne { stroke: rgba(201, 191, 255, 0.14); }
-        @media (prefers-reduced-motion: reduce) { .faisceau-trait { animation: none; stroke-dashoffset: 420; } }
+        @keyframes faisceau-file { from { stroke-dashoffset: 1000; } to { stroke-dashoffset: -160; } }
+        @keyframes tuile-flotte { 0%, 100% { transform: translate(-50%, -50%) rotate(var(--rot)) translateY(0); } 50% { transform: translate(-50%, -50%) rotate(var(--rot)) translateY(-6px); } }
+        .faisceau-trait { stroke-dasharray: 160 1000; animation: faisceau-file linear infinite; }
+        .faisceau-ligne { stroke: rgba(54, 31, 171, 0.14); }
+        html[data-landing='dark'] .faisceau-ligne { stroke: rgba(201, 191, 255, 0.16); }
+        .tuile-flottante { transform: translate(-50%, -50%) rotate(var(--rot)); animation: tuile-flotte 6s ease-in-out infinite; }
+        @media (prefers-reduced-motion: reduce) { .faisceau-trait, .tuile-flottante { animation: none; } .faisceau-trait { stroke-dashoffset: 420; } }
       `}</style>
-      <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="xMidYMax slice" className="size-full">
-        <defs>
-          <radialGradient id="faisceau-source" cx="50%" cy="100%" r="40%">
-            <stop offset="0" stopColor="#9d6cf2" stopOpacity="0.35" />
-            <stop offset="1" stopColor="#9d6cf2" stopOpacity="0" />
-          </radialGradient>
-        </defs>
-        <ellipse cx={OX} cy={OY} rx="260" ry="120" fill="url(#faisceau-source)" />
-        {COURBES.map((c) => (
-          <path key={c.i} d={c.d} fill="none" strokeWidth="1.2" className="faisceau-ligne" vectorEffect="non-scaling-stroke" />
+      <svg viewBox={`0 0 ${w} ${h}`} className="absolute inset-0 size-full">
+        {TUILES.map((t) => (
+          <path key={t.cle} d={courbe(t, w, h)} fill="none" strokeWidth="1.2" className="faisceau-ligne" />
         ))}
-        {TRAITS.map((t, k) => (
+        {TUILES.map((t, k) => (
           <path
-            key={k}
-            d={t.d}
+            key={`${t.cle}-trait`}
+            d={courbe(t, w, h)}
             pathLength={1000}
             fill="none"
             stroke={t.couleur}
             strokeWidth="2"
             strokeLinecap="round"
-            vectorEffect="non-scaling-stroke"
-            className="faisceau-trait" strokeOpacity={0.85}
-            style={{ animationDuration: `${t.duree}s`, animationDelay: `${t.delai}s` }}
+            strokeOpacity={0.9}
+           
+            className="faisceau-trait"
+            style={{ animationDuration: `${5 + (k % 3) * 1.3}s`, animationDelay: `${-k * 1.6}s` }}
           />
         ))}
       </svg>
+      {/* Tuiles (grand écran seulement : elles chevaucheraient le titre sur mobile) */}
+      {TUILES.map((t, k) => (
+        <span
+          key={t.cle}
+          className="theme-fixe tuile-flottante absolute hidden size-[74px] place-items-center rounded-[20px] bg-white shadow-[0_14px_34px_rgba(8,3,49,0.14)] ring-1 ring-[#080331]/[0.06] xl:grid"
+          style={{ left: `${t.x}%`, top: `${t.y}%`, ['--rot' as string]: `${t.rot}deg`, animationDelay: `${-k * 1.1}s` }}
+        >
+          {t.contenu}
+        </span>
+      ))}
     </div>
   );
 }
