@@ -3,8 +3,8 @@
 // Parcours d'une formalité, de la préparation par l'agent jusqu'au paiement :
 //   1. réalisation de la formalité
 //   2. annonce légale
-//   3. signature des documents par le client (Yousign)
-//   4. signature électronique de la formalité (Yousign = signature au Guichet unique)
+//   3. signature des documents par le client (DocuSign ou Yousign)
+//   4. signature électronique de la formalité (= signature au Guichet unique)
 //   5. paiement (compte client INPI du cabinet ou délégation au client)
 // Affiché à droite du chat du tableau de bord et sur la page du dossier. L'état vient du
 // serveur (GET /api/dossiers/:id/parcours) ; rafraîchi tout seul, plus vite quand on attend un tiers.
@@ -150,7 +150,7 @@ function ParcoursFormaliteBase({
   }, [charger, version]);
 
   useEffect(() => {
-    // Retour sur l'onglet (après une signature Yousign) : lecture immédiate, 1 fois / 5 s au plus
+    // Retour sur l'onglet (après une signature en ligne) : lecture immédiate, 1 fois / 5 s au plus
     const onFocus = () => {
       if (Date.now() - dernierFocus.current < 5000) return;
       dernierFocus.current = Date.now();
@@ -195,12 +195,12 @@ function ParcoursFormaliteBase({
     }
   }
 
-  async function signerAvecYousign(etape: Etape) {
+  async function signerEnLigne(etape: Etape) {
     // Fenêtre ouverte pendant le clic (sinon bloquée par le navigateur), remplie au retour du serveur
     const fenetre = window.open('', '_blank');
     if (fenetre) {
       fenetre.opener = null;
-      fenetre.document.title = 'Signature Yousign';
+      fenetre.document.title = 'Signature électronique';
       fenetre.document.body.innerHTML = '<p style="font:15px system-ui,sans-serif;padding:32px;color:#444">Préparation de la signature de la formalité…</p>';
     }
     const r = await poster(etape.cle, 'signature_inpi', 'signature-inpi');
@@ -218,7 +218,7 @@ function ParcoursFormaliteBase({
       setOuvert(`${etape.cle}:${a.type}`);
       return;
     }
-    if (a.type === 'signature_inpi') return void signerAvecYousign(etape);
+    if (a.type === 'signature_inpi') return void signerEnLigne(etape);
     const r = ROUTES[a.type];
     if (r) void poster(etape.cle, a.type, r.route, r.corps);
   }
@@ -324,7 +324,7 @@ function ParcoursFormaliteBase({
                 )}
                 {e.lienSignature && (
                   <a href={e.lienSignature} target="_blank" rel="noopener noreferrer" className="mt-1.5 inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline">
-                    Ouvrir la signature Yousign <ExternalLink className="size-3" aria-hidden />
+                    Ouvrir la signature <ExternalLink className="size-3" aria-hidden />
                   </a>
                 )}
 
@@ -516,7 +516,7 @@ function FormSignataires({
         if (valide && !enCours) onEnvoyer(liste.map((s) => ({ ...s, email: s.email.trim() })));
       }}
     >
-      <p className="text-[11px] leading-snug text-muted-foreground">Chaque signataire reçoit un e-mail Yousign pour signer tous les actes.</p>
+      <p className="text-[11px] leading-snug text-muted-foreground">Chaque signataire reçoit un e-mail pour signer tous les actes en ligne.</p>
       {liste.map((s, i) => (
         <fieldset key={i} className="space-y-1.5 rounded border border-dashed p-2">
           <legend className="sr-only">Signataire {i + 1}</legend>

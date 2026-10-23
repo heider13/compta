@@ -27,6 +27,8 @@ app.set('trust proxy', 'loopback');
 // Webhook Yousign : body brut nécessaire pour vérifier la signature HMAC.
 // DOIT être monté AVANT express.json() pour court-circuiter le parsing JSON global.
 app.use('/api/yousign', express.raw({ type: '*/*', limit: '15mb' }), yousignWebhookRoutes);
+// Webhook DocuSign Connect : même besoin (HMAC sur le corps brut)
+app.use('/api/docusign', express.raw({ type: '*/*', limit: '15mb' }), require('./routes/docusign-webhook'));
 
 // Webhook Stripe des commandes d'entrepreneurs (corps brut, signature HMAC)
 app.use('/api/paiements', express.raw({ type: '*/*', limit: '1mb' }), require('./routes/stripe-webhook'));

@@ -1,4 +1,4 @@
-// Routes signature électronique Yousign — endpoints exposés aux admins/cabinet.
+// Routes signature électronique (DocuSign ou Yousign, voir lib/signature.js) — endpoints exposés aux admins/cabinet.
 // Suppose que requireUser + requireOrg ont été appliqués en amont
 // (req.user, req.currentOrgId, req.currentOrgRole disponibles).
 //
@@ -12,7 +12,7 @@
 const express = require('express');
 const router = express.Router();
 
-const yousign = require('../lib/yousign');
+const signature = require('../lib/signature');
 const { getSupabaseAdmin } = require('../lib/db');
 
 function asyncRoute(fn) {
@@ -106,7 +106,7 @@ async function patchDossierSignatureMeta(supa, dossierId, patch) {
     dossier_id: dossierId,
     author_id: null,
     author_role: 'admin',
-    message: `[yousign] ${JSON.stringify(patch)}`,
+    message: `[signature] ${JSON.stringify(patch)}`,
   });
   return { stored: 'observation_fallback' };
 }
@@ -167,19 +167,20 @@ router.post(
     const base64Pdf = pdf.buffer.toString('base64');
 
     // 2. Créer la signature request
-    const sr = await yousign.createSignatureRequest({
+    const f = signature.actif();
+    const sr = await f.createSignatureRequest({
       name: `${dossier.client_name} — ${dossier.type_formalite} — ${dossier.reference || dossier.id.slice(0, 8)}`,
     });
 
     // 3. Upload PDF
-    const doc = await yousign.uploadDocument(sr.id, {
+    const doc = await f.uploadDocument(sr.id, {
       filename: pdf.filename,
       base64Pdf,
       nature: 'signable_document',
     });
 
     // 4. Ajouter signataire avec champ signature (position bas-droite par défaut)
-    const signerResult = await yousign.addSigner(sr.id, {
+    const signerResult = await f.addSigner(sr.id, {
       firstName: signer.firstName,
       lastName: signer.lastName,
       email: signer.email,
@@ -198,12 +199,12 @@ router.post(
     });
 
     // 5. Activer (envoi de l'email signataire)
-    await yousign.activate(sr.id);
+    await f.activate(sr.id);
 
     // 6. Persister metadata + audit log
     const patch = {
       signature_request_id: sr.id,
-      signature_provider: 'yousign',
+      signature_provider: signature.cle(f),
       signature_status: 'ongoing',
       signature_signer_email: signer.email,
       signature_source_document_id: pdf.sourceDocId,
@@ -221,7 +222,7 @@ router.post(
         resource_id: dossier.id,
         metadata: {
           signature_request_id: sr.id,
-          provider: 'yousign',
+          provider: signature.cle(f),
           signer_email: signer.email,
         },
       });
@@ -264,10 +265,10 @@ router.get(
 
     let live = null;
     try {
-      live = await yousign.getStatus(meta.signature_request_id);
+      live = await signature.pour(meta.signature_provider).getStatus(meta.signature_request_id);
     } catch (e) {
       return res.status(502).json({
-        error: 'yousign_request_failed',
+        error: 'signature_request_failed',
         detail: String(e.message),
         cached: meta,
       });

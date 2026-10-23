@@ -2,9 +2,9 @@
 //   1. formalite        brouillon créé au Guichet unique (statut SIGNATURE_PENDING)
 //   2. annonce          annonce légale rédigée (si la formalité en exige une), attestation
 //                       de parution versée sur la formalité dès qu'elle est jointe
-//   3. signature_client actes rédigés par le cabinet, signés par le client (Yousign, e-mail),
+//   3. signature_client actes rédigés par le cabinet, signés par le client (DocuSign ou Yousign, e-mail),
 //                       puis versés automatiquement sur la formalité du Guichet unique
-//   4. signature_inpi   synthèse de la formalité (PJ_99) signée par le formaliste avec Yousign
+//   4. signature_inpi   synthèse de la formalité (PJ_99) signée par le formaliste (DocuSign ou Yousign)
 //                       (signature électronique avancée), renvoyée en PJ_115 puis
 //                       POST /api/signatures — ou signature simple pour une création
 //   5. paiement         compte client INPI du cabinet (POST /api/payment) ou délégation de
@@ -17,7 +17,7 @@
 // l'agent IA ne signe ni ne paie jamais.
 
 const inpi = require('../inpi');
-const yousign = require('./yousign');
+const signature = require('./signature');
 const { toPdf, PIECES, PIECES_EI, PIECES_MODIF } = require('./inpi-liasse');
 const { paiementDe, emailsCabinet, lienGuichet } = require('./inpi-paiement');
 const { ACTES_UNIQUES } = require('./dossier-docs');
@@ -63,12 +63,12 @@ const NON_SIGNABLES = new Set(['ANNONCE_LEGALE', 'REPONSE_GREFFE', 'PIECE_JOINTE
 const OPS_AVEC_ANNONCE = new Set(['siege', 'denomination', 'objet', 'nomination', 'revocation', 'dissolution', 'clotureLiquidation', 'capital', 'formeJuridique', 'duree']);
 
 const AVERTISSEMENT_ANNONCE = "N'oubliez pas : l'annonce légale est obligatoire pour cette formalité. Sans elle, la formalité sera nécessairement rejetée par le greffe si vous ne la complétez pas par la suite.";
-const yousignConfigure = () => Boolean(process.env.YOUSIGN_API_KEY);
+const fournisseurDe = (e) => signature.pour(e?.fournisseur);
 const paiementCompteConfigure = () => Boolean(process.env.INPI_CCL_LOGIN && process.env.INPI_CCL_PASSWORD);
 const erreur = (message, status) => Object.assign(new Error(message), { status });
 const euros = (c) => `${(c / 100).toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €`;
 
-// ─── Caches : le panneau se rafraîchit souvent, le Guichet unique et Yousign non ───
+// ─── Caches : le panneau se rafraîchit souvent, le Guichet unique et le fournisseur de signature non ───
 // Lecture du panneau : délai court, une seule tentative ; en cas d'échec on sert la dernière
 // valeur connue (signalée comme ancienne) ; les lectures simultanées partagent le même appel.
 const TTL_GU = 45000;
@@ -110,10 +110,11 @@ const ancienneteGU = (orgId, id) => {
 };
 
 const cacheYS = new Map(); // requestId → { exp, s }
-async function statutYousign(requestId) {
+async function statutDemande(e) {
+  const requestId = e.request_id;
   const hit = cacheYS.get(requestId);
   if (hit && hit.exp > Date.now()) return hit.s;
-  const s = await yousign.getStatus(requestId);
+  const s = await fournisseurDe(e).getStatus(requestId);
   cacheYS.set(requestId, { exp: Date.now() + 15000, s });
   borner(cacheYS);
   return s;
@@ -259,17 +260,16 @@ function telephoneE164(t) {
   return null; // invalide
 }
 
-// ─── Synchronisation Yousign (webhook ou rafraîchissement du panneau) ───
-// Statuts Yousign v3 : draft, ongoing, done, declined, expired, canceled, deleted, approval
+// ─── Synchronisation de la signature (webhook ou rafraîchissement du panneau) ───
+// Statuts au format Yousign v3 (DocuSign y est ramené) : draft, ongoing, done, declined, expired, canceled, deleted
 async function synchroniser(supa, orgId, dossier) {
   const p = dossier.metadata?.parcours || {};
-  if (!yousignConfigure()) return false;
   let change = false;
   for (const etape of ['signature_client', 'signature_inpi']) {
     const e = p[etape];
-    if (!e?.request_id || !['envoyee', 'en_cours'].includes(e.statut)) continue;
+    if (!e?.request_id || !['envoyee', 'en_cours'].includes(e.statut) || !fournisseurDe(e).configure()) continue;
     let s;
-    try { s = await statutYousign(e.request_id); } catch { continue; }
+    try { s = await statutDemande(e); } catch { continue; }
     try {
       if (s?.status === 'done') {
         await finaliser(supa, orgId, dossier.id, etape, e.request_id, s);
@@ -298,7 +298,7 @@ async function finaliser(supa, orgId, dossierId, etape, requestId, detailConnu =
     const dossier = await chargerDossier(supa, orgId, dossierId);
     const e = dossier?.metadata?.parcours?.[etape];
     if (!e || e.request_id !== requestId || !['envoyee', 'en_cours'].includes(e.statut)) return;
-    const detail = detailConnu?.documents ? detailConnu : await yousign.getStatus(requestId);
+    const detail = detailConnu?.documents ? detailConnu : await fournisseurDe(e).getStatus(requestId);
     const docsYS = (detail?.documents || []).filter((d) => !d.nature || d.nature === 'signable_document');
     if (etape === 'signature_client') await finaliserClient(supa, orgId, dossier, e, requestId, docsYS);
     else await finaliserInpi(supa, orgId, dossier, e, requestId, docsYS);
@@ -315,10 +315,11 @@ async function finaliserClient(supa, orgId, dossier, e, requestId, docsYS) {
   const versees = [];
   const erreurs = [];
   const aReverser = [];
-  for (const c of e.documents || []) { // [{ document_id, yousign_document_id, doc_type, name }]
+  const f = fournisseurDe(e);
+  for (const c of e.documents || []) { // [{ document_id, yousign_document_id (id chez le fournisseur), doc_type, name }]
     if (!docsYS.some((d) => d.id === c.yousign_document_id)) continue;
     let pdf;
-    try { pdf = await yousign.downloadSignedDocument(requestId, c.yousign_document_id); } catch { erreurs.push(`${c.name} : téléchargement Yousign impossible`); continue; }
+    try { pdf = await f.downloadSignedDocument(requestId, c.yousign_document_id); } catch { erreurs.push(`${c.name} : téléchargement ${f.nom} impossible`); continue; }
     const nom = `${String(c.name).replace(/\.(docx|pdf)$/i, '').replace(/ \(signé\)$/, '')} (signé).pdf`;
     const chemin = `signed/${dossier.id}/${requestId}-${c.yousign_document_id}.pdf`;
     const { error: upErr } = await supa.storage.from(BUCKET).upload(chemin, pdf, { contentType: 'application/pdf', upsert: true });
@@ -391,7 +392,7 @@ async function finaliserInpi(supa, orgId, dossier, e, requestId, docsYS) {
   try {
     for (const [role, ysId] of Object.entries(e.yousign_documents || {})) {
       if (!docsYS.some((d) => d.id === ysId)) continue;
-      const pdf = await yousign.downloadSignedDocument(requestId, ysId);
+      const pdf = await fournisseurDe(e).downloadSignedDocument(requestId, ysId);
       const chemin = `signed/${dossier.id}/${requestId}-${role}.pdf`;
       await supa.storage.from(BUCKET).upload(chemin, pdf, { contentType: 'application/pdf', upsert: true });
       await supa.from('dossier_documents').insert({
@@ -405,12 +406,12 @@ async function finaliserInpi(supa, orgId, dossier, e, requestId, docsYS) {
       });
       pieces[role] = att?.id ?? att?.attachmentId;
     }
-    if (!pieces.synthese) throw new Error('Synthèse signée introuvable dans la demande Yousign.');
+    if (!pieces.synthese) throw new Error(`Synthèse signée introuvable dans la demande ${fournisseurDe(e).nom}.`);
     await declarerSignature(orgId, fid, pieces);
-    await majParcours(supa, orgId, dossier.id, { signature_inpi: { statut: 'signee', signee_le: new Date().toISOString(), mode: 'yousign', erreur: null, pieces } });
+    await majParcours(supa, orgId, dossier.id, { signature_inpi: { statut: 'signee', signee_le: new Date().toISOString(), mode: e.fournisseur || 'yousign', erreur: null, pieces } });
   } catch (err) {
     // Pièces déjà versées : un nouvel essai ne rejoue que la déclaration de signature
-    await majParcours(supa, orgId, dossier.id, { signature_inpi: { statut: 'erreur_inpi', pieces, erreur: `Signée sur Yousign, mais le Guichet unique n'a pas accepté la transmission : ${String(err.message).slice(0, 300)}` } });
+    await majParcours(supa, orgId, dossier.id, { signature_inpi: { statut: 'erreur_inpi', pieces, erreur: `Signée sur ${fournisseurDe(e).nom}, mais le Guichet unique n'a pas accepté la transmission : ${String(err.message).slice(0, 300)}` } });
   }
 }
 
@@ -418,14 +419,14 @@ async function redeclarerSignature(supa, orgId, dossierId) {
   const { dossier, fid } = await formaliteExige(supa, orgId, dossierId);
   const si = dossier.metadata?.parcours?.signature_inpi || {};
   const attendues = Object.keys(si.yousign_documents || { synthese: 1 });
-  if (!si.pieces?.synthese || attendues.some((r) => !si.pieces?.[r])) throw erreur('Toutes les synthèses signées n’ont pas été versées : signez à nouveau avec Yousign.', 409);
+  if (!si.pieces?.synthese || attendues.some((r) => !si.pieces?.[r])) throw erreur(`Toutes les synthèses signées n’ont pas été versées : signez à nouveau avec ${fournisseurDe(si).nom}.`, 409);
   try {
     await declarerSignature(orgId, fid, si.pieces);
   } catch (err) {
     await majParcours(supa, orgId, dossierId, { signature_inpi: { erreur: `Le Guichet unique refuse encore la signature : ${String(err.message).slice(0, 300)}` } });
     throw erreur(`Le Guichet unique refuse encore la signature : ${String(err.message).slice(0, 200)}`, 502);
   }
-  await majParcours(supa, orgId, dossierId, { signature_inpi: { statut: 'signee', mode: 'yousign', signee_le: new Date().toISOString(), erreur: null } });
+  await majParcours(supa, orgId, dossierId, { signature_inpi: { statut: 'signee', mode: si.fournisseur || 'yousign', signee_le: new Date().toISOString(), erreur: null } });
 }
 
 // ─── État du parcours (panneau de droite) ─────────────────────────
@@ -545,7 +546,8 @@ async function etat(supa, orgId, dossierId) {
   else if (!aSigner.length) statutSC = signes.length || sc.statut === 'signee' ? 'fait' : 'sans_objet';
   else if (!prepare) statutSC = 'a_venir';
   else statutSC = 'a_faire';
-  const yousignOff = { desactive: !yousignConfigure(), raison: yousignConfigure() ? null : 'Yousign n’est pas encore configuré (clé API à ajouter sur le serveur).' };
+  const fs = signature.actif();
+  const yousignOff = { desactive: !fs.configure(), raison: fs.configure() ? null : `${fs.nom} n’est pas encore configuré (clés à ajouter sur le serveur).` };
   etapes.push({
     cle: 'signature_client', titre: 'Signature des documents par le client',
     statut: statutSC,
@@ -570,7 +572,7 @@ async function etat(supa, orgId, dossierId) {
       ]
       : ['a_faire', 'bloque'].includes(statutSC)
         ? [{ type: 'signature_client', label: statutSC === 'bloque' ? 'Renvoyer en signature' : 'Envoyer en signature', ...yousignOff }]
-        : statutSC === 'attente' ? [{ type: 'annuler_signature_client', label: 'Annuler la demande', secondaire: true, confirmation: 'Annuler la demande Yousign envoyée ? Les signataires ne pourront plus signer ; vous pourrez renvoyer une nouvelle demande.' }] : [],
+        : statutSC === 'attente' ? [{ type: 'annuler_signature_client', label: 'Annuler la demande', secondaire: true, confirmation: `Annuler la demande ${fournisseurDe(sc).nom} envoyée ? Les signataires ne pourront plus signer ; vous pourrez renvoyer une nouvelle demande.` }] : [],
   });
 
   // 4. Signature électronique de la formalité (= signature au Guichet unique)
@@ -592,18 +594,21 @@ async function etat(supa, orgId, dossierId) {
   if (statutSI === 'a_faire' && !fid) {
     actionsSI.push({ type: 'demander', label: 'Créer le brouillon', message: "Les actes sont signés et l'annonce est parue : crée le brouillon au Guichet unique avec les actes signés et l'attestation de parution." });
   } else if (statutSI === 'a_faire' || (statutSI === 'bloque' && !si.pieces?.synthese)) {
-    actionsSI.push({ type: 'signature_inpi', label: 'Signer avec Yousign', ...yousignOff });
+    actionsSI.push({ type: 'signature_inpi', label: `Signer avec ${fs.nom}`, ...yousignOff });
     if (creation) actionsSI.push({ type: 'signature_simple', label: 'Signature simple', secondaire: true, confirmation: 'Signer la formalité par signature électronique simple (création) ? La signature est définitive.' });
   }
   if (statutSI === 'bloque' && si.pieces?.synthese) actionsSI.push({ type: 'redeclarer_signature', label: 'Réessayer la transmission' });
-  if (statutSI === 'bloque') actionsSI.push({ type: 'recommencer_signature_inpi', label: 'Signer à nouveau', secondaire: true, confirmation: 'Recommencer la signature de la formalité avec une nouvelle demande Yousign ?' });
-  if (statutSI === 'attente') actionsSI.push({ type: 'annuler_signature_inpi', label: 'Annuler', secondaire: true, confirmation: 'Annuler la signature Yousign en cours ? Vous pourrez la relancer.' });
+  if (statutSI === 'bloque') actionsSI.push({ type: 'recommencer_signature_inpi', label: 'Signer à nouveau', secondaire: true, confirmation: `Recommencer la signature de la formalité avec une nouvelle demande ${fs.nom} ?` });
+  // DocuSign : le lien de signature expire en quelques minutes, on en demande un nouveau à chaque ouverture
+  const integreeDS = statutSI === 'attente' && si.fournisseur === 'docusign';
+  if (integreeDS) actionsSI.push({ type: 'signature_inpi', label: 'Ouvrir la signature DocuSign' });
+  if (statutSI === 'attente') actionsSI.push({ type: 'annuler_signature_inpi', label: 'Annuler', secondaire: true, confirmation: `Annuler la signature ${fournisseurDe(si).nom} en cours ? Vous pourrez la relancer.` });
   etapes.push({
     cle: 'signature_inpi', titre: comptes ? 'Signature électronique du dépôt' : 'Signature électronique de la formalité',
     statut: statutSI,
     detail: statutSI === 'fait'
-      ? `Formalité signée${si.mode === 'simple' ? ' (signature simple)' : si.mode === 'yousign' ? ' avec Yousign' : ''}.`
-      : statutSI === 'attente' ? 'Signez la synthèse dans Yousign : elle est ensuite transmise au Guichet unique.'
+      ? `Formalité signée${si.mode === 'simple' ? ' (signature simple)' : si.mode === 'yousign' ? ' avec Yousign' : si.mode === 'docusign' ? ' avec DocuSign' : ''}.`
+      : statutSI === 'attente' ? `Signez la synthèse dans ${fournisseurDe(si).nom} : elle est ensuite transmise au Guichet unique.`
         : statutSI === 'bloque' ? si.erreur
           : statutSI === 'inconnu' ? 'Statut du Guichet unique indisponible pour le moment.'
             : statutSI === 'a_faire' && !fid ? 'Actes signés et annonce parue : le brouillon peut être créé, puis signé.'
@@ -615,7 +620,7 @@ async function etat(supa, orgId, dossierId) {
                   : !fid ? 'Après la création du brouillon.' : 'Après la signature des documents par le client.',
     alertes: statutSI === 'a_faire' && fid && manqueAnnonce ? [AVERTISSEMENT_ANNONCE]
       : statutSI === 'a_faire' && fid && sansAttestation ? ["L'attestation de parution n'est pas encore jointe : le greffe la réclamera."] : undefined,
-    lienSignature: statutSI === 'attente' ? si.lien || null : null,
+    lienSignature: statutSI === 'attente' && !integreeDS ? si.lien || null : null,
     actions: actionsSI,
   });
 
@@ -702,7 +707,8 @@ function champsSignature(documentYS, rang, nbPages) {
 }
 
 async function envoyerSignatureClient(supa, orgId, dossierId, { signataires }) {
-  if (!yousignConfigure()) throw erreur('Yousign n’est pas configuré sur le serveur.', 400);
+  const f = signature.actif();
+  if (!f.configure()) throw erreur(`${f.nom} n’est pas configuré sur le serveur.`, 400);
   const liste = (Array.isArray(signataires) ? signataires : []).slice(0, 20).map((s) => ({
     prenom: String(s?.prenom || '').trim().slice(0, 80), nom: String(s?.nom || '').trim().slice(0, 80),
     email: String(s?.email || '').trim().slice(0, 200), telephone: String(s?.telephone || '').trim().slice(0, 30),
@@ -730,27 +736,30 @@ async function envoyerSignatureClient(supa, orgId, dossierId, { signataires }) {
     return { doc: d, pdf: await toPdf(buf, d.mime_type || 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', d.name) };
   }));
 
-  const sr = await yousign.createSignatureRequest({ name: `${dossier.client_name || 'Dossier'} — actes à signer (${dossier.reference || ''})`.slice(0, 120), deliveryMode: 'email' });
-  const uploads = await Promise.all(pdfs.map(({ doc, pdf }) => yousign.uploadDocument(sr.id, { filename: `${String(doc.name).replace(/\.(docx|pdf)$/i, '')}.pdf`, base64Pdf: pdf.toString('base64') })));
+  const sr = await f.createSignatureRequest({ name: `${dossier.client_name || 'Dossier'} — actes à signer (${dossier.reference || ''})`.slice(0, 120), deliveryMode: 'email' });
+  const uploads = await Promise.all(pdfs.map(({ doc, pdf }) => f.uploadDocument(sr.id, { filename: `${String(doc.name).replace(/\.(docx|pdf)$/i, '')}.pdf`, base64Pdf: pdf.toString('base64') })));
   const correspondances = uploads.map((u, i) => ({ document_id: pdfs[i].doc.id, yousign_document_id: u.id, doc_type: pdfs[i].doc.doc_type, name: pdfs[i].doc.name, pages: u.total_pages }));
   for (const [rang, s] of liste.entries()) {
-    await yousign.addSigner(sr.id, {
+    await f.addSigner(sr.id, {
       firstName: s.prenom, lastName: s.nom, email: s.email, phoneNumber: telephoneE164(s.telephone),
       fields: correspondances.map((c) => champsSignature(c.yousign_document_id, rang, c.pages)),
     });
   }
-  await yousign.activate(sr.id);
+  await f.activate(sr.id);
   await majParcours(supa, orgId, dossierId, {
-    signature_client: { statut: 'envoyee', request_id: sr.id, envoyee_le: new Date().toISOString(), signataires: liste, documents: correspondances, erreurs: [], versees: [], a_reverser: [] },
+    signature_client: { statut: 'envoyee', request_id: sr.id, fournisseur: signature.cle(f), envoyee_le: new Date().toISOString(), signataires: liste, documents: correspondances, erreurs: [], versees: [], a_reverser: [] },
   }, { yousign_client_request_id: sr.id });
   return { ok: true };
 }
 
 async function signerFormalite(supa, orgId, dossierId, { user, profile }) {
-  if (!yousignConfigure()) throw erreur('Yousign n’est pas configuré sur le serveur.', 400);
   const { dossier, fid } = await formaliteExige(supa, orgId, dossierId);
   const enCours = dossier.metadata?.parcours?.signature_inpi;
+  // Signature déjà ouverte : DocuSign donne un nouveau lien (l'ancien a expiré), Yousign garde le sien
+  if (enCours?.statut === 'en_cours' && enCours.fournisseur === 'docusign') return { ok: true, lien: await signature.docusign.lienSignature(enCours.request_id) };
   if (enCours?.statut === 'en_cours' && enCours.lien) return { ok: true, lien: enCours.lien };
+  const f = signature.actif();
+  if (!f.configure()) throw erreur(`${f.nom} n’est pas configuré sur le serveur.`, 400);
   const scEnCours = dossier.metadata?.parcours?.signature_client;
   if (['envoyee', 'en_cours', 'versement_incomplet'].includes(scEnCours?.statut) || verrous.has(`${dossierId}|signature_client|${scEnCours?.request_id}`)) {
     throw erreur('Les actes signés par le client ne sont pas encore tous versés : la synthèse ne serait pas à jour. Réessayez dans un instant.', 409);
@@ -787,22 +796,22 @@ async function signerFormalite(supa, orgId, dossierId, { user, profile }) {
 
   // Le formaliste signe lui-même, tout de suite : lien de signature direct (pas d'e-mail)
   const libelle = gu.liasseNumber || idDepot(fid);
-  const sr = await yousign.createSignatureRequest({ name: `Signature ${estComptes(fid) ? 'dépôt des comptes' : 'formalité'} ${libelle}`, deliveryMode: 'none' });
+  const sr = await f.createSignatureRequest({ name: `Signature ${estComptes(fid) ? 'dépôt des comptes' : 'formalité'} ${libelle}`, deliveryMode: 'none' });
   const docs = { synthese, ...(be ? { be } : {}) };
   const roles = Object.keys(docs);
-  const uploads = await Promise.all(roles.map((role) => yousign.uploadDocument(sr.id, {
+  const uploads = await Promise.all(roles.map((role) => f.uploadDocument(sr.id, {
     filename: role === 'be' ? `Synthese_BE_${libelle}.pdf` : `Synthese_${libelle}.pdf`, base64Pdf: docs[role].toString('base64'),
   })));
   const ys = Object.fromEntries(roles.map((r, i) => [r, uploads[i].id]));
-  const signer = await yousign.addSigner(sr.id, {
+  const signer = await f.addSigner(sr.id, {
     firstName: prenom, lastName: nom, email: user.email,
     level: process.env.YOUSIGN_NIVEAU_INPI || 'advanced_electronic_signature',
     authMode: process.env.YOUSIGN_AUTH_INPI || 'otp_email',
     fields: uploads.map((u) => champsSignature(u.id, 0, u.total_pages)),
   });
-  const act = await yousign.activate(sr.id);
+  const act = await f.activate(sr.id);
   const lien = (act?.signers || []).find((s) => s.id === signer.id)?.signature_link || signer?.signature_link || null;
-  await majParcours(supa, orgId, dossierId, { signature_inpi: { statut: 'en_cours', request_id: sr.id, lien, yousign_documents: ys, ouverte_le: new Date().toISOString(), erreur: null, pieces: null } }, { yousign_inpi_request_id: sr.id });
+  await majParcours(supa, orgId, dossierId, { signature_inpi: { statut: 'en_cours', request_id: sr.id, fournisseur: signature.cle(f), lien, yousign_documents: ys, ouverte_le: new Date().toISOString(), erreur: null, pieces: null } }, { yousign_inpi_request_id: sr.id });
   return { ok: true, lien };
 }
 
@@ -810,7 +819,7 @@ async function signerFormalite(supa, orgId, dossierId, { user, profile }) {
 async function signatureSimple(supa, orgId, dossierId) {
   const { fid } = await formaliteExige(supa, orgId, dossierId);
   const gu = await formaliteGU(orgId, fid, { frais: true });
-  if (estComptes(fid) || gu.typeFormalite !== 'C') throw erreur('La signature simple ne vaut que pour une création ; signez avec Yousign.', 400);
+  if (estComptes(fid) || gu.typeFormalite !== 'C') throw erreur(`La signature simple ne vaut que pour une création ; signez avec ${signature.actif().nom}.`, 400);
   if (!A_SIGNER.has(gu.status)) throw erreur(`La formalité n'est pas à signer (statut : ${STATUT_GU[gu.status] || gu.status}).`, 409);
   try { await inpi.forOrg(orgId).request(`${chemin(fid)}/refresh`, { timeoutMs: 30000, essais: 1 }); } catch { /* synthèse existante */ }
   await inpi.forOrg(orgId).request('/api/signatures', { method: 'POST', body: iriDepot(fid) });
@@ -819,7 +828,7 @@ async function signatureSimple(supa, orgId, dossierId) {
   return { ok: true };
 }
 
-// Signature de la formalité en erreur : on repart de zéro (nouvelle demande Yousign)
+// Signature de la formalité en erreur : on repart de zéro (nouvelle demande de signature)
 async function recommencerSignatureInpi(supa, orgId, dossierId) {
   await dossierExige(supa, orgId, dossierId);
   await majParcours(supa, orgId, dossierId, { signature_inpi: null });
@@ -828,8 +837,8 @@ async function recommencerSignatureInpi(supa, orgId, dossierId) {
 async function annulerSignature(supa, orgId, dossierId, etape) {
   const dossier = await dossierExige(supa, orgId, dossierId);
   const e = dossier.metadata?.parcours?.[etape];
-  if (e?.request_id && yousignConfigure()) {
-    try { await yousign.cancel(e.request_id); } catch { /* déjà terminée ou supprimée */ }
+  if (e?.request_id && fournisseurDe(e).configure()) {
+    try { await fournisseurDe(e).cancel(e.request_id); } catch { /* déjà terminée ou supprimée */ }
     cacheYS.delete(e.request_id);
   }
   // Les signataires saisis restent proposés pour le prochain envoi
@@ -902,10 +911,10 @@ async function deleguer(supa, orgId, dossierId, { email, designation }) {
   return { ok: true };
 }
 
-// Webhook Yousign : retrouve le dossier et l'étape d'une demande de signature
+// Webhook de signature (Yousign ou DocuSign) : retrouve le dossier et l'étape d'une demande de signature
 async function surWebhook(supa, requestId, eventName) {
   const id = String(requestId || '');
-  if (!/^[0-9a-f-]{36}$/i.test(id)) return false; // identifiant Yousign (UUID) : pas d'injection dans le filtre
+  if (!/^[0-9a-f-]{36}$/i.test(id)) return false; // UUID Yousign ou GUID d'enveloppe DocuSign : pas d'injection dans le filtre
   const [a, b] = await Promise.all([
     supa.from('dossiers').select('id, organization_id, metadata').eq('metadata->>yousign_client_request_id', id).limit(1),
     supa.from('dossiers').select('id, organization_id, metadata').eq('metadata->>yousign_inpi_request_id', id).limit(1),

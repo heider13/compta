@@ -12,7 +12,7 @@ const express = require('express');
 const crypto = require('node:crypto');
 const router = express.Router();
 
-const yousign = require('../lib/yousign');
+const yousign = Object.assign(require('../lib/yousign'), { nom: 'Yousign' });
 const { getSupabaseAdmin } = require('../lib/db');
 
 const SIGNED_BUCKET = 'dossier-docs';
@@ -133,110 +133,118 @@ router.post(
     }
 
     const supa = getSupabaseAdmin();
-    // Parcours du chat (signature des actes par le client, signature de la formalité)
-    try {
-      if (await require('../lib/parcours').surWebhook(supa, signatureRequestId, eventName)) {
-        return res.status(200).json({ ok: true, parcours: true });
-      }
-    } catch (e) {
-      console.error(`[yousign-webhook] parcours : ${e.message}`);
-      return res.status(500).json({ error: 'processing_failed' });
-    }
-
-    const dossier = await findDossierBySignatureRequest(supa, signatureRequestId);
-    if (!dossier) {
-      console.warn(`[yousign-webhook] aucun dossier ne référence ${signatureRequestId}`);
-      // 200 pour qu'Yousign ne retente pas en boucle
-      return res.status(200).json({ ok: true, skipped: 'dossier_not_found' });
-    }
-
-    // Audit log de l'événement
-    try {
-      await supa.from('audit_logs').insert({
-        organization_id: dossier.organization_id,
-        user_id: null,
-        action: `dossier.signature.${eventName}`,
-        resource_type: 'dossier',
-        resource_id: dossier.id,
-        metadata: {
-          signature_request_id: signatureRequestId,
-          event_name: eventName,
-          provider: 'yousign',
-        },
-      });
-    } catch {
-      // best-effort
-    }
-
-    // Dispatch par event_name. Yousign v3 utilise `signature_request.done`
-    // mais on accepte aussi les variantes ".signed" pour robustesse.
-    const isDone =
-      eventName === 'signature_request.done' ||
-      eventName === 'signature_request.signed';
-    const isDeclined = eventName === 'signature_request.declined';
-    const isExpired = eventName === 'signature_request.expired';
-
-    if (isDone) {
-      try {
-        // Récupère le détail pour avoir les document_id
-        const detail = await yousign.getStatus(signatureRequestId);
-        const docs = detail?.documents || [];
-
-        const uploadedPaths = [];
-        for (const d of docs) {
-          if (d.nature && d.nature !== 'signable_document' && d.nature !== 'attachment') continue;
-          let pdfBuf;
-          try {
-            pdfBuf = await yousign.downloadSignedDocument(signatureRequestId, d.id);
-          } catch (e) {
-            console.error(`[yousign-webhook] download failed ${d.id}: ${e.message}`);
-            continue;
-          }
-          try {
-            const up = await uploadSignedPdf(supa, dossier, signatureRequestId, d.id, pdfBuf);
-            uploadedPaths.push(up.storagePath);
-          } catch (e) {
-            console.error(`[yousign-webhook] upload supabase failed: ${e.message}`);
-          }
-        }
-
-        // Update dossier : statut → VALIDATED_INTERNAL + metadata
-        const nextStatus =
-          dossier.statut === 'VALIDATED' || dossier.statut === 'VALIDATED_INTERNAL'
-            ? dossier.statut
-            : 'VALIDATED_INTERNAL';
-
-        await supa
-          .from('dossiers')
-          .update({ statut: nextStatus })
-          .eq('id', dossier.id);
-
-        await patchDossierMeta(supa, dossier.id, {
-          signature_status: 'signed',
-          signature_signed_at: new Date().toISOString(),
-          signature_signed_paths: uploadedPaths,
-        });
-
-        return res.status(200).json({ ok: true, status: 'signed', uploaded: uploadedPaths.length });
-      } catch (e) {
-        console.error(`[yousign-webhook] erreur traitement done: ${e.message}`);
-        // Renvoyer 500 → Yousign retente
-        return res.status(500).json({ error: 'processing_failed', detail: String(e.message) });
-      }
-    }
-
-    if (isDeclined || isExpired) {
-      const finalStatus = isDeclined ? 'declined' : 'expired';
-      await patchDossierMeta(supa, dossier.id, {
-        signature_status: finalStatus,
-        [`signature_${finalStatus}_at`]: new Date().toISOString(),
-      });
-      return res.status(200).json({ ok: true, status: finalStatus });
-    }
-
-    // Autres events (activated, reminder_executed, …) : on accuse réception sans rien faire.
-    return res.status(200).json({ ok: true, ignored: eventName });
+    const [code, reponse] = await traiterEvenement(supa, yousign, signatureRequestId, eventName);
+    return res.status(code).json(reponse);
   }),
 );
+
+// Traitement commun d'un événement de signature (Yousign, ou DocuSign ramené au même
+// vocabulaire par routes/docusign-webhook.js). Renvoie [code HTTP, corps].
+async function traiterEvenement(supa, fournisseur, signatureRequestId, eventName) {
+  // Parcours du chat (signature des actes par le client, signature de la formalité)
+  try {
+    if (await require('../lib/parcours').surWebhook(supa, signatureRequestId, eventName)) {
+      return [200, { ok: true, parcours: true }];
+    }
+  } catch (e) {
+    console.error(`[signature-webhook] parcours : ${e.message}`);
+    return [500, { error: 'processing_failed' }];
+  }
+
+  const dossier = await findDossierBySignatureRequest(supa, signatureRequestId);
+  if (!dossier) {
+    console.warn(`[signature-webhook] aucun dossier ne référence ${signatureRequestId}`);
+    // 200 pour que le fournisseur ne retente pas en boucle
+    return [200, { ok: true, skipped: 'dossier_not_found' }];
+  }
+
+  // Audit log de l'événement
+  try {
+    await supa.from('audit_logs').insert({
+      organization_id: dossier.organization_id,
+      user_id: null,
+      action: `dossier.signature.${eventName}`,
+      resource_type: 'dossier',
+      resource_id: dossier.id,
+      metadata: {
+        signature_request_id: signatureRequestId,
+        event_name: eventName,
+        provider: fournisseur.nom.toLowerCase(),
+      },
+    });
+  } catch {
+    // best-effort
+  }
+
+  // Yousign v3 utilise `signature_request.done` mais on accepte aussi les variantes ".signed" pour robustesse.
+  const isDone =
+    eventName === 'signature_request.done' ||
+    eventName === 'signature_request.signed';
+  const isDeclined = eventName === 'signature_request.declined';
+  const isExpired = eventName === 'signature_request.expired';
+
+  if (isDone) {
+    try {
+      // Récupère le détail pour avoir les document_id
+      const detail = await fournisseur.getStatus(signatureRequestId);
+      const docs = detail?.documents || [];
+
+      const uploadedPaths = [];
+      for (const d of docs) {
+        if (d.nature && d.nature !== 'signable_document' && d.nature !== 'attachment') continue;
+        let pdfBuf;
+        try {
+          pdfBuf = await fournisseur.downloadSignedDocument(signatureRequestId, d.id);
+        } catch (e) {
+          console.error(`[signature-webhook] download failed ${d.id}: ${e.message}`);
+          continue;
+        }
+        try {
+          const up = await uploadSignedPdf(supa, dossier, signatureRequestId, d.id, pdfBuf);
+          uploadedPaths.push(up.storagePath);
+        } catch (e) {
+          console.error(`[signature-webhook] upload supabase failed: ${e.message}`);
+        }
+      }
+
+      // Update dossier : statut → VALIDATED_INTERNAL + metadata
+      const nextStatus =
+        dossier.statut === 'VALIDATED' || dossier.statut === 'VALIDATED_INTERNAL'
+          ? dossier.statut
+          : 'VALIDATED_INTERNAL';
+
+      await supa
+        .from('dossiers')
+        .update({ statut: nextStatus })
+        .eq('id', dossier.id);
+
+      await patchDossierMeta(supa, dossier.id, {
+        signature_status: 'signed',
+        signature_signed_at: new Date().toISOString(),
+        signature_signed_paths: uploadedPaths,
+      });
+
+      return [200, { ok: true, status: 'signed', uploaded: uploadedPaths.length }];
+    } catch (e) {
+      console.error(`[signature-webhook] erreur traitement done: ${e.message}`);
+      // Renvoyer 500 → le fournisseur retente
+      return [500, { error: 'processing_failed', detail: String(e.message) }];
+    }
+  }
+
+  if (isDeclined || isExpired) {
+    const finalStatus = isDeclined ? 'declined' : 'expired';
+    await patchDossierMeta(supa, dossier.id, {
+      signature_status: finalStatus,
+      [`signature_${finalStatus}_at`]: new Date().toISOString(),
+    });
+    return [200, { ok: true, status: finalStatus }];
+  }
+
+  // Autres events (activated, reminder_executed, …) : on accuse réception sans rien faire.
+  return [200, { ok: true, ignored: eventName }];
+}
+
+router.traiterEvenement = traiterEvenement;
 
 module.exports = router;
