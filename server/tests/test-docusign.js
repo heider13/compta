@@ -25,7 +25,7 @@ global.fetch = async (url, init = {}) => {
   if (url.endsWith('/documents') && init.method === 'PUT') return json({});
   if (url.endsWith('/recipients') && init.method === 'POST') return json({});
   if (url.endsWith('/recipients')) return json({ signers: [{ recipientId: '1', clientUserId: '1', email: 'f@ex.fr', name: 'Jeanne MARTIN' }] });
-  if (url.endsWith('/identity_verification')) return json({ identityVerification: [{ workflowId: 'wf-sms', defaultName: 'Phone Authentication' }, { workflowId: 'wf-idv', defaultName: 'DocuSign ID Verification' }, { workflowId: 'wf-prem', defaultName: 'DocuSign ID Verification Premier' }] });
+  if (url.endsWith('/identity_verification')) return json({ identityVerification: [{ workflowId: 'wf-sms', defaultName: 'Phone Authentication' }, { workflowId: 'wf-idv', defaultName: 'DocuSign ID Verification' }, { workflowId: 'wf-prem', defaultName: 'DocuSign ID Verification Premier' }, { workflowId: '5eedeb39-c6a2-48d9-b789-b5459c2ff9bb', defaultName: 'Docusign ID Verification for EU Qualified' }] });
   if (url.endsWith('/views/recipient')) return json({ url: 'https://demo.docusign.net/signing/xyz' });
   if (url === `${BASE}/envelopes/aaaa-env` && init.method === 'PUT') return json({});
   if (url === `${BASE}/envelopes/aaaa-env`) return json({ status: 'completed' });
@@ -67,12 +67,12 @@ const ds = require('../lib/docusign');
   assert.strictEqual(vue.clientUserId, '1');
   assert.strictEqual(vue.authenticationMethod, 'none');
 
-  // Signature de la formalité (niveau demandé) : signature qualifiée + ID Verification Premier
+  // Signature de la formalité (niveau demandé) : QES par le workflow « IDV for EU QES »
   process.env.DOCUSIGN_SIGNATURE_PROVIDER = 'FournisseurQES';
   const sr3 = await ds.createSignatureRequest({ name: 'Formalité', deliveryMode: 'none' });
   await ds.addSigner(sr3.id, { firstName: 'J', lastName: 'M', email: 'j@m.fr', fields: [], level: 'advanced_electronic_signature' });
   const qes = appels.at(-1).corps.signers[0];
-  assert.deepStrictEqual(qes.identityVerification, { workflowId: 'wf-prem' });
+  assert.deepStrictEqual(qes.identityVerification, { workflowId: '5eedeb39-c6a2-48d9-b789-b5459c2ff9bb' });
   assert.deepStrictEqual(qes.recipientSignatureProviders, [{ signatureProviderName: 'FournisseurQES' }]);
   delete process.env.DOCUSIGN_SIGNATURE_PROVIDER;
 

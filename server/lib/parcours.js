@@ -608,7 +608,7 @@ async function etat(supa, orgId, dossierId) {
     statut: statutSI,
     detail: statutSI === 'fait'
       ? `Formalité signée${si.mode === 'simple' ? ' (signature simple)' : si.mode === 'yousign' ? ' avec Yousign' : si.mode === 'docusign' ? ' avec DocuSign' : ''}.`
-      : statutSI === 'attente' ? `Signez la synthèse dans ${fournisseurDe(si).nom} : elle est ensuite transmise au Guichet unique.`
+      : statutSI === 'attente' ? `Signez la synthèse dans ${fournisseurDe(si).nom} : elle est ensuite transmise au Guichet unique.${integreeDS ? ' Après la vérification d’identité, une revue de 3 à 5 minutes a lieu : rouvrez alors la signature.' : ''}`
         : statutSI === 'bloque' ? si.erreur
           : statutSI === 'inconnu' ? 'Statut du Guichet unique indisponible pour le moment.'
             : statutSI === 'a_faire' && !fid ? 'Actes signés et annonce parue : le brouillon peut être créé, puis signé.'

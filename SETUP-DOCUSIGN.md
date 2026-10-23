@@ -74,26 +74,43 @@ le panneau du dossier relit quand même le statut de l'enveloppe à chaque rafra
 
 ## 5. Signature qualifiée (QES) pour les formalités INPI
 
-Offre envisagée avec DocuSign (licence ISV) : enveloppes **standard** pour les actes signés
-par le client, et **signatures qualifiées (QES)** avec **ID Verification Premier** pour la
-signature de la formalité destinée au Guichet unique (pièce d'identité, selfie vidéo et
-mouvements guidés sur mobile, puis signature qualifiée).
+Offre envisagée avec DocuSign (licence ISV « Embedded integration ») : enveloppes
+**standard** pour les actes signés par le client, et **signatures qualifiées (QES)** pour la
+signature de la formalité destinée au Guichet unique.
 
-Dans le code, les options QES ne s'appliquent qu'à la signature de la formalité
-(`signerFormalite`) ; les actes du client partent en enveloppe standard.
+Méthode retenue (documentation « Standards-Based Signatures », section *IDV for EU
+Qualified Electronic Signatures*) : le signataire passe la vérification d'identité EU QES
+(pièce d'identité, selfie, tests de présence), puis une revue par un agent (3 à 5 min)
+avant de pouvoir signer. Le panneau du dossier l'indique ; le bouton « Ouvrir la signature
+DocuSign » redonne un lien après la revue.
 
-- **Vérification d'identité** : workflow « ID Verification » du compte, choisi
-  automatiquement (« Premier » de préférence), ou imposé par `DOCUSIGN_IDV_WORKFLOW_ID`.
-- **Fournisseur QES** : `DOCUSIGN_SIGNATURE_PROVIDER` (nom technique donné par le compte).
+Dans le code, la QES ne s'applique qu'à la signature de la formalité (`signerFormalite`) ;
+les actes du client partent en enveloppe standard.
+
+- **Workflow** : celui de `DOCUSIGN_IDV_WORKFLOW_ID`, sinon le workflow « EU Qualified » du
+  compte (celui fourni par défaut : `5eedeb39-c6a2-48d9-b789-b5459c2ff9bb`).
+- **Fournisseur** (facultatif) : `DOCUSIGN_SIGNATURE_PROVIDER`, par exemple
+  `docusign_eu_qualified_idnow_tsp` (QES IDnow) ou `UniversalSignaturePen_OpenTrust_Hash_TSP`
+  (signature avancée EU, avec SMS ou code à usage unique).
+- **Sans QES activée** : refus en production (`docusign_qes_inactive`) ; en démo, signature
+  standard pour tester le reste du parcours.
+
+À savoir (documentation DocuSign) :
+
+- Les signatures avancées/qualifiées **ne sont pas incluses** dans les comptes
+  développeur : demander au support DocuSign (ou au commercial) d'ajouter « Standards-Based
+  Signatures » et « IDV for EU QES » au compte de démonstration.
+- En démo, les signatures numériques se vérifient avec un avertissement (identité non
+  certifiée) ; pas en production.
+- Mise en production : classification **Embedded integration**, qui exige la licence ISV
+  Embed (c'est l'offre du commercial), puis promotion de la clé d'intégration (Go-Live).
+  Les secrets et URI de redirection sont à reconfigurer en production.
 
 Une fois les clés en place, lister ce que le compte propose (lecture seule) :
 
 ```
 cd /opt/compta-proxy/server && set -a && . /etc/compta-proxy.env && set +a && node tests/docusign-diagnostic.js
 ```
-
-Rappel : le Guichet unique exige au moins une signature **avancée** pour les
-modifications, cessations et dépôts de comptes ; la QES va au-delà et convient.
 
 Autres différences avec Yousign :
 

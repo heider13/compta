@@ -17,12 +17,14 @@
 //   DOCUSIGN_ACCOUNT_ID        compte à utiliser (défaut : compte par défaut de l'utilisateur)
 //   DOCUSIGN_RETURN_URL        page de retour après une signature intégrée
 //   DOCUSIGN_SIGNATURE_PROVIDER  fournisseur de signature qualifiée (QES) du compte
-//   DOCUSIGN_IDV_WORKFLOW_ID     vérification d'identité (sinon : workflow « ID Verification » du compte)
+//   DOCUSIGN_IDV_WORKFLOW_ID     workflow de vérification d'identité (sinon : « EU Qualified » du compte)
 //
 // Offre ISV : enveloppes standard pour les actes signés par le client, signature qualifiée
-// (QES, avec vérification d'identité « ID Verification Premier ») pour la formalité INPI.
+// (QES eIDAS par vérification d'identité, « IDV for EU QES ») pour la formalité INPI.
 // Les options QES ne s'appliquent qu'aux signataires pour lesquels un niveau est demandé
 // (paramètre level, passé par parcours.js pour la signature de la formalité).
+// Parcours du signataire (signature intégrée) : pièce d'identité, selfie et tests de présence,
+// puis revue par un agent (3 à 5 min) ; il rouvre ensuite le lien pour signer.
 
 const crypto = require('node:crypto');
 const fs = require('node:fs');
@@ -66,7 +68,8 @@ const b64url = (buf) => Buffer.from(buf).toString('base64').replace(/=+$/, '').r
 let session = null; // { jeton, exp, compte, base }
 
 async function ouvrirSession() {
-  if (session && session.exp > Date.now() + 5 * 60_000) return session;
+  // Jeton valable 1 h, sans jeton de rafraîchissement : DocuSign conseille d'en redemander un ~15 min avant
+  if (session && session.exp > Date.now() + 15 * 60_000) return session;
   if (!configure()) throw erreurConfig();
   const maintenant = Math.floor(Date.now() / 1000);
   const entete = b64url(JSON.stringify({ alg: 'RS256', typ: 'JWT' }));
@@ -167,23 +170,39 @@ async function uploadDocument(envelopeId, { filename, base64Pdf }) {
   return { id: documentId, total_pages: compterPages(Buffer.from(base64Pdf, 'base64')) };
 }
 
-// Workflow de vérification d'identité du compte : celui de la configuration, sinon le
-// « ID Verification » proposé par le compte (Premier de préférence). Mis en cache.
+// Workflow « IDV for EU QES » fourni par défaut par DocuSign (documentation Standards-Based Signatures)
+const WORKFLOW_EU_QES_DEFAUT = '5eedeb39-c6a2-48d9-b789-b5459c2ff9bb';
+
+// Workflow de vérification d'identité : celui de la configuration, sinon le workflow EU QES
+// du compte (celui par défaut de préférence), à défaut un autre « ID Verification ».
+// Liste vide = vérification d'identité non activée sur le compte. Mis en cache (y compris l'absence).
 let workflowIdv;
 async function workflowVerification() {
   if (process.env.DOCUSIGN_IDV_WORKFLOW_ID) return process.env.DOCUSIGN_IDV_WORKFLOW_ID;
   if (workflowIdv !== undefined) return workflowIdv;
-  const r = await dsFetch('/identity_verification').catch(() => ({}));
-  const liste = (r.identityVerification || []).filter((w) => /ID Verification/i.test(w.defaultName || ''));
-  workflowIdv = (liste.find((w) => /premier/i.test(w.defaultName)) || liste[0])?.workflowId || null;
+  const r = await dsFetch('/identity_verification');
+  const liste = r.identityVerification || [];
+  const qes = liste.filter((w) => /EU Qualified|QES/i.test(w.defaultName || ''));
+  workflowIdv = (qes.find((w) => w.workflowId === WORKFLOW_EU_QES_DEFAUT) || qes[0]
+    || liste.find((w) => /ID Verification/i.test(w.defaultName || '')))?.workflowId || null;
   return workflowIdv;
 }
 
-// Options de signature qualifiée d'un signataire (vide si le compte n'en propose pas)
+// Options de signature qualifiée d'un signataire. Sans QES activée sur le compte : refus en
+// production (le Guichet unique exige au moins une signature avancée), signature standard
+// tolérée en démo pour pouvoir tester le reste du parcours.
 async function optionsQualifiees() {
   const workflowId = await workflowVerification();
+  const fournisseur = process.env.DOCUSIGN_SIGNATURE_PROVIDER;
+  if (!workflowId && !fournisseur) {
+    if (process.env.DOCUSIGN_ENV === 'prod') {
+      throw Object.assign(new Error('La signature qualifiée (vérification d’identité EU QES) n’est pas activée sur le compte DocuSign.'), { status: 400, code: 'docusign_qes_inactive' });
+    }
+    console.warn('[docusign] QES non activée sur le compte de démonstration : signature standard');
+    return {};
+  }
   return {
-    ...(process.env.DOCUSIGN_SIGNATURE_PROVIDER ? { recipientSignatureProviders: [{ signatureProviderName: process.env.DOCUSIGN_SIGNATURE_PROVIDER }] } : {}),
+    ...(fournisseur ? { recipientSignatureProviders: [{ signatureProviderName: fournisseur }] } : {}),
     ...(workflowId ? { identityVerification: { workflowId } } : {}),
   };
 }
