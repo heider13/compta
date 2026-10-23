@@ -40,7 +40,8 @@ Dans **Settings → Apps and Keys** (https://admindemo.docusign.com) :
 | `DOCUSIGN_ENV`                | `demo` (défaut) ou `prod`                                |             |
 | `DOCUSIGN_CONNECT_SECRET`     | clé HMAC de Connect (étape 4)                            |      ✓      |
 | `DOCUSIGN_RETURN_URL`         | `https://compta-navy.vercel.app/signature-terminee`      |             |
-| `DOCUSIGN_SIGNATURE_PROVIDER` | fournisseur de signature avancée / qualifiée (étape 5)   |             |
+| `DOCUSIGN_SIGNATURE_PROVIDER` | fournisseur de signature qualifiée QES (étape 5)          |             |
+| `DOCUSIGN_IDV_WORKFLOW_ID`    | vérification d'identité imposée (étape 5)                |             |
 
 `DOCUSIGN_PRIVATE_KEY` (contenu PEM, `\n` échappés) peut remplacer le chemin du fichier.
 Puis `systemctl restart compta-proxy`.
@@ -71,15 +72,28 @@ En production, même URL avec `account.docusign.com`.
 Tout appel sans HMAC valide (`X-DocuSign-Signature-1`) est rejeté (401). Sans webhook,
 le panneau du dossier relit quand même le statut de l'enveloppe à chaque rafraîchissement.
 
-## 5. Niveau de signature : à vérifier avant la mise en production
+## 5. Signature qualifiée (QES) pour les formalités INPI
 
-Le Guichet unique exige une **signature électronique avancée** pour les modifications,
-cessations et dépôts de comptes (la création accepte la signature simple). La signature
-DocuSign standard est une signature **simple**. La signature avancée ou qualifiée
-(eIDAS) est une option du compte DocuSign (« Standards-Based Signatures » /
-« EU Advanced », « EU Qualified »), à activer par DocuSign. Une fois activée, indiquer le
-nom du fournisseur dans `DOCUSIGN_SIGNATURE_PROVIDER` : il est ajouté à chaque
-signataire.
+Offre envisagée avec DocuSign (licence ISV) : enveloppes **standard** pour les actes signés
+par le client, et **signatures qualifiées (QES)** avec **ID Verification Premier** pour la
+signature de la formalité destinée au Guichet unique (pièce d'identité, selfie vidéo et
+mouvements guidés sur mobile, puis signature qualifiée).
+
+Dans le code, les options QES ne s'appliquent qu'à la signature de la formalité
+(`signerFormalite`) ; les actes du client partent en enveloppe standard.
+
+- **Vérification d'identité** : workflow « ID Verification » du compte, choisi
+  automatiquement (« Premier » de préférence), ou imposé par `DOCUSIGN_IDV_WORKFLOW_ID`.
+- **Fournisseur QES** : `DOCUSIGN_SIGNATURE_PROVIDER` (nom technique donné par le compte).
+
+Une fois les clés en place, lister ce que le compte propose (lecture seule) :
+
+```
+cd /opt/compta-proxy/server && set -a && . /etc/compta-proxy.env && set +a && node tests/docusign-diagnostic.js
+```
+
+Rappel : le Guichet unique exige au moins une signature **avancée** pour les
+modifications, cessations et dépôts de comptes ; la QES va au-delà et convient.
 
 Autres différences avec Yousign :
 

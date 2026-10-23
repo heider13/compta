@@ -16,7 +16,13 @@
 //   DOCUSIGN_ENV               demo (défaut) | prod
 //   DOCUSIGN_ACCOUNT_ID        compte à utiliser (défaut : compte par défaut de l'utilisateur)
 //   DOCUSIGN_RETURN_URL        page de retour après une signature intégrée
-//   DOCUSIGN_SIGNATURE_PROVIDER  fournisseur de signature avancée/qualifiée (option du compte)
+//   DOCUSIGN_SIGNATURE_PROVIDER  fournisseur de signature qualifiée (QES) du compte
+//   DOCUSIGN_IDV_WORKFLOW_ID     vérification d'identité (sinon : workflow « ID Verification » du compte)
+//
+// Offre ISV : enveloppes standard pour les actes signés par le client, signature qualifiée
+// (QES, avec vérification d'identité « ID Verification Premier ») pour la formalité INPI.
+// Les options QES ne s'appliquent qu'aux signataires pour lesquels un niveau est demandé
+// (paramètre level, passé par parcours.js pour la signature de la formalité).
 
 const crypto = require('node:crypto');
 const fs = require('node:fs');
@@ -161,8 +167,29 @@ async function uploadDocument(envelopeId, { filename, base64Pdf }) {
   return { id: documentId, total_pages: compterPages(Buffer.from(base64Pdf, 'base64')) };
 }
 
+// Workflow de vérification d'identité du compte : celui de la configuration, sinon le
+// « ID Verification » proposé par le compte (Premier de préférence). Mis en cache.
+let workflowIdv;
+async function workflowVerification() {
+  if (process.env.DOCUSIGN_IDV_WORKFLOW_ID) return process.env.DOCUSIGN_IDV_WORKFLOW_ID;
+  if (workflowIdv !== undefined) return workflowIdv;
+  const r = await dsFetch('/identity_verification').catch(() => ({}));
+  const liste = (r.identityVerification || []).filter((w) => /ID Verification/i.test(w.defaultName || ''));
+  workflowIdv = (liste.find((w) => /premier/i.test(w.defaultName)) || liste[0])?.workflowId || null;
+  return workflowIdv;
+}
+
+// Options de signature qualifiée d'un signataire (vide si le compte n'en propose pas)
+async function optionsQualifiees() {
+  const workflowId = await workflowVerification();
+  return {
+    ...(process.env.DOCUSIGN_SIGNATURE_PROVIDER ? { recipientSignatureProviders: [{ signatureProviderName: process.env.DOCUSIGN_SIGNATURE_PROVIDER }] } : {}),
+    ...(workflowId ? { identityVerification: { workflowId } } : {}),
+  };
+}
+
 // fields : champs au format Yousign { document_id, page, x, y } (points, origine en haut à gauche, comme DocuSign)
-async function addSigner(envelopeId, { firstName, lastName, email, fields = [] }) {
+async function addSigner(envelopeId, { firstName, lastName, email, fields = [], level }) {
   if (!envelopeId) throw new Error('addSigner: envelopeId required');
   if (!firstName || !lastName || !email) throw new Error('addSigner: firstName, lastName, email required');
   const b = brouillon(envelopeId);
@@ -171,7 +198,7 @@ async function addSigner(envelopeId, { firstName, lastName, email, fields = [] }
     email, name: `${firstName} ${lastName}`, recipientId, routingOrder: '1',
     ...(b.integree ? { clientUserId: recipientId } : {}),
     tabs: { signHereTabs: fields.map((f) => ({ documentId: String(f.document_id), pageNumber: String(f.page || 1), xPosition: String(Math.round(f.x)), yPosition: String(Math.round(f.y)) })) },
-    ...(process.env.DOCUSIGN_SIGNATURE_PROVIDER ? { recipientSignatureProviders: [{ signatureProviderName: process.env.DOCUSIGN_SIGNATURE_PROVIDER }] } : {}),
+    ...(level ? await optionsQualifiees() : {}),
   };
   await dsFetch(`/envelopes/${encodeURIComponent(envelopeId)}/recipients`, { method: 'POST', body: { signers: [signataire] } });
   return { id: recipientId, signature_link: null };
@@ -246,5 +273,5 @@ module.exports = {
   getStatus,
   downloadSignedDocument,
   lienSignature,
-  _interne: { statutYousign, compterPages },
+  _interne: { statutYousign, compterPages, dsFetch, ouvrirSession },
 };

@@ -25,6 +25,7 @@ global.fetch = async (url, init = {}) => {
   if (url.endsWith('/documents') && init.method === 'PUT') return json({});
   if (url.endsWith('/recipients') && init.method === 'POST') return json({});
   if (url.endsWith('/recipients')) return json({ signers: [{ recipientId: '1', clientUserId: '1', email: 'f@ex.fr', name: 'Jeanne MARTIN' }] });
+  if (url.endsWith('/identity_verification')) return json({ identityVerification: [{ workflowId: 'wf-sms', defaultName: 'Phone Authentication' }, { workflowId: 'wf-idv', defaultName: 'DocuSign ID Verification' }, { workflowId: 'wf-prem', defaultName: 'DocuSign ID Verification Premier' }] });
   if (url.endsWith('/views/recipient')) return json({ url: 'https://demo.docusign.net/signing/xyz' });
   if (url === `${BASE}/envelopes/aaaa-env` && init.method === 'PUT') return json({});
   if (url === `${BASE}/envelopes/aaaa-env`) return json({ status: 'completed' });
@@ -57,6 +58,7 @@ const ds = require('../lib/docusign');
   const signataire = appels.at(-1).corps.signers[0];
   assert.strictEqual(signataire.clientUserId, '1', 'signature intégrée (pas d’e-mail)');
   assert.deepStrictEqual(signataire.tabs.signHereTabs[0], { documentId: '1', pageNumber: '2', xPosition: '60', yPosition: '690' });
+  assert.strictEqual(signataire.identityVerification, undefined, 'pas de vérification d’identité sans niveau demandé');
 
   const act = await ds.activate(sr.id);
   assert.ok(appels.some((a) => a.method === 'PUT' && a.corps?.status === 'sent'), 'enveloppe envoyée');
@@ -64,6 +66,15 @@ const ds = require('../lib/docusign');
   const vue = appels.find((a) => a.url.endsWith('/views/recipient')).corps;
   assert.strictEqual(vue.clientUserId, '1');
   assert.strictEqual(vue.authenticationMethod, 'none');
+
+  // Signature de la formalité (niveau demandé) : signature qualifiée + ID Verification Premier
+  process.env.DOCUSIGN_SIGNATURE_PROVIDER = 'FournisseurQES';
+  const sr3 = await ds.createSignatureRequest({ name: 'Formalité', deliveryMode: 'none' });
+  await ds.addSigner(sr3.id, { firstName: 'J', lastName: 'M', email: 'j@m.fr', fields: [], level: 'advanced_electronic_signature' });
+  const qes = appels.at(-1).corps.signers[0];
+  assert.deepStrictEqual(qes.identityVerification, { workflowId: 'wf-prem' });
+  assert.deepStrictEqual(qes.recipientSignatureProviders, [{ signatureProviderName: 'FournisseurQES' }]);
+  delete process.env.DOCUSIGN_SIGNATURE_PROVIDER;
 
   // Envoi par e-mail : pas de clientUserId
   const sr2 = await ds.createSignatureRequest({ name: 'Actes', deliveryMode: 'email' });
