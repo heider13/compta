@@ -35,7 +35,7 @@ Dans **Settings → Apps and Keys** (https://admindemo.docusign.com) :
 | ----------------------------- | -------------------------------------------------------- | :---------: |
 | `DOCUSIGN_INTEGRATION_KEY`    | GUID de l'application                                    |      ✓      |
 | `DOCUSIGN_USER_ID`            | GUID de l'utilisateur qui envoie les enveloppes          |      ✓      |
-| `DOCUSIGN_PRIVATE_KEY_PATH`   | `/etc/compta-proxy/docusign.pem` (chmod 600)             |      ✓      |
+| `DOCUSIGN_PRIVATE_KEY_PATH`   | `/etc/compta-proxy-docusign.pem` (chmod 600)               |      ✓      |
 | `DOCUSIGN_ACCOUNT_ID`         | API Account ID (sinon compte par défaut)                 |             |
 | `DOCUSIGN_ENV`                | `demo` (défaut) ou `prod`                                |             |
 | `DOCUSIGN_CONNECT_SECRET`     | clé HMAC de Connect (étape 4)                            |      ✓      |
@@ -62,7 +62,7 @@ En production, même URL avec `account.docusign.com`.
 
 **Settings → Connect → Add Configuration → Custom** :
 
-- **URL** : `https://vps-84ac2579.vps.ovh.net/api/docusign/webhook`
+- **URL** : `https://0dao73k.cserverhost.cloud/api/docusign/webhook`
 - **Data format** : JSON (« REST v2.1 », SIM)
 - **Événements** : *Envelope Completed*, *Envelope Declined*, *Envelope Voided*
   (et *Recipient Declined*)
