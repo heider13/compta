@@ -546,8 +546,9 @@ async function etat(supa, orgId, dossierId) {
   else if (!aSigner.length) statutSC = signes.length || sc.statut === 'signee' ? 'fait' : 'sans_objet';
   else if (!prepare) statutSC = 'a_venir';
   else statutSC = 'a_faire';
-  const fs = signature.actif();
-  const yousignOff = { desactive: !fs.configure(), raison: fs.configure() ? null : `${fs.nom} n’est pas encore configuré (clés à ajouter sur le serveur).` };
+  const nonConfigure = (f) => ({ desactive: !f.configure(), raison: f.configure() ? null : `${f.nom} n’est pas encore configuré (clés à ajouter sur le serveur).` });
+  const fActes = signature.actif('actes');
+  const fs = signature.actif('formalite');
   etapes.push({
     cle: 'signature_client', titre: 'Signature des documents par le client',
     statut: statutSC,
@@ -571,7 +572,7 @@ async function etat(supa, orgId, dossierId) {
         { type: 'versement_ignore', label: 'Pièce ajoutée sur le Guichet unique', secondaire: true, confirmation: 'Vous avez ajouté vous-même la ou les pièces signées sur le Guichet unique ? L’étape sera considérée comme faite.' },
       ]
       : ['a_faire', 'bloque'].includes(statutSC)
-        ? [{ type: 'signature_client', label: statutSC === 'bloque' ? 'Renvoyer en signature' : 'Envoyer en signature', ...yousignOff }]
+        ? [{ type: 'signature_client', label: statutSC === 'bloque' ? 'Renvoyer en signature' : 'Envoyer en signature', ...nonConfigure(fActes) }]
         : statutSC === 'attente' ? [{ type: 'annuler_signature_client', label: 'Annuler la demande', secondaire: true, confirmation: `Annuler la demande ${fournisseurDe(sc).nom} envoyée ? Les signataires ne pourront plus signer ; vous pourrez renvoyer une nouvelle demande.` }] : [],
   });
 
@@ -594,7 +595,7 @@ async function etat(supa, orgId, dossierId) {
   if (statutSI === 'a_faire' && !fid) {
     actionsSI.push({ type: 'demander', label: 'Créer le brouillon', message: "Les actes sont signés et l'annonce est parue : crée le brouillon au Guichet unique avec les actes signés et l'attestation de parution." });
   } else if (statutSI === 'a_faire' || (statutSI === 'bloque' && !si.pieces?.synthese)) {
-    actionsSI.push({ type: 'signature_inpi', label: `Signer avec ${fs.nom}`, ...yousignOff });
+    actionsSI.push({ type: 'signature_inpi', label: `Signer avec ${fs.nom}`, ...nonConfigure(fs) });
     if (creation) actionsSI.push({ type: 'signature_simple', label: 'Signature simple', secondaire: true, confirmation: 'Signer la formalité par signature électronique simple (création) ? La signature est définitive.' });
   }
   if (statutSI === 'bloque' && si.pieces?.synthese) actionsSI.push({ type: 'redeclarer_signature', label: 'Réessayer la transmission' });
@@ -707,7 +708,7 @@ function champsSignature(documentYS, rang, nbPages) {
 }
 
 async function envoyerSignatureClient(supa, orgId, dossierId, { signataires }) {
-  const f = signature.actif();
+  const f = signature.actif('actes');
   if (!f.configure()) throw erreur(`${f.nom} n’est pas configuré sur le serveur.`, 400);
   const liste = (Array.isArray(signataires) ? signataires : []).slice(0, 20).map((s) => ({
     prenom: String(s?.prenom || '').trim().slice(0, 80), nom: String(s?.nom || '').trim().slice(0, 80),
@@ -758,7 +759,7 @@ async function signerFormalite(supa, orgId, dossierId, { user, profile }) {
   // Signature déjà ouverte : DocuSign donne un nouveau lien (l'ancien a expiré), Yousign garde le sien
   if (enCours?.statut === 'en_cours' && enCours.fournisseur === 'docusign') return { ok: true, lien: await signature.docusign.lienSignature(enCours.request_id) };
   if (enCours?.statut === 'en_cours' && enCours.lien) return { ok: true, lien: enCours.lien };
-  const f = signature.actif();
+  const f = signature.actif('formalite');
   if (!f.configure()) throw erreur(`${f.nom} n’est pas configuré sur le serveur.`, 400);
   const scEnCours = dossier.metadata?.parcours?.signature_client;
   if (['envoyee', 'en_cours', 'versement_incomplet'].includes(scEnCours?.statut) || verrous.has(`${dossierId}|signature_client|${scEnCours?.request_id}`)) {
@@ -819,7 +820,7 @@ async function signerFormalite(supa, orgId, dossierId, { user, profile }) {
 async function signatureSimple(supa, orgId, dossierId) {
   const { fid } = await formaliteExige(supa, orgId, dossierId);
   const gu = await formaliteGU(orgId, fid, { frais: true });
-  if (estComptes(fid) || gu.typeFormalite !== 'C') throw erreur(`La signature simple ne vaut que pour une création ; signez avec ${signature.actif().nom}.`, 400);
+  if (estComptes(fid) || gu.typeFormalite !== 'C') throw erreur(`La signature simple ne vaut que pour une création ; signez avec ${signature.actif('formalite').nom}.`, 400);
   if (!A_SIGNER.has(gu.status)) throw erreur(`La formalité n'est pas à signer (statut : ${STATUT_GU[gu.status] || gu.status}).`, 409);
   try { await inpi.forOrg(orgId).request(`${chemin(fid)}/refresh`, { timeoutMs: 30000, essais: 1 }); } catch { /* synthèse existante */ }
   await inpi.forOrg(orgId).request('/api/signatures', { method: 'POST', body: iriDepot(fid) });

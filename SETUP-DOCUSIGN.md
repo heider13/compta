@@ -8,11 +8,18 @@ de revenir en arrière sans déploiement.
 
 ## Choix du fournisseur
 
-| `SIGNATURE_PROVIDER` | Effet                                                          |
-| -------------------- | -------------------------------------------------------------- |
-| *(vide)*             | DocuSign dès que ses variables sont présentes, sinon Yousign   |
-| `docusign`           | DocuSign                                                       |
-| `yousign`            | Yousign                                                        |
+Deux usages, réglables séparément :
+
+| Variable                       | Usage                                                        |
+| ------------------------------ | ------------------------------------------------------------ |
+| `SIGNATURE_PROVIDER_ACTES`     | actes rédigés signés par le client (signature électronique)  |
+| `SIGNATURE_PROVIDER_FORMALITE` | synthèse signée pour le Guichet unique (avancée/qualifiée)   |
+| `SIGNATURE_PROVIDER`           | valeur par défaut des deux usages                            |
+
+Valeurs : `docusign` ou `yousign`. Sans réglage : DocuSign dès que ses variables sont
+présentes, sinon Yousign. Tant que la QES DocuSign n'est pas activée, garder
+`SIGNATURE_PROVIDER_FORMALITE=yousign` : le Guichet unique exige une signature avancée
+pour les modifications, cessations et dépôts de comptes.
 
 Chaque demande garde son fournisseur (`fournisseur` dans les métadonnées du parcours).
 

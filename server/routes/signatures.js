@@ -167,7 +167,7 @@ router.post(
     const base64Pdf = pdf.buffer.toString('base64');
 
     // 2. Créer la signature request
-    const f = signature.actif();
+    const f = signature.actif('formalite'); // synthèse de la formalité destinée à l'INPI
     const sr = await f.createSignatureRequest({
       name: `${dossier.client_name} — ${dossier.type_formalite} — ${dossier.reference || dossier.id.slice(0, 8)}`,
     });
