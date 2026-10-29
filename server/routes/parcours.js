@@ -60,6 +60,31 @@ router.post('/:id/parcours/deleguer', route(async (req, res) => {
   res.json(await parcours.etat(getSupabaseAdmin(), req.currentOrgId, req.params.id));
 }));
 
+// Annonce légale publiée par Legaly (API Les Echos Le Parisien Services) : tarifs, commande,
+// annulation. La commande est facturée : elle exige confirme=true et le tarif vu par l'utilisateur.
+const publication = require('../lib/publication-annonces');
+
+router.get('/:id/parcours/annonce/options', route(async (req, res) => {
+  res.json(await publication.options(getSupabaseAdmin(), req.currentOrgId, req.params.id));
+}));
+
+router.post('/:id/parcours/annonce/devis', route(async (req, res) => {
+  const { typeId, departement, date } = req.body || {};
+  res.json(await publication.devis(getSupabaseAdmin(), req.currentOrgId, req.params.id, { typeId, departement, date }));
+}));
+
+router.post('/:id/parcours/annonce/commander', route(async (req, res) => {
+  const p = await publication.commander(getSupabaseAdmin(), req.currentOrgId, req.params.id, req.body || {});
+  await journal(req, 'annonce.commandee', req.params.id, { reference: p.reference, journal: p.journal?.nom, departement: p.departement, ttc: p.ttc, test: p.preproduction });
+  res.json(await parcours.etat(getSupabaseAdmin(), req.currentOrgId, req.params.id));
+}));
+
+router.post('/:id/parcours/annonce/annuler', route(async (req, res) => {
+  await publication.annulerPublication(getSupabaseAdmin(), req.currentOrgId, req.params.id, { reference: String(req.body?.reference || '') });
+  await journal(req, 'annonce.annulee', req.params.id, { reference: req.body?.reference });
+  res.json(await parcours.etat(getSupabaseAdmin(), req.currentOrgId, req.params.id));
+}));
+
 // Actions simples : appel de lib/parcours puis état à jour
 const SIMPLES = {
   'reverser-actes': ['reverserActes', 'signature_client.reversement'],

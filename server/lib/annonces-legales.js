@@ -1,8 +1,8 @@
 // Annonces légales : rédaction des avis à publier dans un support habilité (SHAL)
 // avant le dépôt de la formalité. Chaque type d'annonce a ses mentions obligatoires
 // (Code de commerce) ; le texte rédigé est contrôlé mention par mention.
-// La publication (devis, commande, attestation de parution) passera par l'API du
-// fournisseur d'annonces, branchée plus tard dans publierAnnonce().
+// La publication (tarifs, commande, attestation de parution) passe par l'API Les Echos Le
+// Parisien Services : voir lib/publication-annonces.js.
 
 const { getAnthropic, MODELS } = require('./ai');
 
@@ -244,16 +244,17 @@ async function redigerAnnonce({ type = 'autre', donnees, instructions }) {
   return { ...data, type, label: t.label, usage: msg.usage };
 }
 
-// ─── Publication (API du fournisseur d'annonces, à brancher) ───
-// Variables prévues : ANNONCES_API_URL, ANNONCES_API_KEY.
+// ─── Publication : API Les Echos Le Parisien Services (lib/lelps.js, lib/publication-annonces.js) ───
+// La commande est un geste humain confirmé dans le panneau du dossier (« Publier l'annonce ») :
+// elle est facturée, l'agent ne la déclenche jamais.
 function publicationConfiguree() {
-  return Boolean(process.env.ANNONCES_API_URL && process.env.ANNONCES_API_KEY);
+  return require('./lelps').configure();
 }
 
-async function publierAnnonce(/* { annonce, departement, journal, dossier } */) {
+async function publierAnnonce() {
   throw Object.assign(
-    new Error("Publication automatique pas encore branchée : l'annonce est à commander auprès du journal par le formaliste, puis l'attestation de parution est à joindre au dossier."),
-    { code: 'annonces_api_non_configuree' },
+    new Error("La publication se commande par le cabinet dans le panneau du dossier (bouton « Publier l'annonce »), jamais par l'agent."),
+    { code: 'annonce_commande_humaine' },
   );
 }
 

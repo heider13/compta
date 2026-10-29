@@ -29,6 +29,8 @@ app.set('trust proxy', 'loopback');
 app.use('/api/yousign', express.raw({ type: '*/*', limit: '15mb' }), yousignWebhookRoutes);
 // Webhook DocuSign Connect : même besoin (HMAC sur le corps brut)
 app.use('/api/docusign', express.raw({ type: '*/*', limit: '15mb' }), require('./routes/docusign-webhook'));
+// Webhook des annonces légales (Les Echos Le Parisien Services) : signature sur le corps brut
+app.use('/api/annonces', express.raw({ type: '*/*', limit: '1mb' }), require('./routes/annonces-webhook'));
 
 // Webhook Stripe des commandes d'entrepreneurs (corps brut, signature HMAC)
 app.use('/api/paiements', express.raw({ type: '*/*', limit: '1mb' }), require('./routes/stripe-webhook'));

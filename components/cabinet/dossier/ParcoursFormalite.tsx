@@ -2,7 +2,7 @@
 
 // Parcours d'une formalité, de la préparation par l'agent jusqu'au paiement :
 //   1. réalisation de la formalité
-//   2. annonce légale
+//   2. annonce légale (rédigée par l'agent, commandée au journal depuis Legaly)
 //   3. signature des documents par le client (DocuSign ou Yousign)
 //   4. signature électronique de la formalité (= signature au Guichet unique)
 //   5. paiement (compte client INPI du cabinet ou délégation au client)
@@ -27,6 +27,7 @@ type Action = {
   desactive?: boolean;
   raison?: string | null;
   confirmation?: string;
+  reference?: string; // annonce visée (annulation d'une publication)
 };
 type Signataire = { prenom: string; nom: string; email: string; telephone?: string };
 type Etape = {
@@ -44,6 +45,7 @@ type Etape = {
   lien?: string | null;
   montant_cents?: number | null;
   emailClient?: string;
+  publications?: { reference: string; statut: string; resume: string; justificatif: string | null }[];
 };
 type Etat = {
   dossier: { id: string; reference: string; denomination: string };
@@ -75,6 +77,9 @@ const LIBELLE_STATUT: Record<Statut, string> = {
 };
 
 const DELAI_LECTURE_MS = 12000;
+
+// Identifiant d'une action dans l'étape (plusieurs annulations d'annonces peuvent coexister)
+const idAction = (a: Action) => (a.reference ? `${a.type}:${a.reference}` : a.type);
 
 function ParcoursFormaliteBase({
   dossierId,
@@ -214,8 +219,8 @@ function ParcoursFormaliteBase({
       if (a.message && onAsk) onAsk(a.message);
       return;
     }
-    if (a.type === 'signature_client' || a.type === 'deleguer' || a.confirmation) {
-      setOuvert(`${etape.cle}:${a.type}`);
+    if (a.type === 'signature_client' || a.type === 'deleguer' || a.type === 'publier_annonce' || a.confirmation) {
+      setOuvert(`${etape.cle}:${idAction(a)}`);
       return;
     }
     if (a.type === 'signature_inpi') return void signerEnLigne(etape);
@@ -224,6 +229,7 @@ function ParcoursFormaliteBase({
   }
 
   function confirmer(etape: Etape, a: Action) {
+    if (a.type === 'annuler_publication') return void poster(etape.cle, idAction(a), 'annonce/annuler', { reference: a.reference });
     const r = ROUTES[a.type];
     if (!r) return;
     const corps = a.type === 'payer' ? { confirme: true, montant_cents: etape.montant_cents } : r.corps;
@@ -322,6 +328,20 @@ function ParcoursFormaliteBase({
                     Ouvrir la formalité
                   </Link>
                 )}
+                {e.publications && e.publications.length > 0 && (
+                  <ul className="mt-1.5 space-y-0.5 border-l pl-2">
+                    {e.publications.map((p) => (
+                      <li key={p.reference} className="text-[11px] leading-snug text-muted-foreground">
+                        <span className="font-mono">{p.reference}</span> · {p.resume}
+                        {p.justificatif && (
+                          <a href={p.justificatif} target="_blank" rel="noopener noreferrer" className="ml-1 inline-flex items-center gap-0.5 font-medium text-primary hover:underline">
+                            justificatif <ExternalLink className="size-3" aria-hidden />
+                          </a>
+                        )}
+                      </li>
+                    ))}
+                  </ul>
+                )}
                 {e.lienSignature && (
                   <a href={e.lienSignature} target="_blank" rel="noopener noreferrer" className="mt-1.5 inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline">
                     Ouvrir la signature <ExternalLink className="size-3" aria-hidden />
@@ -337,14 +357,14 @@ function ParcoursFormaliteBase({
                       const classes = 'h-auto min-h-7 max-w-full whitespace-normal px-2.5 py-1 text-left text-xs leading-snug';
                       if (versChat && a.message) {
                         return (
-                          <Button key={a.type} asChild size="sm" variant={courante ? 'default' : 'outline'} className={classes}>
+                          <Button key={idAction(a)} asChild size="sm" variant={courante ? 'default' : 'outline'} className={classes}>
                             <Link href={`/dashboard?dossier=${dossierId}&demande=${encodeURIComponent(a.message)}`}>{a.label}</Link>
                           </Button>
                         );
                       }
                       return (
                         <Button
-                          key={a.type}
+                          key={idAction(a)}
                           type="button"
                           size="sm"
                           variant={a.secondaire ? 'ghost' : courante ? 'default' : 'outline'}
@@ -354,7 +374,7 @@ function ParcoursFormaliteBase({
                           title={attendAgent ? 'Disponible quand l’agent a terminé' : undefined}
                           onClick={() => lancer(e, a)}
                         >
-                          {actionEnCours === a.type && <Loader2 className="size-3 animate-spin" aria-hidden />}
+                          {actionEnCours === idAction(a) && <Loader2 className="size-3 animate-spin" aria-hidden />}
                           {a.label}
                         </Button>
                       );
@@ -383,6 +403,14 @@ function ParcoursFormaliteBase({
                     onEnvoyer={(signataires) => void poster(e.cle, 'signature_client', 'signature-client', { signataires })}
                   />
                 )}
+                {ouvert === `${e.cle}:publier_annonce` && (
+                  <FormPublication
+                    dossierId={dossierId}
+                    enCours={actionEnCours === 'publier_annonce'}
+                    onAnnuler={() => setOuvert(null)}
+                    onCommander={(corps) => void poster(e.cle, 'publier_annonce', 'annonce/commander', corps)}
+                  />
+                )}
                 {ouvert === `${e.cle}:deleguer` && (
                   <FormDelegation
                     initial={e.emailClient ?? ''}
@@ -392,13 +420,13 @@ function ParcoursFormaliteBase({
                   />
                 )}
                 {actions
-                  .filter((a) => a.confirmation && ouvert === `${e.cle}:${a.type}`)
+                  .filter((a) => a.confirmation && ouvert === `${e.cle}:${idAction(a)}`)
                   .map((a) => (
-                    <div key={a.type} className="mt-2 rounded-md border border-warning/40 bg-warning/10 p-2.5" role="alertdialog" aria-label={a.label}>
+                    <div key={idAction(a)} className="mt-2 rounded-md border border-warning/40 bg-warning/10 p-2.5" role="alertdialog" aria-label={a.label}>
                       <p className="text-xs leading-snug text-foreground">{a.confirmation}</p>
                       <div className="mt-2 flex flex-wrap gap-1.5">
                         <Button type="button" size="sm" className="h-7 px-2.5 text-xs" disabled={actionEnCours !== null} onClick={() => confirmer(e, a)} autoFocus>
-                          {actionEnCours === a.type && <Loader2 className="size-3 animate-spin" aria-hidden />}
+                          {actionEnCours === idAction(a) && <Loader2 className="size-3 animate-spin" aria-hidden />}
                           Confirmer
                         </Button>
                         <Button type="button" size="sm" variant="ghost" className="h-7 px-2.5 text-xs" onClick={() => setOuvert(null)}>
@@ -597,5 +625,166 @@ function FormDelegation({ initial, enCours, onEnvoyer, onAnnuler }: { initial: s
         </Button>
       </div>
     </form>
+  );
+}
+
+// Publication de l'annonce rédigée : type d'annonce, département, tarifs des journaux, commande
+type Tarif = {
+  journal: { id: string; nom: string; support: 'web' | 'papier'; groupe: boolean; justificatifNumerique: boolean };
+  dateParution: string;
+  clotureLe: string | null;
+  prix: { ht: number; tva: number; ttc: number };
+};
+type OptionsPublication = {
+  types: { id: string; nom: string }[];
+  type_propose: string | null;
+  departements: { code: string; caracteres: number }[];
+  a_completer: string[];
+  preproduction: boolean;
+};
+const euros = (n: number) => n.toLocaleString('fr-FR', { style: 'currency', currency: 'EUR' });
+const jour = (d: string) => new Date(`${d}T12:00:00`).toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric', month: 'long' });
+
+function FormPublication({
+  dossierId, enCours, onCommander, onAnnuler,
+}: {
+  dossierId: string;
+  enCours: boolean;
+  onCommander: (corps: object) => void;
+  onAnnuler: () => void;
+}) {
+  const [options, setOptions] = useState<OptionsPublication | null>(null);
+  const [erreur, setErreur] = useState<string | null>(null);
+  const [typeId, setTypeId] = useState('');
+  const [departement, setDepartement] = useState('');
+  const [date, setDate] = useState('');
+  const [tarifs, setTarifs] = useState<Tarif[] | null>(null);
+  const [recherche, setRecherche] = useState(false);
+  const [choisi, setChoisi] = useState<Tarif | null>(null);
+  const [confirmation, setConfirmation] = useState(false);
+
+  useEffect(() => {
+    let actif = true;
+    vpsApi<OptionsPublication>(`/api/dossiers/${dossierId}/parcours/annonce/options`)
+      .then((o) => {
+        if (!actif) return;
+        setOptions(o);
+        setTypeId(o.type_propose ?? '');
+        setDepartement(o.departements[0]?.code ?? '');
+      })
+      .catch((e) => actif && setErreur(e instanceof Error ? e.message : 'Chargement impossible.'));
+    return () => { actif = false; };
+  }, [dossierId]);
+
+  async function chercher() {
+    setRecherche(true);
+    setErreur(null);
+    setTarifs(null);
+    setChoisi(null);
+    setConfirmation(false);
+    try {
+      const r = await vpsApi<{ tarifs: Tarif[] }>(`/api/dossiers/${dossierId}/parcours/annonce/devis`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ typeId, departement, date: date || undefined }),
+      });
+      setTarifs(r.tarifs);
+      if (!r.tarifs.length) setErreur('Aucun journal ne peut publier cette annonce avec ces critères.');
+    } catch (e) {
+      setErreur(e instanceof Error ? e.message : 'Tarifs indisponibles.');
+    } finally {
+      setRecherche(false);
+    }
+  }
+
+  const champ = 'h-8 w-full min-w-0 rounded-md border bg-background px-2 text-xs outline-none focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/30';
+  if (!options) {
+    return (
+      <div className="mt-2 rounded-md border bg-muted/40 p-2.5 text-xs text-muted-foreground">
+        {erreur ? <span className="text-destructive">{erreur}</span> : <span className="inline-flex items-center gap-1.5"><Loader2 className="size-3 animate-spin" /> Chargement des types d&apos;annonces…</span>}
+        <div className="mt-2"><Button type="button" size="sm" variant="ghost" className="h-7 px-2 text-xs" onClick={onAnnuler}>Fermer</Button></div>
+      </div>
+    );
+  }
+  return (
+    <div className="mt-2 space-y-2 rounded-md border bg-muted/40 p-2.5">
+      <p className="text-[11px] leading-snug text-muted-foreground">
+        Comparez les journaux habilités, puis commandez la publication. L&apos;attestation de parution arrive ensuite dans le dossier.
+        {options.preproduction && <span className="font-medium text-warning"> Environnement de test : rien n&apos;est publié ni facturé.</span>}
+      </p>
+      <select aria-label="Type d'annonce" value={typeId} onChange={(e) => { setTypeId(e.target.value); setTarifs(null); }} className={champ}>
+        <option value="">Type d&apos;annonce…</option>
+        {options.types.map((t) => <option key={t.id} value={t.id}>{t.nom}</option>)}
+      </select>
+      <div className="flex gap-1.5">
+        <select aria-label="Département de parution" value={departement} onChange={(e) => { setDepartement(e.target.value); setTarifs(null); }} className={champ}>
+          {options.departements.map((d) => <option key={d.code} value={d.code}>Département {d.code} · {d.caracteres} car.</option>)}
+        </select>
+        <input aria-label="Parution à partir du" type="date" value={date} onChange={(e) => { setDate(e.target.value); setTarifs(null); }} className={champ} />
+      </div>
+      <Button type="button" size="sm" className="h-7 px-2.5 text-xs" disabled={!typeId || !departement || recherche} onClick={() => void chercher()}>
+        {recherche && <Loader2 className="size-3 animate-spin" aria-hidden />}
+        Voir les tarifs
+      </Button>
+
+      {tarifs && tarifs.length > 0 && (
+        <ul className="max-h-64 space-y-1 overflow-y-auto" role="radiogroup" aria-label="Journaux">
+          {tarifs.map((t) => {
+            const actif = choisi?.journal.id === t.journal.id;
+            return (
+              <li key={t.journal.id}>
+                <button
+                  type="button"
+                  role="radio"
+                  aria-checked={actif}
+                  onClick={() => { setChoisi(t); setConfirmation(false); }}
+                  className={cn('flex w-full items-start justify-between gap-2 rounded-md border bg-background px-2 py-1.5 text-left text-xs', actif ? 'border-primary ring-1 ring-primary' : 'hover:border-ring')}
+                >
+                  <span className="min-w-0">
+                    <span className="block truncate font-medium">{t.journal.nom}</span>
+                    <span className="block text-[11px] text-muted-foreground">
+                      {t.journal.support === 'web' ? 'En ligne' : 'Papier'} · parution {jour(t.dateParution)}{t.journal.groupe ? ' · traitement rapide' : ''}
+                    </span>
+                  </span>
+                  <span className="shrink-0 font-mono tabular-nums">{euros(t.prix.ttc)}</span>
+                </button>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+
+      {choisi && !confirmation && (
+        <Button type="button" size="sm" className="h-7 px-2.5 text-xs" onClick={() => setConfirmation(true)}>
+          Commander · {euros(choisi.prix.ttc)} TTC
+        </Button>
+      )}
+      {choisi && confirmation && (
+        <div className="rounded-md border border-warning/40 bg-warning/10 p-2.5" role="alertdialog" aria-label="Confirmer la commande">
+          <p className="text-xs leading-snug">
+            Publier l&apos;annonce dans <strong>{choisi.journal.nom}</strong> (département {departement}), parution le {jour(choisi.dateParution)}, pour <strong>{euros(choisi.prix.ttc)} TTC</strong> ({euros(choisi.prix.ht)} HT).
+            {options.preproduction ? ' Test : aucune facturation.' : ' Cette commande est facturée.'}
+          </p>
+          <div className="mt-2 flex flex-wrap gap-1.5">
+            <Button
+              type="button"
+              size="sm"
+              className="h-7 px-2.5 text-xs"
+              disabled={enCours}
+              autoFocus
+              onClick={() => onCommander({ typeId, departement, journalId: choisi.journal.id, date: choisi.dateParution, ttc_vu: choisi.prix.ttc, confirme: true })}
+            >
+              {enCours && <Loader2 className="size-3 animate-spin" aria-hidden />}
+              Confirmer la commande
+            </Button>
+            <Button type="button" size="sm" variant="ghost" className="h-7 px-2.5 text-xs" onClick={() => setConfirmation(false)}>Retour</Button>
+          </div>
+        </div>
+      )}
+      {erreur && <p role="alert" className="text-[11px] leading-snug text-destructive">{erreur}</p>}
+      <div className="flex justify-end">
+        <Button type="button" size="sm" variant="ghost" className="h-7 px-2 text-xs" onClick={onAnnuler}>Fermer</Button>
+      </div>
+    </div>
   );
 }

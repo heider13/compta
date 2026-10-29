@@ -1689,7 +1689,9 @@ async function toolAnnonce(supa, ctx, input) {
     result: {
       annonces: r.annonces, controle: r.controle, a_completer: r.a_completer, observations: r.observations,
       document: doc.name, ajoute_aux_pieces: true,
-      publication: annonces.publicationConfiguree() ? 'disponible' : "à commander par le formaliste auprès d'un journal habilité (publication automatique pas encore branchée)",
+      publication: annonces.publicationConfiguree()
+        ? "à commander par le cabinet depuis le panneau du dossier (bouton « Publier l'annonce » : tarifs des journaux, puis commande confirmée) ; ne commande jamais toi-même"
+        : "à commander par le formaliste auprès d'un journal habilité (publication automatique pas encore branchée)",
     },
     event: {
       kind: 'document', label: r.label,

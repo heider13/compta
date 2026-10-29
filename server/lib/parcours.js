@@ -18,6 +18,7 @@
 
 const inpi = require('../inpi');
 const signature = require('./signature');
+const publication = require('./publication-annonces');
 const { toPdf, PIECES, PIECES_EI, PIECES_MODIF } = require('./inpi-liasse');
 const { paiementDe, emailsCabinet, lienGuichet } = require('./inpi-paiement');
 const { ACTES_UNIQUES } = require('./dossier-docs');
@@ -432,7 +433,11 @@ async function redeclarerSignature(supa, orgId, dossierId) {
 // ─── État du parcours (panneau de droite) ─────────────────────────
 async function etat(supa, orgId, dossierId) {
   let dossier = await dossierExige(supa, orgId, dossierId);
-  const sync = synchroniser(supa, orgId, dossier).catch(() => false);
+  // Signatures et annonces commandées au journal, suivies en parallèle
+  const sync = Promise.all([
+    synchroniser(supa, orgId, dossier).catch(() => false),
+    publication.synchroniser(supa, orgId, dossier).catch(() => false),
+  ]).then((r) => r.some(Boolean));
   const changement = await Promise.race([sync, new Promise((ok) => setTimeout(() => ok(false), 3000))]);
   if (changement) dossier = await dossierExige(supa, orgId, dossierId);
   const meta = dossier.metadata || {};
@@ -493,7 +498,11 @@ async function etat(supa, orgId, dossierId) {
   const attestationVersee = p.annonce?.attestation_versee_id && attestations.some((d) => d.id === p.annonce.attestation_versee_id);
   const signeeAuGU = Boolean(statutGU && SIGNEE.has(statutGU));
   const dejaTransmise = Boolean(statutGU && DEJA_TRANSMISE.has(statutGU));
-  const parue = attestations.length > 0 || Boolean(data.annonceLegale?.journal && data.annonceLegale?.datePublication);
+  // Annonces commandées au journal depuis Legaly (API Les Echos Le Parisien Services)
+  const publications = p.annonce?.publications || [];
+  const pubActives = publications.filter((x) => publication.ACTIFS.has(x.statut));
+  const pubRefusee = publications.some((x) => x.statut === 'refused');
+  const parue = attestations.length > 0 || pubActives.some((x) => x.statut === 'published') || Boolean(data.annonceLegale?.journal && data.annonceLegale?.datePublication);
   const annonceOk = annonces.length > 0 || parue || dejaTransmise || p.annonce?.statut === 'faite';
   // L'annonce est une étape, jamais un préalable imposé : le formaliste peut la passer et
   // poursuivre ; un avertissement rappelle alors qu'elle est obligatoire (rejet du greffe sinon).
@@ -501,6 +510,7 @@ async function etat(supa, orgId, dossierId) {
   const attenteParution = requise && creation && !fid && !parue && p.annonce?.statut !== 'faite' && annonces.length > 0;
   let statutA;
   if (!requise) statutA = 'sans_objet';
+  else if (pubActives.length && !parue) statutA = 'attente'; // commandée, parution attendue
   else if (annonceOk && !attenteParution) statutA = 'fait';
   else if (passee) statutA = 'passee';
   else if (attenteParution) statutA = 'a_faire';
@@ -512,12 +522,26 @@ async function etat(supa, orgId, dossierId) {
     actionsA.push({ type: 'annonce_faite', label: 'Déjà publiée', secondaire: true, confirmation: "L'annonce a déjà été publiée par ailleurs ? Joignez l'attestation de parution dans le chat dès que possible." });
     if (!passee) actionsA.push({ type: 'annonce_passee', label: 'Passer cette étape', secondaire: true, confirmation: `${AVERTISSEMENT_ANNONCE} Passer quand même cette étape ?` });
   }
-  if (attenteParution) {
+  // Publication par Legaly : annonce rédigée, pas encore commandée (ou refusée, ou annulée)
+  const publiable = requise && annonces.length > 0 && !parue && !pubActives.length && !dejaTransmise;
+  if (publiable) {
+    actionsA.push(publication.configure()
+      ? { type: 'publier_annonce', label: "Publier l'annonce" }
+      : { type: 'publier_annonce', label: "Publier l'annonce", desactive: true, raison: 'Publication des annonces pas encore configurée sur le serveur.' });
+  }
+  if (attenteParution && !pubActives.length) {
     actionsA.push({ type: 'annonce_faite', label: 'Annonce parue', secondaire: true, confirmation: "L'annonce est parue ? Joignez l'attestation de parution dans le chat : elle sera déposée avec le brouillon." });
+  }
+  for (const x of publications.filter((y) => ['validated', 'refused'].includes(y.statut))) {
+    actionsA.push({ type: 'annuler_publication', reference: x.reference, label: `Annuler ${x.reference}`, secondaire: true, confirmation: `Annuler l'annonce ${x.reference} (${x.journal?.nom || 'journal'}) ? Elle ne sera pas publiée.` });
   }
   if (requise && fid && attestations.length && !attestationVersee && !dejaTransmise) {
     actionsA.push({ type: 'verser_attestation', label: "Verser l'attestation au Guichet unique" });
   }
+  const alertesA = [
+    ...(manqueAnnonce && (passee || fid) ? [AVERTISSEMENT_ANNONCE] : []),
+    ...(pubRefusee && !pubActives.length ? ["L'annonce a été refusée par le journal : corrigez-la avec l'agent puis publiez-la de nouveau."] : []),
+  ];
   etapes.push({
     cle: 'annonce', titre: 'Annonce légale',
     statut: statutA,
@@ -525,14 +549,17 @@ async function etat(supa, orgId, dossierId) {
       ? comptes ? "Pas d'annonce légale pour un dépôt des comptes." : "Pas d'annonce légale pour cette formalité."
       : dejaTransmise && !annonces.length && !parue
         ? 'Formalité déjà transmise : annonce gérée hors de Legaly.'
+        : pubActives.length && !parue
+          ? `${annonces[annonces.length - 1].label} commandée au journal : l’attestation de parution arrivera dans le dossier.`
         : attenteParution
-          ? `${annonces[annonces.length - 1].label} rédigée · à publier : joignez l’attestation de parution dans le chat dès réception.`
+          ? `${annonces[annonces.length - 1].label} rédigée · à publier : ${publication.configure() ? 'commandez-la au journal depuis Legaly' : 'joignez l’attestation de parution dans le chat dès réception'}.`
           : annonceOk
             ? [annonces.length ? `${annonces[annonces.length - 1].label} rédigée` : p.annonce?.statut === 'faite' ? 'Publiée par ailleurs' : 'Annonce publiée',
               attestationVersee ? 'attestation versée au Guichet unique' : attestations.length ? 'attestation de parution jointe' : p.annonce?.statut === 'faite' ? 'attestation de parution à joindre dans le chat' : 'à publier, puis joignez l’attestation de parution dans le chat'].join(' · ')
             : passee ? 'Étape passée : annonce légale à faire plus tard.' : 'Annonce légale à rédiger puis à publier.',
     documents: docs.filter((d) => d.doc_type === 'ANNONCE_LEGALE' || estAttestation(d)).map((d) => ({ id: d.id, nom: d.name })),
-    alertes: manqueAnnonce && (passee || fid) ? [AVERTISSEMENT_ANNONCE] : undefined,
+    alertes: alertesA.length ? alertesA : undefined,
+    publications: publications.map((x) => ({ reference: x.reference, statut: x.statut, resume: publication.resume(x), justificatif: x.justificatif_url || null })),
     actions: actionsA,
   });
 
@@ -696,7 +723,7 @@ async function etat(supa, orgId, dossierId) {
     formalite: fid ? { id: fid, type: comptes ? 'comptes_annuels' : 'formalite', liasse, statut: statutGU, statut_label: STATUT_GU[statutGU] || statutGU } : null,
     etapes, courante, termine,
     // Rafraîchir plus souvent quand on attend un tiers (signataire, paiement)
-    rafraichir_ms: termine ? 120000 : etapes.some((e) => e.statut === 'attente') ? 8000 : 30000,
+    rafraichir_ms: termine ? 120000 : etapes.some((e) => e.statut === 'attente' && e.cle !== 'annonce') ? 8000 : 30000,
   };
 }
 
