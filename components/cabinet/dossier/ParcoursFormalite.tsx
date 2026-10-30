@@ -630,7 +630,7 @@ function FormDelegation({ initial, enCours, onEnvoyer, onAnnuler }: { initial: s
 
 // Publication de l'annonce rédigée : type d'annonce, département, tarifs des journaux, commande
 type Tarif = {
-  journal: { id: string; nom: string; support: 'web' | 'papier'; groupe: boolean; justificatifNumerique: boolean };
+  journal: { id: string; nom: string; support: 'web' | 'papier' | null; groupe: boolean; justificatifNumerique: boolean };
   dateParution: string;
   clotureLe: string | null;
   prix: { ht: number; tva: number; ttc: number };
@@ -743,7 +743,7 @@ function FormPublication({
                   <span className="min-w-0">
                     <span className="block truncate font-medium">{t.journal.nom}</span>
                     <span className="block text-[11px] text-muted-foreground">
-                      {t.journal.support === 'web' ? 'En ligne' : 'Papier'} · parution {jour(t.dateParution)}{t.journal.groupe ? ' · traitement rapide' : ''}
+                      {t.journal.support === 'web' ? 'En ligne · ' : t.journal.support === 'papier' ? 'Papier · ' : ''}parution {jour(t.dateParution)}{t.journal.groupe ? ' · traitement rapide' : ''}
                     </span>
                   </span>
                   <span className="shrink-0 font-mono tabular-nums">{euros(t.prix.ttc)}</span>

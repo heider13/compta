@@ -80,6 +80,9 @@ async function appel(chemin, { method = 'GET', body, idempotence, brut = false }
 
 // Types d'annonces (référentiel, propre à chaque environnement) : en cache 1 h
 let cacheTypes = null;
+// Support du journal ; la préproduction renvoie parfois "undefined" : inconnu plutôt que deviné
+const supportJournal = (m) => (m === 'web' ? 'web' : ['print', 'paper', 'papier'].includes(m) ? 'papier' : null);
+
 async function typesAnnonce() {
   if (cacheTypes && cacheTypes.exp > Date.now()) return cacheTypes.liste;
   const r = await appel('/legal-notice-types');
@@ -108,7 +111,7 @@ async function estimer({ departement, typeId, contenu, date, justificatifs = 0 }
     },
   });
   return (r?.estimates || []).map((e) => ({
-    journal: { id: e.newspaper?.id, nom: e.newspaper?.name, support: e.newspaper?.medium === 'web' ? 'web' : 'papier', groupe: Boolean(e.newspaper?.recommended), justificatifNumerique: Boolean(e.newspaper?.hasDigitalSupportingDocument) },
+    journal: { id: e.newspaper?.id, nom: e.newspaper?.name, support: supportJournal(e.newspaper?.medium), groupe: Boolean(e.newspaper?.recommended), justificatifNumerique: Boolean(e.newspaper?.hasDigitalSupportingDocument) },
     dateParution: e.publicationDate,
     clotureLe: e.publicationClosingDatetime,
     prix: { ht: e.price?.totalExcludingTax, tva: e.price?.totalTax, ttc: e.price?.total, tauxTva: e.price?.taxRate },
