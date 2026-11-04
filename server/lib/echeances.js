@@ -13,6 +13,7 @@ const HORIZON_COMPTES_J = 60; // l'approbation est proposée 60 jours avant sa d
 const HORIZON_INTERNE_J = 7;
 const RNE_LENT_MS = Number(process.env.RNE_ECHEANCES_MS || 10000);
 const RNE_VALIDITE_MS = 7 * 24 * 3600 * 1000;
+const RNE_REESSAI_MS = 24 * 3600 * 1000; // lecture en échec : nouvel essai le lendemain
 const STATUTS_FINIS = ['VALIDATED', 'VALIDATED_INTERNAL', 'REJECTED'];
 
 const iso = (d) => d.toISOString().slice(0, 10);
@@ -57,7 +58,7 @@ async function verifierSuivant() {
       memo.premiere = desc?.datePremiereCloture || null;
     }
   } catch (err) {
-    // RNE indisponible ou accès INPI non configuré : nouvel essai la semaine suivante
+    // RNE indisponible ou accès INPI non configuré : nouvel essai le lendemain
     memo = { erreur: String(err.message).slice(0, 160), verifie_le: new Date().toISOString() };
   }
   const supa = getSupabaseAdmin();
@@ -122,7 +123,7 @@ async function preparer(orgId) {
   for (const c of clients || []) {
     if (!/^\d{9}$/.test(c.siren || '') || FORMES_SANS_COMPTES.has(c.forme_juridique)) continue;
     const memo = c.metadata?.comptes_rne;
-    if (!memo || Date.now() - new Date(memo.verifie_le).getTime() > RNE_VALIDITE_MS) {
+    if (!memo || Date.now() - new Date(memo.verifie_le).getTime() > (memo.erreur ? RNE_REESSAI_MS : RNE_VALIDITE_MS)) {
       verifierPlusTard(orgId, c);
       enAttente += 1;
     }
