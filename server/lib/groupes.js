@@ -443,5 +443,5 @@ async function rechercher(orgId, texte) {
 
 module.exports = {
   decouvrir, fiche, lister, detail, creer, redecouvrir, ajouterEntite, enregistrerLien, supprimerLien,
-  supprimerEntite, renommer, supprimer, suivi, rechercher, controles, detentions,
+  supprimerEntite, renommer, supprimer, suivi, rechercher, controles, detentions, echeanceComptes,
 };

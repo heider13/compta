@@ -1035,6 +1035,7 @@ app.use('/api/inpi', requireUser, requireOrg, inpiFormalitiesRoutes);
 app.use('/api/rne', requireUser, requireOrg, rneDocumentsRoutes);
 app.use('/api/lots', requireUser, requireOrg, batchRoutes);
 app.use('/api/groupes', requireUser, requireOrg, groupesRoutes);
+app.use('/api/echeances', requireUser, requireOrg, require('./routes/echeances'));
 // Chat public de la page Indépendants et TPE (sans compte) et espace entrepreneur (compte, sans cabinet)
 app.use('/api/public', require('./routes/public-agent'));
 app.use('/api/espace', requireUser, require('./routes/espace'));
@@ -1059,6 +1060,8 @@ const PORT = process.env.PORT || 3000;
 // Suivi des paiements INPI : statut sur les dossiers liés + alertes (toutes les 6 h)
 setTimeout(() => verifierPaiements().catch((e) => console.error('[paiements]', e.message)), 60 * 1000);
 setInterval(() => verifierPaiements().catch((e) => console.error('[paiements]', e.message)), 6 * 60 * 60 * 1000);
+// Échéances de la semaine : propositions préparées chaque lundi matin
+require('./lib/echeances').planifier();
 
 app.listen(PORT, '127.0.0.1', () => {
   console.log(`[compta-proxy] listening on 127.0.0.1:${PORT} — INPI: ${process.env.INPI_BASE_URL}`);

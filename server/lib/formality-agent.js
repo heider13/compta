@@ -15,6 +15,7 @@ const { toFile } = require('@anthropic-ai/sdk');
 const { getAnthropic, MODELS, draftDocument, searchLegalChunks } = require('./ai');
 const { extractText } = require('./text-extract');
 const { getSupabaseAdmin } = require('./db');
+const memoireClient = require('./memoire-client');
 const { buildPipeline } = require('./orchestrator');
 const { buildPersonneMorale } = require('./inpi-builder');
 const { markdownToDocx } = require('./markdown-docx');
@@ -716,6 +717,19 @@ const TOOLS = [
       required: ['piece_id'],
     },
   },
+  {
+    name: 'memoriser_client',
+    description:
+      "Retient une information DURABLE sur le client du dossier (préférence, particularité, habitude du cabinet avec ce client) dans sa mémoire, relue à chaque échange et modifiable par le cabinet sur la fiche client. Pas pour les données déjà enregistrées dans le dossier, ni pour une donnée personnelle sensible (pièce d'identité, santé, données bancaires).",
+    input_schema: {
+      type: 'object',
+      properties: {
+        note: { type: 'string', description: "Une phrase courte et autonome (500 caractères au plus), ex. « Préfère la publication des annonces dans Le Parisien. »" },
+        siren: { type: 'string', description: 'SIREN du client, si le dossier en cours ne le précise pas' },
+      },
+      required: ['note'],
+    },
+  },
 ];
 
 const SYSTEM_PROMPT = `Tu es l'Agent Formalités de Legaly AI, plateforme française pour cabinets d'experts-comptables, avocats et formalistes. Tu prends en charge une formalité juridique d'entreprise de bout en bout : tu recueilles les informations, tu crées le dossier, tu génères les statuts et tous les actes nécessaires, puis tu indiques au professionnel ce qu'il lui reste à faire.
@@ -818,7 +832,15 @@ Pour une formalité déjà déposée au Guichet unique (régularisation demandé
 - Signale les points d'attention juridiques utiles (capital faible, activité réglementée, apport en nature nécessitant un commissaire aux apports…) sans faire de longues dissertations.
 - Réponds en français, de façon concise et structurée (Markdown léger). Quand un outil échoue, explique simplement le problème et la marche à suivre.
 - Les documents produits sont des projets à faire relire par le professionnel ; dis-le une fois dans le récapitulatif final.
-</regles>`;
+</regles>
+
+<memoire_client>
+Quand le dossier concerne un client du cabinet, sa mémoire est jointe au message (<memoire_client>) : tiens-en compte sans la recopier.
+- Retiens avec memoriser_client ce qui servira aux prochains dossiers de ce client : préférence exprimée (journal d'annonces, mode de signature, payeur des frais), particularité durable (date de clôture inhabituelle, commissaire aux comptes, siège domicilié, interlocuteur à privilégier), consigne du professionnel (« pour ce client, toujours… »).
+- Une note par information, en une phrase autonome. Ne retiens pas ce qui est déjà dans le dossier ni ce qui ne vaut que pour la formalité en cours.
+- Dis-le en une ligne quand tu retiens quelque chose (« Noté dans la mémoire du client : … »).
+- Si une note contredit ce que dit le professionnel, suis le professionnel et signale que la note est à corriger sur la fiche client.
+</memoire_client>`;
 
 // ─── Mode entrepreneur (page Indépendants et TPE) ───────────────────
 // client : entrepreneur ayant payé ; l'agent mène SA formalité, déposée par Legaly
@@ -1796,6 +1818,7 @@ const TOOL_LABELS = {
   creer_modification_inpi: "Préparation de la modification INPI",
   lire_formalite_inpi: 'Lecture de la formalité INPI',
   lire_piece_inpi: "Lecture d'une pièce INPI",
+  memoriser_client: 'Mémoire du client',
 };
 
 async function runTool(name, input, ctx) {
@@ -1830,6 +1853,7 @@ async function runTool(name, input, ctx) {
     case 'modifier_groupe': return toolModifierGroupe(ctx, input);
     case 'lire_formalite_inpi': return toolLireFormalite(ctx, input);
     case 'lire_piece_inpi': return toolLirePiece(ctx, input);
+    case 'memoriser_client': return memoireClient.memoriser(ctx.orgId, await loadDossier(supa, ctx).catch(() => null), input, ctx.userId);
     default: throw new Error(`Outil inconnu : ${name}`);
   }
 }
@@ -1890,13 +1914,24 @@ async function attachmentBlocks(client, attachments) {
   return blocks;
 }
 
+async function chargerMemoire(ctx) {
+  try {
+    const dossier = await loadDossier(getSupabaseAdmin(), ctx);
+    return dossier ? await memoireClient.blocPourAgent(ctx.orgId, dossier) : '';
+  } catch {
+    return '';
+  }
+}
+
 async function runAgentTurn({ history, input, attachments = [], ctx, emit, formResponse = null }) {
   const client = getAnthropic();
   const docBlocks = attachments.length ? await attachmentBlocks(client, attachments) : [];
   // Date du jour dans le message (pas dans le prompt système, qui reste en cache) :
   // indispensable pour juger délais et échéances.
   const today = new Date().toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Europe/Paris' });
-  const userText = `[Date du jour : ${today}]\n${input || 'Voici des documents pour le dossier : analyse-les.'}`;
+  // Mémoire du client du dossier (cabinet seulement), relue à chaque tour
+  const memoire = ctx.mode === 'client' ? '' : await chargerMemoire(ctx);
+  const userText = `[Date du jour : ${today}]\n${memoire ? `${memoire}\n` : ''}${input || 'Voici des documents pour le dossier : analyse-les.'}`;
   let userContent = docBlocks.length ? [...docBlocks, { type: 'text', text: userText }] : userText;
   // Réponse à un formulaire : résultats des outils du tour précédent (dont le formulaire)
   // en tête du message, puis le texte éventuel du professionnel.

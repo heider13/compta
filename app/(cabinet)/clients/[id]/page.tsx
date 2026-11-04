@@ -25,6 +25,7 @@ import {
 } from '@/components/ui/table';
 import { PageHeader, PageShell } from '@/components/cabinet/PageHeader';
 import { EmptyState } from '@/components/cabinet/EmptyState';
+import { MemoireClient, type NoteMemoire } from '@/components/cabinet/clients/MemoireClient';
 
 export const dynamic = 'force-dynamic';
 
@@ -70,12 +71,20 @@ export default async function ClientDetailPage({ params }: PageProps) {
 
   const c = client as Client;
 
-  const { data: dossiersData } = await supabase
-    .from('dossiers')
-    .select('id, reference, client_name, type_formalite, statut, created_at')
-    .eq('client_id', id)
-    .order('created_at', { ascending: false })
-    .limit(5);
+  const [{ data: dossiersData }, memoireRes] = await Promise.all([
+    supabase
+      .from('dossiers')
+      .select('id, reference, client_name, type_formalite, statut, created_at')
+      .eq('client_id', id)
+      .order('created_at', { ascending: false })
+      .limit(5),
+    supabase
+      .from('memoire_client')
+      .select('id, contenu, source, updated_at')
+      .eq('client_id', id)
+      .order('created_at', { ascending: true }),
+  ]);
+  const notesMemoire = (memoireRes.data ?? []) as NoteMemoire[];
 
   const dossiers = (dossiersData ?? []) as Pick<
     Dossier,
@@ -227,6 +236,7 @@ export default async function ClientDetailPage({ params }: PageProps) {
           )}
         </div>
 
+        <div className="min-w-0 space-y-6">
         {/* Contact */}
         <Card className="h-fit min-w-0 gap-0 py-0">
           <CardHeader className="border-b px-5 py-4 [.border-b]:pb-4">
@@ -271,6 +281,10 @@ export default async function ClientDetailPage({ params }: PageProps) {
             </dl>
           </CardContent>
         </Card>
+
+        {/* Mémoire de l'agent */}
+        <MemoireClient clientId={c.id} notes={notesMemoire} indisponible={Boolean(memoireRes.error)} />
+        </div>
       </div>
     </PageShell>
   );

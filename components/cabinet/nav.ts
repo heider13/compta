@@ -2,6 +2,7 @@
 // et le fil d'Ariane.
 import {
   BookOpen,
+  CalendarCheck,
   CheckSquare,
   CreditCard,
   FileSignature,
@@ -42,6 +43,7 @@ export const NAV_SECTIONS: NavSection[] = [
   {
     label: 'Pilotage',
     items: [
+      { href: '/aujourdhui', label: "Aujourd'hui", matchPrefix: '/aujourdhui', icon: CalendarCheck, keywords: ['à faire', 'urgent', 'échéances', 'priorités', 'semaine'] },
       { href: '/dashboard', label: 'Tableau de bord', matchPrefix: '/dashboard', exact: true, icon: LayoutDashboard, keywords: ['accueil', 'agent'] },
       { href: '/dossiers', label: 'Formalités', matchPrefix: '/dossiers', alsoMatch: ['/inpi'], exclude: ['/inpi/comptes'], icon: FileText, keywords: ['dossiers', 'inpi', 'guichet'] },
       { href: '/inpi/comptes', label: 'Dépôt des comptes annuels', matchPrefix: '/inpi/comptes', icon: FileSpreadsheet, keywords: ['comptes', 'bilan', 'greffe', 'approbation'] },
