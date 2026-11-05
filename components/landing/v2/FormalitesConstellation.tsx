@@ -33,7 +33,7 @@ const FORMALITES: Formalite[] = [
 const CYCLE_MS = 3600;
 
 // Le foyer d'où part le faisceau, en % de la zone.
-const FOYER = { x: 53, y: 56 };
+const FOYER = { x: 50, y: 50 };
 
 /**
  * Suite déterministe : même rendu sur le serveur et dans le navigateur.
@@ -48,7 +48,7 @@ function semis(graine: number) {
   };
 }
 
-type Astre = { x: number; y: number; r: number; o: number };
+type Astre = { x: number; y: number; r: number; o: number; teinte: number; duree: number; delai: number };
 
 /**
  * La poussière : des cercles PLEINS, de tailles franchement inégales. C'est
@@ -59,13 +59,18 @@ function poussiere(nb: number): Astre[] {
   const suivant = semis(20261105);
   const astres: Astre[] = [];
   for (let i = 0; i < nb; i += 1) {
-    const angle = suivant() * Math.PI * 2;
-    const dist = 0.2 + suivant() * 0.8;
+    // Un angle PAR SECTEUR, avec un peu de jeu : tiré totalement au hasard,
+    // le nuage se massait d'un côté et laissait un quart de la zone vide.
+    const angle = (i / nb) * Math.PI * 2 + (suivant() - 0.5) * 0.5;
+    const dist = 0.22 + suivant() * 0.78;
     astres.push({
-      x: FOYER.x + Math.cos(angle) * dist * 44,
-      y: FOYER.y + Math.sin(angle) * dist * 42,
+      x: FOYER.x + Math.cos(angle) * dist * 46,
+      y: FOYER.y + Math.sin(angle) * dist * 44,
       r: 2 + suivant() * 9,
-      o: 0.14 + suivant() * 0.32,
+      o: 0.2 + suivant() * 0.45,
+      teinte: suivant(),
+      duree: 7 + suivant() * 7,
+      delai: suivant() * 8,
     });
   }
   return astres;
@@ -75,10 +80,10 @@ function poussiere(nb: number): Astre[] {
 function placer(i: number, total: number) {
   const suivant = semis(777 + i * 31);
   const angle = -Math.PI / 2 + (i / total) * Math.PI * 2 + (suivant() - 0.5) * 0.32;
-  const dist = 0.58 + suivant() * 0.4;
+  const dist = 0.6 + suivant() * 0.38;
   return {
-    x: FOYER.x + Math.cos(angle) * dist * 42,
-    y: FOYER.y + Math.sin(angle) * dist * 40,
+    x: FOYER.x + Math.cos(angle) * dist * 44,
+    y: FOYER.y + Math.sin(angle) * dist * 42,
   };
 }
 
@@ -92,7 +97,7 @@ export function FormalitesConstellation({
   // sous le doigt du visiteur lui reprendrait la main.
   const [fige, setFige] = useState(false);
 
-  const astres = useMemo(() => poussiere(30), []);
+  const astres = useMemo(() => poussiere(44), []);
   const noeuds = useMemo(
     () => formalites.map((f, i) => ({ ...f, ...placer(i, formalites.length) })),
     [formalites],
@@ -128,7 +133,7 @@ export function FormalitesConstellation({
                 y1={`${FOYER.y}%`}
                 x2={`${a.x}%`}
                 y2={`${a.y}%`}
-                stroke="rgba(255,255,255,0.1)"
+                stroke="rgba(117,81,232,0.26)"
                 strokeWidth="1"
               />
             ))}
@@ -139,18 +144,40 @@ export function FormalitesConstellation({
                 y1={`${FOYER.y}%`}
                 x2={`${n.x}%`}
                 y2={`${n.y}%`}
-                stroke={i === actif ? 'rgba(255,255,255,0.8)' : 'rgba(255,255,255,0.16)'}
-                strokeWidth={i === actif ? 1.4 : 1}
+                stroke={i === actif ? 'rgba(234,66,253,0.85)' : 'rgba(117,81,232,0.34)'}
+                strokeWidth={i === actif ? 1.5 : 1}
                 className="fc-fil"
               />
             ))}
+            {/* L'impulsion : un trait court qui file du foyer vers la
+                formalité annoncée. C'est ce mouvement qui dit « l'agent va
+                chercher là-bas », là où un simple surlignage ne dit rien. */}
+            <line
+              key={`pulse-${courante.key}`}
+              x1={`${FOYER.x}%`}
+              y1={`${FOYER.y}%`}
+              x2={`${courante.x}%`}
+              y2={`${courante.y}%`}
+              stroke="#fff"
+              strokeWidth="2"
+              strokeLinecap="round"
+              className="fc-impulsion"
+            />
           </svg>
 
           {astres.map((a, i) => (
             <span
               key={`p${i}`}
-              className="fc-astre"
-              style={{ left: `${a.x}%`, top: `${a.y}%`, width: a.r * 2, height: a.r * 2, opacity: a.o }}
+              className={`fc-astre${a.teinte > 0.72 ? ' fc-astre--rose' : ''}`}
+              style={{
+                left: `${a.x}%`,
+                top: `${a.y}%`,
+                width: a.r * 2,
+                height: a.r * 2,
+                opacity: a.o,
+                animationDuration: `${a.duree}s`,
+                animationDelay: `${a.delai}s`,
+              }}
             />
           ))}
 

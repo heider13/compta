@@ -1565,7 +1565,9 @@ html[data-landing='dark'] .landing-theme .text-emerald-700 { color: #6ee7b7; }
 .fc-section {
   position: relative;
   overflow: hidden;
-  background: #09080d;
+  /* Un noir qui tire sur le violet plutôt qu'un noir neutre : la section
+     reste de la même famille que le reste du site. */
+  background: radial-gradient(ellipse 80% 70% at 50% 60%, #14092e 0%, #0a0615 60%, #070410 100%);
   padding: 5rem 0 5.5rem;
 }
 
@@ -1624,10 +1626,31 @@ html[data-landing='dark'] .landing-theme .text-emerald-700 { color: #6ee7b7; }
 .fc-astre {
   position: absolute;
   display: block;
-  background: #fff;
+  background: #a98cf5;
   border-radius: 999px;
   transform: translate(-50%, -50%);
   pointer-events: none;
+  /* Une dérive très lente. Immobile, le nuage ressemble à une image fixe ;
+     c'est ce flottement qui le fait vivre sans attirer l'œil. */
+  animation-name: fc-derive;
+  animation-timing-function: ease-in-out;
+  animation-iteration-count: infinite;
+  animation-direction: alternate;
+}
+
+/* Un astre sur quatre vire au rose : deux teintes suffisent à faire une
+   palette, trois feraient un sapin. */
+.fc-astre--rose {
+  background: #ea42fd;
+}
+
+@keyframes fc-derive {
+  from {
+    transform: translate(-50%, -50%) translate(0, 0);
+  }
+  to {
+    transform: translate(-50%, -50%) translate(6px, -8px);
+  }
 }
 
 /* ── Le foyer ── */
@@ -1637,10 +1660,11 @@ html[data-landing='dark'] .landing-theme .text-emerald-700 { color: #6ee7b7; }
   display: block;
   width: 58px;
   height: 58px;
-  background: #fff;
+  background: radial-gradient(circle at 32% 28%, #fff 0%, #d9ccff 42%, #a98cf5 100%);
   border-radius: 999px;
   transform: translate(-50%, -50%);
   pointer-events: none;
+  box-shadow: 0 0 44px rgba(169, 140, 245, 0.55);
 }
 
 /* Le second disque, plus gros et plus haut : c'est lui qui donne la
@@ -1648,6 +1672,8 @@ html[data-landing='dark'] .landing-theme .text-emerald-700 { color: #6ee7b7; }
 .fc-foyer--haut {
   width: 86px;
   height: 86px;
+  background: radial-gradient(circle at 34% 26%, #fff 0%, #f0d8ff 40%, #ea42fd 100%);
+  box-shadow: 0 0 60px rgba(234, 66, 253, 0.45);
 }
 
 /* ── Les formalités ── */
@@ -1658,7 +1684,7 @@ html[data-landing='dark'] .landing-theme .text-emerald-700 { color: #6ee7b7; }
   width: 14px;
   height: 14px;
   padding: 0;
-  background: rgba(255, 255, 255, 0.45);
+  background: #c3b0f8;
   border: 0;
   border-radius: 999px;
   transform: translate(-50%, -50%);
@@ -1674,8 +1700,27 @@ html[data-landing='dark'] .landing-theme .text-emerald-700 { color: #6ee7b7; }
 .fc-noeud--actif {
   width: 26px;
   height: 26px;
-  background: #fff;
-  box-shadow: 0 0 0 8px rgba(255, 255, 255, 0.1);
+  background: radial-gradient(circle at 32% 28%, #fff 0%, #f6ddff 45%, #ea42fd 100%);
+  box-shadow: 0 0 0 9px rgba(234, 66, 253, 0.16), 0 0 28px rgba(234, 66, 253, 0.6);
+}
+
+/* L'impulsion file du foyer vers la formalité annoncée : un trait court
+   lancé le long du fil. Le tireté est volontairement plus long que n'importe
+   quel fil, pour qu'un seul segment traverse à chaque passage. */
+.fc-impulsion {
+  stroke-dasharray: 26 2000;
+  animation: fc-file 1.5s cubic-bezier(0.4, 0, 0.2, 1) both;
+}
+
+@keyframes fc-file {
+  from {
+    stroke-dashoffset: 26;
+    opacity: 0.95;
+  }
+  to {
+    stroke-dashoffset: -760;
+    opacity: 0;
+  }
 }
 
 /* ── La carte ── */
@@ -1694,8 +1739,8 @@ html[data-landing='dark'] .landing-theme .text-emerald-700 { color: #6ee7b7; }
 .fc-carte-inner {
   position: relative;
   padding: 1.05rem 1.15rem 1.15rem;
-  background: rgba(28, 28, 32, 0.96);
-  border: 1px solid rgba(255, 255, 255, 0.09);
+  background: rgba(22, 16, 44, 0.95);
+  border: 1px solid rgba(169, 140, 245, 0.22);
   border-radius: 16px;
   box-shadow: 0 24px 60px rgba(0, 0, 0, 0.55);
   animation: fc-apparait 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
@@ -1753,7 +1798,7 @@ html[data-landing='dark'] .landing-theme .text-emerald-700 { color: #6ee7b7; }
   font-size: 0.72rem;
   font-variant-numeric: tabular-nums;
   color: rgba(255, 255, 255, 0.6);
-  background: rgba(255, 255, 255, 0.07);
+  background: rgba(169, 140, 245, 0.16);
   border-radius: 7px;
 }
 
@@ -1796,7 +1841,15 @@ html[data-landing='dark'] .landing-theme .text-emerald-700 { color: #6ee7b7; }
 /* Mouvement réduit : l'apparition s'arrête. La rotation est déjà coupée côté
    JS, le visiteur désigne les formalités lui-même. */
 @media (prefers-reduced-motion: reduce) {
-  .fc-carte-inner {
+  .fc-carte-inner,
+  .fc-astre,
+  .fc-impulsion {
     animation: none;
+  }
+
+  /* Sans animation, l'impulsion resterait un trait blanc en travers : on la
+     retire plutôt que de la laisser figée. */
+  .fc-impulsion {
+    display: none;
   }
 }
