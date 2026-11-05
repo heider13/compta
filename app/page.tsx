@@ -1,7 +1,6 @@
 import { Nav } from '@/components/landing/Nav';
 import { HeroAgent } from '@/components/landing/HeroAgent';
 import { CircuitIso } from '@/components/landing/v2/CircuitIso';
-import { DossierUnique } from '@/components/landing/v2/DossierUnique';
 import { FormalitesConstellation } from '@/components/landing/v2/FormalitesConstellation';
 import { AgentsCarousel } from '@/components/landing/v2/AgentsCarousel';
 import { AudienceTabs } from '@/components/landing/v2/AudienceTabs';
@@ -21,7 +20,6 @@ export default function LandingPage() {
       <HeroAgent />
       <CircuitIso />
       <FormalitesConstellation />
-      <DossierUnique />
       <AgentsCarousel />
       <AudienceTabs />
       <Conformite />
