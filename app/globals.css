@@ -1549,3 +1549,234 @@ html[data-landing='dark'] .landing-theme .text-emerald-700 { color: #6ee7b7; }
     animation: none;
   }
 }
+
+/* ──────────────────────────────────────────────────────────────────────────
+   « TOUTES VOS FORMALITÉS » EN CONSTELLATION
+
+   Remplace la rangée défilante. Dix cartes qui glissent se lisent comme un
+   bandeau décoratif : pour trouver « Mise en sommeil », il fallait attendre
+   qu'elle passe. Les dix sont maintenant posées autour de l'agent, visibles
+   d'un seul coup d'œil, et la carte les présente l'une après l'autre.
+   ────────────────────────────────────────────────────────────────────────── */
+
+.fc-zone {
+  position: relative;
+  display: none;
+  width: 100%;
+  height: clamp(26rem, 38vw, 34rem);
+  margin-top: 2.5rem;
+}
+
+/* La constellation a besoin de largeur : sous 1024 px les nœuds se
+   chevaucheraient et les noms se couperaient. On bascule sur la liste. */
+@media (min-width: 1024px) {
+  .fc-zone {
+    display: block;
+  }
+}
+
+.fc-fil {
+  transition: stroke 0.5s ease, stroke-width 0.5s ease;
+}
+
+/* ── Le foyer : l'agent ── */
+
+.fc-foyer {
+  position: absolute;
+  display: grid;
+  place-items: center;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+
+.fc-foyer-coeur {
+  position: relative;
+  z-index: 1;
+  width: 18px;
+  height: 18px;
+  background: linear-gradient(140deg, #7551e8, #ea42fd);
+  border-radius: 999px;
+  box-shadow: 0 4px 16px rgba(117, 81, 232, 0.4);
+}
+
+/* Une onde lente, pas un clignotement : elle dit « ça tourne » sans réclamer
+   l'attention que mérite le texte. */
+.fc-foyer-halo {
+  position: absolute;
+  width: 18px;
+  height: 18px;
+  background: rgba(117, 81, 232, 0.35);
+  border-radius: 999px;
+  animation: fc-onde 3.6s ease-out infinite;
+}
+
+@keyframes fc-onde {
+  0% {
+    transform: scale(1);
+    opacity: 0.5;
+  }
+  70%,
+  100% {
+    transform: scale(4.2);
+    opacity: 0;
+  }
+}
+
+/* ── Les nœuds ── */
+
+.fc-noeud {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.3rem 0.6rem 0.3rem 0.35rem;
+  background: rgba(255, 255, 255, 0.78);
+  border: 1px solid rgba(54, 31, 171, 0.1);
+  border-radius: 999px;
+  transform: translate(-50%, -50%);
+  cursor: pointer;
+  transition: background 0.35s ease, border-color 0.35s ease, box-shadow 0.35s ease, transform 0.35s ease;
+  white-space: nowrap;
+}
+
+.fc-noeud:hover,
+.fc-noeud:focus-visible {
+  outline: none;
+  background: #fff;
+}
+
+.fc-noeud-point {
+  width: 9px;
+  height: 9px;
+  background: #c3b6f2;
+  border-radius: 999px;
+  transition: background 0.35s ease, transform 0.35s ease;
+}
+
+.fc-noeud-nom {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: #4b4468;
+  transition: color 0.35s ease;
+}
+
+.fc-noeud--actif {
+  background: #fff;
+  border-color: rgba(117, 81, 232, 0.4);
+  box-shadow: 0 8px 22px rgba(54, 31, 171, 0.16);
+  transform: translate(-50%, -50%) scale(1.06);
+}
+
+.fc-noeud--actif .fc-noeud-point {
+  background: linear-gradient(140deg, #7551e8, #ea42fd);
+  transform: scale(1.25);
+}
+
+.fc-noeud--actif .fc-noeud-nom {
+  color: #080331;
+}
+
+/* ── La carte ── */
+
+/* Plaquée à droite, hors de l'ellipse des nœuds : posée au centre, elle
+   aurait recouvert la moitié d'entre eux à chaque rotation. */
+.fc-carte {
+  position: absolute;
+  top: 50%;
+  right: 0;
+  width: min(23rem, 34%);
+  transform: translateY(-50%);
+}
+
+.fc-carte-inner {
+  padding: 1.25rem;
+  background: #fff;
+  border: 1px solid rgba(54, 31, 171, 0.1);
+  border-radius: 20px;
+  box-shadow: 0 18px 44px rgba(54, 31, 171, 0.14);
+  animation: fc-apparait 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes fc-apparait {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* L'illustration garde le halo coloré des anciennes cartes : c'est elle qui
+   donnait sa chaleur à la section, la perdre aurait appauvri le bloc. */
+.fc-carte-illus {
+  display: grid;
+  place-items: center;
+  height: 8.5rem;
+  margin-bottom: 1rem;
+  overflow: hidden;
+  background:
+    radial-gradient(ellipse 60% 70% at 30% 30%, rgba(117, 81, 232, 0.28), transparent 70%),
+    radial-gradient(ellipse 60% 70% at 75% 70%, rgba(234, 66, 253, 0.2), transparent 72%);
+  border-radius: 14px;
+}
+
+.fc-carte-inner h3 {
+  margin: 0;
+  font-size: 1.02rem;
+  font-weight: 700;
+  color: var(--violet-900);
+}
+
+.fc-carte-inner p {
+  margin: 0.45rem 0 0;
+  font-size: 0.87rem;
+  line-height: 1.55;
+  color: var(--ink-600);
+}
+
+/* ── Repli : la même information, en liste ── */
+
+.fc-liste {
+  display: grid;
+  gap: 1.1rem 2rem;
+  margin: 2.5rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+@media (min-width: 640px) {
+  .fc-liste {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+@media (min-width: 1024px) {
+  .fc-liste {
+    display: none;
+  }
+}
+
+.fc-liste h3 {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--violet-900);
+}
+
+.fc-liste p {
+  margin: 0.25rem 0 0;
+  font-size: 0.86rem;
+  line-height: 1.5;
+  color: var(--ink-600);
+}
+
+/* Mouvement réduit : l'onde et l'apparition s'arrêtent. La rotation est déjà
+   coupée côté JS, le visiteur désigne les formalités lui-même. */
+@media (prefers-reduced-motion: reduce) {
+  .fc-foyer-halo,
+  .fc-carte-inner {
+    animation: none;
+  }
+}
