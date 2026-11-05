@@ -1598,7 +1598,7 @@ html[data-landing='dark'] .landing-theme .text-emerald-700 { color: #6ee7b7; }
   position: relative;
   display: none;
   width: 100%;
-  height: clamp(22rem, 33vw, 31rem);
+  height: clamp(25rem, 37vw, 35rem);
   margin-top: 1.5rem;
 }
 
