@@ -1,55 +1,62 @@
 'use client';
 
-// « Toutes vos formalités, au même endroit » — réseau vivant, sur fond clair.
+// « Toutes vos formalités, au même endroit » — le cabinet qui se construit, en quatre temps.
 //
-// Même mise en scène que wellapp.ai : un graphe qui pousse quand la section
-// arrive à l'écran (un foyer, puis les formalités, puis leurs grappes de
-// sociétés et de pièces, puis les fils qui relient les grappes), tenu par un
-// petit calcul de forces (ressorts + répulsion), puis UNE formalité qui
-// s'allume à la fois — elle et ses fils en couleur, le reste en retrait — avec
-// sa carte qui la suit.
+// Même mécanique que la section « mémoire » de wellapp.ai, sur fond clair :
+// - quatre étapes (Jour 1 → Mois 6) qui avancent seules, une barre de progression
+//   sous l'onglet actif, cliquables ;
+// - à chaque étape, de nouveaux nœuds APPARAISSENT SUR PLACE (ils grandissent, rien
+//   n'explose) : la structure est calculée une fois pour toutes, puis tout respire à
+//   peine ;
+// - les nouveaux arrivent allumés, puis tout repasse en retrait et UN élément
+//   s'allume avec ses liens, sa carte à côté ;
+// - la caméra recule à mesure que le réseau grandit : une étoile au Jour 1, des
+//   grappes ensuite, le cabinet entier au Mois 6.
 //
-// Canvas 2D, sans dépendance : ~260 nœuds tiennent largement à 60 i/s.
+// Structure : le cabinet au centre ; ses connexions (Guichet unique, RNE, journaux,
+// signature) ; ses clients, chacun avec ses dossiers et leurs pièces ; puis les
+// groupes de sociétés qui relient plusieurs clients. Canvas 2D, sans dépendance.
 
 import { useEffect, useRef, useState } from 'react';
 
 import { Container } from '../ui';
 
-export type Formalite = { key: string; titre: string; texte: string; etat: string };
+type Carte = { titre: string; etat: string; texte: string; badges: string[] };
+type Etape = { label: string; texte: string; carte: Carte };
 
-const FORMALITES: Formalite[] = [
-  { key: 'creation', titre: 'Création de société', etat: 'Guichet unique', texte: 'SASU, SAS, SARL, EURL, SCI, micro-entreprise : statuts rédigés, dossier prêt à déposer.' },
-  { key: 'modification', titre: 'Modifications', etat: 'Guichet unique', texte: 'Siège, dirigeants, objet, dénomination, capital : les pièces suivent la décision.' },
-  { key: 'dissolution', titre: 'Dissolution et liquidation', etat: 'Guichet unique', texte: 'PV, liquidateur, comptes de clôture et radiation, dans l’ordre.' },
-  { key: 'sommeil', titre: 'Mise en sommeil', etat: 'Guichet unique', texte: 'Cessation temporaire d’activité, sans annonce légale, jusqu’à deux ans.' },
-  { key: 'annonces', titre: 'Annonces légales', etat: 'Journal habilité', texte: 'Rédigées par l’IA, mentions obligatoires contrôlées une à une.' },
-  { key: 'rne', titre: 'Documents RNE', etat: 'Registre national', texte: 'Statuts, PV, comptes annuels et avis Insee récupérés en un clic.' },
-  { key: 'regularisation', titre: 'Régularisations', etat: 'Greffe', texte: 'Les demandes du greffe sont lues et les réponses préparées.' },
-  { key: 'lots', titre: 'Formalités en lot', etat: 'Multi-sociétés', texte: 'Plusieurs sociétés traitées en une seule demande.' },
-  { key: 'paiement', titre: 'Suivi des paiements', etat: 'Paiement', texte: 'Montants, délégation au client et alertes, sans relance manuelle.' },
-  { key: 'signature', titre: 'Signature électronique', etat: 'eIDAS', texte: 'Documents signés en ligne, signature qualifiée eIDAS si besoin.' },
+const ETAPES: Etape[] = [
+  {
+    label: 'Jour 1',
+    texte: 'Votre Guichet unique, le registre, vos premiers clients.',
+    carte: { titre: 'Guichet unique INPI', etat: 'Connecté à votre compte', texte: 'Les formalités préparées par l’agent arrivent en brouillon sur votre compte.', badges: ['Brouillons', 'Suivi des statuts'] },
+  },
+  {
+    label: 'Semaine 1',
+    texte: 'Créations, modifications, annonces : les premiers dossiers avancent.',
+    carte: { titre: 'Création d’une SAS', etat: 'Dossier en préparation', texte: 'Statuts, déclaration de non-condamnation, pouvoir et annonce légale rédigés.', badges: ['4 actes', '1 annonce'] },
+  },
+  {
+    label: 'Mois 1',
+    texte: 'Signatures, paiements, régularisations : chaque dossier suit son parcours.',
+    carte: { titre: 'Régularisation du greffe', etat: 'Demande reçue', texte: 'La demande est lue, la réponse et les pièces manquantes sont préparées.', badges: ['Réponse rédigée', 'Pièces listées'] },
+  },
+  {
+    label: 'Mois 6',
+    texte: 'Chaque client, chaque société, chaque échéance, reliés.',
+    carte: { titre: 'Groupe de sociétés', etat: 'Holding et filiales', texte: 'Une modification lancée sur toutes les filiales, les comptes annuels suivis pour chacune.', badges: ['Filiales reliées', 'Échéances'] },
+  },
 ];
 
-const CYCLE_MS = 3600;
-const CROISSANCE_MS = 6500; // durée de la pousse du réseau
-// Couleurs sur fond clair : le repos en ardoise très léger, la formalité allumée
-// dans le dégradé Legaly (violet → rose).
+const DUREE_ETAPE = [6200, 6500, 6800, 8200];
+const POUSSE_MS = 1500; // nouveaux nœuds allumés, avant que l'élément mis en avant s'allume
+
 const VIOLET = [117, 81, 232] as const;
 const ROSE = [234, 66, 253] as const;
 const ARDOISE = [38, 34, 58] as const;
 
-type Noeud = {
-  x: number; y: number; vx: number; vy: number;
-  r: number;
-  groupe: number; // -1 : foyer ; sinon indice de la formalité
-  hub: boolean;
-  parent: number; // indice du nœud d'où il pousse
-  ne: number; // instant d'apparition (ms après le début de la pousse)
-  lum: number; // 0 : en retrait, 1 : allumé (lissé à chaque image)
-};
-type Fil = { a: number; b: number; l: number; k: number; croise: boolean };
+type Noeud = { x: number; y: number; r: number; etape: number; parent: number; ordre: number; phase: number };
+type Fil = { a: number; b: number; l: number; k: number };
 
-/** Suite déterministe : le même réseau à chaque visite. */
 function semis(graine: number) {
   let etat = graine;
   return () => {
@@ -58,96 +65,162 @@ function semis(graine: number) {
   };
 }
 
-function construire(nbFormalites: number) {
+/** Le réseau complet (les quatre étapes) et sa disposition finale, calculée une fois. */
+function construire() {
   const s = semis(20261105);
   const noeuds: Noeud[] = [];
   const fils: Fil[] = [];
-  const ajouter = (n: Omit<Noeud, 'x' | 'y' | 'vx' | 'vy' | 'lum'>) => {
-    noeuds.push({ ...n, x: 0, y: 0, vx: 0, vy: 0, lum: 1 });
-    return noeuds.length - 1;
+  const ajouter = (etape: number, parent: number, r: number, l: number, k = 0.04) => {
+    const p = noeuds[parent];
+    const a = s() * Math.PI * 2;
+    noeuds.push({ x: p ? p.x + Math.cos(a) * l : 0, y: p ? p.y + Math.sin(a) * l * 0.6 : 0, r, etape, parent, ordre: s(), phase: s() * Math.PI * 2 });
+    const i = noeuds.length - 1;
+    if (parent >= 0) fils.push({ a: parent, b: i, l, k });
+    return i;
   };
-  const foyer = ajouter({ r: 9, groupe: -1, hub: false, parent: -1, ne: 0 });
-  const hubs: number[] = [];
-  for (let g = 0; g < nbFormalites; g += 1) {
-    const h = ajouter({ r: 6.5, groupe: g, hub: true, parent: foyer, ne: 250 + g * 170 });
-    hubs.push(h);
-    fils.push({ a: foyer, b: h, l: 120 + s() * 40, k: 0.03, croise: false });
+  const lier = (a: number, b: number, l: number, k = 0.006) => fils.push({ a, b, l, k });
+
+  const cabinet = ajouter(0, -1, 13, 0);
+  // Jour 1 : les connexions du cabinet et ses premiers clients, en étoile
+  const guichet = ajouter(0, cabinet, 9, 150);
+  const rne = ajouter(0, cabinet, 7.5, 170);
+  const journaux = ajouter(0, cabinet, 6.5, 190);
+  const signature = ajouter(0, cabinet, 6.5, 175);
+  const sources = [guichet, rne, journaux, signature];
+  const clients: number[] = [];
+  for (let i = 0; i < 8; i += 1) clients.push(ajouter(0, cabinet, 5 + s() * 3.5, 120 + s() * 120));
+
+  // Un client et ses dossiers ; chaque dossier a ses pièces et passe par une connexion
+  const dossiers = (client: number, etape: number, nb: number, pieces: [number, number]) => {
+    const liste: number[] = [];
+    for (let d = 0; d < nb; d += 1) {
+      const dos = ajouter(etape, client, 3 + s() * 2, 30 + s() * 22, 0.05);
+      liste.push(dos);
+      const nbP = pieces[0] + Math.floor(s() * (pieces[1] - pieces[0] + 1));
+      for (let p = 0; p < nbP; p += 1) ajouter(etape, dos, 1.8 + s() * 1.6, 13 + s() * 10, 0.06);
+      if (s() < 0.55) lier(dos, sources[Math.floor(s() * sources.length)], 260, 0.0015);
+    }
+    return liste;
+  };
+
+  // Semaine 1 : les premiers dossiers des premiers clients — dont la SAS mise en avant
+  const sas = dossiers(clients[2], 1, 1, [4, 4])[0];
+  for (const c of clients) dossiers(c, 1, 1 + Math.floor(s() * 2), [1, 3]);
+
+  // Mois 1 : nouveaux clients, signatures, régularisations — dont celle mise en avant
+  const clientsM1: number[] = [];
+  for (let i = 0; i < 9; i += 1) clientsM1.push(ajouter(2, cabinet, 4.5 + s() * 3, 160 + s() * 140));
+  const regul = dossiers(clientsM1[4], 2, 1, [5, 5])[0];
+  lier(regul, guichet, 230, 0.002);
+  for (const c of [...clients, ...clientsM1]) dossiers(c, 2, 1 + Math.floor(s() * 2), [2, 4]);
+
+  // Mois 6 : le cabinet entier, et les groupes de sociétés qui relient les clients
+  const clientsM6: number[] = [];
+  for (let i = 0; i < 18; i += 1) clientsM6.push(ajouter(3, cabinet, 4 + s() * 3, 220 + s() * 180));
+  const tous = [...clients, ...clientsM1, ...clientsM6];
+  for (const c of tous) dossiers(c, 3, 1 + Math.floor(s() * 3), [2, 5]);
+  const holding = ajouter(3, cabinet, 8, 210);
+  const filiales: number[] = [];
+  for (let i = 0; i < 6; i += 1) {
+    const f = tous[Math.floor(s() * tous.length)];
+    if (!filiales.includes(f)) { filiales.push(f); lier(holding, f, 90, 0.01); }
   }
-  const satellites: number[][] = hubs.map(() => []);
-  hubs.forEach((h, g) => {
-    const nb = 13 + Math.floor(s() * 9);
-    for (let i = 0; i < nb; i += 1) {
-      const n = ajouter({ r: 1.6 + s() ** 2 * 3.4, groupe: g, hub: false, parent: h, ne: 1900 + s() * (CROISSANCE_MS - 2600) });
-      satellites[g].push(n);
-      fils.push({ a: h, b: n, l: 28 + s() * 46, k: 0.05, croise: false });
-      // Un satellite sur trois porte ses propres pièces : c'est ce qui donne les grappes
-      if (s() < 0.33) {
-        const nbE = 1 + Math.floor(s() * 2);
-        for (let j = 0; j < nbE; j += 1) {
-          const e = ajouter({ r: 1.2 + s() * 1.4, groupe: g, hub: false, parent: n, ne: noeuds[n].ne + 300 + s() * 700 });
-          fils.push({ a: n, b: e, l: 16 + s() * 16, k: 0.06, croise: false });
-        }
+  for (let i = 0; i < 4; i += 1) {
+    const h2 = ajouter(3, cabinet, 5.5, 260);
+    for (let j = 0; j < 3; j += 1) lier(h2, tous[Math.floor(s() * tous.length)], 100, 0.008);
+  }
+
+  // Disposition : ressorts + répulsion, une seule fois au montage. Ensuite rien ne bouge
+  // que la respiration : c'est ce qui donne une structure lisible au lieu d'un essaim.
+  const n = noeuds.length;
+  const vx = new Float32Array(n);
+  const vy = new Float32Array(n);
+  for (let it = 0; it < 260; it += 1) {
+    const chaleur = 1 - it / 260;
+    for (let i = 0; i < n; i += 1) {
+      const a = noeuds[i];
+      for (let j = i + 1; j < n; j += 1) {
+        const b = noeuds[j];
+        const dx = a.x - b.x;
+        const dy = a.y - b.y;
+        const d2 = dx * dx + dy * dy + 0.01;
+        if (d2 > 40000) continue;
+        const f = ((a.r + b.r) * 17) / d2;
+        vx[i] += dx * f; vy[i] += dy * f;
+        vx[j] -= dx * f; vy[j] -= dy * f;
       }
     }
-  });
-  // Fils entre grappes : le réseau se maille, comme les dossiers d'un même client
-  for (let i = 0; i < 46; i += 1) {
-    const g1 = Math.floor(s() * nbFormalites);
-    const g2 = (g1 + 1 + Math.floor(s() * (nbFormalites - 1))) % nbFormalites;
-    const a = satellites[g1][Math.floor(s() * satellites[g1].length)];
-    const b = satellites[g2][Math.floor(s() * satellites[g2].length)];
-    fils.push({ a, b, l: 150, k: 0.004, croise: true });
+    for (const fl of fils) {
+      const a = noeuds[fl.a];
+      const b = noeuds[fl.b];
+      const dx = b.x - a.x;
+      const dy = b.y - a.y;
+      const d = Math.sqrt(dx * dx + dy * dy) || 0.01;
+      const f = ((d - fl.l) * fl.k) / d;
+      vx[fl.a] += dx * f; vy[fl.a] += dy * f;
+      vx[fl.b] -= dx * f; vy[fl.b] -= dy * f;
+    }
+    for (let i = 1; i < n; i += 1) {
+      const a = noeuds[i];
+      // Rappel plus fort à la verticale : le réseau s'étale en largeur, comme la zone
+      vx[i] = (vx[i] - a.x * 0.0012) * 0.6;
+      vy[i] = (vy[i] - a.y * 0.0032) * 0.6;
+      a.x += Math.max(-8, Math.min(8, vx[i])) * (0.4 + chaleur);
+      a.y += Math.max(-8, Math.min(8, vy[i])) * (0.4 + chaleur);
+    }
   }
-  return { noeuds, fils, hubs };
+  noeuds[0].x = 0;
+  noeuds[0].y = 0;
+
+  return { noeuds, fils, focus: [guichet, sas, regul, holding] };
 }
 
 const mix = (c1: readonly number[], c2: readonly number[], t: number) => c1.map((v, i) => Math.round(v + (c2[i] - v) * t));
 const rgba = (c: readonly number[], a: number) => `rgba(${c[0]},${c[1]},${c[2]},${a})`;
+const doux = (t: number) => (t <= 0 ? 0 : t >= 1 ? 1 : 1 - (1 - t) ** 3);
 
 export function FormalitesConstellation({
   titre = 'Toutes vos formalités, au même endroit.',
-  sousTitre = 'De la création à la radiation : l’agent prépare, vous validez et déposez.',
-  formalites = FORMALITES,
-}: { titre?: string; sousTitre?: string; formalites?: Formalite[] } = {}) {
-  const [actif, setActif] = useState(0);
-  const [visible, setVisible] = useState(false); // carte affichée une fois le réseau poussé
-  const [fige, setFige] = useState(false);
+  sousTitre = 'De la création à la radiation : l’agent prépare, vous validez et déposez. Et chaque dossier enrichit le suivant.',
+}: { titre?: string; sousTitre?: string } = {}) {
+  const [etape, setEtape] = useState(0);
+  const [carteVisible, setCarteVisible] = useState(false);
+  const [carteEtape, setCarteEtape] = useState(0);
   const zoneRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const carteRef = useRef<HTMLDivElement>(null);
-  const actifRef = useRef(0);
-  const figeRef = useRef(false);
-
-  actifRef.current = actif;
-  figeRef.current = fige;
-
-  // Rotation des formalités, une fois le réseau poussé
-  useEffect(() => {
-    if (!visible || fige) return;
-    if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return;
-    const id = setInterval(() => setActif((i) => (i + 1) % formalites.length), CYCLE_MS);
-    return () => clearInterval(id);
-  }, [visible, fige, formalites.length]);
+  const barreRef = useRef<(HTMLSpanElement | null)[]>([]);
+  const commande = useRef<((i: number) => void) | null>(null);
 
   useEffect(() => {
     const zone = zoneRef.current;
     const canvas = canvasRef.current;
     const ctx = canvas?.getContext('2d');
     if (!zone || !canvas || !ctx) return;
+    // Sous 1024 px la zone est masquée : rien à calculer
+    if (!window.matchMedia('(min-width: 1024px)').matches) return;
 
-    const reduit = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false;
-    const { noeuds, fils, hubs } = construire(formalites.length);
-    const s = semis(42);
+    const reduit = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const { noeuds, fils, focus } = construire();
+    const nb = noeuds.length;
+    // État animé par nœud : apparition (0 → 1) et éclat (allumé → en retrait)
+    const apparition = new Float32Array(nb);
+    const eclat = new Float32Array(nb);
+    const px = new Float32Array(nb);
+    const py = new Float32Array(nb);
     let largeur = 0;
     let hauteur = 0;
     let dpr = 1;
-    let echelle = 1;
-    let debut = -1; // début de la pousse (première apparition à l'écran)
+    let echelle = 0;
+    let camX = 0;
+    let camY = 0;
+    let courante = 0;
+    let debutEtape = -1;
     let enVue = false;
     let image = 0;
-    let carteX = 0;
-    let carteY = 0;
-    let pousse = false;
+    let carteX = -1;
+    let carteY = -1;
+    let carteMontree = false;
 
     const dimensionner = () => {
       dpr = Math.min(window.devicePixelRatio || 1, 2);
@@ -160,218 +233,148 @@ export function FormalitesConstellation({
     const ro = new ResizeObserver(dimensionner);
     ro.observe(zone);
 
-    // Mouvement réduit : le réseau entier, déjà stabilisé
-    const ne = (n: Noeud, t: number) => reduit || n.ne <= t;
-    const naitre = (n: Noeud) => {
-      const p = noeuds[n.parent];
-      n.x = (p ? p.x : 0) + (s() - 0.5) * 6;
-      n.y = (p ? p.y : 0) + (s() - 0.5) * 6;
+    // Ce qui s'allume avec l'élément mis en avant : lui, ses enfants et leurs pièces, ses liens
+    const voisins = focus.map((f) => {
+      const set = new Set<number>([f]);
+      for (let k = 0; k < 2; k += 1) for (const fl of fils) if (set.has(fl.a) && noeuds[fl.b].parent === fl.a) set.add(fl.b);
+      for (const fl of fils) if (fl.a === f || fl.b === f) { set.add(fl.a); set.add(fl.b); }
+      return set;
+    });
+
+    const aller = (i: number, maintenant = performance.now()) => {
+      courante = i;
+      debutEtape = maintenant;
+      carteMontree = false;
+      setCarteVisible(false);
+      setEtape(i);
+      // Les nouveaux arrivent allumés ; les étapes suivantes s'effacent en douceur
+      for (let k = 0; k < nb; k += 1) if (noeuds[k].etape === i) eclat[k] = 1;
     };
-    const nes = new Set<number>();
+    commande.current = (i) => aller(i);
 
-    const pas = (t: number, vie: number) => {
-      for (let i = 0; i < noeuds.length; i += 1) {
-        if (!nes.has(i) && ne(noeuds[i], t)) {
-          naitre(noeuds[i]);
-          nes.add(i);
-        }
-      }
-      const liste = [...nes];
-      // Répulsion entre tous les nœuds nés (n² reste petit ici)
-      for (let i = 0; i < liste.length; i += 1) {
-        const a = noeuds[liste[i]];
-        for (let j = i + 1; j < liste.length; j += 1) {
-          const b = noeuds[liste[j]];
-          let dx = a.x - b.x;
-          let dy = a.y - b.y;
-          let d2 = dx * dx + dy * dy;
-          if (d2 < 0.01) { dx = s() - 0.5; dy = s() - 0.5; d2 = 0.5; }
-          if (d2 > 90000) continue;
-          const f = (a.hub || b.hub ? 340 : 120) / d2;
-          const d = Math.sqrt(d2);
-          a.vx += (dx / d) * f; a.vy += (dy / d) * f;
-          b.vx -= (dx / d) * f; b.vy -= (dy / d) * f;
-        }
-      }
-      for (const fl of fils) {
-        if (!nes.has(fl.a) || !nes.has(fl.b)) continue;
-        const a = noeuds[fl.a];
-        const b = noeuds[fl.b];
-        const dx = b.x - a.x;
-        const dy = b.y - a.y;
-        const d = Math.sqrt(dx * dx + dy * dy) || 0.01;
-        const f = (d - fl.l) * fl.k;
-        a.vx += (dx / d) * f; a.vy += (dy / d) * f;
-        b.vx -= (dx / d) * f; b.vy -= (dy / d) * f;
-      }
-      for (const i of liste) {
-        const n = noeuds[i];
-        // Rappel vers le centre, et une dérive à peine visible : le réseau respire
-        // Rappel plus fort à la verticale : le réseau s'étale en largeur, comme la zone
-        n.vx += -n.x * 0.0009 + (vie ? (s() - 0.5) * 0.05 : 0);
-        n.vy += -n.y * 0.0028 + (vie ? (s() - 0.5) * 0.05 : 0);
-        n.vx *= 0.82; n.vy *= 0.82;
-        n.x += Math.max(-6, Math.min(6, n.vx));
-        n.y += Math.max(-6, Math.min(6, n.vy));
-      }
-      if (noeuds[0]) { noeuds[0].x *= 0.9; noeuds[0].y *= 0.9; } // le foyer reste au centre
-    };
+    const dessiner = (maintenant: number) => {
+      const t = maintenant - debutEtape;
+      const allumage = reduit || t > POUSSE_MS;
+      const vis = voisins[courante];
 
-    if (reduit) for (let i = 0; i < 420; i += 1) pas(Infinity, 0);
-
-    const dessiner = (t: number) => {
-      const actifG = actifRef.current;
-      const allume = reduit || t > CROISSANCE_MS;
-      // Cadrage : la caméra recule à mesure que le réseau grandit (comme la référence)
-      let minX = -60; let maxX = 60; let minY = -60; let maxY = 60;
-      for (const i of nes) {
-        const n = noeuds[i];
-        minX = Math.min(minX, n.x); maxX = Math.max(maxX, n.x);
-        minY = Math.min(minY, n.y); maxY = Math.max(maxY, n.y);
+      for (let k = 0; k < nb; k += 1) {
+        const n = noeuds[k];
+        const present = n.etape <= courante;
+        if (reduit) apparition[k] = present ? 1 : 0;
+        else if (present && n.etape === courante) apparition[k] = Math.max(apparition[k], doux((t - n.ordre * 900) / 520));
+        else apparition[k] += ((present ? 1 : 0) - apparition[k]) * 0.08;
+        if (allumage) eclat[k] += ((vis.has(k) ? 1 : 0) - eclat[k]) * (reduit ? 1 : 0.06);
       }
-      const cible = Math.min(2.4, (largeur * 0.9) / (maxX - minX + 40), (hauteur * 0.9) / (maxY - minY + 40));
-      echelle += (cible - echelle) * (reduit ? 1 : 0.04);
-      const cx = largeur / 2 - ((minX + maxX) / 2) * echelle;
-      const cy = hauteur / 2 - ((minY + maxY) / 2) * echelle;
-      const X = (n: Noeud) => cx + n.x * echelle;
-      const Y = (n: Noeud) => cy + n.y * echelle;
 
-      // Luminosité lissée : pendant la pousse tout est vif ; ensuite seule la formalité active
-      for (const i of nes) {
-        const n = noeuds[i];
-        const cibleLum = !allume ? 0.55 : n.groupe === actifG ? 1 : n.groupe === -1 ? 0.7 : 0.12;
-        n.lum += (cibleLum - n.lum) * (reduit ? 1 : 0.07);
+      // Caméra : cadre les nœuds présents (elle recule à mesure que le réseau grandit)
+      let minX = Infinity; let maxX = -Infinity; let minY = Infinity; let maxY = -Infinity;
+      for (let k = 0; k < nb; k += 1) {
+        if (noeuds[k].etape > courante) continue;
+        const n = noeuds[k];
+        minX = Math.min(minX, n.x); maxX = Math.max(maxX, n.x); minY = Math.min(minY, n.y); maxY = Math.max(maxY, n.y);
       }
+      const cible = Math.min(3, (largeur * 0.8) / (maxX - minX + 60), (hauteur * 0.84) / (maxY - minY + 60));
+      const lissage = reduit || echelle === 0 ? 1 : 0.035;
+      echelle += (cible - echelle) * lissage;
+      camX += ((minX + maxX) / 2 - camX) * lissage;
+      camY += ((minY + maxY) / 2 - camY) * lissage;
+      const souffle = reduit ? 0 : maintenant * 0.0006;
+      for (let k = 0; k < nb; k += 1) {
+        const n = noeuds[k];
+        px[k] = largeur / 2 + (n.x - camX + Math.sin(souffle + n.phase) * 2.2) * echelle;
+        py[k] = hauteur / 2 + (n.y - camY + Math.cos(souffle * 0.8 + n.phase) * 1.8) * echelle;
+      }
+      const taille = Math.max(0.85, Math.min(2, echelle ** 0.5));
+      const f = focus[courante];
 
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       ctx.clearRect(0, 0, largeur, hauteur);
-
       ctx.lineCap = 'round';
       for (const fl of fils) {
-        if (!nes.has(fl.a) || !nes.has(fl.b)) continue;
-        const a = noeuds[fl.a];
-        const b = noeuds[fl.b];
-        const lum = fl.croise ? Math.min(a.lum, b.lum) * 0.6 : Math.min(a.lum, b.lum);
-        const couleur = lum > 0.5 ? mix(VIOLET, ROSE, a.groupe >= 0 ? (a.groupe % 3) / 3 : 0) : ARDOISE;
-        ctx.strokeStyle = rgba(couleur, 0.08 + lum * 0.55);
-        ctx.lineWidth = lum > 0.5 ? 1.1 : 0.7;
+        const ap = Math.min(apparition[fl.a], apparition[fl.b]);
+        if (ap < 0.02) continue;
+        const e = Math.min(eclat[fl.a], eclat[fl.b]);
+        const c = mix(ARDOISE, mix(VIOLET, ROSE, 0.35), Math.min(1, e * 1.4));
+        ctx.strokeStyle = rgba(c, (0.1 + e * 0.6) * ap);
+        ctx.lineWidth = 0.7 + e * 0.8;
         ctx.beginPath();
-        ctx.moveTo(X(a), Y(a));
-        ctx.lineTo(X(b), Y(b));
+        ctx.moveTo(px[fl.a], py[fl.a]);
+        ctx.lineTo(px[fl.b], py[fl.b]);
         ctx.stroke();
       }
-      for (const i of nes) {
-        const n = noeuds[i];
-        const r = n.r * Math.max(0.85, Math.min(1.4, echelle)) * (n.hub && n.groupe === actifG && allume ? 1.35 : 1);
-        const vif = n.lum > 0.5;
-        ctx.fillStyle = vif
-          ? rgba(mix(VIOLET, ROSE, n.hub ? 0.55 : (n.groupe % 3) / 3), 0.35 + n.lum * 0.65)
-          : rgba(ARDOISE, 0.14 + n.lum * 0.5);
+      for (let k = 1; k < nb; k += 1) {
+        const ap = apparition[k];
+        if (ap < 0.02) continue;
+        const n = noeuds[k];
+        const e = eclat[k];
+        const r = n.r * taille * (0.35 + 0.65 * ap) * (k === f && allumage ? 1.25 : 1);
+        const c = mix(ARDOISE, mix(VIOLET, ROSE, (k % 5) / 5), Math.min(1, e * 1.3));
+        ctx.fillStyle = rgba(c, (0.16 + e * 0.84) * ap);
         ctx.beginPath();
-        ctx.arc(X(n), Y(n), r, 0, Math.PI * 2);
+        ctx.arc(px[k], py[k], r, 0, Math.PI * 2);
         ctx.fill();
-        if (n.hub && n.groupe === actifG && allume) {
-          ctx.strokeStyle = rgba(ROSE, 0.22);
-          ctx.lineWidth = 6;
-          ctx.beginPath();
-          ctx.arc(X(n), Y(n), r + 5, 0, Math.PI * 2);
-          ctx.stroke();
-        }
       }
-      if (noeuds[0]) {
-        // Le foyer : Legaly, au centre du réseau
-        const f = noeuds[0];
-        const g = ctx.createRadialGradient(X(f) - 3, Y(f) - 3, 1, X(f), Y(f), 13);
-        g.addColorStop(0, '#b9a3ff');
-        g.addColorStop(1, '#7551e8');
-        ctx.fillStyle = g;
+      // Le cabinet, au centre : toujours en couleur
+      ctx.fillStyle = rgba(VIOLET, apparition[0]);
+      ctx.beginPath();
+      ctx.arc(px[0], py[0], noeuds[0].r * taille, 0, Math.PI * 2);
+      ctx.fill();
+      if (allumage) {
+        ctx.strokeStyle = rgba(ROSE, 0.2 * eclat[f]);
+        ctx.lineWidth = 6;
         ctx.beginPath();
-        ctx.arc(X(f), Y(f), 11, 0, Math.PI * 2);
-        ctx.fill();
+        ctx.arc(px[f], py[f], noeuds[f].r * taille * 1.25 + 6, 0, Math.PI * 2);
+        ctx.stroke();
       }
 
-      // La carte suit (doucement) la formalité allumée, du côté où il y a de la place
+      // Carte : à côté de l'élément mis en avant, vers l'extérieur du réseau
       const carte = carteRef.current;
-      const h = noeuds[hubs[actifG]];
-      if (carte && h && nes.has(hubs[actifG])) {
+      if (carte && allumage) {
         const w = carte.offsetWidth;
         const hc = carte.offsetHeight;
-        const hx = X(h);
-        const hy = Y(h);
-        // Vers l'extérieur du réseau : la carte se pose dans le vide, pas sur les grappes
-        const fx = X(noeuds[0]);
-        const fy = Y(noeuds[0]);
-        const tx = hx >= fx ? hx + 30 : hx - w - 30;
-        const ty0 = hy < fy ? hy - hc - 18 : hy + 18;
-        const ty = Math.max(8, Math.min(hauteur - hc - 8, ty0));
-        carteX += (Math.max(8, Math.min(largeur - w - 8, tx)) - carteX) * (carteX === 0 || reduit ? 1 : 0.08);
-        carteY += (ty - carteY) * (carteY === 0 || reduit ? 1 : 0.08);
+        const tx = px[f] >= px[0] ? px[f] + 26 : px[f] - w - 26;
+        const ty = py[f] < py[0] ? py[f] - hc - 14 : py[f] + 14;
+        const cx = Math.max(8, Math.min(largeur - w - 8, tx));
+        const cy = Math.max(8, Math.min(hauteur - hc - 8, ty));
+        const premier = !carteMontree;
+        carteX += (cx - carteX) * (premier ? 1 : 0.1);
+        carteY += (cy - carteY) * (premier ? 1 : 0.1);
         carte.style.transform = `translate3d(${carteX}px, ${carteY}px, 0)`;
+        if (!carteMontree) { carteMontree = true; setCarteEtape(courante); setCarteVisible(true); }
       }
     };
 
     const boucle = (maintenant: number) => {
       image = requestAnimationFrame(boucle);
       if (!enVue) return;
-      if (debut < 0) debut = maintenant;
-      const t = maintenant - debut;
-      if (!reduit) pas(t, 1);
-      dessiner(t);
-      if (!pousse && t > CROISSANCE_MS) {
-        pousse = true;
-        setVisible(true);
-      }
+      if (debutEtape < 0) aller(0, maintenant);
+      const t = maintenant - debutEtape;
+      if (!reduit && t > DUREE_ETAPE[courante]) aller((courante + 1) % ETAPES.length, maintenant);
+      dessiner(maintenant);
+      // Barre de progression de l'onglet actif (écrite directement, sans rendu React)
+      const p = reduit ? 1 : Math.min(1, (maintenant - debutEtape) / DUREE_ETAPE[courante]);
+      barreRef.current.forEach((b, i) => { if (b) b.style.transform = `scaleX(${i === courante ? p : 0})`; });
     };
     image = requestAnimationFrame(boucle);
 
-    // Hors de l'écran : plus aucun calcul
-    const io = new IntersectionObserver(([e]) => { enVue = e.isIntersecting; }, { threshold: 0.15 });
+    // Hors écran : plus aucun calcul ; au retour, l'étape reprend où elle en était
+    let pause = 0;
+    const io = new IntersectionObserver(([e]) => {
+      if (!e.isIntersecting && enVue) pause = performance.now();
+      if (e.isIntersecting && !enVue && pause && debutEtape >= 0) debutEtape += performance.now() - pause;
+      enVue = e.isIntersecting;
+    }, { threshold: 0.2 });
     io.observe(zone);
-
-    // Survol : la formalité la plus proche s'allume et la rotation s'arrête
-    const survol = (ev: MouseEvent) => {
-      const rect = canvas.getBoundingClientRect();
-      const mx = ev.clientX - rect.left;
-      const my = ev.clientY - rect.top;
-      const cxv = largeur / 2;
-      const cyv = hauteur / 2;
-      // Positions écran recalculées comme dans dessiner()
-      let minX = -60; let maxX = 60; let minY = -60; let maxY = 60;
-      for (const i of nes) { const n = noeuds[i]; minX = Math.min(minX, n.x); maxX = Math.max(maxX, n.x); minY = Math.min(minY, n.y); maxY = Math.max(maxY, n.y); }
-      const ox = cxv - ((minX + maxX) / 2) * echelle;
-      const oy = cyv - ((minY + maxY) / 2) * echelle;
-      let meilleur = -1;
-      let dMin = 34 * 34;
-      hubs.forEach((hi, g) => {
-        const n = noeuds[hi];
-        const dx = ox + n.x * echelle - mx;
-        const dy = oy + n.y * echelle - my;
-        const d = dx * dx + dy * dy;
-        if (d < dMin) { dMin = d; meilleur = g; }
-      });
-      if (meilleur >= 0) {
-        canvas.style.cursor = 'pointer';
-        if (meilleur !== actifRef.current) setActif(meilleur);
-        if (!figeRef.current) setFige(true);
-        setVisible(true);
-      } else {
-        canvas.style.cursor = 'default';
-      }
-    };
-    const quitter = () => setFige(false);
-    canvas.addEventListener('mousemove', survol);
-    canvas.addEventListener('mouseleave', quitter);
 
     return () => {
       cancelAnimationFrame(image);
       ro.disconnect();
       io.disconnect();
-      canvas.removeEventListener('mousemove', survol);
-      canvas.removeEventListener('mouseleave', quitter);
+      commande.current = null;
     };
-  }, [formalites.length]);
+  }, []);
 
-  const courante = formalites[actif];
+  const carte = ETAPES[carteEtape].carte;
 
   return (
     <section id="fonctionnalites" className="fc-section">
@@ -381,33 +384,41 @@ export function FormalitesConstellation({
 
         <div ref={zoneRef} className="fc-zone">
           <canvas ref={canvasRef} className="fc-canvas" aria-hidden="true" />
-          <div ref={carteRef} className={`fc-carte${visible ? ' fc-carte--visible' : ''}`} aria-live="polite">
-            <div key={courante.key} className="fc-carte-inner">
+          <div ref={carteRef} className={`fc-carte${carteVisible ? ' fc-carte--visible' : ''}`} aria-live="polite">
+            <div key={carteEtape} className="fc-carte-inner">
               <div className="fc-carte-tete">
                 <span className="fc-carte-pastille" aria-hidden="true" />
                 <div>
-                  <strong>{courante.titre}</strong>
-                  <span>{courante.etat}</span>
+                  <strong>{carte.titre}</strong>
+                  <span>{carte.etat}</span>
                 </div>
               </div>
-              <p>{courante.texte}</p>
-              <span className="fc-carte-badge">
-                {actif + 1} / {formalites.length}
-              </span>
+              <p>{carte.texte}</p>
+              <div className="fc-carte-badges">
+                {carte.badges.map((b) => <span key={b} className="fc-carte-badge">{b}</span>)}
+              </div>
             </div>
           </div>
         </div>
 
-        {/* La même information en liste : affichée sous 1024 px, lue par les
-            lecteurs d'écran au-dessus (le réseau est décoratif). */}
-        <ul className="fc-liste">
-          {formalites.map((f) => (
-            <li key={f.key}>
-              <h3>{f.titre}</h3>
-              <p>{f.texte}</p>
-            </li>
+        <div className="fc-etapes" role="tablist" aria-label="Le cabinet au fil du temps">
+          {ETAPES.map((e, i) => (
+            <button
+              key={e.label}
+              type="button"
+              role="tab"
+              aria-selected={i === etape}
+              className={`fc-etape${i === etape ? ' fc-etape--active' : ''}`}
+              onClick={() => commande.current?.(i)}
+            >
+              <span className="fc-etape-piste" aria-hidden="true">
+                <span ref={(el) => { barreRef.current[i] = el; }} className="fc-etape-barre" />
+              </span>
+              <span className="fc-etape-label">{e.label}</span>
+              <span className="fc-etape-texte">{e.texte}</span>
+            </button>
           ))}
-        </ul>
+        </div>
       </Container>
     </section>
   );
