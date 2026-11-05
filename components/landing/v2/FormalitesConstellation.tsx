@@ -1,67 +1,100 @@
 'use client';
 
-// « Toutes vos formalités, au même endroit » — en constellation.
+// « Toutes vos formalités, au même endroit » — constellation sombre.
 //
-// Remplace la rangée de cartes défilante. Le défilement continu obligeait à
-// attendre pour voir passer la formalité qu'on cherche, et personne n'attend :
-// dix cartes qui glissent se lisent comme un bandeau décoratif. Ici les dix
-// sont posées autour de l'agent, visibles d'un seul coup d'œil, et une carte
-// les présente l'une après l'autre — sur le modèle de wellapp.ai.
+// Reprend la mise en scène de wellapp.ai : fond noir, un foyer blanc d'où part
+// un faisceau dense de fils très fins, une poussière de cercles pleins de
+// tailles franchement inégales, et UNE carte sombre qui présente un élément à
+// la fois.
 //
-// Le contenu est EXACTEMENT celui des cartes précédentes : même titre, même
-// texte, même illustration. Seule la mise en scène change.
+// Remplace la rangée de cartes défilante. Dix cartes qui glissent se lisent
+// comme un bandeau décoratif : pour trouver « Mise en sommeil », il fallait
+// attendre qu'elle passe. Le contenu, lui, ne change pas d'un mot.
 
 import { useEffect, useMemo, useState } from 'react';
 
 import { Container } from '../ui';
-import { TitreEcrit } from '../TitreEcrit';
-import { ILLUS } from './Illus';
 
-export type Formalite = { key: string; titre: string; texte: string };
+export type Formalite = { key: string; titre: string; texte: string; etat: string };
 
 const FORMALITES: Formalite[] = [
-  { key: 'creation', titre: 'Création de société', texte: 'SASU, SAS, SARL, EURL, SCI, micro-entreprise : statuts rédigés, dossier prêt à déposer.' },
-  { key: 'modification', titre: 'Modifications', texte: 'Siège, dirigeants, objet, dénomination, capital : les pièces suivent la décision.' },
-  { key: 'dissolution', titre: 'Dissolution et liquidation', texte: 'PV, liquidateur, comptes de clôture et radiation, dans l’ordre.' },
-  { key: 'sommeil', titre: 'Mise en sommeil', texte: 'Cessation temporaire d’activité, sans annonce légale, jusqu’à deux ans.' },
-  { key: 'annonces', titre: 'Annonces légales', texte: 'Rédigées par l’IA, mentions obligatoires contrôlées une à une.' },
-  { key: 'rne', titre: 'Documents RNE', texte: 'Statuts, PV, comptes annuels et avis Insee récupérés en un clic.' },
-  { key: 'regularisation', titre: 'Régularisations', texte: 'Les demandes du greffe sont lues et les réponses préparées.' },
-  { key: 'lots', titre: 'Formalités en lot', texte: 'Plusieurs sociétés traitées en une seule demande.' },
-  { key: 'paiement', titre: 'Suivi des paiements', texte: 'Montants, délégation au client et alertes, sans relance manuelle.' },
-  { key: 'signature', titre: 'Signature électronique', texte: 'Documents signés en ligne, signature qualifiée eIDAS si besoin.' },
+  { key: 'creation', titre: 'Création de société', etat: 'Guichet unique', texte: 'SASU, SAS, SARL, EURL, SCI, micro-entreprise : statuts rédigés, dossier prêt à déposer.' },
+  { key: 'modification', titre: 'Modifications', etat: 'Guichet unique', texte: 'Siège, dirigeants, objet, dénomination, capital : les pièces suivent la décision.' },
+  { key: 'dissolution', titre: 'Dissolution et liquidation', etat: 'Guichet unique', texte: 'PV, liquidateur, comptes de clôture et radiation, dans l’ordre.' },
+  { key: 'sommeil', titre: 'Mise en sommeil', etat: 'Guichet unique', texte: 'Cessation temporaire d’activité, sans annonce légale, jusqu’à deux ans.' },
+  { key: 'annonces', titre: 'Annonces légales', etat: 'Journal habilité', texte: 'Rédigées par l’IA, mentions obligatoires contrôlées une à une.' },
+  { key: 'rne', titre: 'Documents RNE', etat: 'Registre national', texte: 'Statuts, PV, comptes annuels et avis Insee récupérés en un clic.' },
+  { key: 'regularisation', titre: 'Régularisations', etat: 'Greffe', texte: 'Les demandes du greffe sont lues et les réponses préparées.' },
+  { key: 'lots', titre: 'Formalités en lot', etat: 'Multi-sociétés', texte: 'Plusieurs sociétés traitées en une seule demande.' },
+  { key: 'paiement', titre: 'Suivi des paiements', etat: 'Paiement', texte: 'Montants, délégation au client et alertes, sans relance manuelle.' },
+  { key: 'signature', titre: 'Signature électronique', etat: 'eIDAS', texte: 'Documents signés en ligne, signature qualifiée eIDAS si besoin.' },
 ];
 
-const CYCLE_MS = 3800;
+const CYCLE_MS = 3600;
 
-// Le foyer — l'agent — est à gauche ; la carte occupe la droite. Les nœuds se
-// répartissent sur une ellipse autour du foyer, sans jamais empiéter sur la
-// zone de la carte : un nœud passant dessous serait illisible.
-const FOYER = { x: 30, y: 50 };
-const RAYON = { x: 25, y: 39 };
+// Le foyer d'où part le faisceau, en % de la zone.
+const FOYER = { x: 53, y: 56 };
 
-function position(i: number, total: number) {
-  // On démarre à midi et on tourne : la répartition reste régulière quel que
-  // soit le nombre de formalités, y compris si la liste change.
-  const angle = -Math.PI / 2 + (i / total) * Math.PI * 2;
+/**
+ * Suite déterministe : même rendu sur le serveur et dans le navigateur.
+ * Un `Math.random()` provoquerait une divergence d'hydratation à chaque
+ * chargement — React la signale et le rendu saute.
+ */
+function semis(graine: number) {
+  let etat = graine;
+  return () => {
+    etat = (etat * 1664525 + 1013904223) % 4294967296;
+    return etat / 4294967296;
+  };
+}
+
+type Astre = { x: number; y: number; r: number; o: number };
+
+/**
+ * La poussière : des cercles PLEINS, de tailles franchement inégales. C'est
+ * cette irrégularité qui donne l'impression d'un nuage ; à taille constante on
+ * verrait un motif, et un motif ne respire pas.
+ */
+function poussiere(nb: number): Astre[] {
+  const suivant = semis(20261105);
+  const astres: Astre[] = [];
+  for (let i = 0; i < nb; i += 1) {
+    const angle = suivant() * Math.PI * 2;
+    const dist = 0.2 + suivant() * 0.8;
+    astres.push({
+      x: FOYER.x + Math.cos(angle) * dist * 44,
+      y: FOYER.y + Math.sin(angle) * dist * 42,
+      r: 2 + suivant() * 9,
+      o: 0.14 + suivant() * 0.32,
+    });
+  }
+  return astres;
+}
+
+/** Les dix formalités, réparties autour du foyer à distance inégale. */
+function placer(i: number, total: number) {
+  const suivant = semis(777 + i * 31);
+  const angle = -Math.PI / 2 + (i / total) * Math.PI * 2 + (suivant() - 0.5) * 0.32;
+  const dist = 0.58 + suivant() * 0.4;
   return {
-    x: FOYER.x + Math.cos(angle) * RAYON.x,
-    y: FOYER.y + Math.sin(angle) * RAYON.y,
+    x: FOYER.x + Math.cos(angle) * dist * 42,
+    y: FOYER.y + Math.sin(angle) * dist * 40,
   };
 }
 
 export function FormalitesConstellation({
-  titre = ['Toutes vos formalités,', 'au même endroit.'],
+  titre = 'Toutes vos formalités, au même endroit.',
   sousTitre = 'De la création à la radiation : l’agent prépare, vous validez et déposez.',
   formalites = FORMALITES,
-}: { titre?: [string, string]; sousTitre?: string; formalites?: Formalite[] } = {}) {
+}: { titre?: string; sousTitre?: string; formalites?: Formalite[] } = {}) {
   const [actif, setActif] = useState(0);
-  // Suspend la rotation quand le visiteur désigne lui-même une formalité :
-  // continuer à tourner sous son doigt lui reprendrait la main.
+  // Survoler un nœud le désigne ET suspend la rotation : continuer à tourner
+  // sous le doigt du visiteur lui reprendrait la main.
   const [fige, setFige] = useState(false);
 
+  const astres = useMemo(() => poussiere(30), []);
   const noeuds = useMemo(
-    () => formalites.map((f, i) => ({ ...f, ...position(i, formalites.length) })),
+    () => formalites.map((f, i) => ({ ...f, ...placer(i, formalites.length) })),
     [formalites],
   );
 
@@ -75,26 +108,30 @@ export function FormalitesConstellation({
   const courante = noeuds[actif];
 
   return (
-    <section id="fonctionnalites" className="relative scroll-mt-24 overflow-hidden bg-[#fcfbff] py-20 sm:py-24">
+    <section id="fonctionnalites" className="fc-section">
       <Container className="relative">
-        <TitreEcrit
-          debut={titre[0]}
-          fin={titre[1]}
-          className="max-w-3xl font-[Sora] !text-[clamp(1.75rem,3.4vw,2.6rem)] !font-bold !leading-[1.1] !tracking-[-0.03em] !text-[var(--violet-900)]"
-        />
-        <p className="!mt-4 max-w-md text-[15px] !leading-relaxed !text-[var(--ink-600)]">{sousTitre}</p>
+        <h2 className="fc-titre">{titre}</h2>
+        <p className="fc-soustitre">{sousTitre}</p>
 
-        {/* ── Constellation (écrans larges) ── */}
         <div className="fc-zone" onMouseLeave={() => setFige(false)}>
           {/*
-            Les coordonnées sont données en POURCENTAGES, ce que SVG accepte
-            nativement. La première version mesurait la zone au montage pour
-            dessiner en pixels : la mesure restait à zéro et aucun fil
-            n'apparaissait — une constellation sans ses liens. Sans viewBox,
-            rien n'est mis à l'échelle, donc l'épaisseur des traits reste
-            juste à toutes les largeurs.
+            Coordonnées en POURCENTAGES, que SVG accepte nativement. Une
+            première version mesurait la zone au montage pour dessiner en
+            pixels : la mesure restait à zéro, aucun fil n'apparaissait, et il
+            ne restait qu'un semis de points sans lien entre eux.
           */}
-          <svg width="100%" height="100%" className="absolute inset-0" aria-hidden="true">
+          <svg width="100%" height="100%" className="fc-fils" aria-hidden="true">
+            {astres.map((a, i) => (
+              <line
+                key={`a${i}`}
+                x1={`${FOYER.x}%`}
+                y1={`${FOYER.y}%`}
+                x2={`${a.x}%`}
+                y2={`${a.y}%`}
+                stroke="rgba(255,255,255,0.1)"
+                strokeWidth="1"
+              />
+            ))}
             {noeuds.map((n, i) => (
               <line
                 key={n.key}
@@ -102,20 +139,26 @@ export function FormalitesConstellation({
                 y1={`${FOYER.y}%`}
                 x2={`${n.x}%`}
                 y2={`${n.y}%`}
-                stroke={i === actif ? '#7551e8' : 'rgba(117,81,232,0.3)'}
-                strokeWidth={i === actif ? 2 : 1.25}
+                stroke={i === actif ? 'rgba(255,255,255,0.8)' : 'rgba(255,255,255,0.16)'}
+                strokeWidth={i === actif ? 1.4 : 1}
                 className="fc-fil"
               />
             ))}
           </svg>
 
-          {/* Le foyer : l'agent, d'où tout part */}
-          <span className="fc-foyer" style={{ left: `${FOYER.x}%`, top: `${FOYER.y}%` }}>
-            <span className="fc-foyer-coeur" />
-            <span className="fc-foyer-halo" />
-          </span>
+          {astres.map((a, i) => (
+            <span
+              key={`p${i}`}
+              className="fc-astre"
+              style={{ left: `${a.x}%`, top: `${a.y}%`, width: a.r * 2, height: a.r * 2, opacity: a.o }}
+            />
+          ))}
 
-          {/* Les dix formalités */}
+          {/* Les deux disques blancs du foyer, comme sur la référence */}
+          <span className="fc-foyer fc-foyer--haut" style={{ left: `${FOYER.x - 1}%`, top: `${FOYER.y - 18}%` }} />
+          <span className="fc-foyer" style={{ left: `${FOYER.x}%`, top: `${FOYER.y}%` }} />
+
+          {/* Les dix formalités : des disques, celui qui parle est allumé */}
           {noeuds.map((n, i) => (
             <button
               key={n.key}
@@ -133,26 +176,31 @@ export function FormalitesConstellation({
               onBlur={() => setFige(false)}
               aria-label={n.titre}
               aria-pressed={i === actif}
-            >
-              <span className="fc-noeud-point" />
-              <span className="fc-noeud-nom">{n.titre}</span>
-            </button>
+            />
           ))}
 
-          {/* La carte : une formalité à la fois, avec son illustration */}
+          {/* La carte sombre : une formalité à la fois. Les fils passent
+              derrière elle, exactement comme sur la référence. */}
           <div className="fc-carte">
             <div key={courante.key} className="fc-carte-inner">
-              <div className="fc-carte-illus">{ILLUS[courante.key] ?? null}</div>
-              <h3>{courante.titre}</h3>
+              <div className="fc-carte-tete">
+                <span className="fc-carte-pastille" aria-hidden="true" />
+                <div>
+                  <strong>{courante.titre}</strong>
+                  <span>{courante.etat}</span>
+                </div>
+              </div>
               <p>{courante.texte}</p>
+              <span className="fc-carte-badge">
+                {actif + 1} / {formalites.length}
+              </span>
             </div>
           </div>
         </div>
 
-        {/* ── Repli (écrans étroits et mouvement réduit) ──
-            La constellation demande de la largeur. En dessous, le contenu ne
-            disparaît pas : les mêmes dix formalités, en liste simple. Une
-            animation qui escamote l'information sur mobile ne vaut rien. */}
+        {/* Repli : la même information, en liste. La constellation demande de
+            la largeur ; une animation qui escamote l'information sur mobile ne
+            vaut rien. */}
         <ul className="fc-liste">
           {formalites.map((f) => (
             <li key={f.key}>

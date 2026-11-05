@@ -1551,156 +1551,160 @@ html[data-landing='dark'] .landing-theme .text-emerald-700 { color: #6ee7b7; }
 }
 
 /* ──────────────────────────────────────────────────────────────────────────
-   « TOUTES VOS FORMALITÉS » EN CONSTELLATION
+   « TOUTES VOS FORMALITÉS » — CONSTELLATION SOMBRE
 
-   Remplace la rangée défilante. Dix cartes qui glissent se lisent comme un
-   bandeau décoratif : pour trouver « Mise en sommeil », il fallait attendre
-   qu'elle passe. Les dix sont maintenant posées autour de l'agent, visibles
-   d'un seul coup d'œil, et la carte les présente l'une après l'autre.
+   Reprend la mise en scène de la référence : fond noir, faisceau de fils très
+   fins depuis un foyer blanc, poussière de cercles pleins de tailles
+   inégales, et une carte sombre qui présente un élément à la fois.
+
+   Le fond noir n'est pas un caprice : sur fond clair, des fils à 10 %
+   d'opacité disparaissent, et les monter en opacité les transforme en
+   quadrillage. C'est le contraste qui fait tenir ce motif.
    ────────────────────────────────────────────────────────────────────────── */
+
+.fc-section {
+  position: relative;
+  overflow: hidden;
+  background: #09080d;
+  padding: 5rem 0 5.5rem;
+}
+
+@media (min-width: 640px) {
+  .fc-section {
+    padding: 6rem 0 6.5rem;
+  }
+}
+
+.fc-section h2.fc-titre {
+  max-width: 46rem;
+  margin: 0;
+  font-family: Sora, system-ui, sans-serif;
+  font-size: clamp(1.75rem, 3.4vw, 2.6rem);
+  font-weight: 700;
+  line-height: 1.1;
+  letter-spacing: -0.03em;
+  color: #fff !important;
+}
+
+.fc-section p.fc-soustitre {
+  max-width: 30rem;
+  margin: 1rem 0 0;
+  font-size: 15px;
+  line-height: 1.65;
+  color: rgba(255, 255, 255, 0.62) !important;
+}
 
 .fc-zone {
   position: relative;
   display: none;
   width: 100%;
-  height: clamp(26rem, 38vw, 34rem);
+  height: clamp(28rem, 40vw, 36rem);
   margin-top: 2.5rem;
 }
 
-/* La constellation a besoin de largeur : sous 1024 px les nœuds se
-   chevaucheraient et les noms se couperaient. On bascule sur la liste. */
+/* La constellation demande de la largeur : en dessous, les disques se
+   chevaucheraient et la carte mordrait sur le faisceau. */
 @media (min-width: 1024px) {
   .fc-zone {
     display: block;
   }
 }
 
+.fc-fils {
+  position: absolute;
+  inset: 0;
+}
+
 .fc-fil {
   transition: stroke 0.5s ease, stroke-width 0.5s ease;
 }
 
-/* ── Le foyer : l'agent ── */
+/* ── La poussière ── */
 
-.fc-foyer {
+.fc-astre {
   position: absolute;
-  display: grid;
-  place-items: center;
+  display: block;
+  background: #fff;
+  border-radius: 999px;
   transform: translate(-50%, -50%);
   pointer-events: none;
 }
 
-.fc-foyer-coeur {
-  position: relative;
-  z-index: 1;
-  width: 18px;
-  height: 18px;
-  background: linear-gradient(140deg, #7551e8, #ea42fd);
-  border-radius: 999px;
-  box-shadow: 0 4px 16px rgba(117, 81, 232, 0.4);
-}
+/* ── Le foyer ── */
 
-/* Une onde lente, pas un clignotement : elle dit « ça tourne » sans réclamer
-   l'attention que mérite le texte. */
-.fc-foyer-halo {
+.fc-foyer {
   position: absolute;
-  width: 18px;
-  height: 18px;
-  background: rgba(117, 81, 232, 0.35);
+  display: block;
+  width: 58px;
+  height: 58px;
+  background: #fff;
   border-radius: 999px;
-  animation: fc-onde 3.6s ease-out infinite;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
 }
 
-@keyframes fc-onde {
-  0% {
-    transform: scale(1);
-    opacity: 0.5;
-  }
-  70%,
-  100% {
-    transform: scale(4.2);
-    opacity: 0;
-  }
+/* Le second disque, plus gros et plus haut : c'est lui qui donne la
+   profondeur, un foyer unique se lirait comme une simple puce. */
+.fc-foyer--haut {
+  width: 86px;
+  height: 86px;
 }
 
-/* ── Les nœuds ── */
+/* ── Les formalités ── */
 
 .fc-noeud {
   position: absolute;
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.3rem 0.6rem 0.3rem 0.35rem;
-  background: rgba(255, 255, 255, 0.78);
-  border: 1px solid rgba(54, 31, 171, 0.1);
+  display: block;
+  width: 14px;
+  height: 14px;
+  padding: 0;
+  background: rgba(255, 255, 255, 0.45);
+  border: 0;
   border-radius: 999px;
   transform: translate(-50%, -50%);
   cursor: pointer;
-  transition: background 0.35s ease, border-color 0.35s ease, box-shadow 0.35s ease, transform 0.35s ease;
-  white-space: nowrap;
+  transition: width 0.4s ease, height 0.4s ease, background 0.4s ease, box-shadow 0.4s ease;
 }
 
-.fc-noeud:hover,
 .fc-noeud:focus-visible {
-  outline: none;
-  background: #fff;
-}
-
-.fc-noeud-point {
-  width: 9px;
-  height: 9px;
-  background: #c3b6f2;
-  border-radius: 999px;
-  transition: background 0.35s ease, transform 0.35s ease;
-}
-
-.fc-noeud-nom {
-  font-size: 0.78rem;
-  font-weight: 600;
-  color: #4b4468;
-  transition: color 0.35s ease;
+  outline: 2px solid #fff;
+  outline-offset: 3px;
 }
 
 .fc-noeud--actif {
+  width: 26px;
+  height: 26px;
   background: #fff;
-  border-color: rgba(117, 81, 232, 0.4);
-  box-shadow: 0 8px 22px rgba(54, 31, 171, 0.16);
-  transform: translate(-50%, -50%) scale(1.06);
-}
-
-.fc-noeud--actif .fc-noeud-point {
-  background: linear-gradient(140deg, #7551e8, #ea42fd);
-  transform: scale(1.25);
-}
-
-.fc-noeud--actif .fc-noeud-nom {
-  color: #080331;
+  box-shadow: 0 0 0 8px rgba(255, 255, 255, 0.1);
 }
 
 /* ── La carte ── */
 
-/* Plaquée à droite, hors de l'ellipse des nœuds : posée au centre, elle
-   aurait recouvert la moitié d'entre eux à chaque rotation. */
+/* Posée en haut à droite du foyer, les fils passant derrière elle : c'est
+   exactement la composition de la référence, et ça évite qu'elle masque le
+   centre du faisceau. */
 .fc-carte {
   position: absolute;
-  top: 50%;
-  right: 0;
-  width: min(23rem, 34%);
-  transform: translateY(-50%);
+  top: 12%;
+  left: 58%;
+  z-index: 2;
+  width: min(22rem, 34%);
 }
 
 .fc-carte-inner {
-  padding: 1.25rem;
-  background: #fff;
-  border: 1px solid rgba(54, 31, 171, 0.1);
-  border-radius: 20px;
-  box-shadow: 0 18px 44px rgba(54, 31, 171, 0.14);
+  position: relative;
+  padding: 1.05rem 1.15rem 1.15rem;
+  background: rgba(28, 28, 32, 0.96);
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 16px;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.55);
   animation: fc-apparait 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
 @keyframes fc-apparait {
   from {
     opacity: 0;
-    transform: translateY(10px) scale(0.98);
+    transform: translateY(8px) scale(0.98);
   }
   to {
     opacity: 1;
@@ -1708,39 +1712,56 @@ html[data-landing='dark'] .landing-theme .text-emerald-700 { color: #6ee7b7; }
   }
 }
 
-/* L'illustration garde le halo coloré des anciennes cartes : c'est elle qui
-   donnait sa chaleur à la section, la perdre aurait appauvri le bloc. */
-.fc-carte-illus {
-  display: grid;
-  place-items: center;
-  height: 8.5rem;
-  margin-bottom: 1rem;
-  overflow: hidden;
-  background:
-    radial-gradient(ellipse 60% 70% at 30% 30%, rgba(117, 81, 232, 0.28), transparent 70%),
-    radial-gradient(ellipse 60% 70% at 75% 70%, rgba(234, 66, 253, 0.2), transparent 72%);
-  border-radius: 14px;
+.fc-carte-tete {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
 }
 
-.fc-carte-inner h3 {
-  margin: 0;
-  font-size: 1.02rem;
-  font-weight: 700;
-  color: var(--violet-900);
+.fc-carte-pastille {
+  width: 30px;
+  height: 30px;
+  background: linear-gradient(140deg, #7551e8, #ea42fd);
+  border-radius: 9px;
+  flex: none;
+}
+
+.fc-carte-tete strong {
+  display: block;
+  font-size: 0.92rem;
+  font-weight: 600;
+  line-height: 1.25;
+  color: #fff;
+}
+
+.fc-carte-tete span {
+  font-size: 0.78rem;
+  color: rgba(255, 255, 255, 0.5);
 }
 
 .fc-carte-inner p {
-  margin: 0.45rem 0 0;
-  font-size: 0.87rem;
-  line-height: 1.55;
-  color: var(--ink-600);
+  margin: 0.8rem 0 0;
+  font-size: 0.88rem;
+  line-height: 1.5;
+  color: rgba(255, 255, 255, 0.82);
+}
+
+.fc-carte-badge {
+  display: inline-block;
+  margin-top: 0.8rem;
+  padding: 0.2rem 0.55rem;
+  font-size: 0.72rem;
+  font-variant-numeric: tabular-nums;
+  color: rgba(255, 255, 255, 0.6);
+  background: rgba(255, 255, 255, 0.07);
+  border-radius: 7px;
 }
 
 /* ── Repli : la même information, en liste ── */
 
 .fc-liste {
   display: grid;
-  gap: 1.1rem 2rem;
+  gap: 1.15rem 2.25rem;
   margin: 2.5rem 0 0;
   padding: 0;
   list-style: none;
@@ -1758,24 +1779,23 @@ html[data-landing='dark'] .landing-theme .text-emerald-700 { color: #6ee7b7; }
   }
 }
 
-.fc-liste h3 {
+.fc-section .fc-liste h3 {
   margin: 0;
   font-size: 0.95rem;
-  font-weight: 700;
-  color: var(--violet-900);
+  font-weight: 600;
+  color: #fff !important;
 }
 
-.fc-liste p {
+.fc-section .fc-liste p {
   margin: 0.25rem 0 0;
   font-size: 0.86rem;
   line-height: 1.5;
-  color: var(--ink-600);
+  color: rgba(255, 255, 255, 0.62) !important;
 }
 
-/* Mouvement réduit : l'onde et l'apparition s'arrêtent. La rotation est déjà
-   coupée côté JS, le visiteur désigne les formalités lui-même. */
+/* Mouvement réduit : l'apparition s'arrête. La rotation est déjà coupée côté
+   JS, le visiteur désigne les formalités lui-même. */
 @media (prefers-reduced-motion: reduce) {
-  .fc-foyer-halo,
   .fc-carte-inner {
     animation: none;
   }
