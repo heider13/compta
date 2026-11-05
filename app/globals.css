@@ -1378,3 +1378,174 @@ html[data-landing='dark'] .landing-theme .bg-clip-text.from-\[\#4a2bc4\]:not(.th
 html[data-landing='dark'] .landing-theme .bg-clip-text.from-\[\#361fab\]:not(.theme-fixe *) { --tw-gradient-from: #9b87ff; }
 html[data-landing='dark'] .landing-theme .bg-emerald-50 { background-color: rgba(16, 185, 129, 0.15); }
 html[data-landing='dark'] .landing-theme .text-emerald-700 { color: #6ee7b7; }
+
+/* ──────────────────────────────────────────────────────────────────────────
+   CONSTELLATION DES SOURCES (fond du hero)
+
+   Remplace les six tuiles de logos qui flottaient autour du titre. Elles
+   encadraient le message au lieu de le servir : l'œil partait les lire, et
+   aucune ne disait ce que la plateforme en fait. Ici, les points suggèrent
+   l'étendue du branchement, et une seule carte à la fois explique une source.
+   ────────────────────────────────────────────────────────────────────────── */
+
+.cs-transition {
+  transition: stroke 0.5s ease, stroke-width 0.5s ease;
+}
+
+.cs-point,
+.cs-source {
+  position: absolute;
+  display: block;
+  border-radius: 999px;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+
+.cs-point {
+  background: #361fab;
+  animation: cs-respire 7s ease-in-out infinite;
+}
+
+/* Une respiration lente et désynchronisée : au même rythme, les points
+   clignoteraient ensemble et l'ensemble ressemblerait à un défaut d'affichage. */
+@keyframes cs-respire {
+  0%,
+  100% {
+    transform: translate(-50%, -50%) scale(1);
+  }
+  50% {
+    transform: translate(-50%, -50%) scale(1.35);
+  }
+}
+
+.cs-source {
+  width: 12px;
+  height: 12px;
+  background: #fff;
+  border: 2px solid rgba(54, 31, 171, 0.35);
+  box-shadow: 0 2px 10px rgba(54, 31, 171, 0.18);
+  transition: width 0.45s ease, height 0.45s ease, border-color 0.45s ease, box-shadow 0.45s ease;
+}
+
+.cs-source--actif {
+  width: 20px;
+  height: 20px;
+  border-color: #7551e8;
+  box-shadow: 0 0 0 6px rgba(117, 81, 232, 0.14), 0 6px 18px rgba(54, 31, 171, 0.22);
+}
+
+/* La carte est posée SOUS le point actif, décalée : au-dessus elle masquait
+   le titre, qui reste la chose la plus importante de la page. */
+.cs-carte {
+  position: absolute;
+  z-index: 2;
+  width: min(17rem, 23vw);
+  transform: translateY(-50%);
+  pointer-events: none;
+  transition: top 0.6s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.cs-carte--gauche {
+  left: 1.5rem;
+}
+
+.cs-carte--droite {
+  right: 1.5rem;
+}
+
+.cs-carte-inner {
+  padding: 0.85rem 0.95rem;
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid rgba(54, 31, 171, 0.12);
+  border-radius: 14px;
+  box-shadow: 0 12px 30px rgba(54, 31, 171, 0.14);
+  backdrop-filter: blur(6px);
+  animation: cs-apparait 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
+  text-align: left;
+}
+
+@keyframes cs-apparait {
+  from {
+    opacity: 0;
+    transform: translateY(6px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.cs-carte-tete {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.cs-carte-logo {
+  width: auto;
+  height: 22px;
+  max-width: 68px;
+  object-fit: contain;
+}
+
+.cs-carte-tete strong {
+  display: block;
+  font-size: 0.82rem;
+  font-weight: 700;
+  line-height: 1.2;
+  color: #080331;
+}
+
+.cs-carte-tete span {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: #1f9254;
+}
+
+/* La pastille verte dit « branché » plus vite que le mot lui-même. */
+.cs-carte-tete span::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  background: #22c55e;
+  border-radius: 999px;
+}
+
+.cs-carte-inner p {
+  margin: 0.5rem 0 0;
+  font-size: 0.78rem;
+  line-height: 1.45;
+  color: #4b4468;
+}
+
+/* En dessous de 1180 px les gouttières n'ont plus la place d'accueillir la
+   carte sans mordre sur le titre : elle disparaît, les points restent. */
+@media (max-width: 1179px) {
+  .cs-carte {
+    display: none;
+  }
+}
+
+/* Sous 640 px la constellation se tasse derrière le texte : on garde les
+   lignes, qui ne gênent pas, et on retire les points. */
+@media (max-width: 639px) {
+  .cs-point,
+  .cs-source {
+    display: none;
+  }
+}
+
+/* Mouvement réduit : plus de respiration ni d'apparition. La carte reste
+   lisible, elle cesse simplement de défiler (le minuteur est coupé côté JS). */
+@media (prefers-reduced-motion: reduce) {
+  .cs-point {
+    animation: none;
+  }
+
+  .cs-carte-inner {
+    animation: none;
+  }
+}

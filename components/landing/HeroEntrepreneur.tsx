@@ -7,7 +7,7 @@
 
 import { useState } from 'react';
 import { Sparkles } from 'lucide-react';
-import { FaisceauLignes } from './FaisceauLignes';
+import { ConstellationSources } from './ConstellationSources';
 import { BoiteChat } from './BoiteChat';
 import { ModaleCompte } from '@/components/espace/ModaleCompte';
 import { createClient } from '@/lib/supabase/client';
@@ -30,7 +30,7 @@ export function HeroEntrepreneur({
   return (
     <section className="relative overflow-hidden bg-[#fcfbff]">
       <div aria-hidden="true" className="pointer-events-none absolute inset-0" style={{ background: 'radial-gradient(ellipse 900px 600px at 50% 10%, rgba(117,81,232,0.14), transparent 65%), radial-gradient(ellipse 600px 420px at 0% 100%, rgba(255,136,123,0.10), transparent 60%)' }} />
-      <FaisceauLignes className="pointer-events-none absolute inset-x-0 top-0 h-[700px] sm:h-[720px]" />
+      <ConstellationSources className="pointer-events-none absolute inset-x-0 top-0 h-[700px] sm:h-[720px]" />
       <div className="relative mx-auto w-full max-w-3xl px-4 pb-20 pt-32 sm:px-6 sm:pt-36">
         <div className="text-center">
           <span className="inline-flex items-center gap-2 rounded-full border border-[var(--violet-200)] bg-[var(--violet-50)] px-3 py-1 text-xs font-semibold text-[var(--violet-700)]"><Sparkles className="size-3.5" /> {kicker}</span>

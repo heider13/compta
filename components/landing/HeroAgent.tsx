@@ -12,7 +12,7 @@ import {
   RotateCcw, ScanLine, PenLine,
 } from 'lucide-react';
 import { Arrow } from '@/components/icons';
-import { FaisceauLignes } from './FaisceauLignes';
+import { ConstellationSources } from './ConstellationSources';
 import { BoiteChat } from './BoiteChat';
 import { cn } from '@/lib/utils';
 
@@ -237,7 +237,7 @@ export function HeroAgent({
       <div aria-hidden="true" className="pointer-events-none absolute inset-x-0 bottom-0 h-40 bg-gradient-to-b from-transparent to-[#fbfaff]" />
       {/* Faisceau de lignes qui partent de sous le chat (esprit Lovable), en fond */}
       {livre && (
-        <FaisceauLignes className="pointer-events-none absolute inset-x-0 top-0 h-[700px] sm:h-[760px]" />
+        <ConstellationSources className="pointer-events-none absolute inset-x-0 top-0 h-[700px] sm:h-[760px]" />
       )}
       {/* Trame de points discrète */}
       <div
