@@ -23,28 +23,29 @@ export function HeroPhoto({
   points: string[];
 }) {
   return (
-    <section className="bg-[#fcfbff] px-3 pb-10 pt-[9.5rem] sm:px-5">
-      {/* Proportions de la photo (1923 × 817) sur grand écran : rien n'est recadré. Le bloc
-          grandit si le texte dépasse (pas d'overflow sur le conteneur, seulement sur le calque photo). */}
-      <div className="relative mx-auto flex min-h-[560px] w-full max-w-[1320px] items-center lg:aspect-[1923/817] lg:min-h-0">
-        <div aria-hidden="true" className="absolute inset-0 overflow-hidden rounded-[24px] bg-[#1a1450]">
+    <section className="bg-[#fcfbff] px-3 pb-8 pt-[10rem] sm:px-5">
+      {/* Grand écran : photo aux proportions d'origine (1923 × 817), texte posé sur la partie sombre ;
+          le bloc grandit si le texte dépasse (le recadrage est sur le calque photo, pas sur le conteneur).
+          Mobile : bande photo en haut, texte dessous sur le fond sombre. */}
+      <div className="relative mx-auto flex w-full max-w-[1320px] flex-col rounded-[24px] bg-[#1a1450] lg:aspect-[1923/817] lg:flex-row lg:items-center">
+        <div aria-hidden="true" className="relative h-[250px] overflow-hidden rounded-t-[24px] sm:h-[340px] lg:absolute lg:inset-0 lg:h-auto lg:rounded-[24px]">
           <Image
             src={image}
             alt={alt}
             fill
             priority
-            sizes="(min-width: 1320px) 1320px, 100vw"
-            className="object-cover object-[72%_center] lg:object-center"
+            sizes="(min-width: 1320px) 1320px, (min-width: 1024px) 100vw, 200vw"
+            className="object-cover object-[80%_25%] lg:object-center"
           />
-          {/* Assombrit la gauche pour la lecture du texte (plus fort sur mobile, où la photo est recadrée) */}
-          <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(18,12,64,0.92)_0%,rgba(24,16,84,0.78)_38%,rgba(24,16,84,0.25)_62%,transparent_80%)] max-lg:bg-[linear-gradient(180deg,rgba(18,12,64,0.55)_0%,rgba(18,12,64,0.88)_100%)]" />
+          {/* Grand écran : assombrit la gauche pour le texte. Mobile : fondu vers le fond sombre du bas. */}
+          <div className="absolute inset-0 bg-[linear-gradient(180deg,transparent_45%,#1a1450_100%)] lg:bg-[linear-gradient(90deg,rgba(18,12,64,0.92)_0%,rgba(24,16,84,0.78)_38%,rgba(24,16,84,0.25)_62%,transparent_80%)]" />
         </div>
-        <div className="relative w-full px-6 py-12 sm:px-12 lg:px-14">
+        <div className="relative w-full px-6 pb-10 pt-4 sm:px-10 lg:px-14 lg:py-10">
           <div className="max-w-[36rem]">
             <span className="inline-flex items-center rounded-full border border-white/25 bg-white/10 px-3 py-1 text-xs font-semibold !text-white backdrop-blur-sm">
               {kicker}
             </span>
-            <h1 className="!mt-6 font-[Sora] !text-[clamp(2rem,3.6vw,3rem)] !font-bold !leading-[1.05] !tracking-[-0.03em] !text-white">
+            <h1 className="!mt-5 font-[Sora] !text-[clamp(1.9rem,3.2vw,2.75rem)] !font-bold !leading-[1.05] !tracking-[-0.03em] !text-white">
               {ligne1}
               <br />
               <span className="bg-gradient-to-r from-[#c9b8ff] via-[#e3a8ff] to-[#ff9ed8] bg-clip-text text-transparent">{ligne2}</span>
@@ -57,7 +58,7 @@ export function HeroPhoto({
                 </li>
               ))}
             </ul>
-            <div className="mt-7 flex flex-wrap gap-3">
+            <div className="mt-6 flex flex-wrap gap-3">
               <a href="/auth/signup" className="inline-flex items-center gap-2 rounded-lg bg-white px-6 py-3 text-[15px] font-semibold !text-[#1a1450] no-underline shadow-[0_10px_24px_rgba(0,0,0,0.18)] transition-transform hover:-translate-y-0.5">
                 Créer un compte <ArrowRight className="size-4" />
               </a>

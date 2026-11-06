@@ -59,7 +59,7 @@ export function Nav({ surface = 'dark', announcement }: { surface?: 'dark' | 'li
       {!scrolled && (
         <div className="border-b border-[var(--ink-100)] bg-white/90 backdrop-blur-md">
           <Container className="flex h-10 items-center justify-between gap-4">
-            <div className="-mb-px flex h-full items-stretch gap-5 overflow-x-auto [scrollbar-width:none] sm:gap-7 [&::-webkit-scrollbar]:hidden">
+            <div className="-mb-px flex h-full items-stretch gap-5 overflow-x-auto [mask-image:linear-gradient(90deg,#000_85%,transparent)] [scrollbar-width:none] sm:gap-7 sm:[mask-image:none] [&::-webkit-scrollbar]:hidden">
               {PERSONA_LIST.map((p) => {
                 const actif = pathname === `/${p.slug}`;
                 return (
@@ -90,10 +90,10 @@ export function Nav({ surface = 'dark', announcement }: { surface?: 'dark' | 'li
       >
         <Link href="/" className="flex items-center no-underline" aria-label="Legaly AI">
           <Logo
-            size={40}
+            size={34}
             onDark={onDark || sombre}
             className="gap-2.5"
-            textClassName={cn('text-[26px] transition-colors', (onDark || sombre) && '!text-white')}
+            textClassName={cn('whitespace-nowrap text-[22px] transition-colors sm:text-[26px]', (onDark || sombre) && '!text-white')}
           />
         </Link>
 
@@ -132,14 +132,14 @@ export function Nav({ surface = 'dark', announcement }: { surface?: 'dark' | 'li
 
         {open && <MegaMenu menu={open} fermer={() => setOpen(null)} />}
 
-        <div className="flex items-center gap-2.5">
+        <div className="flex items-center gap-1.5 sm:gap-2.5">
           <ThemeToggle
             className={!onDark ? 'border-[var(--ink-200)] text-[var(--ink-700)] hover:bg-[var(--ink-50)]' : 'border-white/25 !text-white hover:bg-white/10'}
           />
           <a
             href="/auth/login"
             className={cn(
-              'inline-flex items-center justify-center rounded-full px-4 py-2 text-sm font-medium transition-colors',
+              'inline-flex items-center justify-center whitespace-nowrap rounded-full px-3 py-2 text-sm font-medium transition-colors sm:px-4',
               !onDark
                 ? 'border border-[var(--ink-200)] text-[var(--ink-900)] hover:bg-[var(--ink-50)]'
                 : 'border border-white/25 !text-white hover:bg-white/10',
