@@ -8,6 +8,7 @@ import type { PersonaContent } from '@/lib/landing/personas';
 import { METIERS, NOUVEAUTES } from '@/lib/landing/metiers';
 import { Nav } from './Nav';
 import { HeroMetier } from './v2/HeroMetier';
+import { HeroPhoto } from './v2/HeroPhoto';
 import { HeroEntrepreneur } from './HeroEntrepreneur';
 import { Modules, Engagements, Reassurance, Connexions, FinAppareils } from './v2/Pennylane';
 import type { Variante } from './v2/Maquettes';
@@ -24,6 +25,8 @@ export function PersonaLanding({ persona }: { persona: PersonaContent }) {
       {persona.slug === 'independants-tpe' ? (
         // Indépendants et TPE : le vrai assistant, utilisable sans compte
         <HeroEntrepreneur kicker={m.kicker} ligne1={m.ligne1} ligne2={m.ligne2} sousTitre={m.sousTitre} exemples={m.exemples.slice(0, 4)} />
+      ) : persona.slug === 'experts-comptables' ? (
+        <HeroPhoto image="/landing/hero-experts-comptables.png" alt="Deux experts-comptables consultent un dossier sur une tablette" kicker={m.kicker} ligne1={m.ligne1} ligne2={m.ligne2} sousTitre={m.sousTitre} points={m.points} />
       ) : (
         <HeroMetier metier={persona.slug} kicker={m.kicker} ligne1={m.ligne1} ligne2={m.ligne2} sousTitre={m.sousTitre} points={m.points} />
       )}
