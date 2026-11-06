@@ -45,7 +45,7 @@ export function Nav({ surface = 'dark', announcement }: { surface?: 'dark' | 'li
       className={cn(
         // En haut de page : barre intégrée au hero. Au défilement : pilule blanche détachée.
         'fixed inset-x-0 top-0 z-50 transition-all duration-300',
-        scrolled ? 'px-3 pt-3 sm:px-4' : open !== null ? 'bg-white/95 shadow-[0_4px_20px_rgba(43,23,105,0.06)] backdrop-blur-md' : 'bg-transparent',
+        scrolled ? 'px-2 pt-3 sm:px-4' : open !== null ? 'bg-white/95 shadow-[0_4px_20px_rgba(43,23,105,0.06)] backdrop-blur-md' : 'bg-transparent',
       )}
       onMouseLeave={() => setOpen(null)}
     >
@@ -82,23 +82,23 @@ export function Nav({ surface = 'dark', announcement }: { surface?: 'dark' | 'li
       )}
       <Container
         className={cn(
-          'relative flex items-center justify-between gap-4 transition-all duration-300',
+          'relative flex items-center justify-between gap-2 transition-all duration-300 sm:gap-4',
           scrolled
-            ? 'h-[64px] max-w-6xl rounded-full border border-[var(--ink-100)] bg-white/95 !px-4 shadow-[0_12px_40px_rgba(43,23,105,0.14)] backdrop-blur-md sm:!px-6'
+            ? 'h-[64px] max-w-6xl rounded-full border border-[var(--ink-100)] bg-white/95 !px-3 shadow-[0_12px_40px_rgba(43,23,105,0.14)] backdrop-blur-md sm:!px-6'
             : 'h-[72px]',
         )}
       >
-        <Link href="/" className="flex items-center no-underline" aria-label="Legaly AI">
+        <Link href="/" className="flex shrink-0 items-center no-underline" aria-label="Legaly AI">
           <Logo
-            size={34}
+            size={30}
             onDark={onDark || sombre}
             className="gap-2.5"
-            textClassName={cn('whitespace-nowrap text-[22px] transition-colors sm:text-[26px]', (onDark || sombre) && '!text-white')}
+            textClassName={cn('whitespace-nowrap text-[20px] transition-colors sm:text-[26px]', (onDark || sombre) && '!text-white')}
           />
         </Link>
 
         {/* Menu central */}
-        <div className="hidden items-center gap-7 md:flex">
+        <div className="hidden items-center gap-7 lg:flex">
           {/* Modules (méga-menu) */}
           <div className="relative" onMouseEnter={() => setOpen('modules')}>
             <button
@@ -134,12 +134,12 @@ export function Nav({ surface = 'dark', announcement }: { surface?: 'dark' | 'li
 
         <div className="flex items-center gap-1.5 sm:gap-2.5">
           <ThemeToggle
-            className={!onDark ? 'border-[var(--ink-200)] text-[var(--ink-700)] hover:bg-[var(--ink-50)]' : 'border-white/25 !text-white hover:bg-white/10'}
+            className={cn('max-sm:!hidden', !onDark ? 'border-[var(--ink-200)] text-[var(--ink-700)] hover:bg-[var(--ink-50)]' : 'border-white/25 !text-white hover:bg-white/10')}
           />
           <a
             href="/auth/login"
             className={cn(
-              'inline-flex items-center justify-center whitespace-nowrap rounded-full px-3 py-2 text-sm font-medium transition-colors sm:px-4',
+              'inline-flex items-center justify-center whitespace-nowrap rounded-full px-3 py-2 text-[13px] font-medium transition-colors sm:px-4 sm:text-sm',
               !onDark
                 ? 'border border-[var(--ink-200)] text-[var(--ink-900)] hover:bg-[var(--ink-50)]'
                 : 'border border-white/25 !text-white hover:bg-white/10',
@@ -150,13 +150,13 @@ export function Nav({ surface = 'dark', announcement }: { surface?: 'dark' | 'li
           <a
             href="/auth/signup"
             className={cn(
-              'inline-flex items-center justify-center gap-1.5 rounded-full px-4 py-2 text-sm font-semibold transition-transform hover:-translate-y-0.5',
+              'inline-flex shrink-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-full px-3.5 py-2 text-[13px] font-semibold sm:px-4 sm:text-sm transition-transform hover:-translate-y-0.5',
               !onDark ? 'bg-[var(--accent)] text-white' : 'bg-white !text-[#0e0b1a]',
             )}
           >
-            <span className="hidden sm:inline">Demander une démo</span>
-            <span className="sm:hidden">Démo</span>
-            <Arrow size={15} />
+            <span className="hidden lg:inline">Demander une démo</span>
+            <span className="lg:hidden">Démo</span>
+            <Arrow size={15} className="max-sm:hidden" />
           </a>
         </div>
       </Container>
@@ -213,7 +213,7 @@ function MegaMenu({ menu, fermer }: { menu: Exclude<MenuKey, null>; fermer: () =
   const d = MENUS[menu];
   return (
     // Le pt-2 (et non un mt) garde la souris « dans » la nav entre la barre et le panneau
-    <div className="absolute left-1/2 top-full z-50 hidden w-[min(94vw,960px)] -translate-x-1/2 pt-2 md:block">
+    <div className="absolute left-1/2 top-full z-50 hidden w-[min(94vw,960px)] -translate-x-1/2 pt-2 lg:block">
       <div className="grid overflow-hidden rounded-[22px] border border-[#080331]/[0.08] bg-[#fcfbff] shadow-[0_24px_60px_rgba(35,20,80,0.16)] animate-[menu-entree_.18s_ease-out] lg:grid-cols-[1.75fr_1fr]">
         <div className="p-7">
           <p className="px-3 text-[13px] text-[var(--ink-500)]">{d.gauche}</p>

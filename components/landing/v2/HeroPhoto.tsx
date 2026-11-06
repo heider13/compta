@@ -24,11 +24,11 @@ export function HeroPhoto({
 }) {
   return (
     <section className="bg-[#fcfbff] px-3 pb-8 pt-[10rem] sm:px-5">
-      {/* Grand écran : photo aux proportions d'origine (1923 × 817), texte posé sur la partie sombre ;
-          le bloc grandit si le texte dépasse (le recadrage est sur le calque photo, pas sur le conteneur).
-          Mobile : bande photo en haut, texte dessous sur le fond sombre. */}
-      <div className="relative mx-auto flex w-full max-w-[1320px] flex-col rounded-[24px] bg-[#1a1450] lg:aspect-[1923/817] lg:flex-row lg:items-center">
-        <div aria-hidden="true" className="relative h-[250px] overflow-hidden rounded-t-[24px] sm:h-[340px] lg:absolute lg:inset-0 lg:h-auto lg:rounded-[24px]">
+      {/* À partir de 1280 px : photo aux proportions d'origine (1923 × 817), texte posé sur la partie
+          sombre ; le bloc grandit si le texte dépasse (le recadrage est sur le calque photo, pas sur le
+          conteneur). En dessous, le texte toucherait les visages : photo en haut, texte dessous. */}
+      <div className="relative mx-auto flex w-full max-w-[1320px] flex-col rounded-[24px] bg-[#1a1450] xl:aspect-[1923/817] xl:flex-row xl:items-center">
+        <div aria-hidden="true" className="relative h-[250px] overflow-hidden rounded-t-[24px] sm:h-[340px] lg:h-auto lg:aspect-[1923/817] xl:absolute xl:inset-0 xl:aspect-auto xl:rounded-[24px]">
           <Image
             src={image}
             alt={alt}
@@ -38,9 +38,9 @@ export function HeroPhoto({
             className="object-cover object-[80%_25%] lg:object-center"
           />
           {/* Grand écran : assombrit la gauche pour le texte. Mobile : fondu vers le fond sombre du bas. */}
-          <div className="absolute inset-0 bg-[linear-gradient(180deg,transparent_45%,#1a1450_100%)] lg:bg-[linear-gradient(90deg,rgba(18,12,64,0.92)_0%,rgba(24,16,84,0.78)_38%,rgba(24,16,84,0.25)_62%,transparent_80%)]" />
+          <div className="absolute inset-0 bg-[linear-gradient(180deg,transparent_45%,#1a1450_100%)] lg:bg-[linear-gradient(180deg,transparent_70%,#1a1450_100%)] xl:bg-[linear-gradient(90deg,rgba(18,12,64,0.92)_0%,rgba(24,16,84,0.78)_38%,rgba(24,16,84,0.25)_62%,transparent_80%)]" />
         </div>
-        <div className="relative w-full px-6 pb-10 pt-4 sm:px-10 lg:px-14 lg:py-10">
+        <div className="relative w-full px-6 pb-10 pt-4 sm:px-10 lg:px-14 xl:py-10">
           <div className="max-w-[36rem]">
             <span className="inline-flex items-center rounded-full border border-white/25 bg-white/10 px-3 py-1 text-xs font-semibold !text-white backdrop-blur-sm">
               {kicker}

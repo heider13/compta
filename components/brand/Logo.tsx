@@ -72,7 +72,7 @@ export function Logo({
 }) {
   return (
     <span className={cn('inline-flex items-center gap-2', className)}>
-      <LogoMark size={size} onDark={onDark} />
+      <LogoMark size={size} onDark={onDark} className="shrink-0" />
       <span
         className={cn(
           'font-[Sora] font-bold leading-none tracking-tight',
