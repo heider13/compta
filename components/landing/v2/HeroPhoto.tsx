@@ -24,20 +24,21 @@ export function HeroPhoto({
 }) {
   return (
     <section className="bg-[#fcfbff] px-3 pb-10 pt-[9.5rem] sm:px-5">
-      <div className="relative mx-auto flex min-h-[540px] w-full max-w-[1320px] items-center overflow-hidden rounded-[24px] bg-[#1a1450] lg:h-[clamp(440px,calc(100svh-12rem),540px)] lg:min-h-0">
-        <Image
-          src={image}
-          alt={alt}
-          fill
-          priority
-          sizes="(min-width: 1320px) 1320px, 100vw"
-          className="object-cover object-[72%_center]"
-        />
-        {/* Assombrit la gauche pour la lecture du texte (plus fort sur mobile, où la photo est recadrée) */}
-        <div
-          aria-hidden="true"
-          className="absolute inset-0 bg-[linear-gradient(90deg,rgba(18,12,64,0.92)_0%,rgba(24,16,84,0.78)_38%,rgba(24,16,84,0.25)_62%,transparent_80%)] max-lg:bg-[linear-gradient(180deg,rgba(18,12,64,0.55)_0%,rgba(18,12,64,0.88)_100%)]"
-        />
+      {/* Proportions de la photo (1923 × 817) sur grand écran : rien n'est recadré. Le bloc
+          grandit si le texte dépasse (pas d'overflow sur le conteneur, seulement sur le calque photo). */}
+      <div className="relative mx-auto flex min-h-[560px] w-full max-w-[1320px] items-center lg:aspect-[1923/817] lg:min-h-0">
+        <div aria-hidden="true" className="absolute inset-0 overflow-hidden rounded-[24px] bg-[#1a1450]">
+          <Image
+            src={image}
+            alt={alt}
+            fill
+            priority
+            sizes="(min-width: 1320px) 1320px, 100vw"
+            className="object-cover object-[72%_center] lg:object-center"
+          />
+          {/* Assombrit la gauche pour la lecture du texte (plus fort sur mobile, où la photo est recadrée) */}
+          <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(18,12,64,0.92)_0%,rgba(24,16,84,0.78)_38%,rgba(24,16,84,0.25)_62%,transparent_80%)] max-lg:bg-[linear-gradient(180deg,rgba(18,12,64,0.55)_0%,rgba(18,12,64,0.88)_100%)]" />
+        </div>
         <div className="relative w-full px-6 py-12 sm:px-12 lg:px-14">
           <div className="max-w-[36rem]">
             <span className="inline-flex items-center rounded-full border border-white/25 bg-white/10 px-3 py-1 text-xs font-semibold !text-white backdrop-blur-sm">
