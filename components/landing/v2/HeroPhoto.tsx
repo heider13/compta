@@ -7,6 +7,7 @@ import { ArrowRight, Check } from 'lucide-react';
 
 export function HeroPhoto({
   image,
+  cadrage = '80% 25%',
   alt,
   kicker,
   ligne1,
@@ -15,6 +16,8 @@ export function HeroPhoto({
   points,
 }: {
   image: string;
+  /** Cadrage de la bande photo sous 1024 px (object-position) */
+  cadrage?: string;
   alt: string;
   kicker: string;
   ligne1: string;
@@ -35,7 +38,8 @@ export function HeroPhoto({
             fill
             priority
             sizes="(min-width: 1320px) 1320px, (min-width: 1024px) 100vw, 200vw"
-            className="object-cover object-[80%_25%] lg:object-center"
+            className="object-cover object-[var(--cadrage)] lg:object-center"
+            style={{ ['--cadrage' as string]: cadrage }}
           />
           {/* Grand écran : assombrit la gauche pour le texte. Mobile : fondu vers le fond sombre du bas. */}
           <div className="absolute inset-0 bg-[linear-gradient(180deg,transparent_45%,#1a1450_100%)] lg:bg-[linear-gradient(180deg,transparent_70%,#1a1450_100%)] xl:bg-[linear-gradient(90deg,rgba(18,12,64,0.92)_0%,rgba(24,16,84,0.78)_38%,rgba(24,16,84,0.25)_62%,transparent_80%)]" />

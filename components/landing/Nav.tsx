@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { ChevronDown } from 'lucide-react';
@@ -26,7 +26,15 @@ export function Nav({ surface = 'dark', announcement }: { surface?: 'dark' | 'li
   const [open, setOpen] = useState<MenuKey>(null);
   const solid = scrolled || open !== null;
   const sombre = useThemeSombre();
+  const onglets = useRef<HTMLDivElement>(null);
   const onDark = surface === 'dark' && !solid;
+
+  // Petit écran : la barre des métiers défile ; on y amène l'onglet de la page courante
+  useEffect(() => {
+    const barre = onglets.current;
+    const actif = barre?.querySelector<HTMLElement>('[aria-current="page"]');
+    if (barre && actif && actif.offsetLeft + actif.offsetWidth > barre.clientWidth) barre.scrollLeft = actif.offsetLeft - 16;
+  }, [pathname]);
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 24);
@@ -59,13 +67,14 @@ export function Nav({ surface = 'dark', announcement }: { surface?: 'dark' | 'li
       {!scrolled && (
         <div className="border-b border-[var(--ink-100)] bg-white/90 backdrop-blur-md">
           <Container className="flex h-10 items-center justify-between gap-4">
-            <div className="-mb-px flex h-full items-stretch gap-5 overflow-x-auto [mask-image:linear-gradient(90deg,#000_85%,transparent)] [scrollbar-width:none] sm:gap-7 sm:[mask-image:none] [&::-webkit-scrollbar]:hidden">
+            <div ref={onglets} className="-mb-px flex h-full items-stretch gap-5 overflow-x-auto [mask-image:linear-gradient(90deg,#000_85%,transparent)] [scrollbar-width:none] sm:gap-7 sm:[mask-image:none] [&::-webkit-scrollbar]:hidden">
               {PERSONA_LIST.map((p) => {
                 const actif = pathname === `/${p.slug}`;
                 return (
                   <Link
                     key={p.slug}
                     href={`/${p.slug}`}
+                    aria-current={actif ? 'page' : undefined}
                     className={cn(
                       'flex shrink-0 items-center border-b-2 text-[13px] no-underline transition-colors sm:text-sm',
                       actif ? 'border-[var(--violet-900)] font-semibold !text-[var(--violet-900)]' : 'border-transparent !text-[var(--ink-500)] hover:!text-[var(--violet-900)]',
@@ -156,7 +165,7 @@ export function Nav({ surface = 'dark', announcement }: { surface?: 'dark' | 'li
           >
             <span className="hidden lg:inline">Demander une démo</span>
             <span className="lg:hidden">Démo</span>
-            <Arrow size={15} className="max-sm:hidden" />
+            <Arrow size={15} className="max-sm:!hidden" />
           </a>
         </div>
       </Container>
