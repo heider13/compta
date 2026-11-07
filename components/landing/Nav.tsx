@@ -33,8 +33,11 @@ export function Nav({ surface = 'dark', announcement }: { surface?: 'dark' | 'li
   useEffect(() => {
     const barre = onglets.current;
     const actif = barre?.querySelector<HTMLElement>('[aria-current="page"]');
-    if (barre && actif && actif.offsetLeft + actif.offsetWidth > barre.clientWidth) barre.scrollLeft = actif.offsetLeft - 16;
-  }, [pathname]);
+    if (!barre || !actif) return;
+    // Position relative à la barre (offsetLeft partirait du bandeau parent) ; 85 % = début du fondu
+    const dx = actif.getBoundingClientRect().left - barre.getBoundingClientRect().left + barre.scrollLeft;
+    if (dx + actif.offsetWidth > barre.clientWidth * 0.85) barre.scrollLeft = dx - 16;
+  }, [pathname, scrolled]); // la barre est recréée au retour en haut de page
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 24);

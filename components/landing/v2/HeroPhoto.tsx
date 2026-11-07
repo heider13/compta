@@ -49,7 +49,7 @@ export function HeroPhoto({
             <span className="inline-flex items-center rounded-full border border-white/25 bg-white/10 px-3 py-1 text-xs font-semibold !text-white backdrop-blur-sm">
               {kicker}
             </span>
-            <h1 className="!mt-5 font-[Sora] !text-[clamp(1.9rem,3.2vw,2.75rem)] !font-bold !leading-[1.05] !tracking-[-0.03em] !text-white">
+            <h1 className="!mt-5 font-[Sora] !text-[clamp(1.9rem,3vw,2.6rem)] !font-bold !leading-[1.05] !tracking-[-0.03em] !text-white">
               {ligne1}
               <br />
               <span className="bg-gradient-to-r from-[#c9b8ff] via-[#e3a8ff] to-[#ff9ed8] bg-clip-text text-transparent">{ligne2}</span>
