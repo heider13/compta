@@ -8,6 +8,7 @@ import { ArrowRight, Check } from 'lucide-react';
 export function HeroPhoto({
   image,
   cadrage = '80% 25%',
+  largeurTexte = 'max-w-[36rem]',
   alt,
   kicker,
   ligne1,
@@ -18,6 +19,8 @@ export function HeroPhoto({
   image: string;
   /** Cadrage de la bande photo sous 1024 px (object-position) */
   cadrage?: string;
+  /** Largeur du bloc texte (classes complètes) : plus étroite quand les personnes commencent tôt dans la photo */
+  largeurTexte?: string;
   alt: string;
   kicker: string;
   ligne1: string;
@@ -45,7 +48,7 @@ export function HeroPhoto({
           <div className="absolute inset-0 bg-[linear-gradient(180deg,transparent_45%,#1a1450_100%)] lg:bg-[linear-gradient(180deg,transparent_70%,#1a1450_100%)] xl:bg-[linear-gradient(90deg,rgba(18,12,64,0.92)_0%,rgba(24,16,84,0.78)_38%,rgba(24,16,84,0.25)_62%,transparent_80%)]" />
         </div>
         <div className="relative w-full px-6 pb-10 pt-4 sm:px-10 lg:px-14 xl:py-10">
-          <div className="max-w-[36rem]">
+          <div className={largeurTexte}>
             <span className="inline-flex items-center rounded-full border border-white/25 bg-white/10 px-3 py-1 text-xs font-semibold !text-white backdrop-blur-sm">
               {kicker}
             </span>
