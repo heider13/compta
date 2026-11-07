@@ -30,7 +30,7 @@ export function PersonaLanding({ persona }: { persona: PersonaContent }) {
       ) : persona.slug === 'avocats' ? (
         <HeroPhoto image="/landing/hero-avocats.png" cadrage="94% 25%" alt="Deux avocats en robe consultent un dossier sur une tablette" kicker={m.kicker} ligne1={m.ligne1} ligne2={m.ligne2} sousTitre={m.sousTitre} points={m.points} />
       ) : persona.slug === 'directions-juridiques' ? (
-        <HeroPhoto image="/landing/hero-directions-juridiques.png" alt="Une équipe juridique travaille autour d'un ordinateur portable" cadrage="100% 30%" largeurTexte="max-w-[36rem] xl:max-w-[32rem]" kicker={m.kicker} ligne1={m.ligne1} ligne2={m.ligne2} sousTitre={m.sousTitre} points={m.points} />
+        <HeroPhoto image="/landing/hero-directions-juridiques.png" alt="Une équipe juridique travaille autour d'un ordinateur portable" cadrage="100% 30%" largeurTexte="max-w-[36rem] xl:max-w-[32rem]" largeurTitre="xl:max-w-[28rem]" kicker={m.kicker} ligne1={m.ligne1} ligne2={m.ligne2} sousTitre={m.sousTitre} points={m.points} />
       ) : (
         <HeroMetier metier={persona.slug} kicker={m.kicker} ligne1={m.ligne1} ligne2={m.ligne2} sousTitre={m.sousTitre} points={m.points} />
       )}
